@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/auth/providers/auth_providers.dart';
 import '../../features/auth/providers/onboarding_provider.dart';
+import '../../features/auth/providers/signup_state_provider.dart';
+import '../../features/auth/ui/email_confirmation_screen.dart';
 import '../../features/auth/ui/login_screen.dart';
 import '../../features/auth/ui/onboarding_screen.dart';
 import '../../features/auth/ui/splash_screen.dart';
@@ -25,10 +27,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         return location == '/splash' ? null : '/splash';
       }
 
-      // Not logged in → go to login (unless already there).
+      // Not logged in → go to login (unless already there or on email confirmation).
       if (!isLoggedIn) {
+        final hasSignupPending = ref.read(signupPendingEmailProvider) != null;
+        if (location == '/email-confirmation' && hasSignupPending) return null;
         return location == '/login' ? null : '/login';
       }
+
+      // Logged in → clear any pending signup state.
+      ref.read(signupPendingEmailProvider.notifier).state = null;
 
       // Logged in but needs onboarding → go to onboarding.
       if (needsOnboarding && location != '/onboarding') {
@@ -48,6 +55,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const SplashScreen(),
       ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: '/email-confirmation',
+        builder: (context, state) => const EmailConfirmationScreen(),
+      ),
       GoRoute(
         path: '/onboarding',
         builder: (context, state) => const OnboardingScreen(),

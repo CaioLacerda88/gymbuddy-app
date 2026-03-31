@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../providers/notifiers/auth_notifier.dart';
 import '../providers/onboarding_provider.dart';
+import '../providers/signup_state_provider.dart';
+import '../utils/auth_error_messages.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -18,6 +21,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isSignUp = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -27,10 +31,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   void _toggleMode() {
-    setState(() => _isSignUp = !_isSignUp);
+    setState(() {
+      _isSignUp = !_isSignUp;
+      _errorMessage = null;
+    });
+  }
+
+  void _clearError() {
+    if (_errorMessage != null) {
+      setState(() => _errorMessage = null);
+    }
   }
 
   Future<void> _submit() async {
+    _clearError();
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     final email = _emailController.text.trim();
@@ -40,18 +54,45 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (_isSignUp) {
       ref.read(needsOnboardingProvider.notifier).state = true;
       await notifier.signUpWithEmail(email: email, password: password);
+      // If signup succeeded and email confirmation is pending, navigate.
+      if (mounted && ref.read(signupPendingEmailProvider) != null) {
+        context.go('/email-confirmation');
+      }
     } else {
       await notifier.signInWithEmail(email: email, password: password);
     }
   }
 
   Future<void> _signInWithGoogle() async {
+    _clearError();
     await ref.read(authNotifierProvider.notifier).signInWithGoogle();
   }
 
+  Future<void> _forgotPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      setState(() {
+        _errorMessage = 'Enter your email above, then tap "Forgot password?"';
+      });
+      return;
+    }
+    _clearError();
+    await ref.read(authNotifierProvider.notifier).resetPassword(email);
+    if (mounted && !ref.read(authNotifierProvider).hasError) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Password reset email sent. Check your inbox.'),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+        ),
+      );
+    }
+  }
+
+  static final _emailRegex = RegExp(r'^[\w\-.+]+@([\w\-]+\.)+[\w\-]{2,}$');
+
   String? _validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) return 'Email is required';
-    if (!value.contains('@')) return 'Enter a valid email';
+    if (!_emailRegex.hasMatch(value.trim())) return 'Enter a valid email';
     return null;
   }
 
@@ -67,15 +108,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final authState = ref.watch(authNotifierProvider);
     final isLoading = authState.isLoading;
 
-    // Show error snackbar on auth failure.
+    // Show user-friendly error on auth failure.
     ref.listen(authNotifierProvider, (prev, next) {
       if (next.hasError && !next.isLoading) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(next.error.toString()),
-            backgroundColor: theme.colorScheme.error,
-          ),
-        );
+        setState(() {
+          _errorMessage = AuthErrorMessages.fromError(next.error!);
+        });
       }
     });
 
@@ -112,6 +150,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 40),
+                  // Inline error message
+                  if (_errorMessage != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.error.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: theme.colorScheme.error.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            color: theme.colorScheme.error,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.error,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   AppTextField(
                     label: 'Email',
                     controller: _emailController,
@@ -130,6 +200,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     prefixIcon: Icons.lock_outlined,
                     onFieldSubmitted: (_) => _submit(),
                   ),
+                  if (!_isSignUp) ...[
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: isLoading ? null : _forgotPassword,
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                        ),
+                        child: Text(
+                          'Forgot password?',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.primary.withValues(
+                              alpha: 0.8,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 24),
                   AppButton(
                     label: _isSignUp ? 'SIGN UP' : 'LOG IN',

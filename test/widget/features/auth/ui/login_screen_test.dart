@@ -29,7 +29,6 @@ void main() {
     testWidgets('toggles to sign up mode', (tester) async {
       await tester.pumpWidget(buildTestWidget());
 
-      // Tap the toggle button
       await tester.tap(find.text("Don't have an account? Sign up"));
       await tester.pump();
 
@@ -40,11 +39,9 @@ void main() {
     testWidgets('toggles back to login mode', (tester) async {
       await tester.pumpWidget(buildTestWidget());
 
-      // Toggle to sign up
       await tester.tap(find.text("Don't have an account? Sign up"));
       await tester.pump();
 
-      // Toggle back
       await tester.tap(find.text('Already have an account? Log in'));
       await tester.pump();
 
@@ -69,6 +66,32 @@ void main() {
       await tester.pump();
 
       expect(find.text('Enter a valid email'), findsOneWidget);
+    });
+
+    testWidgets('validates email without domain extension', (tester) async {
+      await tester.pumpWidget(buildTestWidget());
+
+      await tester.enterText(find.byType(TextFormField).first, 'user@domain');
+      await tester.tap(find.text('LOG IN'));
+      await tester.pump();
+
+      expect(find.text('Enter a valid email'), findsOneWidget);
+    });
+
+    testWidgets('accepts valid email', (tester) async {
+      await tester.pumpWidget(buildTestWidget());
+
+      await tester.enterText(
+        find.byType(TextFormField).first,
+        'user@domain.com',
+      );
+      await tester.enterText(find.byType(TextFormField).last, '123456');
+      await tester.tap(find.text('LOG IN'));
+      await tester.pump();
+
+      // No email validation error should appear
+      expect(find.text('Enter a valid email'), findsNothing);
+      expect(find.text('Email is required'), findsNothing);
     });
 
     testWidgets('validates empty password', (tester) async {
@@ -105,6 +128,58 @@ void main() {
       await tester.pumpWidget(buildTestWidget());
 
       expect(find.text('GymBuddy'), findsOneWidget);
+    });
+
+    testWidgets('shows forgot password link in login mode', (tester) async {
+      await tester.pumpWidget(buildTestWidget());
+
+      expect(find.text('Forgot password?'), findsOneWidget);
+    });
+
+    testWidgets('hides forgot password in signup mode', (tester) async {
+      await tester.pumpWidget(buildTestWidget());
+
+      await tester.tap(find.text("Don't have an account? Sign up"));
+      await tester.pump();
+
+      expect(find.text('Forgot password?'), findsNothing);
+    });
+
+    testWidgets('shows password visibility toggle', (tester) async {
+      await tester.pumpWidget(buildTestWidget());
+
+      // Password field should have a visibility toggle icon
+      expect(find.byIcon(Icons.visibility_off), findsOneWidget);
+    });
+
+    testWidgets('toggles password visibility', (tester) async {
+      await tester.pumpWidget(buildTestWidget());
+
+      // Initially obscured (visibility_off shown)
+      expect(find.byIcon(Icons.visibility_off), findsOneWidget);
+      expect(find.byIcon(Icons.visibility), findsNothing);
+
+      // Tap to show password
+      await tester.tap(find.byIcon(Icons.visibility_off));
+      await tester.pump();
+
+      expect(find.byIcon(Icons.visibility), findsOneWidget);
+      expect(find.byIcon(Icons.visibility_off), findsNothing);
+    });
+
+    testWidgets('forgot password shows error when email is empty', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildTestWidget());
+
+      await tester.tap(find.text('Forgot password?'));
+      await tester.pump();
+
+      // Should show inline error asking to enter email first
+      expect(
+        find.text('Enter your email above, then tap "Forgot password?"'),
+        findsOneWidget,
+      );
     });
   });
 }

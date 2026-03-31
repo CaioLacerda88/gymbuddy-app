@@ -49,6 +49,16 @@ class AuthRepository extends BaseRepository {
     return mapException(() => _auth.signOut());
   }
 
+  /// Resend the confirmation email to the given address.
+  Future<void> resendConfirmationEmail(String email) {
+    return mapException(() => _auth.resend(type: OtpType.signup, email: email));
+  }
+
+  /// Send a password reset email.
+  Future<void> resetPassword(String email) {
+    return mapException(() => _auth.resetPasswordForEmail(email));
+  }
+
   /// Refresh the current session token.
   Future<AuthResponse> refreshSession() {
     return mapException(() => _auth.refreshSession());

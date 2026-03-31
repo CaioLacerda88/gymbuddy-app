@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-class AppTextField extends StatelessWidget {
+class AppTextField extends StatefulWidget {
   const AppTextField({
     super.key,
     required this.label,
@@ -27,19 +27,38 @@ class AppTextField extends StatelessWidget {
   final ValueChanged<String>? onFieldSubmitted;
 
   @override
+  State<AppTextField> createState() => _AppTextFieldState();
+}
+
+class _AppTextFieldState extends State<AppTextField> {
+  late bool _obscured;
+
+  @override
+  void initState() {
+    super.initState();
+    _obscured = widget.obscureText;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return TextFormField(
-      controller: controller,
-      validator: validator,
-      obscureText: obscureText,
-      keyboardType: keyboardType,
-      textInputAction: textInputAction,
-      onChanged: onChanged,
-      focusNode: focusNode,
-      onFieldSubmitted: onFieldSubmitted,
+      controller: widget.controller,
+      validator: widget.validator,
+      obscureText: _obscured,
+      keyboardType: widget.keyboardType,
+      textInputAction: widget.textInputAction,
+      onChanged: widget.onChanged,
+      focusNode: widget.focusNode,
+      onFieldSubmitted: widget.onFieldSubmitted,
       decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
+        labelText: widget.label,
+        prefixIcon: widget.prefixIcon != null ? Icon(widget.prefixIcon) : null,
+        suffixIcon: widget.obscureText
+            ? IconButton(
+                icon: Icon(_obscured ? Icons.visibility_off : Icons.visibility),
+                onPressed: () => setState(() => _obscured = !_obscured),
+              )
+            : null,
       ),
     );
   }
