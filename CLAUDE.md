@@ -45,56 +45,53 @@ flutter run -d chrome        # run on Chrome (for Playwright e2e)
 
 ### Team
 
-| Agent           | Role                                                     | Writes Code | Model  |
-| --------------- | -------------------------------------------------------- | ----------- | ------ |
-| `tech-lead`     | Architecture, scaffolding, coordination, Git flow, PRs   | Yes         | Opus   |
-| `flutter-dev`   | UI screens, widgets, Riverpod providers                  | Yes         | Opus   |
-| `supabase-dev`  | Database, migrations, RLS, auth, repositories            | Yes         | Sonnet |
-| `devops`        | CI/CD pipelines, GitHub Actions, releases                | Yes         | Sonnet |
-| `qa-engineer`   | Test strategy, unit/widget/e2e tests, Playwright         | Yes         | Opus   |
-| `product-owner` | Market research, competitor analysis, feature priorities | Read-only   | Opus   |
-| `reviewer`      | Code review, quality checks                              | Read-only   | Sonnet |
-| `ui-ux-critic`  | Design critique, anti-generic-AI aesthetics              | Read-only   | Opus   |
+| Agent           | Role                                                         | Writes Code | Model  |
+| --------------- | ------------------------------------------------------------ | ----------- | ------ |
+| `team-lead`     | **Orchestrator** — task breakdown, agent dispatch, handoffs, quality gates, PRs | No          | Opus   |
+| `tech-lead`     | Architecture, core scaffolding, cross-cutting patterns       | Yes         | Opus   |
+| `flutter-dev`   | UI screens, widgets, Riverpod providers, navigation          | Yes         | Opus   |
+| `supabase-dev`  | Database, migrations, RLS, auth, repositories                | Yes         | Sonnet |
+| `devops`        | CI/CD pipelines, GitHub Actions, releases                    | Yes         | Sonnet |
+| `qa-engineer`   | Test strategy, unit/widget/e2e tests, Playwright             | Yes         | Opus   |
+| `product-owner` | Market research, competitor analysis, feature priorities     | Read-only   | Opus   |
+| `reviewer`      | Code review, quality checks                                  | Read-only   | Sonnet |
+| `ui-ux-critic`  | Design critique, anti-generic-AI aesthetics                  | Read-only   | Opus   |
+
+### How it works
+
+**The main conversation dispatches `team-lead` to orchestrate each plan step.** The team-lead then dispatches all other agents as needed. No implementation happens in the main conversation.
 
 ### Development Flow (Agile Sprint Cycle)
 
-Each PLAN.md step is treated as a sprint increment. The team follows this pipeline:
+Each PLAN.md step is treated as a sprint increment. The `team-lead` drives this pipeline:
 
 #### 1. Planning & Kickoff
-- **product-owner** provides market context, user stories, and acceptance criteria
-- **tech-lead** breaks the step into sub-tasks, creates feature branch (`feature/step<N>-description`)
-- **tech-lead** identifies which agents are needed and what they'll build
+- **team-lead** reads the PLAN.md step, creates feature branch
+- **product-owner** provides market context, user stories, acceptance criteria (if user-facing)
+- **team-lead** breaks the step into ordered sub-tasks with agent assignments
 
 #### 2. Implementation (Parallel where possible)
-- **tech-lead** builds architecture scaffolding, core patterns, and cross-cutting concerns first
-- **flutter-dev** and/or **supabase-dev** implement feature work (can run in parallel on independent sub-tasks)
-- Each implementer runs `make format` and `make analyze` before considering their work done
+- **tech-lead** builds architecture scaffolding, core patterns first (if needed)
+- **flutter-dev** and/or **supabase-dev** implement feature work (parallel when independent)
+- **team-lead** verifies each agent's output (format + analyze) before handing to next
 - Implementers hand off by summarizing: what was built, which files changed, any decisions made
 
-#### 3. Design Review
-- **ui-ux-critic** reviews any new/changed screens (read-only)
-- Provides verdict (Generic / Acceptable / Distinctive) with actionable feedback
-- If verdict is "Generic": implementer revises before proceeding
-- Skip this step if no UI was added or changed
+#### 3. Design Review (skip if no UI changes)
+- **ui-ux-critic** reviews new/changed screens (read-only)
+- Verdict: Generic (revise) / Acceptable / Distinctive (proceed)
 
 #### 4. Testing
-- **qa-engineer** reads the implementation, identifies risk areas and edge cases
-- Writes unit tests, widget tests, and e2e smoke tests (per PLAN.md step requirements)
-- Runs `flutter test` — all tests must pass before proceeding
-- Reports coverage gaps or concerns back to the team
+- **qa-engineer** reads implementation, writes tests for risk areas and edge cases
+- Runs `flutter test` — all must pass before proceeding
 
 #### 5. Code Review & PR
-- **reviewer** reviews all changed files for quality, consistency, and security (read-only)
-- Reports issues by severity: Critical (must fix) > Warning (should fix) > Suggestion
-- **tech-lead** addresses Critical and Warning feedback with fixup commits
-- **tech-lead** runs `make ci` — must pass clean
-- **tech-lead** creates PR via `gh pr create` with structured description (What / Why / Changes / Testing / Checklist)
+- **reviewer** reviews all changed files for quality, consistency, security
+- **team-lead** sends Critical/Warning fixes back to the responsible agent
+- **team-lead** runs final quality gates and creates PR via `gh pr create`
 
-#### 6. PR Review & Merge
-- PR requires CI status checks to pass (format, analyze, test)
-- **reviewer** and **qa-engineer** review the PR on GitHub
-- **tech-lead** addresses review feedback, pushes fixes
-- Squash merge to `main`, delete feature branch
+#### 6. Merge
+- CI must pass (format, analyze, test)
+- **team-lead** squash merges to `main`, deletes feature branch
 - Tag release if step completes a milestone (`v0.X.0`)
 
 ### Handoff Protocol
