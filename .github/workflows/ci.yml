@@ -19,6 +19,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: '3.41.6'
 
       - name: Create .env placeholder
         run: cp .env.example .env
@@ -29,11 +30,11 @@ jobs:
       - name: Check formatting
         run: dart format --set-exit-if-changed .
 
-      - name: Analyze
-        run: dart analyze --fatal-infos
-
       - name: Run build_runner
         run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Analyze
+        run: dart analyze --fatal-infos
 
       - name: Run tests
         run: flutter test --coverage

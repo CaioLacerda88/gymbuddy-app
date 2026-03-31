@@ -16,6 +16,8 @@ class AppButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveOnPressed = isLoading ? null : onPressed;
+
     final child = isLoading
         ? const SizedBox(
             width: 20,
@@ -26,15 +28,12 @@ class AppButton extends StatelessWidget {
 
     if (icon != null && !isLoading) {
       return ElevatedButton.icon(
-        onPressed: onPressed,
+        onPressed: effectiveOnPressed,
         icon: Icon(icon),
         label: child,
       );
     }
 
-    return ElevatedButton(
-      onPressed: isLoading ? null : onPressed,
-      child: child,
-    );
+    return ElevatedButton(onPressed: effectiveOnPressed, child: child);
   }
 }

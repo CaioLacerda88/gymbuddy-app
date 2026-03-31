@@ -10,7 +10,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await dotenv.load();
-  await HiveService.init();
+  await const HiveService().init();
 
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL']!,

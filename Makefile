@@ -15,4 +15,4 @@ analyze:
 test:
 	flutter test
 
-ci: format analyze test
+ci: format gen analyze test

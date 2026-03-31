@@ -51,6 +51,44 @@ class TestWorkoutFactory {
   }
 }
 
+class TestProfileFactory {
+  static Map<String, dynamic> create({
+    String? id,
+    String? username,
+    String? displayName,
+    String? avatarUrl,
+    String? fitnessLevel,
+    String? createdAt,
+  }) {
+    return {
+      'id': id ?? 'user-001',
+      'username': username ?? 'testuser',
+      'display_name': displayName ?? 'Test User',
+      'avatar_url': avatarUrl,
+      'fitness_level': fitnessLevel ?? 'beginner',
+      'created_at': createdAt ?? '2026-01-01T00:00:00Z',
+    };
+  }
+}
+
+class TestWorkoutExerciseFactory {
+  static Map<String, dynamic> create({
+    String? id,
+    String? workoutId,
+    String? exerciseId,
+    int? order,
+    int? restSeconds,
+  }) {
+    return {
+      'id': id ?? 'we-001',
+      'workout_id': workoutId ?? 'workout-001',
+      'exercise_id': exerciseId ?? 'exercise-001',
+      'order': order ?? 1,
+      'rest_seconds': restSeconds,
+    };
+  }
+}
+
 class TestSetFactory {
   static Map<String, dynamic> create({
     String? id,
