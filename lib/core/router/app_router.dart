@@ -1,35 +1,56 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../features/auth/providers/auth_providers.dart';
+import '../../features/auth/providers/onboarding_provider.dart';
+import '../../features/auth/ui/login_screen.dart';
+import '../../features/auth/ui/onboarding_screen.dart';
+import '../../features/auth/ui/splash_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
+  final authState = ref.watch(authStateProvider);
+
   return GoRouter(
     initialLocation: '/splash',
+    refreshListenable: _RouterRefreshListenable(ref),
     redirect: (context, state) {
-      final session = Supabase.instance.client.auth.currentSession;
-      final isLoggedIn = session != null;
-      final isOnSplash = state.matchedLocation == '/splash';
-      final isOnLogin = state.matchedLocation == '/login';
+      final isLoading = authState.isLoading;
+      final isLoggedIn = authState.valueOrNull?.session != null;
+      final needsOnboarding = ref.read(needsOnboardingProvider);
+      final location = state.matchedLocation;
 
-      if (isOnSplash) return null;
-
-      if (!isLoggedIn) {
-        return isOnLogin ? null : '/login';
+      // While auth is resolving, stay on splash.
+      if (isLoading) {
+        return location == '/splash' ? null : '/splash';
       }
 
-      if (isOnLogin) return '/home';
+      // Not logged in → go to login (unless already there).
+      if (!isLoggedIn) {
+        return location == '/login' ? null : '/login';
+      }
+
+      // Logged in but needs onboarding → go to onboarding.
+      if (needsOnboarding && location != '/onboarding') {
+        return '/onboarding';
+      }
+
+      // Logged in, on login or splash → go home.
+      if (location == '/login' || location == '/splash') {
+        return '/home';
+      }
 
       return null;
     },
     routes: [
       GoRoute(
         path: '/splash',
-        builder: (context, state) => const _SplashPlaceholder(),
+        builder: (context, state) => const SplashScreen(),
       ),
+      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
-        path: '/login',
-        builder: (context, state) => const _LoginPlaceholder(),
+        path: '/onboarding',
+        builder: (context, state) => const OnboardingScreen(),
       ),
       ShellRoute(
         builder: (context, state, child) => _ShellScaffold(child: child),
@@ -59,22 +80,14 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
-class _SplashPlaceholder extends StatelessWidget {
-  const _SplashPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+/// Notifies GoRouter when auth state changes so it re-evaluates redirects.
+class _RouterRefreshListenable extends ChangeNotifier {
+  _RouterRefreshListenable(this._ref) {
+    _ref.listen(authStateProvider, (prev, next) => notifyListeners());
+    _ref.listen(needsOnboardingProvider, (prev, next) => notifyListeners());
   }
-}
 
-class _LoginPlaceholder extends StatelessWidget {
-  const _LoginPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: Text('Login')));
-  }
+  final Ref _ref;
 }
 
 class _ShellScaffold extends StatelessWidget {
