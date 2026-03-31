@@ -1,14 +1,13 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 class HiveService {
-  const HiveService._();
+  const HiveService();
 
   static const String activeWorkout = 'active_workout';
   static const String offlineQueue = 'offline_queue';
   static const String userPrefs = 'user_prefs';
 
-  static Future<void> init() async {
+  Future<void> init() async {
     await Hive.initFlutter();
     await Future.wait([
       Hive.openBox<dynamic>(activeWorkout),
@@ -17,15 +16,17 @@ class HiveService {
     ]);
   }
 
-  static Future<void> clearAll() async {
+  Future<void> clearAll() async {
     await Future.wait([
-      Hive.box<dynamic>(activeWorkout).clear(),
-      Hive.box<dynamic>(offlineQueue).clear(),
-      Hive.box<dynamic>(userPrefs).clear(),
+      _clearIfOpen(activeWorkout),
+      _clearIfOpen(offlineQueue),
+      _clearIfOpen(userPrefs),
     ]);
   }
-}
 
-final hiveServiceProvider = Provider<HiveService>((ref) {
-  return const HiveService._();
-});
+  Future<void> _clearIfOpen(String name) async {
+    if (Hive.isBoxOpen(name)) {
+      await Hive.box<dynamic>(name).clear();
+    }
+  }
+}

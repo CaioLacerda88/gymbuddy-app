@@ -12,7 +12,7 @@ Building a gym training app from scratch where users can log workouts, track per
 
 ## Tech Stack
 
-- **Frontend:** Flutter (Android-first, iOS later), SDK `>=3.22.0 <4.0.0`
+- **Frontend:** Flutter (Android-first, iOS later), SDK `^3.11.4`
 - **Backend:** Supabase (Postgres, Auth, Storage)
 - **Auth:** Supabase Auth with Google and email/password — using `AuthFlowType.pkce` (Apple sign-in deferred until iOS infrastructure is available)
 - **State Management:** Riverpod `^2.4.0` (AsyncNotifier pattern — stable, production-tested)
@@ -118,7 +118,7 @@ Makefile                        # gen, gen-watch, analyze, format, test, ci targ
 ### Step 1: Project Setup, Architecture Foundation & CI
 
 **Tech lead builds:**
-- Initialize Flutter project with `flutter create`, pin SDK `>=3.22.0 <4.0.0`
+- Initialize Flutter project with `flutter create`, pin SDK `^3.11.4`
 - Add dependencies with pinned versions:
   - Core: `supabase_flutter ^2.5.0`, `flutter_riverpod ^2.4.0`, `go_router ^13.0.0`, `freezed ^2.5.0`, `json_serializable ^6.8.0`
   - Local storage: `hive ^2.2.0`, `hive_flutter ^1.1.0`

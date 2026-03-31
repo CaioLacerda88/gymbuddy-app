@@ -11,6 +11,8 @@ class AppTextField extends StatelessWidget {
     this.textInputAction,
     this.onChanged,
     this.prefixIcon,
+    this.focusNode,
+    this.onFieldSubmitted,
   });
 
   final String label;
@@ -21,6 +23,8 @@ class AppTextField extends StatelessWidget {
   final TextInputAction? textInputAction;
   final ValueChanged<String>? onChanged;
   final IconData? prefixIcon;
+  final FocusNode? focusNode;
+  final ValueChanged<String>? onFieldSubmitted;
 
   @override
   Widget build(BuildContext context) {
@@ -31,6 +35,8 @@ class AppTextField extends StatelessWidget {
       keyboardType: keyboardType,
       textInputAction: textInputAction,
       onChanged: onChanged,
+      focusNode: focusNode,
+      onFieldSubmitted: onFieldSubmitted,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
