@@ -20,6 +20,9 @@ jobs:
         with:
           channel: stable
 
+      - name: Create .env placeholder
+        run: cp .env.example .env
+
       - name: Install dependencies
         run: flutter pub get
 
