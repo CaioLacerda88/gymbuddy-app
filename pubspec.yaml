@@ -1,0 +1,37 @@
+name: gymbuddy_app
+description: "GymBuddy - Track every rep, every time."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  supabase_flutter: ^2.5.0
+  flutter_riverpod: ^2.4.0
+  riverpod_annotation: ^2.3.0
+  go_router: ^13.0.0
+  freezed_annotation: ^2.4.0
+  json_annotation: ^4.9.0
+  hive: ^2.2.0
+  hive_flutter: ^1.1.0
+  flutter_dotenv: ^5.1.0
+  intl: ^0.20.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.4.0
+  riverpod_generator: ^2.4.0
+  freezed: ^2.5.0
+  json_serializable: ^6.8.0
+  hive_generator: ^2.0.0
+  mocktail: ^1.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - .env
