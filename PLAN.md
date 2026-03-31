@@ -24,11 +24,11 @@ Building a gym training app from scratch where users can log workouts, track per
 
 ### Tables
 
-- **profiles** — `id (FK auth.users)`, `username`, `display_name`, `avatar_url`, `fitness_level` (beginner/intermediate/advanced), `created_at`
+- **profiles** — `id (FK auth.users)`, `username`, `display_name`, `avatar_url`, `fitness_level` (beginner/intermediate/advanced), `weight_unit` (kg/lbs, default kg), `created_at`
 - **exercises** — `id`, `name`, `muscle_group` (enum: chest, back, legs, shoulders, arms, core), `equipment_type` (enum: barbell, dumbbell, cable, machine, bodyweight, bands, kettlebell), `is_default`, `user_id` (null for defaults), `deleted_at` (soft delete), `created_at`
 - **workouts** — `id`, `user_id`, `name`, `started_at`, `finished_at`, `duration_seconds`, `is_active` (flag for crash recovery), `notes`, `created_at`
 - **workout_exercises** — `id`, `workout_id`, `exercise_id`, `order`, `rest_seconds` (target rest between sets)
-- **sets** — `id`, `workout_exercise_id`, `set_number`, `reps`, `weight`, `rpe` (1-10, rate of perceived exertion), `notes`, `is_completed`, `created_at`
+- **sets** — `id`, `workout_exercise_id`, `set_number`, `reps`, `weight` (numeric, supports decimals e.g. 22.5), `rpe` (1-10, rate of perceived exertion), `set_type` (working/warmup/dropset/failure, default working), `notes`, `is_completed`, `created_at`
 - **personal_records** — `id`, `user_id`, `exercise_id`, `record_type` (max_weight, max_reps, max_volume), `value`, `achieved_at`, `set_id`
 - **workout_templates** — `id`, `user_id`, `name`, `is_default` (for starter templates), `exercises` (jsonb array: `[{exercise_id, set_configs: [{target_reps, target_weight, rest_seconds}]}]`), `created_at`
 
@@ -40,6 +40,16 @@ CREATE INDEX idx_workout_exercises_workout ON workout_exercises(workout_id);
 CREATE INDEX idx_sets_workout_exercise ON sets(workout_exercise_id);
 CREATE INDEX idx_personal_records_user_exercise ON personal_records(user_id, exercise_id);
 CREATE INDEX idx_exercises_user ON exercises(user_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_workouts_active ON workouts(user_id) WHERE is_active = true;
+
+-- Constraints
+CREATE UNIQUE INDEX idx_exercises_unique_name
+  ON exercises(user_id, LOWER(name), muscle_group, equipment_type)
+  WHERE deleted_at IS NULL;
+ALTER TABLE sets ADD CONSTRAINT unique_set_per_exercise
+  UNIQUE (workout_exercise_id, set_number);
+ALTER TABLE workout_templates ADD CONSTRAINT valid_exercises_json
+  CHECK (jsonb_typeof(exercises) = 'array');
 ```
 
 ### Row-Level Security
@@ -58,6 +68,24 @@ CREATE INDEX idx_exercises_user ON exercises(user_id) WHERE deleted_at IS NULL;
 - **Offline sync strategy**: Server is source of truth for reads. Active workouts use optimistic local writes (Hive) with sync-on-save. Conflict resolution: last-write-wins with timestamp comparison.
 - **Hive boxes**: `active_workout` (current session), `offline_queue` (pending syncs), `user_prefs` (local settings).
 - **Deep-linking**: Use `AuthFlowType.pkce` (not fragment-based) to avoid Android token conflicts. Subscribe to `uriLinkStream` before `runApp()`.
+- **Weight units**: Store all weights in user's chosen unit (kg or lbs). `weight_unit` preference in profile. Convert on display if user switches. Weight input supports one decimal place (e.g., 22.5).
+- **Atomic workout save**: Use a Postgres RPC function (`save_workout`) to insert workout + exercises + sets in a single transaction. No partial data on network failure.
+- **Hive schema versioning**: Store a `schemaVersion` int alongside workout data in Hive. On version mismatch, discard stale data and log (don't crash).
+- **Route tree**: Active workout screen sits outside the shell (full-screen). Exercise detail and workout detail are sub-routes inside the shell.
+
+### Route Tree (GoRouter)
+
+```
+/splash, /login, /onboarding, /email-confirmation  (no shell)
+/workout/active                                      (no shell, full-screen)
+ShellRoute:
+  /home
+  /exercises
+  /exercises/:id
+  /history
+  /history/:workoutId
+  /profile
+```
 
 ## Project Structure
 
@@ -201,97 +229,289 @@ Makefile                        # gen, gen-watch, analyze, format, test, ci targ
 - Widget: login screen (form validation, button states), onboarding flow (screen transitions)
 
 ### Step 4: Exercise Library
+
+**Database migration** (new migration file):
+- Add `idx_exercises_unique_name` unique index on `(user_id, LOWER(name), muscle_group, equipment_type) WHERE deleted_at IS NULL`
+- Add `idx_workouts_active` partial index on `workouts(user_id) WHERE is_active = true`
+- Add `set_type` column to `sets` table (default 'working')
+- Add `weight_unit` column to `profiles` table (default 'kg')
+- Add `unique_set_per_exercise` constraint on `sets(workout_exercise_id, set_number)`
+- Add `valid_exercises_json` CHECK constraint on `workout_templates`
+
+**Exercise model & repository:**
 - Exercise model with Freezed (includes MuscleGroup enum, EquipmentType enum)
 - Exercise repository extending base repository (CRUD + filter by muscle group + filter by equipment)
-- Exercise list screen:
-  - Muscle group filter chips
-  - Search with recent exercises first
-  - Equipment type filter
-- Add custom exercise screen
-- Exercise detail view (usage history, PRs for this exercise)
-- Soft delete: hide from library, preserve in historical workouts. Warn if template references a soft-deleted exercise.
+- Validate exercise name uniqueness (case-insensitive) before insert
+- Exercise detail view shows usage history; PR section renders conditionally (placeholder until Step 7 wires PR provider)
+
+**Exercise list screen:**
+- Muscle group category buttons as primary nav (large touch targets, icon + label, min 64dp tall)
+- Search as secondary fallback (avoid relying on keyboard input during workouts)
+- Equipment type filter
+- Recent exercises surfaced first
+- Empty states with clear CTAs: "No exercises match your filters" with "Clear filters" action
+- Custom exercises empty state: "Your exercises will appear here" with "Create Exercise" button
+- Filter combination zero-results handling
+
+**Exercise picker (shared contract for Step 5):**
+- Extract exercise search/filter logic into repository layer (shared via provider)
+- Step 4 builds the full exercise list screen
+- Step 5 will build an `ExercisePickerSheet` (bottom sheet) calling the same repository methods
+- Repository must support: `searchExercises(query, muscleGroup?, equipmentType?)` and `recentExercises(userId, limit)`
+
+**Add custom exercise screen:**
+- Name, muscle group, equipment type inputs
+- Validation: no duplicate names (case-insensitive per user)
+
+**Soft delete:**
+- Hide from library and search, preserve in historical workouts
+- Warn if template references a soft-deleted exercise
+- Search must NOT return soft-deleted exercises (even by exact name)
 
 **Tests:**
-- Unit: exercise repository (CRUD, filters, soft delete behavior), model serialization
-- Widget: exercise list (filter chips, search, empty state), create exercise form (validation)
+- Unit: exercise repository (CRUD, filters, soft delete behavior, duplicate name prevention), model serialization
+- Widget: exercise list (filter chips, search, empty state, zero-results state), create exercise form (validation, duplicate name error)
 
 ### Step 5: Workout Logging
-- Models for Workout, WorkoutExercise, ExerciseSet with Freezed
-- **Active workout state** (Riverpod AsyncNotifier managing nested state):
-  - Workout → WorkoutExercise[] → Set[]
-  - Auto-save to Hive after every state change (fire-and-forget, don't block UI)
-  - On app startup: check Hive for unfinished workout → show "Resume or discard?" dialog
-  - Hive corruption fallback: if Hive data is unreadable, log error and start fresh (don't crash)
-  - Only one active workout allowed per user — check `is_active` flag before starting
-- **Last workout reference**: query previous weight/reps for each exercise and display inline while logging
-- **Rest timer**: countdown timer per exercise (configurable rest_seconds), notification when rest is over
-- Workout screen UX priorities:
-  - Add exercises from library (recent exercises first, searchable)
-  - Log sets: reps + weight input, optional RPE — target 2-3 taps per set
-  - Reorder exercises mid-workout
-  - One-handed operation: key actions reachable by thumb, large tap targets
-- Finish workout: save to Supabase, calculate duration, clear Hive cache, set `is_active = false`
+
+**Architecture decisions (resolve before coding):**
+- Use a single `ActiveWorkoutNotifier` holding the full workout state as a Freezed model. For ~5-8 exercises with ~4 sets each, rebuild cost is negligible.
+- Serialize to Hive as JSON (`jsonEncode` the Freezed model's `toJson()`). No custom Hive adapters needed.
+- Store `schemaVersion` int in the Hive box alongside workout data. On version mismatch, discard and log.
+- Final save: use a Postgres RPC function (`save_workout`) for atomic insert of workout + exercises + sets in a single transaction.
+
+**Database migration** (new migration file):
+- Create `save_workout(p_workout jsonb, p_exercises jsonb, p_sets jsonb)` Postgres RPC function (SECURITY DEFINER, single transaction)
+
+**Models** for Workout, WorkoutExercise, ExerciseSet with Freezed:
+- ExerciseSet includes `set_type` (working/warmup/dropset/failure, default working)
+- Weight field accepts decimals (one decimal place, e.g., 22.5)
+- Validation: weight non-negative, max 999.9, reps non-negative
+
+**Active workout state** (Riverpod AsyncNotifier managing nested state):
+- Workout → WorkoutExercise[] → Set[]
+- Auto-save to Hive as JSON after every state change (fire-and-forget, don't block UI)
+- On app startup: check Hive for unfinished workout → show "Resume or discard?" dialog
+- Hive corruption fallback: if Hive data is unreadable or schema version mismatch, log error and start fresh (don't crash)
+- Only one active workout allowed per user — check `is_active` flag before starting
+- Auth expiry handling: listen to auth state during active workout. On `signedOut`, persist to Hive and show "Session expired" banner. Don't silently lose data.
+
+**Last workout reference:**
+- Batch query for all exercises in one call (avoid N+1): single query with `exercise_id = ANY($ids)` grouped by exercise, ordered by `finished_at DESC`
+- Display inline while logging (previous weight/reps per exercise)
+
+**Weight unit support:**
+- Display and input in user's chosen unit (kg/lbs from profile `weight_unit`)
+- Weight input stepper with configurable increment (default 2.5kg / 5lbs)
+
+**Rest timer:**
+- Countdown timer per exercise (configurable rest_seconds)
+- Full-screen takeover with large countdown numbers (72sp+), circular progress ring
+- Screen stays awake during timer (`wakelock` package)
+- Timer completion: device vibration (3 short pulses) + optional sound alert
+- Timer preserved when navigating between exercises (don't reset on exercise switch)
+- After timer ends, auto-focus next set input
+
+**Set logging UX:**
+- Use scroll-wheel/stepper pickers for weight and reps (NOT text fields)
+- Pre-fill from last workout's values for each exercise
+- "Copy last set" button: duplicates previous set's weight/reps into current set
+- "Fill remaining sets" long-press: fills all empty sets with same values
+- Set type selector: working (default), warmup, dropset, failure — warmup sets excluded from PR calculations
+- RPE input: hidden by default, tap icon to expand per set (reduce clutter)
+- Swipe right on set row = mark as complete; swipe left = delete with 5-second undo snackbar
+- Minimum touch targets: 48x48dp interactive, 56x56dp for primary actions
+
+**Exercise picker** (bottom sheet, 70% screen height):
+- `ExercisePickerSheet` calling exercise repository methods (shared from Step 4)
+- Recent exercises shown first, search bar at top of sheet
+- "Swap exercise" action: replaces exercise but preserves set structure
+
+**Reorder exercises:** Dedicated reorder mode with large up/down arrow buttons (56dp), NOT freeform drag
+
+**Elapsed timer:** Show in workout screen header. Format: "47m" for <1h, "1h 23m" for 1h+
+
+**Haptic feedback:**
+- Set completed: `HapticFeedback.mediumImpact()`
+- Destructive actions: `HapticFeedback.lightImpact()`
+
+**Discard workout:** Require confirmation dialog showing workout duration
+
+**Finish workout:**
+- Save via `save_workout` RPC (atomic transaction)
+- Confirm if sets are incomplete: "You have 3 incomplete sets — finish anyway?"
+- Calculate duration, clear Hive cache, set `is_active = false`
+- `finishWorkout()` returns saved workout data for future PR detection. Leave `// TODO: PR detection (Step 7)` placeholder.
+- Notes field on finish screen (workout-level notes)
+
+**Empty workout state:** Full-screen prompt "Add your first exercise" with picker accessible
+
+**Active workout nav indicator:** Persistent mini-bar above bottom nav when active: workout duration + "Return to Workout" (56dp tall)
+
+**Workout history list** (basic version, ships with Step 5):
+- List of past workouts: date, name, exercise count, duration, total volume
+- Tappable for full workout detail (exercises, sets, weights)
+- Empty state: "Start your first workout" with CTA
+- Pull-to-refresh
 
 **E2E smoke test:** Playwright test for start workout → add exercises → log sets → finish → verify in history
 
 **Tests:**
-- Unit: active workout state transitions, Hive persistence/recovery, last-workout query, rest timer logic, concurrent session prevention
-- Widget: set logging (reps/weight input), exercise reorder, rest timer UI, crash recovery dialog
+- Unit: active workout state transitions, Hive persistence/recovery (including schema version mismatch), last-workout batch query, rest timer logic, concurrent session prevention, atomic save RPC, set type filtering, weight unit display
+- Widget: set logging (stepper/wheel input, copy set, fill remaining), exercise reorder (arrow buttons), rest timer UI (full-screen, vibration), crash recovery dialog, discard confirmation, finish confirmation with incomplete sets, empty workout state, active workout nav indicator
 
 ### Step 6: Workout Templates
-- Save current workout as template (captures exercises + set configs)
+- Save current workout as template: `WorkoutTemplate.fromWorkout(Workout)` factory maps workout exercises to JSONB structure
 - "Start from template" option: pre-fills exercises and target reps/weight from template
-- Template list screen (view and select, delete)
+- Template list screen:
+  - "Starter Templates" and "My Templates" sections clearly labeled
+  - Template cards: large "Start" action (entire card tappable or large right-side button)
+  - Zero templates state: "Finish a workout to save it as a template" (show only starters for new users)
 - Starter templates (seeded in Step 2) shown alongside user templates
+- Template with deleted exercise: load-time check joins exercise IDs against `exercises` table. Deleted exercise shown grayed out with warning badge and substitution option.
+- Auto-generate template name from exercises ("Chest & Back — 5 exercises") but allow rename
+- Basic template editing: add/remove/reorder exercises within a template
 
-**Deferred to v1.1:** Template edit screen (for MVP, delete and re-create)
+**Deferred to v1.1:** Full template edit screen with set config editing
 
 **Tests:**
-- Unit: template-to-workout conversion, template repository CRUD
-- Widget: template list, start-from-template flow
+- Unit: template-to-workout conversion (`WorkoutTemplate.fromWorkout` factory), template repository CRUD, deleted exercise detection
+- Widget: template list (starter vs user sections, empty state), start-from-template flow, deleted exercise warning UX
 
 ### Step 7: Personal Records
-- PR detection logic: after completing a workout, compare each exercise's sets against existing PRs
-- Record types:
-  - Max weight (heaviest single set)
-  - Max reps (most reps at any weight)
-  - Max volume (weight × reps for a single set)
-- Edge cases: handle 0 weight (bodyweight exercises), first-ever workout (no prior data), 0 reps (skip)
-- PR celebration: distinctive feedback when a record is broken (not generic confetti)
-- PR list screen showing all-time records per exercise
+
+**PR detection logic:**
+- Wired into `finishWorkout()` from Step 5. Compare each exercise's working sets against existing PRs.
+- Batch-fetch existing PRs: single query with `exercise_id = ANY($ids)` (not one per exercise)
+- Only count sets with `set_type = 'working'` — warmup/dropset/failure sets excluded
+- PRs only detected on finished workouts (discarded workouts don't count)
+- PRs must be strictly greater than previous value (ties are NOT new PRs)
+
+**Record types:**
+- Max weight (heaviest single set)
+- Max reps (most reps at any weight)
+- Max volume (weight x reps for a single set)
+
+**Bodyweight exercise PR logic:**
+- If `equipment_type == bodyweight` AND `weight == 0`: track only `max_reps`
+- If bodyweight exercise has added weight (e.g., weighted pull-ups): track all three PR types
+- PR detail screen should NOT show empty "Max Weight" cards for bodyweight exercises
+
+**First workout handling:**
+- Don't fire individual celebrations for every set. Show one consolidated message: "First workout logged! These are your starting benchmarks."
+
+**Multiple PRs in one workout:**
+- Batch celebrations: one summary screen at workout completion listing all PRs broken
+
+**PR celebration (NOT confetti):**
+- Brief screen flash (green overlay at 30% opacity, 200ms)
+- Number scales up with spring animation
+- Bold banner: "NEW PR" with improvement delta ("+5kg")
+- Heavy haptic feedback
+- Feel like a scoreboard update, not a birthday party
+
+**PR list screen:**
+- All-time records per exercise
+- Empty state: "Complete a workout to start tracking records" with CTA
+
+**Wire into exercise detail (Step 4):** Connect PR provider to exercise detail screen's conditional PR section
 
 **Deferred to v1.1:** PR badges/indicators on workout history and exercise detail screens
 
 **E2E smoke test:** Playwright test for log workout → log heavier workout → verify PR appears in list
 
 **Tests:**
-- Unit: PR detection algorithm (max weight, max reps, volume), edge cases (0 weight, 0 reps, first workout, very large numbers 999kg), race condition prevention (idempotent PR creation)
-- Widget: PR celebration feedback, PR list screen
+- Unit: PR detection (max weight, max reps, volume), edge cases (0 weight bodyweight, 0 reps skip, first workout consolidated, 999kg, PR ties not counted, warmup sets excluded), idempotent creation, batch query
+- Widget: PR celebration (flash, banner, haptic), PR list (empty state, bodyweight display), first workout message, multi-PR summary
 
 ### Step 8: Home Screen & Navigation
-- Bottom navigation: Home, Exercises, History, Profile
-- Home screen:
-  - Quick "Start Workout" button (prominent, thumb-reachable)
-  - Resume unfinished workout banner (if crash recovery detected)
-  - Recent workouts summary
-  - Recent PRs
-- Profile screen: user info, fitness level, logout
-- Smart defaults: when starting a workout, suggest pre-filling from last session's weights
 
-**Deferred to v1.1:** Muscle group coverage insight ("You haven't trained back in 8 days") — calculation: query last 30 days of workouts, group by exercise.muscle_group, find MAX(finished_at), flag if >7 days
+**Bottom navigation:** Home, Exercises, History, Profile
+
+**Home screen:**
+- Quick "Start Workout" button: min 72dp tall, full-width or 80% width, bottom third of screen, fixed-position, always visible
+- "Repeat Last Workout" shortcut: creates workout pre-filled from most recent workout's exercises and weights
+- Resume unfinished workout banner: MOST prominent element when present — full-width, pulsing border, above everything
+- Recent workouts summary (via `recentWorkouts(limit: 5)` repository method)
+- Recent PRs
+- First-time user: "Ready for your first workout?" with Start button and starter templates. No blank screen.
+- Edge case: empty workouts (started and immediately finished) filtered out or shown muted
+
+**Workout history detail screen:** Full workout detail (exercises, sets, weights, duration, total volume). Extends basic history from Step 5.
+
+**Profile screen:** User info, fitness level, weight unit toggle (kg/lbs), logout
+
+**Smart defaults:** Suggest pre-filling from last session's weights when starting a workout
+
+**Deferred to v1.1:** Muscle group coverage insight ("You haven't trained back in 8 days")
 
 **Tests:**
-- Widget: home screen (start workout button, resume banner, recent workouts/PRs), profile screen (logout), navigation (tab switching)
+- Widget: home screen (start workout button sizing/position, resume banner prominence, recent workouts/PRs, empty state, repeat last workout), profile screen (logout, weight unit toggle), navigation (tab switching), workout history detail
 
 ### Step 9: E2E Testing, Release Pipeline & Final QA
-- Full Playwright e2e suite for all critical journeys:
-  1. Auth flow: signup → onboarding → land on home → logout → login
-  2. Complete workout: start → add exercises → log sets with rest timer → finish → verify in history
-  3. PR detection: log workout → log heavier workout → verify PR appears
-  4. Template flow: finish workout → save as template → start from template → verify pre-filled
-  5. Crash recovery: start workout → force close → reopen → verify resume dialog
-- Add `e2e.yml` GitHub Actions workflow: build web → serve → run Playwright tests
-- Add `release.yml` GitHub Actions workflow: build APK on version tags (`v*`), create GitHub release with artifacts (iOS build added when infrastructure is available)
+
+**Playwright test suite structure:**
+```
+test/e2e/
+├── playwright.config.ts          # baseURL, timeouts, smoke/full projects
+├── global-setup.ts               # Seed test users via Supabase admin API
+├── global-teardown.ts            # Cleanup test users
+├── helpers/
+│   ├── auth.ts                   # loginAs(), signup(), logout()
+│   ├── workout.ts                # startWorkout(), addExercise(), logSet(), finishWorkout()
+│   ├── navigation.ts             # goToTab(), waitForRoute()
+│   └── selectors.ts              # Centralized Semantics label constants
+├── smoke/                        # Fast tests — every PR (<3 min)
+│   ├── auth.smoke.spec.ts
+│   ├── workout.smoke.spec.ts
+│   └── pr.smoke.spec.ts
+├── full/                         # Slower tests — merge to main (<10 min)
+│   ├── auth.full.spec.ts
+│   ├── exercise-library.spec.ts
+│   ├── workout-logging.spec.ts
+│   ├── templates.spec.ts
+│   ├── personal-records.spec.ts
+│   ├── home-navigation.spec.ts
+│   └── crash-recovery.spec.ts
+└── fixtures/
+    ├── test-users.ts             # Test user credentials
+    └── test-exercises.ts         # Known exercise IDs from seed data
+```
+
+**Test environment:** Real Supabase test project (not mocked) — e2e tests catch integration bugs, RLS policies, and database triggers that mocks would hide. Test isolation via unique users per test.
+
+**Test data strategy:**
+- `global-setup.ts` creates test users via Supabase Admin API (service role key)
+- Each test uses a unique user (e.g., `e2e-smokeA@test.gymbuddy.local`)
+- Signup flow tests use timestamped emails
+- `global-teardown.ts` cleans up all `e2e-*` users
+- No shared mutable state between tests — parallel-safe
+
+**Smoke tests (every PR, <3 min):**
+1. Auth: signup → onboarding → home → logout → login
+2. Core workout: start → add exercise → log set → finish → verify in history
+3. PR detection: workout A → heavier workout B → PR celebration + PR list
+
+**Full suite (merge to main, <10 min):**
+4. Exercise library: filter, search, create custom, soft delete
+5. Workout logging: multi-exercise, reorder, rest timer, set types
+6. Templates: save as template → start from template → verify pre-filled
+7. Personal records: bodyweight PRs, multiple PRs, first workout handling
+8. Home & navigation: tabs, resume banner, quick start, repeat last workout
+9. Crash recovery: close mid-workout → reopen → resume → sets intact
+10. Auth edge cases: wrong password, existing email, error messages
+
+**Extra risk areas for e2e:**
+- Network failure during workout finish (simulate with `page.route()`)
+- Double-tap "Finish Workout" idempotency
+- Active workout singleton (second tab blocked)
+- Rest timer state across exercise switches
+- Hive corruption → clear message, not crash
+
+**`e2e.yml` workflow:** Separate from `ci.yml`. Build Flutter web (HTML renderer) → serve on port 8080 → run Playwright (Chromium headless). Upload playwright-report on failure. Smoke on PRs, full on merge.
+
+**`release.yml` workflow:** Triggered by `v*` tags. Build split APKs (arm64, armeabi-v7a, x86_64) → GitHub Release via softprops/action-gh-release. No code signing for MVP. Alpha/beta tags → pre-release.
+
 - Final manual QA pass on physical devices
 
 ## Verification
@@ -332,26 +552,52 @@ Makefile                        # gen, gen-watch, analyze, format, test, ci targ
 - Soft delete: exercise hidden from library, visible in past workouts and templates warned
 
 ### E2E Tests (Playwright — incremental)
-- Step 3: Auth flow smoke test
-- Step 5: Workout logging smoke test
-- Step 7: PR detection smoke test
-- Step 9: Full journey suite + crash recovery
+- Step 3: Auth flow smoke test (signup → onboarding → home → logout → login)
+- Step 5: Workout logging smoke test (start → add exercise → log set → finish → history)
+- Step 7: PR detection smoke test (workout A → heavier workout B → PR celebration + list)
+- Step 9: Full journey suite (exercise CRUD, templates, crash recovery, home, multi-exercise, edge cases)
+
+### E2E Smoke vs Full Split
+- **Smoke (every PR, <3 min):** 3 spec files, ~8-10 test cases — auth, core workout, PR detection
+- **Full (merge to main, <10 min):** 7 additional spec files, ~20 more cases — all features + edge cases
+- **Separation:** `test/e2e/smoke/` and `test/e2e/full/` directories, configured as Playwright projects
+- **Test environment:** Real Supabase test project, unique users per test, global setup/teardown
 
 ### Conflict & Resilience Tests
 - Network failure mid-workout → local Hive cache preserves data → syncs on reconnect
+- Network failure during finish → error state shown → retry succeeds when network returns
 - App crash during workout → restart → resume dialog → data intact
-- Hive corruption → app rebuilds from server state, doesn't crash
-- Concurrent sessions: user cannot start two active workouts (check `is_active` flag)
-- Token expiration during long workout (2+ hours) → transparent refresh
-- Exercise soft delete → hidden from library, visible in past workouts, template warns user
+- Hive corruption → app logs error and starts fresh, doesn't crash (user sees clear message)
+- Hive schema version mismatch → discard stale data, start fresh
+- Concurrent sessions: user cannot start two active workouts (`is_active` flag + partial index)
+- Token expiration during long workout → transparent refresh; on failure, persist to Hive and show "Session expired" banner
+- Exercise soft delete → hidden from library AND search, visible in past workouts, template warns with substitution option
 - Offline edits conflict → last-write-wins with timestamp comparison
 - Duplicate PR prevention → idempotent creation with exercise_id + record_type constraint
+- Double-tap "Finish Workout" → only one workout saved (idempotent)
+- Atomic workout save → no partial data on network failure (Postgres RPC)
 
 ### Manual QA Checklist
 - Auth on all providers (Google, email)
 - Test on physical Android device + Android emulator
 - Test on Chrome (Flutter web) for Playwright e2e
 - Dark theme renders correctly on all screens
-- One-handed usability check: can core actions be done with thumb?
-- Logging speed: can a set be logged in under 3 taps?
+- Contrast: primary green (#00E676) never used as body text on cards — only for headings (20sp+), icons, buttons
+- Touch targets: minimum 48x48dp interactive, 56x56dp for workout logging primary actions
+- One-handed usability: core actions reachable by thumb (filter chips, exercise picker from bottom)
+- Logging speed: set logged in under 3 taps (pre-filled values + stepper/wheel input)
+- Haptic feedback present: set completion, PR celebration, rest timer end, destructive actions
+- Rest timer: vibration works, screen stays awake, countdown visible at glance
+- Weight input: accepts decimals (22.5), respects unit preference (kg/lbs)
 - Deep-linking: email verification link works on Android
+- Empty states: all screens have clear CTAs when empty (exercises, history, PRs, home)
+
+### UX Design Direction
+- **Typography:** Body text at w500 (sturdy feel). Consider condensed font (Barlow Condensed / Oswald) for numeric displays.
+- **Colors:** Gradient accents for primary actions (#00E676 → #00BFA5), not flat fills. Destructive gradient (#FF5252 → #D32F2F).
+- **Cards:** Subtle 1px top border with primary green at 15% opacity fading to transparent.
+- **Numbers:** Weight/reps/timer at 48-64sp with subtle green glow shadow. These are the hero content.
+- **Border radii:** Mixed — 16px cards, 8px chips, 24px FABs, 0px active workout header (sharp = urgency).
+- **Spacing:** Tight within set rows (8dp), generous between exercises (24dp). Not uniform.
+- **Icons:** Filled/bold variants (Material Symbols weight 600+), not thin-line.
+- **Anti-patterns:** No pastel colors, no thin-line icons, no uniform padding, no generic Material Design.
