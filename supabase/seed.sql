@@ -195,10 +195,10 @@ full_body_exercises AS (
 )
 
 INSERT INTO workout_templates (id, user_id, name, is_default, exercises, created_at)
-SELECT gen_random_uuid(), NULL, 'Push Day', true, push_day_exercises.exercises, NOW() FROM push_day_exercises
+SELECT gen_random_uuid(), NULL::uuid, 'Push Day', true, push_day_exercises.exercises, NOW() FROM push_day_exercises
 UNION ALL
-SELECT gen_random_uuid(), NULL, 'Pull Day', true, pull_day_exercises.exercises, NOW() FROM pull_day_exercises
+SELECT gen_random_uuid(), NULL::uuid, 'Pull Day', true, pull_day_exercises.exercises, NOW() FROM pull_day_exercises
 UNION ALL
-SELECT gen_random_uuid(), NULL, 'Leg Day', true, leg_day_exercises.exercises, NOW() FROM leg_day_exercises
+SELECT gen_random_uuid(), NULL::uuid, 'Leg Day', true, leg_day_exercises.exercises, NOW() FROM leg_day_exercises
 UNION ALL
-SELECT gen_random_uuid(), NULL, 'Full Body', true, full_body_exercises.exercises, NOW() FROM full_body_exercises;
+SELECT gen_random_uuid(), NULL::uuid, 'Full Body', true, full_body_exercises.exercises, NOW() FROM full_body_exercises;

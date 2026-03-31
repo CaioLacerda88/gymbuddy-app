@@ -183,9 +183,20 @@ Makefile                        # gen, gen-watch, analyze, format, test, ci targ
 - Create profile on first login (database trigger)
 - Handle auth edge cases: token refresh, expired sessions, revoked social login
 
-**E2E smoke test:** Playwright test for signup → onboarding → land on home → logout → login
+### Step 3b: Auth UX Polish & Email Templates
+- **Post-signup feedback**: After email signup, show a confirmation screen/state informing the user that a verification email was sent, with instructions to check their inbox and a resend option
+- **Email confirmation flow**: Detect when user returns after confirming email and transition them seamlessly into onboarding
+- **Auth error feedback**: Clear, user-friendly error messages for all auth failures (wrong password, account exists, network error, etc.)
+- **Loading states**: Proper loading indicators during all auth operations (signup, login, Google OAuth)
+- **Custom Supabase email templates**: Replace default Supabase auth emails (confirmation, password reset, magic link) with GymBuddy-branded templates matching the app's identity
+- **General auth UX audit**: ui-ux-critic reviews the entire auth flow end-to-end for usability issues (gym-floor context, one-handed use, glanceability)
 
 **Tests:**
+- Widget: post-signup confirmation screen, email resend, error states
+
+**E2E smoke test:** Playwright test for signup → onboarding → land on home → logout → login
+
+**Tests (Step 3):**
 - Unit: auth repository (signup, login, logout, token refresh, error mapping)
 - Widget: login screen (form validation, button states), onboarding flow (screen transitions)
 
