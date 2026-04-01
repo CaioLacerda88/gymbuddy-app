@@ -201,6 +201,18 @@ void main() {
         expect(fakeBuilder.calledMethods, contains('ilike:name=%bench%'));
       });
 
+      test('escapes special LIKE characters in search query', () async {
+        final fakeBuilder = FakeQueryBuilder(data: []);
+        final repo = ExerciseRepository(FakeSupabaseClient(fakeBuilder));
+
+        await repo.searchExercises('100%_effort');
+
+        expect(
+          fakeBuilder.calledMethods,
+          contains(r'ilike:name=%100\%\_effort%'),
+        );
+      });
+
       test('applies filters with search', () async {
         final fakeBuilder = FakeQueryBuilder(
           data: [TestExerciseFactory.create()],

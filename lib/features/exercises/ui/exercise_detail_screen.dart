@@ -68,6 +68,12 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
           .softDeleteExercise(exercise.id, userId: exercise.userId!);
       _invalidateExerciseList();
       if (mounted) context.pop();
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete exercise: $e')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isDeleting = false);
     }

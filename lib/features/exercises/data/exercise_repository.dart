@@ -29,6 +29,14 @@ class ExerciseRepository extends BaseRepository {
     });
   }
 
+  /// Escapes special Postgres LIKE/ILIKE pattern characters.
+  String _escapeLikePattern(String input) {
+    return input
+        .replaceAll(r'\', r'\\')
+        .replaceAll('%', r'\%')
+        .replaceAll('_', r'\_');
+  }
+
   /// Search exercises by name (case-insensitive), with optional filters.
   Future<List<Exercise>> searchExercises(
     String query, {
@@ -36,10 +44,11 @@ class ExerciseRepository extends BaseRepository {
     EquipmentType? equipmentType,
   }) {
     return mapException(() async {
+      final escaped = _escapeLikePattern(query);
       var q = _exercises
           .select()
           .isFilter('deleted_at', null)
-          .ilike('name', '%$query%');
+          .ilike('name', '%$escaped%');
       if (muscleGroup != null) {
         q = q.eq('muscle_group', muscleGroup.name);
       }

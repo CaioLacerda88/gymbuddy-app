@@ -122,12 +122,10 @@ class _ShellScaffold extends StatelessWidget {
 
   int _currentIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
-    return switch (location) {
-      '/exercises' => 1,
-      '/history' => 2,
-      '/profile' => 3,
-      _ => 0,
-    };
+    if (location.startsWith('/exercises')) return 1;
+    if (location.startsWith('/history')) return 2;
+    if (location.startsWith('/profile')) return 3;
+    return 0;
   }
 
   @override
