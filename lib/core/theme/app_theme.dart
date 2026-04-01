@@ -9,6 +9,14 @@ class AppTheme {
   static const _cardColor = Color(0xFF232340);
   static const _errorColor = Color(0xFFFF5252);
 
+  static const primaryGradient = LinearGradient(
+    colors: [Color(0xFF00E676), Color(0xFF00BFA5)],
+  );
+
+  static const destructiveGradient = LinearGradient(
+    colors: [Color(0xFFFF5252), Color(0xFFD32F2F)],
+  );
+
   static ThemeData get dark {
     const colorScheme = ColorScheme.dark(
       primary: _primaryColor,
@@ -29,6 +37,10 @@ class AppTheme {
       cardTheme: _cardTheme,
       elevatedButtonTheme: _elevatedButtonTheme,
       inputDecorationTheme: _inputDecorationTheme,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
     );
   }
 
