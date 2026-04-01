@@ -9,6 +9,9 @@ import '../../features/auth/ui/email_confirmation_screen.dart';
 import '../../features/auth/ui/login_screen.dart';
 import '../../features/auth/ui/onboarding_screen.dart';
 import '../../features/auth/ui/splash_screen.dart';
+import '../../features/exercises/ui/create_exercise_screen.dart';
+import '../../features/exercises/ui/exercise_detail_screen.dart';
+import '../../features/exercises/ui/exercise_list_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -72,8 +75,19 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/exercises',
-            builder: (context, state) =>
-                const _TabPlaceholder(title: 'Exercises'),
+            builder: (context, state) => const ExerciseListScreen(),
+            routes: [
+              GoRoute(
+                path: 'create',
+                builder: (context, state) => const CreateExerciseScreen(),
+              ),
+              GoRoute(
+                path: ':id',
+                builder: (context, state) => ExerciseDetailScreen(
+                  exerciseId: state.pathParameters['id']!,
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: '/history',
