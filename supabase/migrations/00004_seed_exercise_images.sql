@@ -291,8 +291,8 @@ WHERE name = 'Band Pull-Apart' AND is_default = true;
 
 -- KETTLEBELL
 UPDATE exercises SET
-  image_start_url = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Kettlebell_Sumo_High_Pull/0.jpg',
-  image_end_url   = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Kettlebell_Sumo_High_Pull/1.jpg'
+  image_start_url = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/One-Arm_Kettlebell_Swings/0.jpg',
+  image_end_url   = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/One-Arm_Kettlebell_Swings/1.jpg'
 WHERE name = 'Kettlebell Swing' AND is_default = true;
 
 UPDATE exercises SET

@@ -1,19 +1,8 @@
-import 'dart:io';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
 import 'package:gymbuddy_app/shared/widgets/exercise_image.dart';
-
-/// Fake HTTP overrides that return a transparent 1x1 PNG for any image request.
-/// This prevents CachedNetworkImage from making real HTTP calls in tests.
-class _FakeHttpOverrides extends HttpOverrides {
-  @override
-  HttpClient createHttpClient(SecurityContext? context) {
-    return super.createHttpClient(context);
-  }
-}
 
 Widget _buildTestWidget(ExerciseImage image) {
   return MaterialApp(
@@ -85,17 +74,6 @@ void main() {
     });
 
     group('when imageUrl is provided', () {
-      late HttpOverrides? originalOverrides;
-
-      setUp(() {
-        originalOverrides = HttpOverrides.current;
-        HttpOverrides.global = _FakeHttpOverrides();
-      });
-
-      tearDown(() {
-        HttpOverrides.global = originalOverrides;
-      });
-
       testWidgets('renders CachedNetworkImage', (tester) async {
         await tester.pumpWidget(
           _buildTestWidget(
@@ -144,9 +122,7 @@ void main() {
         expect(cachedImage.fit, BoxFit.cover);
       });
 
-      testWidgets('wraps image in ClipRRect with borderRadius', (
-        tester,
-      ) async {
+      testWidgets('wraps image in ClipRRect with borderRadius', (tester) async {
         await tester.pumpWidget(
           _buildTestWidget(
             ExerciseImage(

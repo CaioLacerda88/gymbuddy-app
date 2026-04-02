@@ -21,7 +21,15 @@ CREATE POLICY "Public read exercise media"
   ON storage.objects FOR SELECT
   USING (bucket_id = 'exercise-media');
 
--- Only service role can upload exercise images
+-- Only service role can manage exercise images
 CREATE POLICY "Service role upload exercise media"
   ON storage.objects FOR INSERT
   WITH CHECK (bucket_id = 'exercise-media' AND auth.role() = 'service_role');
+
+CREATE POLICY "Service role update exercise media"
+  ON storage.objects FOR UPDATE
+  USING (bucket_id = 'exercise-media' AND auth.role() = 'service_role');
+
+CREATE POLICY "Service role delete exercise media"
+  ON storage.objects FOR DELETE
+  USING (bucket_id = 'exercise-media' AND auth.role() = 'service_role');

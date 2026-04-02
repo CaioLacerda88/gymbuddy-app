@@ -358,11 +358,20 @@ class _TappableImage extends StatelessWidget {
   ) {
     showDialog<void>(
       context: context,
-      builder: (ctx) => GestureDetector(
-        onTap: () => Navigator.of(ctx).pop(),
-        child: Scaffold(
-          backgroundColor: Theme.of(ctx).colorScheme.scrim,
-          body: Center(
+      builder: (ctx) => Scaffold(
+        backgroundColor: Theme.of(ctx).colorScheme.scrim,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          leading: IconButton(
+            icon: const Icon(Icons.close_rounded, color: Colors.white),
+            onPressed: () => Navigator.of(ctx).pop(),
+            tooltip: 'Close',
+          ),
+        ),
+        body: GestureDetector(
+          onTap: () => Navigator.of(ctx).pop(),
+          behavior: HitTestBehavior.opaque,
+          child: Center(
             child: Semantics(
               label: label,
               image: true,
