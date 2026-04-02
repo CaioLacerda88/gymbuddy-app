@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/exceptions/app_exception.dart';
+import '../../../shared/widgets/exercise_image.dart';
 import '../models/exercise.dart';
 import '../providers/exercise_providers.dart'
     show exerciseListProvider, exerciseRepositoryProvider;
@@ -30,6 +32,9 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
   }
 
   Future<void> _deleteExercise(Exercise exercise) async {
+    final userId = exercise.userId;
+    if (userId == null) return;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) {
@@ -65,22 +70,18 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
     try {
       await ref
           .read(exerciseRepositoryProvider)
-          .softDeleteExercise(exercise.id, userId: exercise.userId!);
-      _invalidateExerciseList();
+          .softDeleteExercise(exercise.id, userId: userId);
+      ref.invalidate(exerciseListProvider);
       if (mounted) context.pop();
-    } on Exception catch (e) {
+    } on AppException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete exercise: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message)));
       }
     } finally {
       if (mounted) setState(() => _isDeleting = false);
     }
-  }
-
-  void _invalidateExerciseList() {
-    ref.invalidate(exerciseListProvider);
   }
 
   @override
@@ -88,10 +89,7 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Exercise Details'),
-        backgroundColor: Colors.transparent,
-      ),
+      appBar: AppBar(title: const Text('Exercise Details')),
       body: FutureBuilder<Exercise>(
         future: _exerciseFuture,
         builder: (context, snapshot) {
@@ -160,6 +158,11 @@ class _ExerciseDetailBody extends StatelessWidget {
               ),
             ],
           ),
+          if (exercise.imageStartUrl != null ||
+              exercise.imageEndUrl != null) ...[
+            const SizedBox(height: 16),
+            _ExerciseImageRow(exercise: exercise),
+          ],
           const SizedBox(height: 16),
           Text(
             'Created ${dateFormat.format(exercise.createdAt)}',
@@ -256,6 +259,121 @@ class _DetailChip extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ExerciseImageRow extends StatelessWidget {
+  const _ExerciseImageRow({required this.exercise});
+
+  final Exercise exercise;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final labelStyle = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+    );
+
+    return SizedBox(
+      height: 160,
+      child: Row(
+        children: [
+          if (exercise.imageStartUrl != null)
+            Expanded(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: _TappableImage(
+                      imageUrl: exercise.imageStartUrl,
+                      label: '${exercise.name} start position',
+                      fallbackIcon: exercise.muscleGroup.icon,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text('Start', style: labelStyle),
+                ],
+              ),
+            ),
+          if (exercise.imageStartUrl != null && exercise.imageEndUrl != null)
+            const SizedBox(width: 8),
+          if (exercise.imageEndUrl != null)
+            Expanded(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: _TappableImage(
+                      imageUrl: exercise.imageEndUrl,
+                      label: '${exercise.name} end position',
+                      fallbackIcon: exercise.muscleGroup.icon,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text('End', style: labelStyle),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TappableImage extends StatelessWidget {
+  const _TappableImage({
+    required this.imageUrl,
+    required this.label,
+    required this.fallbackIcon,
+  });
+
+  final String? imageUrl;
+  final String label;
+  final IconData fallbackIcon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: label,
+      image: true,
+      child: GestureDetector(
+        onTap: imageUrl != null
+            ? () => _showFullScreen(context, imageUrl!, label, fallbackIcon)
+            : null,
+        child: ExerciseImage(
+          imageUrl: imageUrl,
+          fallbackIcon: fallbackIcon,
+          height: 136,
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
+  }
+
+  static void _showFullScreen(
+    BuildContext context,
+    String imageUrl,
+    String label,
+    IconData fallbackIcon,
+  ) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => GestureDetector(
+        onTap: () => Navigator.of(ctx).pop(),
+        child: Scaffold(
+          backgroundColor: Theme.of(ctx).colorScheme.scrim,
+          body: Center(
+            child: Semantics(
+              label: label,
+              image: true,
+              child: ExerciseImage(
+                imageUrl: imageUrl,
+                fallbackIcon: fallbackIcon,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
