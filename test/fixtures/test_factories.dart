@@ -101,6 +101,7 @@ class TestSetFactory {
     int? reps,
     double? weight,
     int? rpe,
+    String? setType,
     String? notes,
     bool? isCompleted,
     String? createdAt,
@@ -112,9 +113,52 @@ class TestSetFactory {
       'reps': reps ?? 10,
       'weight': weight ?? 60.0,
       'rpe': rpe,
+      'set_type': setType ?? 'working',
       'notes': notes,
       'is_completed': isCompleted ?? true,
       'created_at': createdAt ?? '2026-01-01T10:05:00Z',
     };
+  }
+}
+
+class TestActiveWorkoutStateFactory {
+  static Map<String, dynamic> create({
+    Map<String, dynamic>? workout,
+    List<Map<String, dynamic>>? exercises,
+  }) {
+    return {
+      'workout': workout ?? TestWorkoutFactory.create(isActive: true),
+      'exercises': exercises ?? [],
+    };
+  }
+
+  static Map<String, dynamic> createWithExercises({
+    Map<String, dynamic>? workout,
+    int exerciseCount = 2,
+    int setsPerExercise = 3,
+  }) {
+    final workoutData = workout ?? TestWorkoutFactory.create(isActive: true);
+
+    final exercises = List.generate(exerciseCount, (i) {
+      final weId = 'we-${i + 1}';
+      final sets = List.generate(setsPerExercise, (j) {
+        return TestSetFactory.create(
+          id: 'set-$weId-${j + 1}',
+          workoutExerciseId: weId,
+          setNumber: j + 1,
+        );
+      });
+
+      return {
+        'workout_exercise': TestWorkoutExerciseFactory.create(
+          id: weId,
+          exerciseId: 'exercise-${i + 1}',
+          order: i + 1,
+        ),
+        'sets': sets,
+      };
+    });
+
+    return {'workout': workoutData, 'exercises': exercises};
   }
 }
