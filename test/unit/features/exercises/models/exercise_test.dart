@@ -81,6 +81,17 @@ void main() {
       expect(exercise.imageEndUrl, isNull);
     });
 
+    test('fromJson handles asymmetric image URLs', () {
+      final json = TestExerciseFactory.create(
+        imageStartUrl: 'https://example.com/start.jpg',
+      );
+
+      final exercise = Exercise.fromJson(json);
+
+      expect(exercise.imageStartUrl, 'https://example.com/start.jpg');
+      expect(exercise.imageEndUrl, isNull);
+    });
+
     test('toJson round-trip preserves data', () {
       final originalJson = TestExerciseFactory.create(
         userId: 'user-001',

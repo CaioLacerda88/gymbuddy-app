@@ -128,9 +128,9 @@ export const EXERCISE_DETAIL = {
 
 // ---------------------------------------------------------------------------
 // Create exercise — CreateExerciseScreen
-// No Semantics labels in that file were read; these are text-based fallbacks.
+// AppTextField label is "Exercise Name", button label is "CREATE EXERCISE"
 // ---------------------------------------------------------------------------
 export const CREATE_EXERCISE = {
-  nameInput: '[aria-label="Exercise name"]',
-  saveButton: 'text=SAVE',
+  nameInput: '[aria-label="Exercise Name"]',
+  saveButton: 'text=CREATE EXERCISE',
 } as const;

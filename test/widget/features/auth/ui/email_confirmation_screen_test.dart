@@ -26,6 +26,7 @@ void main() {
       expect(find.text('Check your inbox'), findsOneWidget);
       expect(find.text('test@example.com'), findsOneWidget);
       expect(find.text('We sent a confirmation email to'), findsOneWidget);
+      expect(find.byIcon(Icons.mark_email_read_outlined), findsOneWidget);
     });
 
     testWidgets('shows email-specific sent-to text', (tester) async {

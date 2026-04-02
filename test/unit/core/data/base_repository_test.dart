@@ -26,7 +26,7 @@ void main() {
       ];
 
       for (final exception in exceptions) {
-        expect(
+        await expectLater(
           () => repo.mapException(() async => throw exception),
           throwsA(same(exception)),
         );
