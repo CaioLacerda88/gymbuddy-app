@@ -1,12 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymbuddy_app/features/auth/data/auth_repository.dart';
+import 'package:gymbuddy_app/features/auth/providers/auth_providers.dart';
 import 'package:gymbuddy_app/features/workouts/data/workout_local_storage.dart';
 import 'package:gymbuddy_app/features/workouts/data/workout_repository.dart';
 import 'package:gymbuddy_app/features/workouts/models/active_workout_state.dart';
 import 'package:gymbuddy_app/features/workouts/models/set_type.dart';
+import 'package:gymbuddy_app/features/workouts/models/workout.dart';
 import 'package:gymbuddy_app/features/workouts/providers/workout_providers.dart';
 import 'package:gymbuddy_app/features/exercises/models/exercise.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show User;
 
 import '../../../../fixtures/test_factories.dart';
 
@@ -14,7 +18,30 @@ class MockWorkoutRepository extends Mock implements WorkoutRepository {}
 
 class MockWorkoutLocalStorage extends Mock implements WorkoutLocalStorage {}
 
+class MockAuthRepository extends Mock implements AuthRepository {}
+
 class FakeActiveWorkoutState extends Fake implements ActiveWorkoutState {}
+
+class FakeWorkout extends Fake implements Workout {}
+
+/// Creates a minimal [User] that satisfies the `_userId` getter in the notifier.
+User fakeUser({String id = 'user-test-001'}) {
+  return User(
+    id: id,
+    appMetadata: const {},
+    userMetadata: const {},
+    aud: 'authenticated',
+    createdAt: '2026-01-01T00:00:00Z',
+    isAnonymous: false,
+  );
+}
+
+/// Builds a [Workout] model from the test factory JSON.
+Workout makeWorkout({String? id, bool isActive = true}) {
+  return Workout.fromJson(
+    TestWorkoutFactory.create(id: id, isActive: isActive),
+  );
+}
 
 /// Builds a typed [ActiveWorkoutState] from the test factories.
 ActiveWorkoutState makeState({int exerciseCount = 0, int setsPerExercise = 0}) {
@@ -47,9 +74,42 @@ ProviderContainer makeContainer(ActiveWorkoutState? initialState) {
   );
 }
 
+/// Creates a container suitable for testing async methods (startWorkout,
+/// finishWorkout, discardWorkout) — includes [MockAuthRepository] so the
+/// `_userId` getter can be controlled without touching the Supabase singleton.
+({
+  ProviderContainer container,
+  MockWorkoutRepository mockRepo,
+  MockWorkoutLocalStorage mockStorage,
+  MockAuthRepository mockAuth,
+})
+makeAsyncContainer(ActiveWorkoutState? initialState) {
+  final mockRepo = MockWorkoutRepository();
+  final mockStorage = MockWorkoutLocalStorage();
+  final mockAuth = MockAuthRepository();
+
+  when(() => mockStorage.loadActiveWorkout()).thenReturn(initialState);
+  when(() => mockStorage.saveActiveWorkout(any())).thenAnswer((_) async {});
+
+  final container = ProviderContainer(
+    overrides: [
+      workoutRepositoryProvider.overrideWithValue(mockRepo),
+      workoutLocalStorageProvider.overrideWithValue(mockStorage),
+      authRepositoryProvider.overrideWithValue(mockAuth),
+    ],
+  );
+  return (
+    container: container,
+    mockRepo: mockRepo,
+    mockStorage: mockStorage,
+    mockAuth: mockAuth,
+  );
+}
+
 void main() {
   setUpAll(() {
     registerFallbackValue(FakeActiveWorkoutState());
+    registerFallbackValue(FakeWorkout());
   });
 
   group('ActiveWorkoutNotifier — local mutations', () {
@@ -632,6 +692,282 @@ void main() {
           () => mockStorage.saveActiveWorkout(any()),
         ).called(greaterThan(0));
       });
+    });
+  });
+
+  // ================================================================
+  // Async network methods — startWorkout / finishWorkout / discardWorkout
+  // ================================================================
+  //
+  // The `_userId` getter previously called Supabase.instance directly, making
+  // it impossible to test without a real Supabase singleton. It has been
+  // refactored to use `ref.read(authRepositoryProvider)`, which is overridable
+  // in tests via ProviderContainer. All tests in this group use
+  // `makeAsyncContainer`, which injects MockAuthRepository.
+
+  group('ActiveWorkoutNotifier — startWorkout', () {
+    test(
+      'success: calls createActiveWorkout, saves to Hive, state is AsyncData',
+      () async {
+        final (:container, :mockRepo, :mockStorage, :mockAuth) =
+            makeAsyncContainer(null);
+        addTearDown(container.dispose);
+
+        final createdWorkout = makeWorkout(id: 'workout-new');
+        when(() => mockAuth.currentUser).thenReturn(fakeUser());
+        when(
+          () => mockRepo.createActiveWorkout(
+            userId: any(named: 'userId'),
+            name: any(named: 'name'),
+          ),
+        ).thenAnswer((_) async => createdWorkout);
+
+        await container.read(activeWorkoutProvider.future);
+        await container
+            .read(activeWorkoutProvider.notifier)
+            .startWorkout('Leg Day');
+
+        final result = container.read(activeWorkoutProvider);
+        expect(result, isA<AsyncData<ActiveWorkoutState?>>());
+        expect(result.value, isNotNull);
+        expect(result.value!.workout.id, 'workout-new');
+        expect(result.value!.exercises, isEmpty);
+
+        verify(
+          () => mockRepo.createActiveWorkout(
+            userId: 'user-test-001',
+            name: 'Leg Day',
+          ),
+        ).called(1);
+
+        // Give the unawaited Hive save a chance to run.
+        await Future<void>.delayed(Duration.zero);
+        verify(
+          () => mockStorage.saveActiveWorkout(any()),
+        ).called(greaterThan(0));
+      },
+    );
+
+    test(
+      'unauthenticated: state becomes AsyncError with AuthException',
+      () async {
+        final (:container, :mockRepo, :mockStorage, :mockAuth) =
+            makeAsyncContainer(null);
+        addTearDown(container.dispose);
+
+        when(() => mockAuth.currentUser).thenReturn(null);
+
+        await container.read(activeWorkoutProvider.future);
+        await container
+            .read(activeWorkoutProvider.notifier)
+            .startWorkout('Push Day');
+
+        final result = container.read(activeWorkoutProvider);
+        expect(result, isA<AsyncError<ActiveWorkoutState?>>());
+        verifyNever(
+          () => mockRepo.createActiveWorkout(
+            userId: any(named: 'userId'),
+            name: any(named: 'name'),
+          ),
+        );
+      },
+    );
+
+    test('repo error: state becomes AsyncError', () async {
+      final (:container, :mockRepo, :mockStorage, :mockAuth) =
+          makeAsyncContainer(null);
+      addTearDown(container.dispose);
+
+      when(() => mockAuth.currentUser).thenReturn(fakeUser());
+      when(
+        () => mockRepo.createActiveWorkout(
+          userId: any(named: 'userId'),
+          name: any(named: 'name'),
+        ),
+      ).thenThrow(Exception('Network failure'));
+
+      await container.read(activeWorkoutProvider.future);
+      await container
+          .read(activeWorkoutProvider.notifier)
+          .startWorkout('Push Day');
+
+      expect(
+        container.read(activeWorkoutProvider),
+        isA<AsyncError<ActiveWorkoutState?>>(),
+      );
+    });
+  });
+
+  group('ActiveWorkoutNotifier — finishWorkout', () {
+    test('success: calls saveWorkout with correct data, clears Hive, '
+        'state is AsyncData(null)', () async {
+      final initial = makeState(exerciseCount: 1, setsPerExercise: 2);
+      final (:container, :mockRepo, :mockStorage, :mockAuth) =
+          makeAsyncContainer(initial);
+      addTearDown(container.dispose);
+
+      final savedWorkout = makeWorkout(isActive: false);
+      when(() => mockAuth.currentUser).thenReturn(fakeUser());
+      when(
+        () => mockRepo.saveWorkout(
+          workout: any(named: 'workout'),
+          exercises: any(named: 'exercises'),
+          sets: any(named: 'sets'),
+        ),
+      ).thenAnswer((_) async => savedWorkout);
+      when(() => mockStorage.clearActiveWorkout()).thenAnswer((_) async {});
+
+      await container.read(activeWorkoutProvider.future);
+      await container
+          .read(activeWorkoutProvider.notifier)
+          .finishWorkout(notes: 'Great session');
+
+      final result = container.read(activeWorkoutProvider);
+      expect(result, isA<AsyncData<ActiveWorkoutState?>>());
+      expect(result.value, isNull);
+
+      // Verify saveWorkout received the right shapes.
+      final captured = verify(
+        () => mockRepo.saveWorkout(
+          workout: captureAny(named: 'workout'),
+          exercises: captureAny(named: 'exercises'),
+          sets: captureAny(named: 'sets'),
+        ),
+      ).captured;
+      final capturedWorkout = captured[0] as Workout;
+      expect(capturedWorkout.isActive, isFalse);
+      expect(capturedWorkout.finishedAt, isNotNull);
+      expect(capturedWorkout.notes, 'Great session');
+      expect(capturedWorkout.durationSeconds, isNotNull);
+
+      final capturedExercises = captured[1] as List;
+      expect(capturedExercises, hasLength(1));
+
+      final capturedSets = captured[2] as List;
+      expect(capturedSets, hasLength(2));
+
+      verify(() => mockStorage.clearActiveWorkout()).called(1);
+    });
+
+    test('does nothing when state is null', () async {
+      final (:container, :mockRepo, :mockStorage, :mockAuth) =
+          makeAsyncContainer(null);
+      addTearDown(container.dispose);
+
+      when(() => mockAuth.currentUser).thenReturn(fakeUser());
+
+      await container.read(activeWorkoutProvider.future);
+      await container.read(activeWorkoutProvider.notifier).finishWorkout();
+
+      // State remains null — no network call, no Hive clear.
+      expect(container.read(activeWorkoutProvider).value, isNull);
+      verifyNever(
+        () => mockRepo.saveWorkout(
+          workout: any(named: 'workout'),
+          exercises: any(named: 'exercises'),
+          sets: any(named: 'sets'),
+        ),
+      );
+      verifyNever(() => mockStorage.clearActiveWorkout());
+    });
+
+    test('repo error: state becomes AsyncError, Hive is NOT cleared', () async {
+      final initial = makeState(exerciseCount: 1, setsPerExercise: 1);
+      final (:container, :mockRepo, :mockStorage, :mockAuth) =
+          makeAsyncContainer(initial);
+      addTearDown(container.dispose);
+
+      when(() => mockAuth.currentUser).thenReturn(fakeUser());
+      when(
+        () => mockRepo.saveWorkout(
+          workout: any(named: 'workout'),
+          exercises: any(named: 'exercises'),
+          sets: any(named: 'sets'),
+        ),
+      ).thenThrow(Exception('Save failed'));
+
+      await container.read(activeWorkoutProvider.future);
+      await container.read(activeWorkoutProvider.notifier).finishWorkout();
+
+      expect(
+        container.read(activeWorkoutProvider),
+        isA<AsyncError<ActiveWorkoutState?>>(),
+      );
+      // Hive must NOT be cleared when save fails — user can retry or discard.
+      verifyNever(() => mockStorage.clearActiveWorkout());
+    });
+  });
+
+  group('ActiveWorkoutNotifier — discardWorkout', () {
+    test(
+      'success: calls discardWorkout, clears Hive, state is AsyncData(null)',
+      () async {
+        final initial = makeState(exerciseCount: 1, setsPerExercise: 1);
+        final (:container, :mockRepo, :mockStorage, :mockAuth) =
+            makeAsyncContainer(initial);
+        addTearDown(container.dispose);
+
+        when(() => mockAuth.currentUser).thenReturn(fakeUser());
+        when(
+          () => mockRepo.discardWorkout(any(), userId: any(named: 'userId')),
+        ).thenAnswer((_) async {});
+        when(() => mockStorage.clearActiveWorkout()).thenAnswer((_) async {});
+
+        await container.read(activeWorkoutProvider.future);
+        await container.read(activeWorkoutProvider.notifier).discardWorkout();
+
+        final result = container.read(activeWorkoutProvider);
+        expect(result, isA<AsyncData<ActiveWorkoutState?>>());
+        expect(result.value, isNull);
+
+        verify(
+          () => mockRepo.discardWorkout(
+            initial.workout.id,
+            userId: 'user-test-001',
+          ),
+        ).called(1);
+        verify(() => mockStorage.clearActiveWorkout()).called(1);
+      },
+    );
+
+    test('does nothing when state is null', () async {
+      final (:container, :mockRepo, :mockStorage, :mockAuth) =
+          makeAsyncContainer(null);
+      addTearDown(container.dispose);
+
+      when(() => mockAuth.currentUser).thenReturn(fakeUser());
+
+      await container.read(activeWorkoutProvider.future);
+      await container.read(activeWorkoutProvider.notifier).discardWorkout();
+
+      // State remains null — no network call, no Hive clear.
+      expect(container.read(activeWorkoutProvider).value, isNull);
+      verifyNever(
+        () => mockRepo.discardWorkout(any(), userId: any(named: 'userId')),
+      );
+      verifyNever(() => mockStorage.clearActiveWorkout());
+    });
+
+    test('repo error: state becomes AsyncError', () async {
+      final initial = makeState(exerciseCount: 0, setsPerExercise: 0);
+      final (:container, :mockRepo, :mockStorage, :mockAuth) =
+          makeAsyncContainer(initial);
+      addTearDown(container.dispose);
+
+      when(() => mockAuth.currentUser).thenReturn(fakeUser());
+      when(
+        () => mockRepo.discardWorkout(any(), userId: any(named: 'userId')),
+      ).thenThrow(Exception('Delete failed'));
+
+      await container.read(activeWorkoutProvider.future);
+      await container.read(activeWorkoutProvider.notifier).discardWorkout();
+
+      expect(
+        container.read(activeWorkoutProvider),
+        isA<AsyncError<ActiveWorkoutState?>>(),
+      );
+      // Hive must NOT be cleared when the network call fails.
+      verifyNever(() => mockStorage.clearActiveWorkout());
     });
   });
 }

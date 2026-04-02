@@ -21,10 +21,8 @@ class ActiveWorkoutScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncState = ref.watch(activeWorkoutProvider);
 
-    // Use previousData to keep showing the workout while saving/discarding.
-    final currentState = asyncState.valueOrNull;
-    final previousState = asyncState.whenData((v) => v).valueOrNull;
-    final displayState = currentState ?? previousState;
+    // valueOrNull retains the previous data during AsyncLoading transitions.
+    final displayState = asyncState.valueOrNull;
 
     if (displayState == null && !asyncState.isLoading) {
       // Workout was finished or discarded — navigate home.
@@ -66,7 +64,18 @@ class _ActiveWorkoutBody extends ConsumerWidget {
     );
     if (shouldDiscard == true && context.mounted) {
       await ref.read(activeWorkoutProvider.notifier).discardWorkout();
-      if (context.mounted) context.go('/home');
+      if (!context.mounted) return;
+
+      final result = ref.read(activeWorkoutProvider);
+      if (result.hasError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to discard workout. Please retry.'),
+          ),
+        );
+        return;
+      }
+      context.go('/home');
     }
   }
 

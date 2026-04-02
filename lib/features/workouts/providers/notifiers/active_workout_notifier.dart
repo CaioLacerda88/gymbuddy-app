@@ -2,10 +2,10 @@ import 'dart:async';
 import 'dart:developer';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/exceptions/app_exception.dart' as app;
+import '../../../auth/providers/auth_providers.dart';
 import '../../../exercises/models/exercise.dart';
 import '../../data/workout_local_storage.dart';
 import '../../data/workout_repository.dart';
@@ -33,7 +33,7 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
   }
 
   String get _userId {
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = ref.read(authRepositoryProvider).currentUser;
     if (user == null) {
       throw const app.AuthException('Not authenticated', code: 'no_session');
     }
