@@ -59,40 +59,19 @@ flutter run -d chrome        # run on Chrome (for Playwright e2e)
 
 ### How it works
 
-**The main conversation dispatches `team-lead` to orchestrate each plan step.** The team-lead then dispatches all other agents as needed. No implementation happens in the main conversation.
+**The main conversation orchestrates agents directly for most work.** Only dispatch `team-lead` for complex steps requiring 4+ agents with interdependencies. For simpler tasks (1-3 agents), the main conversation dispatches agents directly, runs CI, and manages PRs.
 
-### Development Flow (Agile Sprint Cycle)
+### Development Flow
 
-Each PLAN.md step is treated as a sprint increment. The `team-lead` drives this pipeline:
+Each PLAN.md step is a sprint increment:
 
-#### 1. Planning & Kickoff
-- **team-lead** reads the PLAN.md step, creates feature branch
-- **product-owner** provides market context, user stories, acceptance criteria (if user-facing)
-- **team-lead** breaks the step into ordered sub-tasks with agent assignments
-
-#### 2. Implementation (Parallel where possible)
-- **tech-lead** builds architecture scaffolding, core patterns first (if needed)
-- **flutter-dev** and/or **supabase-dev** implement feature work (parallel when independent)
-- **team-lead** verifies each agent's output (format + analyze) before handing to next
-- Implementers hand off by summarizing: what was built, which files changed, any decisions made
-
-#### 3. Design Review (skip if no UI changes)
-- **ui-ux-critic** reviews new/changed screens (read-only)
-- Verdict: Generic (revise) / Acceptable / Distinctive (proceed)
-
-#### 4. Testing
-- **qa-engineer** reads implementation, writes tests for risk areas and edge cases
-- Runs `flutter test` — all must pass before proceeding
-
-#### 5. Code Review & PR
-- **reviewer** reviews all changed files for quality, consistency, security
-- **team-lead** sends Critical/Warning fixes back to the responsible agent
-- **team-lead** runs final quality gates and creates PR via `gh pr create`
-
-#### 6. Merge
-- CI must pass (format, analyze, test)
-- **team-lead** squash merges to `main`, deletes feature branch
-- Tag release if step completes a milestone (`v0.X.0`)
+1. **Plan** — Read PLAN.md step. Dispatch `product-owner` + `ui-ux-critic` (if user-facing) for context.
+2. **Implement** — Dispatch `tech-lead` (scaffolding), `flutter-dev`/`supabase-dev` (feature work). Parallel when independent.
+3. **Verify** — Run `dart format .` + `dart analyze --fatal-infos` after each agent.
+4. **Design review** (if UI) — `ui-ux-critic` reviews. Generic → revise.
+5. **Test** — `qa-engineer` writes tests, runs `flutter test`.
+6. **Code review** — `reviewer` checks all files. Fix Critical/Warning findings.
+7. **Ship** — Run CI, commit, push, `gh pr create`, squash merge.
 
 ### Handoff Protocol
 

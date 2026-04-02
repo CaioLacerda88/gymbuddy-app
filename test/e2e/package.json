@@ -1,0 +1,16 @@
+{
+  "name": "gymbuddy-e2e",
+  "version": "1.0.0",
+  "description": "Playwright e2e tests for GymBuddy Flutter web app",
+  "scripts": {
+    "test": "playwright test",
+    "test:smoke": "playwright test --project=smoke",
+    "test:full": "playwright test --project=full",
+    "test:ui": "playwright test --ui",
+    "test:smoke:ui": "playwright test --project=smoke --ui",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.44.0"
+  }
+}
