@@ -12,6 +12,7 @@ import '../../features/auth/ui/splash_screen.dart';
 import '../../features/exercises/ui/create_exercise_screen.dart';
 import '../../features/exercises/ui/exercise_detail_screen.dart';
 import '../../features/exercises/ui/exercise_list_screen.dart';
+import '../../features/workouts/ui/active_workout_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -65,6 +66,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/onboarding',
         builder: (context, state) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        path: '/workout/active',
+        builder: (context, state) => const ActiveWorkoutScreen(),
       ),
       ShellRoute(
         builder: (context, state, child) => _ShellScaffold(child: child),
