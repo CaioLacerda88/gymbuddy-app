@@ -87,6 +87,64 @@ void main() {
 
       expect(exercise.userId, isNull);
       expect(exercise.deletedAt, isNull);
+      expect(exercise.imageStartUrl, isNull);
+      expect(exercise.imageEndUrl, isNull);
+    });
+
+    test('fromJson parses image URLs', () {
+      final json = TestExerciseFactory.create(
+        imageStartUrl: 'https://example.com/start.jpg',
+        imageEndUrl: 'https://example.com/end.jpg',
+      );
+
+      final exercise = Exercise.fromJson(json);
+
+      expect(exercise.imageStartUrl, 'https://example.com/start.jpg');
+      expect(exercise.imageEndUrl, 'https://example.com/end.jpg');
+    });
+
+    test('fromJson handles explicitly null image URLs', () {
+      final json = TestExerciseFactory.create();
+      json['image_start_url'] = null;
+      json['image_end_url'] = null;
+
+      final exercise = Exercise.fromJson(json);
+
+      expect(exercise.imageStartUrl, isNull);
+      expect(exercise.imageEndUrl, isNull);
+    });
+
+    test('fromJson handles absent image URL keys', () {
+      final json = TestExerciseFactory.create();
+      json.remove('image_start_url');
+      json.remove('image_end_url');
+
+      final exercise = Exercise.fromJson(json);
+
+      expect(exercise.imageStartUrl, isNull);
+      expect(exercise.imageEndUrl, isNull);
+    });
+
+    test('fromJson parses only imageStartUrl when imageEndUrl is null', () {
+      final json = TestExerciseFactory.create(
+        imageStartUrl: 'https://example.com/start.jpg',
+      );
+
+      final exercise = Exercise.fromJson(json);
+
+      expect(exercise.imageStartUrl, 'https://example.com/start.jpg');
+      expect(exercise.imageEndUrl, isNull);
+    });
+
+    test('fromJson parses only imageEndUrl when imageStartUrl is null', () {
+      final json = TestExerciseFactory.create(
+        imageEndUrl: 'https://example.com/end.jpg',
+      );
+
+      final exercise = Exercise.fromJson(json);
+
+      expect(exercise.imageStartUrl, isNull);
+      expect(exercise.imageEndUrl, 'https://example.com/end.jpg');
     });
 
     test('toJson round-trip preserves data', () {
@@ -94,6 +152,29 @@ void main() {
       final exercise = Exercise.fromJson(originalJson);
       final roundTripped = Exercise.fromJson(exercise.toJson());
 
+      expect(roundTripped, exercise);
+    });
+
+    test('toJson round-trip preserves image URLs', () {
+      final json = TestExerciseFactory.create(
+        imageStartUrl: 'https://example.com/start.jpg',
+        imageEndUrl: 'https://example.com/end.jpg',
+      );
+      final exercise = Exercise.fromJson(json);
+      final roundTripped = Exercise.fromJson(exercise.toJson());
+
+      expect(roundTripped.imageStartUrl, 'https://example.com/start.jpg');
+      expect(roundTripped.imageEndUrl, 'https://example.com/end.jpg');
+      expect(roundTripped, exercise);
+    });
+
+    test('toJson round-trip preserves null image URLs', () {
+      final json = TestExerciseFactory.create();
+      final exercise = Exercise.fromJson(json);
+      final roundTripped = Exercise.fromJson(exercise.toJson());
+
+      expect(roundTripped.imageStartUrl, isNull);
+      expect(roundTripped.imageEndUrl, isNull);
       expect(roundTripped, exercise);
     });
 
@@ -115,6 +196,28 @@ void main() {
       expect(a, isNot(b));
     });
 
+    test('equality considers imageStartUrl', () {
+      final a = Exercise.fromJson(
+        TestExerciseFactory.create(imageStartUrl: 'https://example.com/a.jpg'),
+      );
+      final b = Exercise.fromJson(
+        TestExerciseFactory.create(imageStartUrl: 'https://example.com/b.jpg'),
+      );
+
+      expect(a, isNot(b));
+    });
+
+    test('equality considers imageEndUrl', () {
+      final a = Exercise.fromJson(
+        TestExerciseFactory.create(imageEndUrl: 'https://example.com/a.jpg'),
+      );
+      final b = Exercise.fromJson(
+        TestExerciseFactory.create(imageEndUrl: 'https://example.com/b.jpg'),
+      );
+
+      expect(a, isNot(b));
+    });
+
     test('copyWith creates modified copy', () {
       final exercise = Exercise.fromJson(TestExerciseFactory.create());
       final modified = exercise.copyWith(name: 'Deadlift');
@@ -122,6 +225,35 @@ void main() {
       expect(modified.name, 'Deadlift');
       expect(modified.id, exercise.id);
       expect(modified.muscleGroup, exercise.muscleGroup);
+    });
+
+    test('copyWith preserves image URLs when not overridden', () {
+      final exercise = Exercise.fromJson(
+        TestExerciseFactory.create(
+          imageStartUrl: 'https://example.com/start.jpg',
+          imageEndUrl: 'https://example.com/end.jpg',
+        ),
+      );
+      final modified = exercise.copyWith(name: 'Deadlift');
+
+      expect(modified.imageStartUrl, 'https://example.com/start.jpg');
+      expect(modified.imageEndUrl, 'https://example.com/end.jpg');
+    });
+
+    test('copyWith can override image URLs', () {
+      final exercise = Exercise.fromJson(
+        TestExerciseFactory.create(
+          imageStartUrl: 'https://example.com/start.jpg',
+          imageEndUrl: 'https://example.com/end.jpg',
+        ),
+      );
+      final modified = exercise.copyWith(
+        imageStartUrl: 'https://example.com/new-start.jpg',
+        imageEndUrl: 'https://example.com/new-end.jpg',
+      );
+
+      expect(modified.imageStartUrl, 'https://example.com/new-start.jpg');
+      expect(modified.imageEndUrl, 'https://example.com/new-end.jpg');
     });
   });
 }
