@@ -27,7 +27,6 @@ class ActiveWorkoutState with _$ActiveWorkoutState {
     required Workout workout,
     @JsonKey(defaultValue: <ActiveWorkoutExercise>[])
     required List<ActiveWorkoutExercise> exercises,
-    @JsonKey(defaultValue: 1) required int schemaVersion,
   }) = _ActiveWorkoutState;
 
   factory ActiveWorkoutState.fromJson(Map<String, dynamic> json) =>

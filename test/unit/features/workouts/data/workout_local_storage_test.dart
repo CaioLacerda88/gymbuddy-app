@@ -44,7 +44,6 @@ void main() {
         expect(loaded, isNotNull);
         expect(loaded!.workout.id, state.workout.id);
         expect(loaded.exercises, isEmpty);
-        expect(loaded.schemaVersion, 1);
       });
 
       test('round-trips a state with exercises and sets', () async {

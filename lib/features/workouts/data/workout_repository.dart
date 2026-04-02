@@ -6,6 +6,13 @@ import '../models/exercise_set.dart';
 import '../models/workout.dart';
 import '../models/workout_exercise.dart';
 
+/// Parsed workout detail with exercises and sets.
+typedef WorkoutDetail = ({
+  Workout workout,
+  List<WorkoutExercise> exercises,
+  Map<String, List<ExerciseSet>> setsByExercise,
+});
+
 class WorkoutRepository extends BaseRepository {
   const WorkoutRepository(this._client);
 
@@ -14,18 +21,52 @@ class WorkoutRepository extends BaseRepository {
   supabase.SupabaseQueryBuilder get _workouts => _client.from('workouts');
 
   /// Atomically save a finished workout via the save_workout RPC.
+  ///
+  /// Supabase wraps each RPC call in a transaction, so all inserts/updates
+  /// are atomic — a constraint violation rolls back the entire operation.
   Future<Workout> saveWorkout({
-    required Map<String, dynamic> workout,
-    required List<Map<String, dynamic>> exercises,
-    required List<Map<String, dynamic>> sets,
+    required Workout workout,
+    required List<WorkoutExercise> exercises,
+    required List<ExerciseSet> sets,
   }) {
     return mapException(() async {
       final result = await _client.rpc(
         'save_workout',
         params: {
-          'p_workout': workout,
-          'p_exercises': exercises,
-          'p_sets': sets,
+          'p_workout': {
+            'id': workout.id,
+            'user_id': workout.userId,
+            'name': workout.name,
+            'finished_at': workout.finishedAt?.toIso8601String(),
+            'duration_seconds': workout.durationSeconds,
+            'notes': workout.notes,
+          },
+          'p_exercises': exercises
+              .map(
+                (e) => {
+                  'id': e.id,
+                  'workout_id': e.workoutId,
+                  'exercise_id': e.exerciseId,
+                  'order': e.order,
+                  'rest_seconds': e.restSeconds,
+                },
+              )
+              .toList(),
+          'p_sets': sets
+              .map(
+                (s) => {
+                  'id': s.id,
+                  'workout_exercise_id': s.workoutExerciseId,
+                  'set_number': s.setNumber,
+                  'reps': s.reps,
+                  'weight': s.weight,
+                  'rpe': s.rpe,
+                  'set_type': s.setType.name,
+                  'notes': s.notes,
+                  'is_completed': s.isCompleted,
+                },
+              )
+              .toList(),
         },
       );
       return Workout.fromJson(result as Map<String, dynamic>);
@@ -83,26 +124,29 @@ class WorkoutRepository extends BaseRepository {
     });
   }
 
-  /// Get full workout detail with exercises and sets.
-  Future<Map<String, dynamic>> getWorkoutDetail(String workoutId) {
+  /// Get full workout detail with exercises and sets, parsed into typed data.
+  Future<WorkoutDetail> getWorkoutDetail(String workoutId) {
     return mapException(() async {
       final data = await _workouts
           .select('*, workout_exercises(*, exercise:exercises(*), sets(*))')
           .eq('id', workoutId)
           .single();
-      return data;
+      return parseWorkoutDetail(data);
     });
   }
 
   /// Batch-fetch the most recent completed sets for given exercise IDs.
   /// Returns a map of exerciseId -> list of sets from the last workout.
+  ///
+  /// Note: relies on Supabase returning rows ordered by the `finished_at DESC`
+  /// clause. The `seen` set deduplicates to keep only the first (most recent)
+  /// entry per exercise.
   Future<Map<String, List<ExerciseSet>>> getLastWorkoutSets(
     List<String> exerciseIds,
   ) {
     return mapException(() async {
       if (exerciseIds.isEmpty) return {};
 
-      // Find the most recent finished workout_exercises for each exercise
       final data = await _client
           .from('workout_exercises')
           .select('exercise_id, sets(*), workouts!inner(finished_at)')
@@ -128,19 +172,14 @@ class WorkoutRepository extends BaseRepository {
   }
 
   /// Discard (delete) an active workout.
-  Future<void> discardWorkout(String workoutId) {
+  Future<void> discardWorkout(String workoutId, {required String userId}) {
     return mapException(() async {
-      await _workouts.delete().eq('id', workoutId);
+      await _workouts.delete().eq('id', workoutId).eq('user_id', userId);
     });
   }
 
   /// Parse a workout detail response into structured data.
-  static ({
-    Workout workout,
-    List<WorkoutExercise> exercises,
-    Map<String, List<ExerciseSet>> setsByExercise,
-  })
-  parseWorkoutDetail(Map<String, dynamic> data) {
+  static WorkoutDetail parseWorkoutDetail(Map<String, dynamic> data) {
     final workout = Workout.fromJson(data);
     final exercisesData = data['workout_exercises'] as List<dynamic>? ?? [];
 
@@ -150,7 +189,6 @@ class WorkoutRepository extends BaseRepository {
     for (final weData in exercisesData) {
       final weMap = weData as Map<String, dynamic>;
 
-      // Parse exercise if joined
       Exercise? exercise;
       if (weMap['exercise'] != null) {
         exercise = Exercise.fromJson(weMap['exercise'] as Map<String, dynamic>);
@@ -159,7 +197,6 @@ class WorkoutRepository extends BaseRepository {
       final we = WorkoutExercise.fromJson(weMap).copyWith(exercise: exercise);
       exercises.add(we);
 
-      // Parse sets
       final setsData = weMap['sets'] as List<dynamic>? ?? [];
       setsByExercise[we.id] =
           setsData

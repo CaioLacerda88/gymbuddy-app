@@ -125,12 +125,10 @@ class TestActiveWorkoutStateFactory {
   static Map<String, dynamic> create({
     Map<String, dynamic>? workout,
     List<Map<String, dynamic>>? exercises,
-    int? schemaVersion,
   }) {
     return {
       'workout': workout ?? TestWorkoutFactory.create(isActive: true),
       'exercises': exercises ?? [],
-      'schema_version': schemaVersion ?? 1,
     };
   }
 
@@ -161,10 +159,6 @@ class TestActiveWorkoutStateFactory {
       };
     });
 
-    return {
-      'workout': workoutData,
-      'exercises': exercises,
-      'schema_version': 1,
-    };
+    return {'workout': workoutData, 'exercises': exercises};
   }
 }

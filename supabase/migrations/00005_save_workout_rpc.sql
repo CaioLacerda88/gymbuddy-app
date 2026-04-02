@@ -4,6 +4,10 @@
 --
 -- Creates a Postgres RPC function that atomically saves a completed workout
 -- with all its exercises and sets in a single transaction.
+--
+-- Atomicity: Supabase wraps each RPC call in a transaction. If any statement
+-- fails (e.g., constraint violation on sets), the entire operation rolls back.
+-- The plpgsql function body executes within that transaction.
 -- =============================================================================
 
 CREATE OR REPLACE FUNCTION save_workout(
@@ -85,3 +89,6 @@ BEGIN
   RETURN v_result;
 END;
 $$;
+
+-- Grant execute to authenticated users (required for SECURITY DEFINER functions)
+GRANT EXECUTE ON FUNCTION save_workout(jsonb, jsonb, jsonb) TO authenticated;

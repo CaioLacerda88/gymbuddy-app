@@ -184,18 +184,14 @@ void main() {
       expect(state.workout.id, 'workout-001');
       expect(state.exercises, hasLength(2));
       expect(state.exercises[0].sets, hasLength(3));
-      expect(state.schemaVersion, 1);
     });
 
-    test('defaults exercises to empty and schemaVersion to 1 when absent', () {
-      final json = TestActiveWorkoutStateFactory.create()
-        ..remove('exercises')
-        ..remove('schema_version');
+    test('defaults exercises to empty when absent', () {
+      final json = TestActiveWorkoutStateFactory.create()..remove('exercises');
 
       final state = ActiveWorkoutState.fromJson(json);
 
       expect(state.exercises, isEmpty);
-      expect(state.schemaVersion, 1);
     });
 
     test('toJson round-trip preserves full nested state', () {
@@ -212,7 +208,6 @@ void main() {
       expect(roundTripped.workout, state.workout);
       expect(roundTripped.exercises, hasLength(1));
       expect(roundTripped.exercises[0].sets, hasLength(2));
-      expect(roundTripped.schemaVersion, state.schemaVersion);
     });
   });
 }
