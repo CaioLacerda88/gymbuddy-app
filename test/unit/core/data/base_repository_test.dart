@@ -17,42 +17,20 @@ void main() {
       expect(result, 42);
     });
 
-    group('rethrows AppException subtypes unchanged', () {
-      test('rethrows AuthException', () async {
-        const exception = AuthException('Unauthorized', code: '401');
+    test('rethrows AppException subtypes unchanged', () async {
+      final exceptions = <AppException>[
+        const AuthException('Unauthorized', code: '401'),
+        const DatabaseException('Row not found', code: '404'),
+        const NetworkException('No internet'),
+        const ValidationException('Required', field: 'name'),
+      ];
 
+      for (final exception in exceptions) {
         expect(
           () => repo.mapException(() async => throw exception),
           throwsA(same(exception)),
         );
-      });
-
-      test('rethrows DatabaseException', () async {
-        const exception = DatabaseException('Row not found', code: '404');
-
-        expect(
-          () => repo.mapException(() async => throw exception),
-          throwsA(same(exception)),
-        );
-      });
-
-      test('rethrows NetworkException', () async {
-        const exception = NetworkException('No internet');
-
-        expect(
-          () => repo.mapException(() async => throw exception),
-          throwsA(same(exception)),
-        );
-      });
-
-      test('rethrows ValidationException', () async {
-        const exception = ValidationException('Required', field: 'name');
-
-        expect(
-          () => repo.mapException(() async => throw exception),
-          throwsA(same(exception)),
-        );
-      });
+      }
     });
 
     test('converts PostgrestException to DatabaseException', () async {
