@@ -272,6 +272,30 @@ Makefile                        # gen, gen-watch, analyze, format, test, ci targ
 - Unit: exercise repository (CRUD, filters, soft delete behavior, duplicate name prevention), model serialization
 - Widget: exercise list (filter chips, search, empty state, zero-results state), create exercise form (validation, duplicate name error)
 
+#### Step 4b: Exercise Demonstration Images (DONE)
+
+**Source:** [Free Exercise DB (yuhonas)](https://github.com/yuhonas/free-exercise-db) — Unlicense (public domain), 800+ exercises, static JPGs (start + end position per exercise). $0 cost.
+
+**Data model:**
+- Migration `00003_exercise_images.sql`: Added `image_start_url TEXT` and `image_end_url TEXT` columns to `exercises`
+- Migration `00004_seed_exercise_images.sql`: Seed URLs for 30 default exercises pointing to GitHub-hosted images
+- Supabase Storage bucket `exercise-media` (public read, service-role write) with UPDATE/DELETE RLS policies
+
+**UX decisions:**
+- Exercise list: NO thumbnails (keeps card density, users recognize exercises by name)
+- Exercise detail: Start/end images side-by-side in 160dp row, tap for fullscreen overlay with close button
+- Exercise picker (Step 5): NO thumbnails (speed-critical search-and-tap flow)
+- Error/missing images: collapse section entirely (no broken placeholders)
+
+**Implementation:**
+- `lib/shared/widgets/exercise_image.dart` — Shared `ExerciseImage` widget wrapping `cached_network_image`, with loading indicator, fallback icon, error collapse, and `devicePixelRatio`-aware `memCacheWidth`
+- Exercise detail screen: `_ExerciseImageRow` + `_TappableImage` with fullscreen dialog (AppBar close button + tap-to-dismiss)
+- No images bundled in APK — cached on first load, 30-day disk cache
+
+**Future upgrade path:** Replace static JPGs with animated demos from Exercise Animatic ($499) or WorkoutLabs API if budget allows.
+
+**Tests:** 31 tests covering ExerciseImage widget (null/empty/provided URL, fallback sizing, borderRadius), detail screen (image row, single image, collapse, semantics, fullscreen open/close, loading, error states), and model serialization with image fields.
+
 ### Step 5: Workout Logging
 
 **Architecture decisions (resolve before coding):**
