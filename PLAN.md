@@ -322,6 +322,102 @@ Shipped across 4 PRs (#12–#15) in sub-steps 5a–5d.
 
 **Deferred:** Offline queue sync worker (Hive queue exists but no background sync), wakelock during rest timer, auth expiry handling during workout, auto-focus next set after timer.
 
+### Step 5e: UX Polish Sprint (Pre-Template Hardening)
+
+Added after a joint Product Owner + UI/UX Critic audit of the current app (2026-04-02). The core logging loop and onboarding flow have friction points that must be resolved before Step 6 (Templates) ships — templates amplify any existing UX problems since they become the primary onboarding payoff.
+
+**Audit context:** 12 taps from signup to first logged set (Strong: ~6). Set row numbers at 16sp instead of the 48-64sp hero content specified in UX Design Direction. Set row overflows on 360dp phones. Onboarding page 3 promises features that don't exist. Profile tab is a dead-end placeholder.
+
+#### Critical Fixes (block user testing)
+
+**C1. Remove Start Workout name dialog:**
+- `home_screen.dart` — eliminate `_showStartDialog()` AlertDialog with keyboard
+- Auto-name workouts: "Workout — Mon Apr 2" using date format
+- Allow inline rename via tappable AppBar title in active workout screen (tap → `TextField` overlay, not a dialog)
+- Reduces tap count by 2 and removes a keyboard interaction from the highest-frequency flow
+
+**C2. Redesign set row for glanceability:**
+- `set_row.dart`, `weight_stepper.dart`, `reps_stepper.dart` — weight/reps numbers must be hero content
+- Increase number display to 28-32sp minimum (full 48-64sp won't fit in a row; use the larger sizes for focused input overlays)
+- Add subtle green glow shadow (`Shadow(color: primary.withOpacity(0.3), blurRadius: 8)`) per UX Design Direction
+- Remove RPE column from default set row (hide behind a per-exercise toggle or settings flag) — reclaims ~48dp horizontal space, reduces beginner confusion
+- Target layout at 360dp: set badge (40dp) + weight (expanded) + reps (expanded) + checkbox (48dp) = fits comfortably
+- Add tap-to-type on weight/reps numbers: tap the number → compact numpad overlay (not full keyboard). Eliminates the "15 taps to reach 37.5kg" problem
+
+**C3. Trim onboarding to 2 screens:**
+- `onboarding_screen.dart` — remove page 3 (`_WorkoutChoicePage`) entirely until Step 6 ships templates
+- Page 3 currently offers "Full Body Starter" / "Start Blank" / "Browse Exercises" — all three route identically to `/home`, breaking user trust
+- Keep page 1 (welcome) and page 2 (profile setup: name + fitness level)
+- Re-add page 3 when Step 6 provides real template data to back the choices
+
+**C4. Wire onboarding data to Supabase:**
+- `onboarding_screen.dart` line 43 has `// TODO: Save profile data to Supabase`
+- On page 2 completion: upsert `profiles` row with `display_name` and `fitness_level`
+- This data is currently collected and silently discarded on every signup
+
+**C5. Build minimal Profile screen:**
+- Replace `_TabPlaceholder` in `app_router.dart` with a real screen
+- Display: user's name (from profile), email, fitness level
+- Actions: weight unit toggle (kg/lbs), logout button
+- No avatar, no editing, no settings page — just the essentials so users can log out and see their identity
+
+**C6. Move Finish button to thumb zone:**
+- `active_workout_screen.dart` — move "Finish" from AppBar `actions` (top-right) to a persistent bottom bar or bottom-anchored FAB
+- Top-right corner requires precision tap on tall phones, violates PLAN.md thumb-zone rules
+- Keep discard/close as AppBar leading icon (destructive = harder to reach = correct)
+
+#### Important Fixes (degrades core experience)
+
+**I1. Show previous session data in set rows:**
+- `getLastWorkoutSets` already exists in the data layer and is wired to `lastWorkoutSetsProvider`
+- Display "Last: 80kg × 5" as ghost/hint text below or beside each set row when data exists
+- Pre-fill new set weight/reps from last session values instead of 0/0
+- This is the #1 reason people use workout logging apps — not having to remember their numbers
+
+**I2. Add "Create Exercise" to exercise picker:**
+- `exercise_picker_sheet.dart` — when search returns no results, show "Create [search query]" button
+- Tapping opens the create exercise flow inline (bottom sheet or pushed screen), then auto-selects the new exercise
+- Currently users must leave the active workout entirely to create an exercise
+
+**I3. Make "Add Set" button more prominent:**
+- `active_workout_screen.dart` `_ExerciseCard` — replace `TextButton.icon` with full-width 48dp outlined or filled-tonal button
+- This is the most-used action during a workout (20-50 taps per session) and currently has less visual weight than the exercise name
+
+**I4. Add rest timer adjustment:**
+- `rest_timer_overlay.dart` — add −30s / +30s buttons flanking the countdown
+- Large touch targets (56dp+), positioned in thumb zone (bottom third of overlay)
+- Currently hardcoded to 90 seconds with no way to adjust mid-rest
+
+**I5. Increase active workout banner visibility:**
+- `app_router.dart` `_ActiveWorkoutBanner` — change from 15% opacity green to full primary color background
+- Add subtle pulsing animation (border or glow) per PLAN.md Step 8 spec
+- Currently nearly invisible against the dark nav bar
+
+**I6. Add exercise summary to history cards:**
+- `workout_history_screen.dart` `_WorkoutHistoryCard` — add a single line showing top 3 exercise names (e.g., "Bench Press, Squat, Deadlift +2")
+- Users currently can't distinguish workouts without tapping into each one
+
+#### Nice-to-Have (polish, can ship after Step 6)
+
+- Load condensed font (Barlow Condensed) for numeric displays throughout the app
+- Set type badge: increase from 9sp to 11sp, add first-use tooltip for discoverability
+- Add haptic feedback (`HapticFeedback.selectionClick()`) on weight/reps stepper taps and Add Set
+- Replace `Icons.g_mobiledata` with proper Google logo asset on login screen
+- Add swipe hint animation on first set row (one-time) for swipe-to-delete discoverability
+- Exercise detail AppBar: show exercise name instead of generic "Exercise Details"
+- Add `AutomaticKeepAliveClientMixin` to tab screens to preserve scroll position on tab switch
+- Bottom nav: switch to filled icon variants (`Icons.home_filled`, etc.) per UX Design Direction
+- NavigationBar: set explicit `backgroundColor` and `indicatorColor` matching theme
+- `FinishWorkoutDialog`: don't auto-focus notes `TextField` (avoid keyboard popup at completion moment)
+- `GradientButton` usage: apply gradient to all primary action buttons (currently only on CreateExerciseScreen)
+- Discard workout dialog: make safe action (`Cancel`) a `FilledButton`, destructive (`Discard`) stays `TextButton`
+
+**Tests:**
+- Widget: set row redesign (number sizing, tap-to-type, no RPE by default), home screen (no name dialog, auto-naming), onboarding (2 pages only), profile screen (logout, weight unit), finish button position, rest timer +/-30s buttons
+- Unit: workout auto-naming logic, profile upsert
+
+**Sequencing rationale:** This sprint hardens the foundation before Step 6 adds templates. Templates become the first onboarding payoff (page 3 "Full Body Starter") and the primary "start workout" path. If the core logging loop has friction (tiny numbers, overflow, no previous data), templates amplify it by making that friction the first experience for every new user.
+
 ### Step 6: Workout Templates
 - Save current workout as template: `WorkoutTemplate.fromWorkout(Workout)` factory maps workout exercises to JSONB structure
 - "Start from template" option: pre-fills exercises and target reps/weight from template

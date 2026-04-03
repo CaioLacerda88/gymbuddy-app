@@ -8,8 +8,9 @@ final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
   return ProfileRepository(Supabase.instance.client);
 });
 
-final profileProvider =
-    AsyncNotifierProvider<ProfileNotifier, Profile?>(ProfileNotifier.new);
+final profileProvider = AsyncNotifierProvider<ProfileNotifier, Profile?>(
+  ProfileNotifier.new,
+);
 
 class ProfileNotifier extends AsyncNotifier<Profile?> {
   @override
@@ -27,11 +28,13 @@ class ProfileNotifier extends AsyncNotifier<Profile?> {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
     final repo = ref.read(profileRepositoryProvider);
-    state = AsyncData(await repo.upsertProfile(
-      userId: user.id,
-      displayName: displayName,
-      fitnessLevel: fitnessLevel,
-    ));
+    state = AsyncData(
+      await repo.upsertProfile(
+        userId: user.id,
+        displayName: displayName,
+        fitnessLevel: fitnessLevel,
+      ),
+    );
   }
 
   Future<void> toggleWeightUnit() async {
