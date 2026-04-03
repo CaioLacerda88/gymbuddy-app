@@ -175,6 +175,20 @@ class _WorkoutHistoryCard extends StatelessWidget {
                         style: theme.textTheme.titleMedium,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      if (workout.exerciseSummary != null &&
+                          workout.exerciseSummary!.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          workout.exerciseSummary!,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.5,
+                            ),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                       const SizedBox(height: 4),
                       Text(
                         durationText,

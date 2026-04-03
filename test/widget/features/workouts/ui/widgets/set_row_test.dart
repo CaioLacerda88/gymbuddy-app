@@ -234,6 +234,67 @@ void main() {
       );
     });
 
+    group('ghost text (previous session hint)', () {
+      testWidgets(
+        'shows ghost text when lastSet is provided and set is not completed',
+        (tester) async {
+          final set = makeSet(isCompleted: false);
+          final lastSet = makeSet(id: 'last-set', weight: 80.0, reps: 8);
+
+          await tester.pumpWidget(
+            buildTestWidget(
+              SetRow(set: set, workoutExerciseId: 'we-001', lastSet: lastSet),
+            ),
+          );
+
+          expect(find.text('Last: 80kg × 8'), findsOneWidget);
+        },
+      );
+
+      testWidgets('hides ghost text when set is already completed', (
+        tester,
+      ) async {
+        final set = makeSet(isCompleted: true);
+        final lastSet = makeSet(id: 'last-set', weight: 80.0, reps: 8);
+
+        await tester.pumpWidget(
+          buildTestWidget(
+            SetRow(set: set, workoutExerciseId: 'we-001', lastSet: lastSet),
+          ),
+        );
+
+        expect(find.text('Last: 80kg × 8'), findsNothing);
+      });
+
+      testWidgets('hides ghost text when lastSet is null', (tester) async {
+        final set = makeSet(isCompleted: false);
+
+        await tester.pumpWidget(
+          buildTestWidget(SetRow(set: set, workoutExerciseId: 'we-001')),
+        );
+
+        // No "Last:" prefix should appear anywhere.
+        expect(find.textContaining('Last:'), findsNothing);
+      });
+
+      testWidgets(
+        'ghost text shows integer weight without decimal when weight is whole number',
+        (tester) async {
+          final set = makeSet(isCompleted: false);
+          final lastSet = makeSet(id: 'last-set', weight: 100.0, reps: 5);
+
+          await tester.pumpWidget(
+            buildTestWidget(
+              SetRow(set: set, workoutExerciseId: 'we-001', lastSet: lastSet),
+            ),
+          );
+
+          // Whole-number weights should display without a decimal suffix.
+          expect(find.text('Last: 100kg × 5'), findsOneWidget);
+        },
+      );
+    });
+
     group('accessibility semantics', () {
       testWidgets('set number has correct semantics label with type info', (
         tester,

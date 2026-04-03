@@ -165,6 +165,83 @@ void main() {
       });
     });
 
+    group('adjustTime', () {
+      test('adding 30 increases totalSeconds and remainingSeconds', () {
+        final container = makeContainer();
+        addTearDown(container.dispose);
+
+        container.read(restTimerProvider.notifier).start(60);
+        container.read(restTimerProvider.notifier).adjustTime(30);
+
+        final state = container.read(restTimerProvider);
+        expect(state!.totalSeconds, 90);
+        expect(state.remainingSeconds, 90);
+      });
+
+      test('subtracting 30 decreases totalSeconds and remainingSeconds', () {
+        final container = makeContainer();
+        addTearDown(container.dispose);
+
+        container.read(restTimerProvider.notifier).start(60);
+        container.read(restTimerProvider.notifier).adjustTime(-30);
+
+        final state = container.read(restTimerProvider);
+        expect(state!.totalSeconds, 30);
+        expect(state.remainingSeconds, 30);
+      });
+
+      test('clamps minimum total to 30 seconds', () {
+        final container = makeContainer();
+        addTearDown(container.dispose);
+
+        container.read(restTimerProvider.notifier).start(30);
+        container.read(restTimerProvider.notifier).adjustTime(-60);
+
+        final state = container.read(restTimerProvider);
+        expect(state!.totalSeconds, 30);
+      });
+
+      test('clamps maximum total to 600 seconds', () {
+        final container = makeContainer();
+        addTearDown(container.dispose);
+
+        container.read(restTimerProvider.notifier).start(590);
+        container.read(restTimerProvider.notifier).adjustTime(30);
+
+        final state = container.read(restTimerProvider);
+        expect(state!.totalSeconds, 600);
+      });
+
+      test('preserves elapsed time when adjusting', () {
+        fakeAsync((async) {
+          final container = ProviderContainer();
+
+          container.read(restTimerProvider.notifier).start(60);
+          // Elapse 10 seconds so elapsed = 10, remaining = 50.
+          async.elapse(const Duration(seconds: 10));
+          expect(container.read(restTimerProvider)!.remainingSeconds, 50);
+
+          // Add 30s: newTotal = 90, newRemaining = 90 - 10 = 80.
+          container.read(restTimerProvider.notifier).adjustTime(30);
+          final state = container.read(restTimerProvider);
+          expect(state!.totalSeconds, 90);
+          expect(state.remainingSeconds, 80);
+
+          container.dispose();
+        });
+      });
+
+      test('is a no-op when state is null', () {
+        final container = makeContainer();
+        addTearDown(container.dispose);
+
+        // No start — state is null; should not throw.
+        container.read(restTimerProvider.notifier).adjustTime(30);
+
+        expect(container.read(restTimerProvider), isNull);
+      });
+    });
+
     group('countdown tick (fakeAsync)', () {
       test('decrements remainingSeconds every second', () {
         fakeAsync((async) {

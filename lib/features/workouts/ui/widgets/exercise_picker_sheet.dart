@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../exercises/models/exercise.dart';
 import '../../../exercises/providers/exercise_providers.dart';
@@ -153,13 +154,36 @@ class _SheetBodyState extends ConsumerState<_SheetBody> {
                     child: Center(
                       child: Padding(
                         padding: const EdgeInsets.only(top: 48),
-                        child: Text(
-                          'No exercises found',
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            color: theme.colorScheme.onSurface.withValues(
-                              alpha: 0.6,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.search_off,
+                              size: 48,
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.3,
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No exercises found',
+                              style: theme.textTheme.bodyLarge,
+                            ),
+                            const SizedBox(height: 16),
+                            FilledButton.icon(
+                              onPressed: () {
+                                final router = GoRouter.of(context);
+                                Navigator.pop(context);
+                                router.push('/exercises/create');
+                              },
+                              icon: const Icon(Icons.add),
+                              label: Text(
+                                _query.isNotEmpty
+                                    ? 'Create "$_query"'
+                                    : 'Create Exercise',
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),

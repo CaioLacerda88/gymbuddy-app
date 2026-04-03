@@ -65,6 +65,39 @@ class _ActiveWorkoutBody extends ConsumerStatefulWidget {
 
 class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
   bool _reorderMode = false;
+  bool _isEditingName = false;
+  late TextEditingController _nameController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.state.workout.name);
+  }
+
+  @override
+  void didUpdateWidget(_ActiveWorkoutBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_isEditingName &&
+        oldWidget.state.workout.name != widget.state.workout.name) {
+      _nameController.text = widget.state.workout.name;
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  void _submitName() {
+    final trimmed = _nameController.text.trim();
+    if (trimmed.isNotEmpty) {
+      ref.read(activeWorkoutProvider.notifier).renameWorkout(trimmed);
+    } else {
+      _nameController.text = widget.state.workout.name;
+    }
+    setState(() => _isEditingName = false);
+  }
 
   bool get _hasCompletedSet =>
       widget.state.exercises.any((e) => e.sets.any((s) => s.isCompleted));
@@ -147,11 +180,50 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
             tooltip: 'Discard workout',
           ),
           title: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                widget.state.workout.name,
-                style: theme.textTheme.titleMedium,
-              ),
+              if (_isEditingName)
+                SizedBox(
+                  height: 36,
+                  child: TextField(
+                    controller: _nameController,
+                    autofocus: true,
+                    textAlign: TextAlign.center,
+                    textCapitalization: TextCapitalization.sentences,
+                    style: theme.textTheme.titleMedium,
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      border: UnderlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(vertical: 4),
+                    ),
+                    onSubmitted: (_) => _submitName(),
+                    onTapOutside: (_) => _submitName(),
+                  ),
+                )
+              else
+                GestureDetector(
+                  onTap: () {
+                    _nameController.text = widget.state.workout.name;
+                    setState(() => _isEditingName = true);
+                  },
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        widget.state.workout.name,
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.edit,
+                        size: 14,
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               _ElapsedTimer(startedAt: widget.state.workout.startedAt),
             ],
           ),
@@ -165,14 +237,24 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
                     ? 'Exit reorder mode'
                     : 'Reorder exercises',
               ),
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: FilledButton(
-                onPressed: _hasCompletedSet ? _onFinish : null,
-                child: const Text('Finish'),
+          ],
+        ),
+        bottomNavigationBar: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: FilledButton.icon(
+              onPressed: _hasCompletedSet ? _onFinish : null,
+              icon: const Icon(Icons.check_circle),
+              label: const Text('Finish Workout'),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(double.infinity, 56),
+                textStyle: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
-          ],
+          ),
         ),
         body: widget.state.exercises.isEmpty
             ? _EmptyWorkoutBody(onAddExercise: _onAddExercise)
@@ -371,6 +453,12 @@ class _ExerciseCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final exercise = activeExercise.workoutExercise.exercise;
     final weId = activeExercise.workoutExercise.id;
+    final exerciseId = activeExercise.workoutExercise.exerciseId;
+
+    // Fetch previous session sets for this exercise.
+    final lastSetsAsync = ref.watch(lastWorkoutSetsProvider(exerciseId));
+    final lastSetsMap = lastSetsAsync.valueOrNull ?? {};
+    final lastSets = lastSetsMap[exerciseId] ?? [];
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -475,48 +563,68 @@ class _ExerciseCard extends ConsumerWidget {
               const Divider(height: 1),
 
               // Set rows
-              ...activeExercise.sets.map(
-                (s) => SetRow(
+              ...activeExercise.sets.indexed.map((entry) {
+                final (index, s) = entry;
+                // Match by position: set 1 maps to lastSets[0], etc.
+                final lastSet = index < lastSets.length
+                    ? lastSets[index]
+                    : null;
+                return SetRow(
                   key: ValueKey(s.id),
                   set: s,
                   workoutExerciseId: weId,
                   onCompleted: () => _onSetCompleted(ref),
-                ),
-              ),
+                  lastSet: lastSet,
+                );
+              }),
             ],
 
             // Add set + fill remaining
             const SizedBox(height: 8),
-            Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextButton.icon(
-                    onPressed: () =>
-                        ref.read(activeWorkoutProvider.notifier).addSet(weId),
-                    onLongPress: () => _fillRemaining(context, ref),
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Add Set'),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  // Pre-fill from the last session's matching set position.
+                  final newSetIndex = activeExercise.sets.length;
+                  final lastSetForNewRow = newSetIndex < lastSets.length
+                      ? lastSets[newSetIndex]
+                      : null;
+                  ref
+                      .read(activeWorkoutProvider.notifier)
+                      .addSet(
+                        weId,
+                        defaultWeight: lastSetForNewRow?.weight,
+                        defaultReps: lastSetForNewRow?.reps,
+                      );
+                },
+                onLongPress: () => _fillRemaining(context, ref),
+                icon: const Icon(Icons.add, size: 20),
+                label: const Text('Add Set'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 48),
+                  side: BorderSide(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
                   ),
-                  if (activeExercise.sets.any((s) => s.isCompleted))
-                    Semantics(
-                      label: 'Fill remaining sets with last completed values',
-                      child: TextButton(
-                        onPressed: () => _fillRemaining(context, ref),
-                        child: Text(
-                          'Fill',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.primary.withValues(
-                              alpha: 0.7,
-                            ),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
+                ),
               ),
             ),
+            if (activeExercise.sets.any((s) => s.isCompleted))
+              Center(
+                child: Semantics(
+                  label: 'Fill remaining sets with last completed values',
+                  child: TextButton(
+                    onPressed: () => _fillRemaining(context, ref),
+                    child: Text(
+                      'Fill',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.7),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -545,13 +653,8 @@ class _SetColumnHeaders extends StatelessWidget {
           Expanded(
             child: Text('WEIGHT', style: style, textAlign: TextAlign.center),
           ),
-          SizedBox(
-            width: 140,
+          Expanded(
             child: Text('REPS', style: style, textAlign: TextAlign.center),
-          ),
-          SizedBox(
-            width: 48,
-            child: Text('RPE', style: style, textAlign: TextAlign.center),
           ),
           const SizedBox(width: 48),
         ],

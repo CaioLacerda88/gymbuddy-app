@@ -51,13 +51,16 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
   }
 
   /// Start a new workout session.
-  Future<void> startWorkout(String name) async {
+  ///
+  /// If [name] is omitted a date-based name is generated automatically,
+  /// e.g. "Workout — Wed Apr 2".
+  Future<void> startWorkout([String? name]) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final userId = _userId;
       final workout = await _repo.createActiveWorkout(
         userId: userId,
-        name: name,
+        name: name ?? _generateWorkoutName(),
       );
       final activeState = ActiveWorkoutState(
         workout: workout,
@@ -66,6 +69,44 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
       _saveToHive(activeState);
       return activeState;
     });
+  }
+
+  /// Rename the active workout in-memory and persist to Hive.
+  void renameWorkout(String name) {
+    final current = state.valueOrNull;
+    if (current == null) return;
+    state = AsyncData(
+      current.copyWith(workout: current.workout.copyWith(name: name)),
+    );
+    _saveToHive(state.valueOrNull!);
+  }
+
+  String _generateWorkoutName() {
+    final now = DateTime.now();
+    final weekday = [
+      'Mon',
+      'Tue',
+      'Wed',
+      'Thu',
+      'Fri',
+      'Sat',
+      'Sun',
+    ][now.weekday - 1];
+    final month = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ][now.month - 1];
+    return 'Workout \u2014 $weekday $month ${now.day}';
   }
 
   /// Add an exercise to the active workout.
@@ -115,7 +156,14 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
   }
 
   /// Add a new empty set to an exercise.
-  void addSet(String workoutExerciseId) {
+  ///
+  /// Optional [defaultWeight] and [defaultReps] pre-fill the new set
+  /// (e.g. from the previous workout session).
+  void addSet(
+    String workoutExerciseId, {
+    double? defaultWeight,
+    int? defaultReps,
+  }) {
     final current = state.value;
     if (current == null) return;
 
@@ -127,8 +175,8 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
           id: _uuid.v4(),
           workoutExerciseId: workoutExerciseId,
           setNumber: e.sets.length + 1,
-          weight: 0,
-          reps: 0,
+          weight: defaultWeight ?? 0,
+          reps: defaultReps ?? 0,
           setType: SetType.working,
           isCompleted: false,
           createdAt: DateTime.now().toUtc(),

@@ -56,6 +56,45 @@ class _WeightStepperState extends State<WeightStepper> {
     super.dispose();
   }
 
+  void _showNumberInput() {
+    final controller = TextEditingController(text: _formatWeight(widget.value));
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Enter weight'),
+        content: TextField(
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          autofocus: true,
+          decoration: const InputDecoration(suffixText: 'kg'),
+          onSubmitted: (text) {
+            final parsed = double.tryParse(text);
+            if (parsed != null && parsed >= 0) {
+              widget.onChanged(parsed);
+            }
+            Navigator.of(context).pop();
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final parsed = double.tryParse(controller.text);
+              if (parsed != null && parsed >= 0) {
+                widget.onChanged(parsed);
+              }
+              Navigator.of(context).pop();
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -72,12 +111,25 @@ class _WeightStepperState extends State<WeightStepper> {
             constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
           ),
         ),
-        SizedBox(
-          width: 64,
-          child: Text(
-            _formatWeight(widget.value),
-            textAlign: TextAlign.center,
-            style: theme.textTheme.titleMedium,
+        GestureDetector(
+          onTap: _showNumberInput,
+          child: SizedBox(
+            width: 72,
+            child: Text(
+              _formatWeight(widget.value),
+              textAlign: TextAlign.center,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                color: theme.colorScheme.primary,
+                shadows: [
+                  Shadow(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
         GestureDetector(

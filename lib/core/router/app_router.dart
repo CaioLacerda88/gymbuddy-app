@@ -14,6 +14,7 @@ import '../../features/exercises/ui/exercise_detail_screen.dart';
 import '../../features/exercises/ui/exercise_list_screen.dart';
 import '../../features/workouts/models/active_workout_state.dart';
 import '../../features/workouts/providers/workout_providers.dart';
+import '../../features/profile/ui/profile_screen.dart';
 import '../../features/workouts/ui/active_workout_screen.dart';
 import '../../features/workouts/ui/home_screen.dart';
 import '../../features/workouts/ui/workout_detail_screen.dart';
@@ -112,8 +113,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/profile',
-            builder: (context, state) =>
-                const _TabPlaceholder(title: 'Profile'),
+            builder: (context, state) => const ProfileScreen(),
           ),
         ],
       ),
@@ -194,21 +194,26 @@ class _ActiveWorkoutBanner extends ConsumerWidget {
       child: Container(
         height: 56,
         width: double.infinity,
-        color: theme.colorScheme.primary.withValues(alpha: 0.15),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.primary.withValues(alpha: 0.85),
+          border: Border(
+            top: BorderSide(color: theme.colorScheme.primary, width: 2),
+          ),
+        ),
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
           children: [
             Icon(
               Icons.fitness_center,
-              color: theme.colorScheme.primary,
+              color: theme.colorScheme.onPrimary,
               size: 20,
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 state.workout.name,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: theme.colorScheme.primary,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: theme.colorScheme.onPrimary,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -219,12 +224,12 @@ class _ActiveWorkoutBanner extends ConsumerWidget {
                 loading: () => '...',
                 error: (_, _) => '',
               ),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.primary,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onPrimary.withValues(alpha: 0.8),
               ),
             ),
             const SizedBox(width: 8),
-            Icon(Icons.chevron_right, color: theme.colorScheme.primary),
+            Icon(Icons.chevron_right, color: theme.colorScheme.onPrimary),
           ],
         ),
       ),
@@ -236,18 +241,5 @@ class _ActiveWorkoutBanner extends ConsumerWidget {
     final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
     if (d.inHours > 0) return '${d.inHours}:$m:$s';
     return '$m:$s';
-  }
-}
-
-class _TabPlaceholder extends StatelessWidget {
-  const _TabPlaceholder({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(title, style: Theme.of(context).textTheme.headlineMedium),
-    );
   }
 }

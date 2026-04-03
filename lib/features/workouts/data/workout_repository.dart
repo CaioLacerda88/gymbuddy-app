@@ -107,6 +107,9 @@ class WorkoutRepository extends BaseRepository {
   }
 
   /// Get paginated workout history (finished workouts only).
+  ///
+  /// Joins exercise names in a single query so each returned [Workout] has
+  /// [Workout.exerciseSummary] pre-populated (e.g. "Bench Press, Squat +2").
   Future<List<Workout>> getWorkoutHistory(
     String userId, {
     int limit = 20,
@@ -114,14 +117,59 @@ class WorkoutRepository extends BaseRepository {
   }) {
     return mapException(() async {
       final data = await _workouts
-          .select()
+          .select('*, workout_exercises(order, exercise:exercises(name))')
           .eq('user_id', userId)
           .eq('is_active', false)
           .not('finished_at', 'is', null)
           .order('finished_at', ascending: false)
           .range(offset, offset + limit - 1);
-      return data.map(Workout.fromJson).toList();
+      return data.map(_workoutFromHistoryRow).toList();
     });
+  }
+
+  /// Maps a history query row (with joined workout_exercises) to a [Workout]
+  /// with [Workout.exerciseSummary] populated.
+  static Workout _workoutFromHistoryRow(Map<String, dynamic> row) {
+    final workout = Workout.fromJson(row);
+    final summary = buildExerciseSummary(
+      row['workout_exercises'] as List<dynamic>? ?? [],
+    );
+    return workout.copyWith(exerciseSummary: summary.isEmpty ? null : summary);
+  }
+
+  /// Builds a summary string like "Bench Press, Squat, Deadlift +2" from
+  /// a list of joined workout_exercise rows that each contain an `exercise`
+  /// sub-object with a `name` field.
+  ///
+  /// Exercises are sorted by their `order` field before naming.
+  static String buildExerciseSummary(List<dynamic> workoutExercises) {
+    if (workoutExercises.isEmpty) return '';
+
+    // Sort by `order` to list exercises in the order they were performed.
+    final sorted = [...workoutExercises]
+      ..sort((a, b) {
+        final aOrder = (a as Map<String, dynamic>)['order'] as int? ?? 0;
+        final bOrder = (b as Map<String, dynamic>)['order'] as int? ?? 0;
+        return aOrder.compareTo(bOrder);
+      });
+
+    // Collect exercise names, skipping any rows with missing join data.
+    final names = <String>[];
+    for (final item in sorted) {
+      final exercise = (item as Map<String, dynamic>)['exercise'];
+      if (exercise == null) continue;
+      final name = (exercise as Map<String, dynamic>)['name'] as String?;
+      if (name != null && name.isNotEmpty) names.add(name);
+    }
+
+    if (names.isEmpty) return '';
+
+    const maxShown = 3;
+    if (names.length <= maxShown) return names.join(', ');
+
+    final shown = names.take(maxShown).join(', ');
+    final remaining = names.length - maxShown;
+    return '$shown +$remaining';
   }
 
   /// Get full workout detail with exercises and sets, parsed into typed data.

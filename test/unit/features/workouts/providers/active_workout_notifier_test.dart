@@ -1390,6 +1390,111 @@ void main() {
     });
   });
 
+  // ----------------------------------------------- startWorkout auto-name
+  group('ActiveWorkoutNotifier — startWorkout auto-name', () {
+    test('auto-generates a date-based name when no arg is provided', () async {
+      final (:container, :mockRepo, :mockStorage, :mockAuth) =
+          makeAsyncContainer(null);
+      addTearDown(container.dispose);
+
+      final createdWorkout = makeWorkout(id: 'workout-auto');
+      when(() => mockAuth.currentUser).thenReturn(fakeUser());
+      when(
+        () => mockRepo.createActiveWorkout(
+          userId: any(named: 'userId'),
+          name: any(named: 'name'),
+        ),
+      ).thenAnswer((_) async => createdWorkout);
+
+      await container.read(activeWorkoutProvider.future);
+      await container.read(activeWorkoutProvider.notifier).startWorkout();
+
+      final captured = verify(
+        () => mockRepo.createActiveWorkout(
+          userId: any(named: 'userId'),
+          name: captureAny(named: 'name'),
+        ),
+      ).captured;
+      final name = captured.first as String;
+      // e.g. "Workout — Wed Apr 2"
+      expect(name, startsWith('Workout \u2014 '));
+      expect(name.length, greaterThan('Workout \u2014 '.length));
+    });
+
+    test('uses provided name when arg is given', () async {
+      final (:container, :mockRepo, :mockStorage, :mockAuth) =
+          makeAsyncContainer(null);
+      addTearDown(container.dispose);
+
+      final createdWorkout = makeWorkout(id: 'workout-named');
+      when(() => mockAuth.currentUser).thenReturn(fakeUser());
+      when(
+        () => mockRepo.createActiveWorkout(
+          userId: any(named: 'userId'),
+          name: any(named: 'name'),
+        ),
+      ).thenAnswer((_) async => createdWorkout);
+
+      await container.read(activeWorkoutProvider.future);
+      await container
+          .read(activeWorkoutProvider.notifier)
+          .startWorkout('Push Day');
+
+      verify(
+        () => mockRepo.createActiveWorkout(
+          userId: any(named: 'userId'),
+          name: 'Push Day',
+        ),
+      ).called(1);
+    });
+  });
+
+  // ----------------------------------------------- renameWorkout
+  group('ActiveWorkoutNotifier — renameWorkout', () {
+    test('updates the workout name in state', () async {
+      final initial = makeState();
+      final container = makeContainer(initial);
+      addTearDown(container.dispose);
+      await container.read(activeWorkoutProvider.future);
+
+      container.read(activeWorkoutProvider.notifier).renameWorkout('New Name');
+
+      final result = container.read(activeWorkoutProvider).value!;
+      expect(result.workout.name, 'New Name');
+    });
+
+    test('persists to Hive after rename', () async {
+      final initial = makeState();
+      final mockStorage = MockWorkoutLocalStorage();
+      when(() => mockStorage.loadActiveWorkout()).thenReturn(initial);
+      when(() => mockStorage.saveActiveWorkout(any())).thenAnswer((_) async {});
+
+      final container = ProviderContainer(
+        overrides: [
+          workoutRepositoryProvider.overrideWithValue(MockWorkoutRepository()),
+          workoutLocalStorageProvider.overrideWithValue(mockStorage),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(activeWorkoutProvider.future);
+
+      container.read(activeWorkoutProvider.notifier).renameWorkout('Leg Day');
+
+      await Future<void>.delayed(Duration.zero);
+      verify(() => mockStorage.saveActiveWorkout(any())).called(greaterThan(0));
+    });
+
+    test('does nothing when state is null', () {
+      final container = makeContainer(null);
+      addTearDown(container.dispose);
+
+      // Should not throw.
+      container.read(activeWorkoutProvider.notifier).renameWorkout('Name');
+
+      expect(container.read(activeWorkoutProvider).value, isNull);
+    });
+  });
+
   // --------------------------------------------------------- incompleteSetsCount
   group('incompleteSetsCount', () {
     test('returns 0 when state is null (no active workout)', () async {
@@ -1472,5 +1577,78 @@ void main() {
 
       expect(notifier.incompleteSetsCount, 1);
     });
+  });
+
+  // ----------------------------------------------------------------- addSet with defaults
+  group('ActiveWorkoutNotifier — addSet with pre-fill defaults', () {
+    test('new set uses defaultWeight and defaultReps when provided', () async {
+      final initial = makeState(exerciseCount: 1, setsPerExercise: 0);
+      final container = makeContainer(initial);
+      addTearDown(container.dispose);
+      await container.read(activeWorkoutProvider.future);
+
+      final weId = initial.exercises.first.workoutExercise.id;
+      container
+          .read(activeWorkoutProvider.notifier)
+          .addSet(weId, defaultWeight: 80.0, defaultReps: 6);
+
+      final newSet = container
+          .read(activeWorkoutProvider)
+          .value!
+          .exercises
+          .first
+          .sets
+          .first;
+      expect(newSet.weight, 80.0);
+      expect(newSet.reps, 6);
+    });
+
+    test(
+      'new set weight defaults to 0 when defaultWeight is not provided',
+      () async {
+        final initial = makeState(exerciseCount: 1, setsPerExercise: 0);
+        final container = makeContainer(initial);
+        addTearDown(container.dispose);
+        await container.read(activeWorkoutProvider.future);
+
+        final weId = initial.exercises.first.workoutExercise.id;
+        container.read(activeWorkoutProvider.notifier).addSet(weId);
+
+        final newSet = container
+            .read(activeWorkoutProvider)
+            .value!
+            .exercises
+            .first
+            .sets
+            .first;
+        expect(newSet.weight, 0);
+        expect(newSet.reps, 0);
+      },
+    );
+
+    test(
+      'new set uses only defaultWeight when defaultReps is omitted',
+      () async {
+        final initial = makeState(exerciseCount: 1, setsPerExercise: 0);
+        final container = makeContainer(initial);
+        addTearDown(container.dispose);
+        await container.read(activeWorkoutProvider.future);
+
+        final weId = initial.exercises.first.workoutExercise.id;
+        container
+            .read(activeWorkoutProvider.notifier)
+            .addSet(weId, defaultWeight: 60.0);
+
+        final newSet = container
+            .read(activeWorkoutProvider)
+            .value!
+            .exercises
+            .first
+            .sets
+            .first;
+        expect(newSet.weight, 60.0);
+        expect(newSet.reps, 0);
+      },
+    );
   });
 }

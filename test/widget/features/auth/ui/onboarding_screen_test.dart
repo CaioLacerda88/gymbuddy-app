@@ -3,11 +3,30 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
 import 'package:gymbuddy_app/features/auth/ui/onboarding_screen.dart';
+import 'package:gymbuddy_app/features/profile/models/profile.dart';
+import 'package:gymbuddy_app/features/profile/providers/profile_providers.dart';
+
+// Minimal stub to avoid hitting Supabase during widget tests.
+class _FakeProfileNotifier extends ProfileNotifier {
+  @override
+  Future<Profile?> build() async => null;
+
+  @override
+  Future<void> saveOnboardingProfile({
+    required String displayName,
+    required String fitnessLevel,
+  }) async {
+    // no-op in tests
+  }
+}
 
 void main() {
   Widget buildTestWidget({List<Override> overrides = const []}) {
     return ProviderScope(
-      overrides: overrides,
+      overrides: [
+        profileProvider.overrideWith(_FakeProfileNotifier.new),
+        ...overrides,
+      ],
       child: MaterialApp(theme: AppTheme.dark, home: const OnboardingScreen()),
     );
   }
@@ -42,80 +61,89 @@ void main() {
       expect(find.text('Advanced'), findsOneWidget);
     });
 
-    testWidgets('navigates to workout choice page', (tester) async {
+    testWidgets("profile page shows LET'S GO button", (tester) async {
       await tester.pumpWidget(buildTestWidget());
 
-      // Page 1 -> Page 2
       await tester.tap(find.text('GET STARTED'));
       await tester.pumpAndSettle();
 
-      // Page 2 -> Page 3
-      await tester.tap(find.text('NEXT'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Your first workout'), findsOneWidget);
-      expect(find.text('Full Body Starter'), findsOneWidget);
-      expect(find.text('Start Blank'), findsOneWidget);
-      expect(find.text('Browse Exercises'), findsOneWidget);
+      expect(find.text("LET'S GO"), findsOneWidget);
     });
 
-    testWidgets('LET\'S GO button is disabled until choice is made', (
+    testWidgets('progress bar shows 2 indicators', (tester) async {
+      await tester.pumpWidget(buildTestWidget());
+
+      // Just verify we can navigate to both pages without hitting a third.
+      expect(find.text('Track every rep,\nevery time'), findsOneWidget);
+
+      await tester.tap(find.text('GET STARTED'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Set up your profile'), findsOneWidget);
+    });
+
+    testWidgets('profile page is the last page — no NEXT button on page 2', (
       tester,
     ) async {
       await tester.pumpWidget(buildTestWidget());
 
-      // Navigate to page 3
       await tester.tap(find.text('GET STARTED'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('NEXT'));
-      await tester.pumpAndSettle();
 
-      // Find the LET'S GO button - it should be disabled (onPressed is null)
-      final button = tester.widget<ElevatedButton>(
-        find.widgetWithText(ElevatedButton, "LET'S GO"),
-      );
-      expect(button.onPressed, isNull);
+      // Page 2 has "LET'S GO" as the final CTA, not "NEXT".
+      expect(find.text("LET'S GO"), findsOneWidget);
+      expect(find.text('NEXT'), findsNothing);
     });
 
-    testWidgets('LET\'S GO button enables after selecting a choice', (
+    testWidgets('display name field accepts text input', (tester) async {
+      await tester.pumpWidget(buildTestWidget());
+
+      await tester.tap(find.text('GET STARTED'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'Alice');
+      expect(find.text('Alice'), findsOneWidget);
+    });
+
+    testWidgets('selecting a fitness level chip marks it as selected', (
       tester,
     ) async {
       await tester.pumpWidget(buildTestWidget());
 
-      // Navigate to page 3
       await tester.tap(find.text('GET STARTED'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('NEXT'));
-      await tester.pumpAndSettle();
 
-      // Tap a workout choice
-      await tester.tap(find.text('Full Body Starter'));
+      await tester.tap(find.text('Intermediate'));
       await tester.pump();
 
-      // Button should now be enabled
-      final button = tester.widget<ElevatedButton>(
-        find.widgetWithText(ElevatedButton, "LET'S GO"),
+      final chip = tester.widget<ChoiceChip>(
+        find.widgetWithText(ChoiceChip, 'Intermediate'),
       );
-      expect(button.onPressed, isNotNull);
+      expect(chip.selected, isTrue);
     });
 
-    testWidgets('progress bar advances through pages', (tester) async {
+    testWidgets('only one fitness level chip can be selected at a time', (
+      tester,
+    ) async {
       await tester.pumpWidget(buildTestWidget());
 
-      // On page 1, first bar should be active (primary color)
-      // Just verify the progress indicators exist
-      expect(find.byType(Container), findsWidgets);
-
-      // Navigate to page 2
       await tester.tap(find.text('GET STARTED'));
       await tester.pumpAndSettle();
 
-      // Navigate to page 3
-      await tester.tap(find.text('NEXT'));
-      await tester.pumpAndSettle();
+      // Select Beginner first, then Intermediate.
+      await tester.tap(find.text('Beginner'));
+      await tester.pump();
+      await tester.tap(find.text('Intermediate'));
+      await tester.pump();
 
-      // All three pages visited - verify we're on page 3
-      expect(find.text('Your first workout'), findsOneWidget);
+      final beginnerChip = tester.widget<ChoiceChip>(
+        find.widgetWithText(ChoiceChip, 'Beginner'),
+      );
+      final intermediateChip = tester.widget<ChoiceChip>(
+        find.widgetWithText(ChoiceChip, 'Intermediate'),
+      );
+      expect(beginnerChip.selected, isFalse);
+      expect(intermediateChip.selected, isTrue);
     });
   });
 }

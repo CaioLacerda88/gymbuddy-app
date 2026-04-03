@@ -103,6 +103,136 @@ void main() {
       });
     });
 
+    group('tap-to-type', () {
+      testWidgets('tapping center number opens input dialog', (tester) async {
+        await tester.pumpWidget(
+          buildTestWidget(RepsStepper(value: 10, onChanged: (_) {})),
+        );
+
+        // Tap the center number text.
+        await tester.tap(find.text('10'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Enter reps'), findsOneWidget);
+        expect(find.byType(TextField), findsOneWidget);
+      });
+
+      testWidgets('submitting valid value calls onChanged', (tester) async {
+        int? emitted;
+        await tester.pumpWidget(
+          buildTestWidget(
+            RepsStepper(value: 10, onChanged: (v) => emitted = v),
+          ),
+        );
+
+        await tester.tap(find.text('10'));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextField), '15');
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
+
+        expect(emitted, 15);
+      });
+
+      testWidgets('cancelling dialog does not call onChanged', (tester) async {
+        int? emitted;
+        await tester.pumpWidget(
+          buildTestWidget(
+            RepsStepper(value: 10, onChanged: (v) => emitted = v),
+          ),
+        );
+
+        await tester.tap(find.text('10'));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Cancel'));
+        await tester.pumpAndSettle();
+
+        expect(emitted, isNull);
+      });
+    });
+
+    group('tap-to-type edge cases', () {
+      testWidgets('entering non-numeric text does not call onChanged', (
+        tester,
+      ) async {
+        int? emitted;
+        await tester.pumpWidget(
+          buildTestWidget(
+            RepsStepper(value: 10, onChanged: (v) => emitted = v),
+          ),
+        );
+
+        await tester.tap(find.text('10'));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextField), 'abc');
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
+
+        expect(emitted, isNull);
+      });
+
+      testWidgets('entering empty string does not call onChanged', (
+        tester,
+      ) async {
+        int? emitted;
+        await tester.pumpWidget(
+          buildTestWidget(
+            RepsStepper(value: 10, onChanged: (v) => emitted = v),
+          ),
+        );
+
+        await tester.tap(find.text('10'));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextField), '');
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
+
+        expect(emitted, isNull);
+      });
+
+      testWidgets('entering negative number does not call onChanged', (
+        tester,
+      ) async {
+        int? emitted;
+        await tester.pumpWidget(
+          buildTestWidget(
+            RepsStepper(value: 10, onChanged: (v) => emitted = v),
+          ),
+        );
+
+        await tester.tap(find.text('10'));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextField), '-5');
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
+
+        expect(emitted, isNull);
+      });
+
+      testWidgets('entering zero calls onChanged with 0', (tester) async {
+        int? emitted;
+        await tester.pumpWidget(
+          buildTestWidget(
+            RepsStepper(value: 10, onChanged: (v) => emitted = v),
+          ),
+        );
+
+        await tester.tap(find.text('10'));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextField), '0');
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
+
+        expect(emitted, 0);
+      });
+    });
+
     group('custom increment', () {
       testWidgets('uses default increment of 1 when not specified', (
         tester,

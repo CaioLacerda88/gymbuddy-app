@@ -84,6 +84,22 @@ class RestTimerNotifier extends Notifier<RestTimerState?> {
     state = current.copyWith(remainingSeconds: next);
   }
 
+  /// Adjust the total timer duration by [deltaSeconds] (+30 or -30).
+  ///
+  /// Clamps the new total between 30 and 600 seconds. Recalculates remaining
+  /// based on elapsed time so the progress ring stays consistent.
+  void adjustTime(int deltaSeconds) {
+    final current = state;
+    if (current == null) return;
+    final elapsed = current.totalSeconds - current.remainingSeconds;
+    final newTotal = (current.totalSeconds + deltaSeconds).clamp(30, 600);
+    final newRemaining = (newTotal - elapsed).clamp(0, newTotal);
+    state = current.copyWith(
+      totalSeconds: newTotal,
+      remainingSeconds: newRemaining,
+    );
+  }
+
   /// Skip the current timer (dismisses immediately).
   void skip() {
     _timer?.cancel();
