@@ -112,6 +112,7 @@ class _RepsStepperState extends State<RepsStepper> {
               widget.value.toString(),
               textAlign: TextAlign.center,
               style: theme.textTheme.headlineSmall?.copyWith(
+                fontSize: 28,
                 fontWeight: FontWeight.w800,
                 color: theme.colorScheme.primary,
                 shadows: [

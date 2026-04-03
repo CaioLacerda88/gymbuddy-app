@@ -119,6 +119,7 @@ class _WeightStepperState extends State<WeightStepper> {
               _formatWeight(widget.value),
               textAlign: TextAlign.center,
               style: theme.textTheme.headlineSmall?.copyWith(
+                fontSize: 28,
                 fontWeight: FontWeight.w800,
                 color: theme.colorScheme.primary,
                 shadows: [

@@ -44,7 +44,9 @@ class ProfileNotifier extends AsyncNotifier<Profile?> {
     if (user == null) return;
     final newUnit = current.weightUnit == 'kg' ? 'lbs' : 'kg';
     final repo = ref.read(profileRepositoryProvider);
-    await repo.updateWeightUnit(user.id, newUnit);
-    state = AsyncData(current.copyWith(weightUnit: newUnit));
+    state = await AsyncValue.guard(() async {
+      await repo.updateWeightUnit(user.id, newUnit);
+      return current.copyWith(weightUnit: newUnit);
+    });
   }
 }

@@ -172,8 +172,9 @@ class _SheetBodyState extends ConsumerState<_SheetBody> {
                             const SizedBox(height: 16),
                             FilledButton.icon(
                               onPressed: () {
+                                final router = GoRouter.of(context);
                                 Navigator.pop(context);
-                                context.push('/exercises/create');
+                                router.push('/exercises/create');
                               },
                               icon: const Icon(Icons.add),
                               label: Text(
