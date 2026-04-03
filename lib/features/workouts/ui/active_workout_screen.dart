@@ -617,13 +617,8 @@ class _SetColumnHeaders extends StatelessWidget {
           Expanded(
             child: Text('WEIGHT', style: style, textAlign: TextAlign.center),
           ),
-          SizedBox(
-            width: 140,
+          Expanded(
             child: Text('REPS', style: style, textAlign: TextAlign.center),
-          ),
-          SizedBox(
-            width: 48,
-            child: Text('RPE', style: style, textAlign: TextAlign.center),
           ),
           const SizedBox(width: 48),
         ],

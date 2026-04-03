@@ -161,17 +161,12 @@ class SetRow extends ConsumerWidget {
             ),
 
             // Reps stepper
-            RepsStepper(
-              value: set.reps ?? 0,
-              onChanged: (v) =>
-                  notifier.updateSet(workoutExerciseId, set.id, reps: v),
-            ),
-
-            // RPE indicator
-            _RpeIndicator(
-              rpe: set.rpe,
-              onChanged: (value) =>
-                  notifier.updateSet(workoutExerciseId, set.id, rpe: value),
+            Expanded(
+              child: RepsStepper(
+                value: set.reps ?? 0,
+                onChanged: (v) =>
+                    notifier.updateSet(workoutExerciseId, set.id, reps: v),
+              ),
             ),
 
             // Completion checkbox
@@ -204,6 +199,9 @@ class SetRow extends ConsumerWidget {
 }
 
 /// Compact RPE indicator that opens a popup picker on tap.
+///
+/// Retained for future re-enablement when RPE tracking is added back.
+// ignore: unused_element
 class _RpeIndicator extends StatelessWidget {
   const _RpeIndicator({required this.rpe, required this.onChanged});
 

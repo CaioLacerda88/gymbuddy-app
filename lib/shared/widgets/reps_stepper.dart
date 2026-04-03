@@ -50,6 +50,44 @@ class _RepsStepperState extends State<RepsStepper> {
     super.dispose();
   }
 
+  void _showNumberInput() {
+    final controller = TextEditingController(text: widget.value.toString());
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Enter reps'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          autofocus: true,
+          onSubmitted: (text) {
+            final parsed = int.tryParse(text);
+            if (parsed != null && parsed >= 0) {
+              widget.onChanged(parsed);
+            }
+            Navigator.of(context).pop();
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final parsed = int.tryParse(controller.text);
+              if (parsed != null && parsed >= 0) {
+                widget.onChanged(parsed);
+              }
+              Navigator.of(context).pop();
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -66,12 +104,24 @@ class _RepsStepperState extends State<RepsStepper> {
             constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
           ),
         ),
-        SizedBox(
-          width: 48,
-          child: Text(
-            widget.value.toString(),
-            textAlign: TextAlign.center,
-            style: theme.textTheme.titleMedium,
+        GestureDetector(
+          onTap: _showNumberInput,
+          child: SizedBox(
+            width: 56,
+            child: Text(
+              widget.value.toString(),
+              textAlign: TextAlign.center,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: theme.colorScheme.primary,
+                shadows: [
+                  Shadow(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
         GestureDetector(
