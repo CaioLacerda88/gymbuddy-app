@@ -296,93 +296,31 @@ Makefile                        # gen, gen-watch, analyze, format, test, ci targ
 
 **Tests:** 31 tests covering ExerciseImage widget (null/empty/provided URL, fallback sizing, borderRadius), detail screen (image row, single image, collapse, semantics, fullscreen open/close, loading, error states), and model serialization with image fields.
 
-### Step 5: Workout Logging
+### Step 5: Workout Logging (DONE)
 
-**Architecture decisions (resolve before coding):**
-- Use a single `ActiveWorkoutNotifier` holding the full workout state as a Freezed model. For ~5-8 exercises with ~4 sets each, rebuild cost is negligible.
-- Serialize to Hive as JSON (`jsonEncode` the Freezed model's `toJson()`). No custom Hive adapters needed.
-- Store `schemaVersion` int in the Hive box alongside workout data. On version mismatch, discard and log.
-- Final save: use a Postgres RPC function (`save_workout`) for atomic insert of workout + exercises + sets in a single transaction.
+Shipped across 4 PRs (#12–#15) in sub-steps 5a–5d.
 
-**Database migration** (new migration file):
-- Create `save_workout(p_workout jsonb, p_exercises jsonb, p_sets jsonb)` Postgres RPC function (SECURITY DEFINER, single transaction)
+**Architecture:**
+- Single `ActiveWorkoutNotifier` (AsyncNotifier<ActiveWorkoutState?>) as core state machine
+- Hive persistence via `jsonEncode(state.toJson())` with schemaVersion, fire-and-forget saves
+- Atomic save via `save_workout` Postgres RPC (SECURITY DEFINER, single transaction)
+- `ref.read(authRepositoryProvider).currentUser` for testable auth access (not Supabase singleton)
 
-**Models** for Workout, WorkoutExercise, ExerciseSet with Freezed:
-- ExerciseSet includes `set_type` (working/warmup/dropset/failure, default working)
-- Weight field accepts decimals (one decimal place, e.g., 22.5)
-- Validation: weight non-negative, max 999.9, reps non-negative
+**Sub-steps delivered:**
 
-**Active workout state** (Riverpod AsyncNotifier managing nested state):
-- Workout → WorkoutExercise[] → Set[]
-- Auto-save to Hive as JSON after every state change (fire-and-forget, don't block UI)
-- On app startup: check Hive for unfinished workout → show "Resume or discard?" dialog
-- Hive corruption fallback: if Hive data is unreadable or schema version mismatch, log error and start fresh (don't crash)
-- Only one active workout allowed per user — check `is_active` flag before starting
-- Auth expiry handling: listen to auth state during active workout. On `signedOut`, persist to Hive and show "Session expired" banner. Don't silently lose data.
+**5a — Data layer (PR #11):** Freezed models (Workout, WorkoutExercise, ExerciseSet, ActiveWorkoutState), SetType/WeightUnit enums, WorkoutRepository (saveWorkout, getActiveWorkout, getWorkoutHistory, getWorkoutDetail, getLastWorkoutSets, discardWorkout), WorkoutLocalStorage (Hive), save_workout RPC migration, test factories.
 
-**Last workout reference:**
-- Batch query for all exercises in one call (avoid N+1): single query with `exercise_id = ANY($ids)` grouped by exercise, ordered by `finished_at DESC`
-- Display inline while logging (previous weight/reps per exercise)
+**5b — Active workout screen (PR #12):** ActiveWorkoutNotifier with full lifecycle (start, add/remove exercise, add/update/complete/delete set, resume, discard). WeightStepper/RepsStepper with long-press repeat and 48dp targets. ExercisePickerSheet (DraggableScrollableSheet). Active workout screen with Stack+ModalBarrier loading overlay. Resume/discard dialogs. ElapsedTimer provider. LastWorkoutSets provider (String key with sort+join for stable caching).
 
-**Weight unit support:**
-- Display and input in user's chosen unit (kg/lbs from profile `weight_unit`)
-- Weight input stepper with configurable increment (default 2.5kg / 5lbs)
+**5c — Rest timer & polish (PR #13):** RestTimerNotifier (plain class state, not Freezed) with start/skip/stop. Full-screen overlay with 72sp countdown, circular progress, haptic on complete. Side effects via `ref.listenManual` in initState. Copy last set, fill remaining sets, reorder exercises (up/down buttons), swap exercise. Set type cycling (long-press), RPE popup picker. Swipe-to-delete with undo snackbar. Haptic feedback throughout.
 
-**Rest timer:**
-- Countdown timer per exercise (configurable rest_seconds)
-- Full-screen takeover with large countdown numbers (72sp+), circular progress ring
-- Screen stays awake during timer (`wakelock` package)
-- Timer completion: device vibration (3 short pulses) + optional sound alert
-- Timer preserved when navigating between exercises (don't reset on exercise switch)
-- After timer ends, auto-focus next set input
+**UX fix (PR #14):** Consolidated set number + type badge into 48dp touch target. RPE expanded to 48dp. Visible swap_horiz icon on exercise cards.
 
-**Set logging UX:**
-- Use scroll-wheel/stepper pickers for weight and reps (NOT text fields)
-- Pre-fill from last workout's values for each exercise
-- "Copy last set" button: duplicates previous set's weight/reps into current set
-- "Fill remaining sets" long-press: fills all empty sets with same values
-- Set type selector: working (default), warmup, dropset, failure — warmup sets excluded from PR calculations
-- RPE input: hidden by default, tap icon to expand per set (reduce clutter)
-- Swipe right on set row = mark as complete; swipe left = delete with 5-second undo snackbar
-- Minimum touch targets: 48x48dp interactive, 56x56dp for primary actions
+**5d — Finish flow & history (PR #15):** FinishWorkoutDialog with incomplete sets warning and notes. WorkoutHistoryNotifier with pagination (loadMore with race condition guard, refresh via invalidateSelf). Workout history screen with pull-to-refresh and infinite scroll. Workout detail screen (read-only, CustomScrollView). HomeScreen with "Start Workout" button. Active workout banner in bottom nav (56dp, elapsed timer). WorkoutFormatters utility.
 
-**Exercise picker** (bottom sheet, 70% screen height):
-- `ExercisePickerSheet` calling exercise repository methods (shared from Step 4)
-- Recent exercises shown first, search bar at top of sheet
-- "Swap exercise" action: replaces exercise but preserves set structure
+**Tests (328 total):** 51 unit tests (active workout notifier, rest timer, formatters), 45 widget tests (set row, steppers, rest timer overlay, finish dialog). Covers state transitions, edge cases, accessibility semantics.
 
-**Reorder exercises:** Dedicated reorder mode with large up/down arrow buttons (56dp), NOT freeform drag
-
-**Elapsed timer:** Show in workout screen header. Format: "47m" for <1h, "1h 23m" for 1h+
-
-**Haptic feedback:**
-- Set completed: `HapticFeedback.mediumImpact()`
-- Destructive actions: `HapticFeedback.lightImpact()`
-
-**Discard workout:** Require confirmation dialog showing workout duration
-
-**Finish workout:**
-- Save via `save_workout` RPC (atomic transaction)
-- Confirm if sets are incomplete: "You have 3 incomplete sets — finish anyway?"
-- Calculate duration, clear Hive cache, set `is_active = false`
-- `finishWorkout()` returns saved workout data for future PR detection. Leave `// TODO: PR detection (Step 7)` placeholder.
-- Notes field on finish screen (workout-level notes)
-
-**Empty workout state:** Full-screen prompt "Add your first exercise" with picker accessible
-
-**Active workout nav indicator:** Persistent mini-bar above bottom nav when active: workout duration + "Return to Workout" (56dp tall)
-
-**Workout history list** (basic version, ships with Step 5):
-- List of past workouts: date, name, exercise count, duration, total volume
-- Tappable for full workout detail (exercises, sets, weights)
-- Empty state: "Start your first workout" with CTA
-- Pull-to-refresh
-
-**E2E smoke test:** Playwright test for start workout → add exercises → log sets → finish → verify in history
-
-**Tests:**
-- Unit: active workout state transitions, Hive persistence/recovery (including schema version mismatch), last-workout batch query, rest timer logic, concurrent session prevention, atomic save RPC, set type filtering, weight unit display
-- Widget: set logging (stepper/wheel input, copy set, fill remaining), exercise reorder (arrow buttons), rest timer UI (full-screen, vibration), crash recovery dialog, discard confirmation, finish confirmation with incomplete sets, empty workout state, active workout nav indicator
+**Deferred:** Offline queue sync worker (Hive queue exists but no background sync), wakelock during rest timer, auth expiry handling during workout, auto-focus next set after timer.
 
 ### Step 6: Workout Templates
 - Save current workout as template: `WorkoutTemplate.fromWorkout(Workout)` factory maps workout exercises to JSONB structure
