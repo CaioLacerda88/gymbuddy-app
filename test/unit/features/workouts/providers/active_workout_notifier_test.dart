@@ -970,4 +970,423 @@ void main() {
       verifyNever(() => mockStorage.clearActiveWorkout());
     });
   });
+
+  // ================================================================
+  // Step 5c — copyLastSet, fillRemainingSets, reorderExercise, swapExercise
+  // ================================================================
+
+  group('ActiveWorkoutNotifier — copyLastSet', () {
+    test('copies weight and reps from the previous set', () async {
+      final initial = makeState(exerciseCount: 1, setsPerExercise: 2);
+      final container = makeContainer(initial);
+      addTearDown(container.dispose);
+      await container.read(activeWorkoutProvider.future);
+
+      final weId = initial.exercises.first.workoutExercise.id;
+      // Prime the first set with known values via updateSet so we can assert.
+      final firstSetId = initial.exercises.first.sets[0].id;
+      final secondSetId = initial.exercises.first.sets[1].id;
+
+      container
+          .read(activeWorkoutProvider.notifier)
+          .updateSet(weId, firstSetId, weight: 80.0, reps: 8);
+
+      container
+          .read(activeWorkoutProvider.notifier)
+          .copyLastSet(weId, secondSetId);
+
+      final sets = container
+          .read(activeWorkoutProvider)
+          .value!
+          .exercises
+          .first
+          .sets;
+      expect(sets[1].weight, 80.0);
+      expect(sets[1].reps, 8);
+    });
+
+    test('is a no-op when target set is the first set (index 0)', () async {
+      final initial = makeState(exerciseCount: 1, setsPerExercise: 2);
+      final container = makeContainer(initial);
+      addTearDown(container.dispose);
+      await container.read(activeWorkoutProvider.future);
+
+      final weId = initial.exercises.first.workoutExercise.id;
+      final firstSetId = initial.exercises.first.sets[0].id;
+      final originalWeight = initial.exercises.first.sets[0].weight;
+      final originalReps = initial.exercises.first.sets[0].reps;
+
+      container
+          .read(activeWorkoutProvider.notifier)
+          .copyLastSet(weId, firstSetId);
+
+      final sets = container
+          .read(activeWorkoutProvider)
+          .value!
+          .exercises
+          .first
+          .sets;
+      // First set should be unchanged because there is no previous set.
+      expect(sets[0].weight, originalWeight);
+      expect(sets[0].reps, originalReps);
+    });
+
+    test('is a no-op when setId does not exist', () async {
+      final initial = makeState(exerciseCount: 1, setsPerExercise: 2);
+      final container = makeContainer(initial);
+      addTearDown(container.dispose);
+      await container.read(activeWorkoutProvider.future);
+
+      final weId = initial.exercises.first.workoutExercise.id;
+      final before = container
+          .read(activeWorkoutProvider)
+          .value!
+          .exercises
+          .first
+          .sets;
+
+      container
+          .read(activeWorkoutProvider.notifier)
+          .copyLastSet(weId, 'nonexistent-set-id');
+
+      final after = container
+          .read(activeWorkoutProvider)
+          .value!
+          .exercises
+          .first
+          .sets;
+      // Sets are unchanged.
+      for (var i = 0; i < before.length; i++) {
+        expect(after[i].weight, before[i].weight);
+        expect(after[i].reps, before[i].reps);
+      }
+    });
+
+    test('only modifies weight and reps, not setType or isCompleted', () async {
+      final initial = makeState(exerciseCount: 1, setsPerExercise: 2);
+      final container = makeContainer(initial);
+      addTearDown(container.dispose);
+      await container.read(activeWorkoutProvider.future);
+
+      final weId = initial.exercises.first.workoutExercise.id;
+      final secondSetId = initial.exercises.first.sets[1].id;
+      final originalSetType = initial.exercises.first.sets[1].setType;
+      final originalIsCompleted = initial.exercises.first.sets[1].isCompleted;
+
+      container
+          .read(activeWorkoutProvider.notifier)
+          .copyLastSet(weId, secondSetId);
+
+      final second = container
+          .read(activeWorkoutProvider)
+          .value!
+          .exercises
+          .first
+          .sets[1];
+      expect(second.setType, originalSetType);
+      expect(second.isCompleted, originalIsCompleted);
+    });
+  });
+
+  group('ActiveWorkoutNotifier — fillRemainingSets', () {
+    test('fills incomplete sets after the last completed set', () async {
+      // Build: 3 sets where set 1 is completed (factory default), sets 2 & 3
+      // are added fresh (isCompleted: false).
+      final initial = makeState(exerciseCount: 1, setsPerExercise: 1);
+      final container = makeContainer(initial);
+      addTearDown(container.dispose);
+      await container.read(activeWorkoutProvider.future);
+
+      final weId = initial.exercises.first.workoutExercise.id;
+
+      // Give the completed set known weight/reps.
+      final completedSetId = initial.exercises.first.sets[0].id;
+      container
+          .read(activeWorkoutProvider.notifier)
+          .updateSet(weId, completedSetId, weight: 100.0, reps: 5);
+
+      // Add two more sets (isCompleted: false by default from addSet).
+      container.read(activeWorkoutProvider.notifier).addSet(weId);
+      container.read(activeWorkoutProvider.notifier).addSet(weId);
+
+      container.read(activeWorkoutProvider.notifier).fillRemainingSets(weId);
+
+      final sets = container
+          .read(activeWorkoutProvider)
+          .value!
+          .exercises
+          .first
+          .sets;
+      expect(sets[1].weight, 100.0);
+      expect(sets[1].reps, 5);
+      expect(sets[2].weight, 100.0);
+      expect(sets[2].reps, 5);
+    });
+
+    test('is a no-op when no sets are completed', () async {
+      // Start with an empty exercise, add two sets (both isCompleted: false).
+      final initial = makeState(exerciseCount: 1, setsPerExercise: 0);
+      final container = makeContainer(initial);
+      addTearDown(container.dispose);
+      await container.read(activeWorkoutProvider.future);
+
+      final weId = initial.exercises.first.workoutExercise.id;
+      container.read(activeWorkoutProvider.notifier).addSet(weId);
+      container.read(activeWorkoutProvider.notifier).addSet(weId);
+
+      final before = container
+          .read(activeWorkoutProvider)
+          .value!
+          .exercises
+          .first
+          .sets;
+
+      container.read(activeWorkoutProvider.notifier).fillRemainingSets(weId);
+
+      final after = container
+          .read(activeWorkoutProvider)
+          .value!
+          .exercises
+          .first
+          .sets;
+      for (var i = 0; i < before.length; i++) {
+        expect(after[i].weight, before[i].weight);
+        expect(after[i].reps, before[i].reps);
+      }
+    });
+
+    test('does not modify already-completed sets', () async {
+      // Two completed sets followed by one incomplete set.
+      final initial = makeState(exerciseCount: 1, setsPerExercise: 2);
+      final container = makeContainer(initial);
+      addTearDown(container.dispose);
+      await container.read(activeWorkoutProvider.future);
+
+      final weId = initial.exercises.first.workoutExercise.id;
+      // Give each completed set distinct weight so we can tell them apart.
+      container
+          .read(activeWorkoutProvider.notifier)
+          .updateSet(weId, initial.exercises.first.sets[0].id, weight: 50.0);
+      container
+          .read(activeWorkoutProvider.notifier)
+          .updateSet(weId, initial.exercises.first.sets[1].id, weight: 70.0);
+
+      // Add one incomplete set.
+      container.read(activeWorkoutProvider.notifier).addSet(weId);
+
+      container.read(activeWorkoutProvider.notifier).fillRemainingSets(weId);
+
+      final sets = container
+          .read(activeWorkoutProvider)
+          .value!
+          .exercises
+          .first
+          .sets;
+      // Completed sets must retain their own weights.
+      expect(sets[0].weight, 50.0);
+      expect(sets[1].weight, 70.0);
+    });
+
+    test('does not fill incomplete sets before the last completed set', () async {
+      // set 1: completed, set 2: incomplete, set 3: completed
+      // fillRemainingSets should NOT fill set 2 (setNumber < lastCompleted)
+      final initial = makeState(exerciseCount: 1, setsPerExercise: 3);
+      final container = makeContainer(initial);
+      addTearDown(container.dispose);
+      await container.read(activeWorkoutProvider.future);
+
+      final weId = initial.exercises.first.workoutExercise.id;
+      final sets = initial.exercises.first.sets;
+
+      // Set 1: completed with weight 50
+      container
+          .read(activeWorkoutProvider.notifier)
+          .updateSet(weId, sets[0].id, weight: 50.0);
+
+      // Set 2: mark incomplete (toggle off)
+      container
+          .read(activeWorkoutProvider.notifier)
+          .completeSet(weId, sets[1].id);
+      // sets from factory start isCompleted: true, so toggle makes it false
+
+      // Set 3: completed with weight 80 (remains completed from factory)
+      container
+          .read(activeWorkoutProvider.notifier)
+          .updateSet(weId, sets[2].id, weight: 80.0);
+
+      container.read(activeWorkoutProvider.notifier).fillRemainingSets(weId);
+
+      final result = container
+          .read(activeWorkoutProvider)
+          .value!
+          .exercises
+          .first
+          .sets;
+      // Set 2 should NOT be filled — its setNumber (2) < lastCompleted setNumber (3)
+      expect(result[1].weight, isNot(80.0));
+      // Set 2's weight should remain whatever it was before (factory default 60.0)
+      expect(result[1].weight, 60.0);
+    });
+  });
+
+  group('ActiveWorkoutNotifier — reorderExercise', () {
+    test(
+      'moves an exercise up (direction -1) and swaps order fields',
+      () async {
+        final initial = makeState(exerciseCount: 3, setsPerExercise: 0);
+        final container = makeContainer(initial);
+        addTearDown(container.dispose);
+        await container.read(activeWorkoutProvider.future);
+
+        // Move the second exercise (index 1) up to index 0.
+        final secondWeId = initial.exercises[1].workoutExercise.id;
+        container
+            .read(activeWorkoutProvider.notifier)
+            .reorderExercise(secondWeId, -1);
+
+        final exercises = container
+            .read(activeWorkoutProvider)
+            .value!
+            .exercises;
+        expect(exercises[0].workoutExercise.id, secondWeId);
+        expect(exercises[0].workoutExercise.order, 0);
+        expect(exercises[1].workoutExercise.order, 1);
+      },
+    );
+
+    test(
+      'moves an exercise down (direction +1) and swaps order fields',
+      () async {
+        final initial = makeState(exerciseCount: 3, setsPerExercise: 0);
+        final container = makeContainer(initial);
+        addTearDown(container.dispose);
+        await container.read(activeWorkoutProvider.future);
+
+        // Move the second exercise (index 1) down to index 2.
+        final secondWeId = initial.exercises[1].workoutExercise.id;
+        container
+            .read(activeWorkoutProvider.notifier)
+            .reorderExercise(secondWeId, 1);
+
+        final exercises = container
+            .read(activeWorkoutProvider)
+            .value!
+            .exercises;
+        expect(exercises[2].workoutExercise.id, secondWeId);
+        expect(exercises[2].workoutExercise.order, 2);
+        expect(exercises[1].workoutExercise.order, 1);
+      },
+    );
+
+    test(
+      'is a no-op when first exercise is moved up (at upper bound)',
+      () async {
+        final initial = makeState(exerciseCount: 2, setsPerExercise: 0);
+        final container = makeContainer(initial);
+        addTearDown(container.dispose);
+        await container.read(activeWorkoutProvider.future);
+
+        final firstWeId = initial.exercises[0].workoutExercise.id;
+        container
+            .read(activeWorkoutProvider.notifier)
+            .reorderExercise(firstWeId, -1);
+
+        final exercises = container
+            .read(activeWorkoutProvider)
+            .value!
+            .exercises;
+        // Order must be unchanged.
+        expect(exercises[0].workoutExercise.id, firstWeId);
+      },
+    );
+
+    test(
+      'is a no-op when last exercise is moved down (at lower bound)',
+      () async {
+        final initial = makeState(exerciseCount: 2, setsPerExercise: 0);
+        final container = makeContainer(initial);
+        addTearDown(container.dispose);
+        await container.read(activeWorkoutProvider.future);
+
+        final lastWeId = initial.exercises.last.workoutExercise.id;
+        container
+            .read(activeWorkoutProvider.notifier)
+            .reorderExercise(lastWeId, 1);
+
+        final exercises = container
+            .read(activeWorkoutProvider)
+            .value!
+            .exercises;
+        expect(exercises.last.workoutExercise.id, lastWeId);
+      },
+    );
+
+    test('preserves sets on both swapped exercises', () async {
+      final initial = makeState(exerciseCount: 2, setsPerExercise: 3);
+      final container = makeContainer(initial);
+      addTearDown(container.dispose);
+      await container.read(activeWorkoutProvider.future);
+
+      final firstWeId = initial.exercises[0].workoutExercise.id;
+      final secondWeId = initial.exercises[1].workoutExercise.id;
+
+      container
+          .read(activeWorkoutProvider.notifier)
+          .reorderExercise(firstWeId, 1);
+
+      final exercises = container.read(activeWorkoutProvider).value!.exercises;
+      // After swap: first slot holds what was the second exercise.
+      expect(exercises[0].workoutExercise.id, secondWeId);
+      expect(exercises[0].sets, hasLength(3));
+      // Second slot holds what was the first exercise.
+      expect(exercises[1].workoutExercise.id, firstWeId);
+      expect(exercises[1].sets, hasLength(3));
+    });
+  });
+
+  group('ActiveWorkoutNotifier — swapExercise', () {
+    test(
+      'replaces exerciseId and exercise reference while keeping sets',
+      () async {
+        final initial = makeState(exerciseCount: 1, setsPerExercise: 2);
+        final container = makeContainer(initial);
+        addTearDown(container.dispose);
+        await container.read(activeWorkoutProvider.future);
+
+        final weId = initial.exercises.first.workoutExercise.id;
+        final newExercise = makeExercise(id: 'exercise-new', name: 'Deadlift');
+
+        container
+            .read(activeWorkoutProvider.notifier)
+            .swapExercise(weId, newExercise);
+
+        final result = container.read(activeWorkoutProvider).value!;
+        final updated = result.exercises.first;
+        expect(updated.workoutExercise.exerciseId, 'exercise-new');
+        expect(updated.workoutExercise.exercise?.name, 'Deadlift');
+        // Sets must survive the swap.
+        expect(updated.sets, hasLength(2));
+      },
+    );
+
+    test('is a no-op when workoutExerciseId does not exist', () async {
+      final initial = makeState(exerciseCount: 1, setsPerExercise: 1);
+      final container = makeContainer(initial);
+      addTearDown(container.dispose);
+      await container.read(activeWorkoutProvider.future);
+
+      final originalExerciseId =
+          initial.exercises.first.workoutExercise.exerciseId;
+
+      container
+          .read(activeWorkoutProvider.notifier)
+          .swapExercise('nonexistent-we-id', makeExercise(id: 'exercise-new'));
+
+      final result = container.read(activeWorkoutProvider).value!;
+      expect(
+        result.exercises.first.workoutExercise.exerciseId,
+        originalExerciseId,
+      );
+    });
+  });
 }

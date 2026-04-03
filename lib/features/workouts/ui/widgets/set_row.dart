@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../shared/widgets/reps_stepper.dart';
@@ -9,13 +10,21 @@ import '../../providers/notifiers/active_workout_notifier.dart';
 
 /// Displays a single set within an exercise card during an active workout.
 ///
-/// Shows set number, type badge, weight/reps steppers, and a completion checkbox.
-/// Wrapped in [Dismissible] for swipe-to-delete.
+/// Shows set number, type badge, weight/reps steppers, RPE indicator,
+/// and a completion checkbox. Wrapped in [Dismissible] for swipe-to-delete.
 class SetRow extends ConsumerWidget {
-  const SetRow({required this.set, required this.workoutExerciseId, super.key});
+  const SetRow({
+    required this.set,
+    required this.workoutExerciseId,
+    this.onCompleted,
+    super.key,
+  });
 
   final ExerciseSet set;
   final String workoutExerciseId;
+
+  /// Called after the set completion is toggled (for rest timer integration).
+  final VoidCallback? onCompleted;
 
   static const _setTypeLabels = {
     SetType.working: 'W',
@@ -32,6 +41,23 @@ class SetRow extends ConsumerWidget {
         .updateSet(workoutExerciseId, set.id, setType: types[nextIndex]);
   }
 
+  void _copyLastSet(WidgetRef ref) {
+    ref
+        .read(activeWorkoutProvider.notifier)
+        .copyLastSet(workoutExerciseId, set.id);
+  }
+
+  void _onComplete(WidgetRef ref) {
+    final wasCompleted = set.isCompleted;
+    ref
+        .read(activeWorkoutProvider.notifier)
+        .completeSet(workoutExerciseId, set.id);
+    if (!wasCompleted) {
+      HapticFeedback.mediumImpact();
+      onCompleted?.call();
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
@@ -42,6 +68,7 @@ class SetRow extends ConsumerWidget {
       direction: DismissDirection.endToStart,
       background: _DismissBackground(theme: theme),
       onDismissed: (_) {
+        HapticFeedback.lightImpact();
         notifier.deleteSet(workoutExerciseId, set.id);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -54,17 +81,42 @@ class SetRow extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(
           children: [
-            // Set number
+            // Set number / copy-last-set button
             SizedBox(
               width: 28,
-              child: Text(
-                '${set.setNumber}',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              child: set.setNumber > 1
+                  ? Semantics(
+                      label: 'Copy previous set values',
+                      child: GestureDetector(
+                        onTap: () => _copyLastSet(ref),
+                        child: Tooltip(
+                          message: 'Copy previous set',
+                          child: Text(
+                            '${set.setNumber}',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.primary.withValues(
+                                alpha: 0.8,
+                              ),
+                              fontWeight: FontWeight.w700,
+                              decoration: TextDecoration.underline,
+                              decorationColor: theme.colorScheme.primary
+                                  .withValues(alpha: 0.4),
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  : Text(
+                      '${set.setNumber}',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.6,
+                        ),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
             ),
 
             // Set type badge
@@ -125,6 +177,13 @@ class SetRow extends ConsumerWidget {
                   notifier.updateSet(workoutExerciseId, set.id, reps: v),
             ),
 
+            // RPE indicator
+            _RpeIndicator(
+              rpe: set.rpe,
+              onChanged: (value) =>
+                  notifier.updateSet(workoutExerciseId, set.id, rpe: value),
+            ),
+
             // Completion checkbox
             Semantics(
               label: set.isCompleted ? 'Set completed' : 'Mark set as done',
@@ -133,8 +192,7 @@ class SetRow extends ConsumerWidget {
                 height: 48,
                 child: Checkbox(
                   value: set.isCompleted,
-                  onChanged: (_) =>
-                      notifier.completeSet(workoutExerciseId, set.id),
+                  onChanged: (_) => _onComplete(ref),
                   activeColor: theme.colorScheme.primary,
                 ),
               ),
@@ -152,6 +210,64 @@ class SetRow extends ConsumerWidget {
       SetType.dropset => theme.colorScheme.tertiary.withValues(alpha: 0.2),
       SetType.failure => theme.colorScheme.error.withValues(alpha: 0.2),
     };
+  }
+}
+
+/// Compact RPE indicator that opens a popup picker on tap.
+class _RpeIndicator extends StatelessWidget {
+  const _RpeIndicator({required this.rpe, required this.onChanged});
+
+  final int? rpe;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Semantics(
+      label: rpe != null ? 'RPE $rpe. Tap to change.' : 'Set RPE',
+      child: PopupMenuButton<int>(
+        onSelected: onChanged,
+        tooltip: 'Rate of perceived exertion',
+        constraints: const BoxConstraints(minWidth: 56),
+        position: PopupMenuPosition.under,
+        itemBuilder: (_) => List.generate(
+          10,
+          (i) => PopupMenuItem<int>(
+            value: i + 1,
+            height: 40,
+            child: Text(
+              'RPE ${i + 1}',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: (i + 1) == rpe ? FontWeight.w700 : null,
+                color: (i + 1) == rpe ? theme.colorScheme.primary : null,
+              ),
+            ),
+          ),
+        ),
+        child: Container(
+          width: 36,
+          height: 28,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: rpe != null
+                ? theme.colorScheme.primary.withValues(alpha: 0.15)
+                : theme.colorScheme.onSurface.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            rpe != null ? '$rpe' : 'RPE',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontSize: rpe != null ? 13 : 9,
+              fontWeight: FontWeight.w700,
+              color: rpe != null
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurface.withValues(alpha: 0.4),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
