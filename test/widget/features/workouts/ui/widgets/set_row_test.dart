@@ -247,7 +247,7 @@ void main() {
             ),
           );
 
-          expect(find.text('Last: 80.0kg × 8'), findsOneWidget);
+          expect(find.text('Last: 80kg × 8'), findsOneWidget);
         },
       );
 
@@ -263,7 +263,7 @@ void main() {
           ),
         );
 
-        expect(find.text('Last: 80.0kg × 8'), findsNothing);
+        expect(find.text('Last: 80kg × 8'), findsNothing);
       });
 
       testWidgets('hides ghost text when lastSet is null', (tester) async {
@@ -289,11 +289,8 @@ void main() {
             ),
           );
 
-          // The ghost text uses set.weight directly — 100.0 is displayed as "100.0"
-          // (the widget does not run _formatWeight on the hint text, just
-          // interpolates the raw field). This test locks in the actual behaviour.
-          expect(find.textContaining('Last:'), findsOneWidget);
-          expect(find.textContaining('× 5'), findsOneWidget);
+          // Whole-number weights should display without a decimal suffix.
+          expect(find.text('Last: 100kg × 5'), findsOneWidget);
         },
       );
     });

@@ -30,6 +30,12 @@ class SetRow extends ConsumerWidget {
   /// The matching set from the previous workout session, used to show a hint.
   final ExerciseSet? lastSet;
 
+  static String _formatWeight(double value) {
+    return value == value.roundToDouble()
+        ? value.toInt().toString()
+        : value.toStringAsFixed(1);
+  }
+
   static const _setTypeLabels = {
     SetType.working: 'W',
     SetType.warmup: 'WU',
@@ -89,7 +95,7 @@ class SetRow extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.only(left: 48, bottom: 4),
               child: Text(
-                'Last: ${lastSet!.weight ?? 0}kg × ${lastSet!.reps ?? 0}',
+                'Last: ${_formatWeight((lastSet!.weight ?? 0).toDouble())}kg × ${lastSet!.reps ?? 0}',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
                 ),
