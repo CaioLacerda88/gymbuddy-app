@@ -121,6 +121,66 @@ class TestSetFactory {
   }
 }
 
+class TestRoutineSetConfigFactory {
+  static Map<String, dynamic> create({
+    int? targetReps,
+    double? targetWeight,
+    int? restSeconds,
+  }) {
+    return {
+      'target_reps': targetReps ?? 10,
+      'target_weight': targetWeight,
+      'rest_seconds': restSeconds ?? 90,
+    };
+  }
+}
+
+class TestRoutineExerciseFactory {
+  static Map<String, dynamic> create({
+    String? exerciseId,
+    List<Map<String, dynamic>>? setConfigs,
+    Map<String, dynamic>? exercise,
+  }) {
+    return {
+      'exercise_id': exerciseId ?? 'exercise-001',
+      'set_configs':
+          setConfigs ??
+          [
+            TestRoutineSetConfigFactory.create(),
+            TestRoutineSetConfigFactory.create(),
+            TestRoutineSetConfigFactory.create(),
+          ],
+      // ignore: use_null_aware_elements
+      if (exercise != null) 'exercise': exercise,
+    };
+  }
+}
+
+class TestRoutineFactory {
+  static Map<String, dynamic> create({
+    String? id,
+    String? userId,
+    String? name,
+    bool? isDefault,
+    List<Map<String, dynamic>>? exercises,
+    String? createdAt,
+  }) {
+    return {
+      'id': id ?? 'routine-001',
+      'user_id': userId,
+      'name': name ?? 'Push Day',
+      'is_default': isDefault ?? false,
+      'exercises':
+          exercises ??
+          [
+            TestRoutineExerciseFactory.create(),
+            TestRoutineExerciseFactory.create(exerciseId: 'exercise-002'),
+          ],
+      'created_at': createdAt ?? '2026-01-01T00:00:00Z',
+    };
+  }
+}
+
 class TestActiveWorkoutStateFactory {
   static Map<String, dynamic> create({
     Map<String, dynamic>? workout,
