@@ -40,6 +40,16 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
     return user.id;
   }
 
+  /// Count of sets that are not yet completed.
+  int get incompleteSetsCount {
+    final current = state.value;
+    if (current == null) return 0;
+    return current.exercises
+        .expand((e) => e.sets)
+        .where((s) => !s.isCompleted)
+        .length;
+  }
+
   /// Start a new workout session.
   Future<void> startWorkout(String name) async {
     state = const AsyncLoading();

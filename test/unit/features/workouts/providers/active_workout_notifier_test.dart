@@ -1389,4 +1389,88 @@ void main() {
       );
     });
   });
+
+  // --------------------------------------------------------- incompleteSetsCount
+  group('incompleteSetsCount', () {
+    test('returns 0 when state is null (no active workout)', () async {
+      final container = makeContainer(null);
+      addTearDown(container.dispose);
+      await container.read(activeWorkoutProvider.future);
+
+      expect(
+        container.read(activeWorkoutProvider.notifier).incompleteSetsCount,
+        0,
+      );
+    });
+
+    test('returns 0 when there are no exercises', () async {
+      final container = makeContainer(makeState());
+      addTearDown(container.dispose);
+      await container.read(activeWorkoutProvider.future);
+
+      expect(
+        container.read(activeWorkoutProvider.notifier).incompleteSetsCount,
+        0,
+      );
+    });
+
+    test('returns 0 when all sets are completed', () async {
+      // Factory default creates sets with isCompleted: true.
+      final container = makeContainer(
+        makeState(exerciseCount: 2, setsPerExercise: 3),
+      );
+      addTearDown(container.dispose);
+      await container.read(activeWorkoutProvider.future);
+
+      expect(
+        container.read(activeWorkoutProvider.notifier).incompleteSetsCount,
+        0,
+      );
+    });
+
+    test('returns correct count of incomplete sets across exercises', () async {
+      final initial = makeState(exerciseCount: 2, setsPerExercise: 0);
+      final container = makeContainer(initial);
+      addTearDown(container.dispose);
+      await container.read(activeWorkoutProvider.future);
+
+      final notifier = container.read(activeWorkoutProvider.notifier);
+
+      // Add sets via addSet — they start incomplete.
+      final we1Id = initial.exercises[0].workoutExercise.id;
+      final we2Id = initial.exercises[1].workoutExercise.id;
+
+      notifier.addSet(we1Id); // incomplete
+      notifier.addSet(we1Id); // incomplete
+      notifier.addSet(we2Id); // incomplete
+
+      expect(notifier.incompleteSetsCount, 3);
+    });
+
+    test('excludes completed sets from the count', () async {
+      final initial = makeState(exerciseCount: 1, setsPerExercise: 0);
+      final container = makeContainer(initial);
+      addTearDown(container.dispose);
+      await container.read(activeWorkoutProvider.future);
+
+      final notifier = container.read(activeWorkoutProvider.notifier);
+      final weId = initial.exercises.first.workoutExercise.id;
+
+      notifier.addSet(weId); // incomplete
+      notifier.addSet(weId); // incomplete
+
+      // Complete the first set.
+      final setId = container
+          .read(activeWorkoutProvider)
+          .value!
+          .exercises
+          .first
+          .sets
+          .first
+          .id;
+      notifier.completeSet(weId, setId);
+
+      expect(notifier.incompleteSetsCount, 1);
+    });
+  });
 }
