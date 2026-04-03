@@ -57,6 +57,9 @@ build/
 # Superpowers
 .superpowers/
 
+# Auto-generated docs
+doc/
+
 # Supabase local
 supabase/.temp/
 
