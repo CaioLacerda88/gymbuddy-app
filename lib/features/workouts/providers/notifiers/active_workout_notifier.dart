@@ -156,7 +156,14 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
   }
 
   /// Add a new empty set to an exercise.
-  void addSet(String workoutExerciseId) {
+  ///
+  /// Optional [defaultWeight] and [defaultReps] pre-fill the new set
+  /// (e.g. from the previous workout session).
+  void addSet(
+    String workoutExerciseId, {
+    double? defaultWeight,
+    int? defaultReps,
+  }) {
     final current = state.value;
     if (current == null) return;
 
@@ -168,8 +175,8 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
           id: _uuid.v4(),
           workoutExerciseId: workoutExerciseId,
           setNumber: e.sets.length + 1,
-          weight: 0,
-          reps: 0,
+          weight: defaultWeight ?? 0,
+          reps: defaultReps ?? 0,
           setType: SetType.working,
           isCompleted: false,
           createdAt: DateTime.now().toUtc(),

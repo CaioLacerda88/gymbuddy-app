@@ -17,6 +17,7 @@ class SetRow extends ConsumerWidget {
     required this.set,
     required this.workoutExerciseId,
     this.onCompleted,
+    this.lastSet,
     super.key,
   });
 
@@ -25,6 +26,9 @@ class SetRow extends ConsumerWidget {
 
   /// Called after the set completion is toggled (for rest timer integration).
   final VoidCallback? onCompleted;
+
+  /// The matching set from the previous workout session, used to show a hint.
+  final ExerciseSet? lastSet;
 
   static const _setTypeLabels = {
     SetType.working: 'W',
@@ -77,113 +81,133 @@ class SetRow extends ConsumerWidget {
           ),
         );
       },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          children: [
-            // Set number with copy-last-set and long-press for set type.
-            // Uses 48dp minimum touch target per Material guidelines.
-            Semantics(
-              label: set.setNumber > 1
-                  ? 'Set ${set.setNumber}. Tap to copy previous set. '
-                        'Long press to change type: ${set.setType.displayName}'
-                  : 'Set ${set.setNumber}. '
-                        'Long press to change type: ${set.setType.displayName}',
-              child: InkWell(
-                onTap: set.setNumber > 1 ? () => _copyLastSet(ref) : null,
-                onLongPress: () => _cycleSetType(ref),
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  constraints: const BoxConstraints(
-                    minWidth: 48,
-                    minHeight: 48,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (lastSet != null && !set.isCompleted)
+            Padding(
+              padding: const EdgeInsets.only(left: 48, bottom: 4),
+              child: Text(
+                'Last: ${lastSet!.weight ?? 0}kg × ${lastSet!.reps ?? 0}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                ),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                // Set number with copy-last-set and long-press for set type.
+                // Uses 48dp minimum touch target per Material guidelines.
+                Semantics(
+                  label: set.setNumber > 1
+                      ? 'Set ${set.setNumber}. Tap to copy previous set. '
+                            'Long press to change type: ${set.setType.displayName}'
+                      : 'Set ${set.setNumber}. '
+                            'Long press to change type: ${set.setType.displayName}',
+                  child: InkWell(
+                    onTap: set.setNumber > 1 ? () => _copyLastSet(ref) : null,
+                    onLongPress: () => _cycleSetType(ref),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      constraints: const BoxConstraints(
+                        minWidth: 48,
+                        minHeight: 48,
+                      ),
+                      alignment: Alignment.center,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${set.setNumber}',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: set.setNumber > 1
+                                  ? theme.colorScheme.primary.withValues(
+                                      alpha: 0.8,
+                                    )
+                                  : theme.colorScheme.onSurface.withValues(
+                                      alpha: 0.6,
+                                    ),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          // Show set type label below the number
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _setTypeBadgeColor(theme, set.setType),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              _setTypeLabels[set.setType] ?? 'W',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  alignment: Alignment.center,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                ),
+
+                // Weight stepper + "kg" label
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        '${set.setNumber}',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: set.setNumber > 1
-                              ? theme.colorScheme.primary.withValues(alpha: 0.8)
-                              : theme.colorScheme.onSurface.withValues(
-                                  alpha: 0.6,
-                                ),
-                          fontWeight: FontWeight.w700,
+                      WeightStepper(
+                        value: set.weight ?? 0,
+                        onChanged: (v) => notifier.updateSet(
+                          workoutExerciseId,
+                          set.id,
+                          weight: v,
                         ),
                       ),
-                      // Show set type label below the number
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 1,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _setTypeBadgeColor(theme, set.setType),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          _setTypeLabels[set.setType] ?? 'W',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
+                      Text(
+                        'kg',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.6,
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ),
 
-            // Weight stepper + "kg" label
-            Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  WeightStepper(
-                    value: set.weight ?? 0,
-                    onChanged: (v) => notifier.updateSet(
-                      workoutExerciseId,
-                      set.id,
-                      weight: v,
-                    ),
+                // Reps stepper
+                Expanded(
+                  child: RepsStepper(
+                    value: set.reps ?? 0,
+                    onChanged: (v) =>
+                        notifier.updateSet(workoutExerciseId, set.id, reps: v),
                   ),
-                  Text(
-                    'kg',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Reps stepper
-            Expanded(
-              child: RepsStepper(
-                value: set.reps ?? 0,
-                onChanged: (v) =>
-                    notifier.updateSet(workoutExerciseId, set.id, reps: v),
-              ),
-            ),
-
-            // Completion checkbox
-            Semantics(
-              label: set.isCompleted ? 'Set completed' : 'Mark set as done',
-              child: SizedBox(
-                width: 48,
-                height: 48,
-                child: Checkbox(
-                  value: set.isCompleted,
-                  onChanged: (_) => _onComplete(ref),
-                  activeColor: theme.colorScheme.primary,
                 ),
-              ),
+
+                // Completion checkbox
+                Semantics(
+                  label: set.isCompleted ? 'Set completed' : 'Mark set as done',
+                  child: SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: Checkbox(
+                      value: set.isCompleted,
+                      onChanged: (_) => _onComplete(ref),
+                      activeColor: theme.colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

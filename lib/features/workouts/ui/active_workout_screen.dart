@@ -453,6 +453,12 @@ class _ExerciseCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final exercise = activeExercise.workoutExercise.exercise;
     final weId = activeExercise.workoutExercise.id;
+    final exerciseId = activeExercise.workoutExercise.exerciseId;
+
+    // Fetch previous session sets for this exercise.
+    final lastSetsAsync = ref.watch(lastWorkoutSetsProvider(exerciseId));
+    final lastSetsMap = lastSetsAsync.valueOrNull ?? {};
+    final lastSets = lastSetsMap[exerciseId] ?? [];
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -557,14 +563,20 @@ class _ExerciseCard extends ConsumerWidget {
               const Divider(height: 1),
 
               // Set rows
-              ...activeExercise.sets.map(
-                (s) => SetRow(
+              ...activeExercise.sets.indexed.map((entry) {
+                final (index, s) = entry;
+                // Match by position: set 1 maps to lastSets[0], etc.
+                final lastSet = index < lastSets.length
+                    ? lastSets[index]
+                    : null;
+                return SetRow(
                   key: ValueKey(s.id),
                   set: s,
                   workoutExerciseId: weId,
                   onCompleted: () => _onSetCompleted(ref),
-                ),
-              ),
+                  lastSet: lastSet,
+                );
+              }),
             ],
 
             // Add set + fill remaining
@@ -572,8 +584,20 @@ class _ExerciseCard extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               child: OutlinedButton.icon(
-                onPressed: () =>
-                    ref.read(activeWorkoutProvider.notifier).addSet(weId),
+                onPressed: () {
+                  // Pre-fill from the last session's matching set position.
+                  final newSetIndex = activeExercise.sets.length;
+                  final lastSetForNewRow = newSetIndex < lastSets.length
+                      ? lastSets[newSetIndex]
+                      : null;
+                  ref
+                      .read(activeWorkoutProvider.notifier)
+                      .addSet(
+                        weId,
+                        defaultWeight: lastSetForNewRow?.weight,
+                        defaultReps: lastSetForNewRow?.reps,
+                      );
+                },
                 onLongPress: () => _fillRemaining(context, ref),
                 icon: const Icon(Icons.add, size: 20),
                 label: const Text('Add Set'),
