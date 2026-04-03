@@ -12,7 +12,12 @@ import '../../features/auth/ui/splash_screen.dart';
 import '../../features/exercises/ui/create_exercise_screen.dart';
 import '../../features/exercises/ui/exercise_detail_screen.dart';
 import '../../features/exercises/ui/exercise_list_screen.dart';
+import '../../features/workouts/models/active_workout_state.dart';
+import '../../features/workouts/providers/workout_providers.dart';
 import '../../features/workouts/ui/active_workout_screen.dart';
+import '../../features/workouts/ui/home_screen.dart';
+import '../../features/workouts/ui/workout_detail_screen.dart';
+import '../../features/workouts/ui/workout_history_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -76,7 +81,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: '/home',
-            builder: (context, state) => const _TabPlaceholder(title: 'Home'),
+            builder: (context, state) => const HomeScreen(),
           ),
           GoRoute(
             path: '/exercises',
@@ -96,8 +101,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/history',
-            builder: (context, state) =>
-                const _TabPlaceholder(title: 'History'),
+            builder: (context, state) => const WorkoutHistoryScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) =>
+                    WorkoutDetailScreen(workoutId: state.pathParameters['id']!),
+              ),
+            ],
           ),
           GoRoute(
             path: '/profile',
@@ -120,7 +131,7 @@ class _RouterRefreshListenable extends ChangeNotifier {
   final Ref _ref;
 }
 
-class _ShellScaffold extends StatelessWidget {
+class _ShellScaffold extends ConsumerWidget {
   const _ShellScaffold({required this.child});
 
   final Widget child;
@@ -134,26 +145,97 @@ class _ShellScaffold extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final activeState = ref.watch(activeWorkoutProvider).valueOrNull;
+
     return Scaffold(
       body: child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex(context),
-        onDestinationSelected: (index) {
-          final routes = ['/home', '/exercises', '/history', '/profile'];
-          context.go(routes[index]);
-        },
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
-          NavigationDestination(
-            icon: Icon(Icons.fitness_center),
-            label: 'Exercises',
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (activeState != null) _ActiveWorkoutBanner(state: activeState),
+          NavigationBar(
+            selectedIndex: _currentIndex(context),
+            onDestinationSelected: (index) {
+              final routes = ['/home', '/exercises', '/history', '/profile'];
+              context.go(routes[index]);
+            },
+            destinations: const [
+              NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
+              NavigationDestination(
+                icon: Icon(Icons.fitness_center),
+                label: 'Exercises',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.history),
+                label: 'History',
+              ),
+              NavigationDestination(icon: Icon(Icons.person), label: 'Profile'),
+            ],
           ),
-          NavigationDestination(icon: Icon(Icons.history), label: 'History'),
-          NavigationDestination(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
     );
+  }
+}
+
+class _ActiveWorkoutBanner extends ConsumerWidget {
+  const _ActiveWorkoutBanner({required this.state});
+
+  final ActiveWorkoutState state;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final elapsed = ref.watch(elapsedTimerProvider(state.workout.startedAt));
+
+    return GestureDetector(
+      onTap: () => context.go('/workout/active'),
+      child: Container(
+        height: 56,
+        width: double.infinity,
+        color: theme.colorScheme.primary.withValues(alpha: 0.15),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            Icon(
+              Icons.fitness_center,
+              color: theme.colorScheme.primary,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                state.workout.name,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: theme.colorScheme.primary,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Text(
+              elapsed.when(
+                data: _formatElapsed,
+                loading: () => '...',
+                error: (_, _) => '',
+              ),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(Icons.chevron_right, color: theme.colorScheme.primary),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatElapsed(Duration d) {
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    if (d.inHours > 0) return '${d.inHours}:$m:$s';
+    return '$m:$s';
   }
 }
 

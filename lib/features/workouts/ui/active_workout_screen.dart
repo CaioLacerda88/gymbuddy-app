@@ -6,8 +6,10 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/exercise_image.dart';
 import '../models/active_workout_state.dart';
 import '../providers/workout_providers.dart';
+import '../providers/workout_history_providers.dart';
 import 'widgets/discard_workout_dialog.dart';
 import 'widgets/exercise_picker_sheet.dart';
+import 'widgets/finish_workout_dialog.dart';
 import 'widgets/rest_timer_overlay.dart';
 import 'widgets/set_row.dart';
 
@@ -93,16 +95,27 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
   }
 
   Future<void> _onFinish() async {
-    await ref.read(activeWorkoutProvider.notifier).finishWorkout();
+    final notifier = ref.read(activeWorkoutProvider.notifier);
+    final incompleteCount = notifier.incompleteSetsCount;
+
+    final result = await FinishWorkoutDialog.show(
+      context,
+      incompleteCount: incompleteCount,
+    );
+    if (result == null || !mounted) return;
+
+    await notifier.finishWorkout(notes: result.notes);
     if (!mounted) return;
 
-    final result = ref.read(activeWorkoutProvider);
-    if (result.hasError) {
+    final state = ref.read(activeWorkoutProvider);
+    if (state.hasError) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to save workout. Please retry.')),
       );
       return;
     }
+    // Invalidate history so it refreshes on next visit.
+    ref.invalidate(workoutHistoryProvider);
     context.go('/home');
   }
 
