@@ -299,4 +299,90 @@ void main() {
       });
     });
   });
+
+  group('WorkoutRepository.buildExerciseSummary', () {
+    List<Map<String, dynamic>> makeEntries(List<String> names) {
+      return names
+          .asMap()
+          .entries
+          .map(
+            (e) => {
+              'order': e.key + 1,
+              'exercise': {'name': e.value},
+            },
+          )
+          .toList();
+    }
+
+    test('returns empty string for empty list', () {
+      expect(WorkoutRepository.buildExerciseSummary([]), '');
+    });
+
+    test('returns single name when only one exercise', () {
+      final entries = makeEntries(['Bench Press']);
+      expect(WorkoutRepository.buildExerciseSummary(entries), 'Bench Press');
+    });
+
+    test('returns comma-separated names for up to 3 exercises', () {
+      final entries = makeEntries(['Bench Press', 'Squat', 'Deadlift']);
+      expect(
+        WorkoutRepository.buildExerciseSummary(entries),
+        'Bench Press, Squat, Deadlift',
+      );
+    });
+
+    test('truncates at 3 and appends +N for more than 3 exercises', () {
+      final entries = makeEntries([
+        'Bench Press',
+        'Squat',
+        'Deadlift',
+        'OHP',
+        'Row',
+      ]);
+      expect(
+        WorkoutRepository.buildExerciseSummary(entries),
+        'Bench Press, Squat, Deadlift +2',
+      );
+    });
+
+    test('sorts exercises by order field before naming', () {
+      final entries = [
+        {
+          'order': 3,
+          'exercise': const {'name': 'Third'},
+        },
+        {
+          'order': 1,
+          'exercise': const {'name': 'First'},
+        },
+        {
+          'order': 2,
+          'exercise': const {'name': 'Second'},
+        },
+      ];
+      expect(
+        WorkoutRepository.buildExerciseSummary(entries),
+        'First, Second, Third',
+      );
+    });
+
+    test('skips entries where exercise join data is null', () {
+      final entries = [
+        {'order': 1, 'exercise': null},
+        {
+          'order': 2,
+          'exercise': const {'name': 'Squat'},
+        },
+      ];
+      expect(WorkoutRepository.buildExerciseSummary(entries), 'Squat');
+    });
+
+    test('returns empty string when all exercise join data is null', () {
+      final entries = [
+        {'order': 1, 'exercise': null},
+        {'order': 2, 'exercise': null},
+      ];
+      expect(WorkoutRepository.buildExerciseSummary(entries), '');
+    });
+  });
 }

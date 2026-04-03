@@ -17,6 +17,11 @@ class Workout with _$Workout {
     @JsonKey(defaultValue: false) required bool isActive,
     String? notes,
     required DateTime createdAt,
+
+    /// Computed at query time — not a DB column.
+    /// E.g. "Bench Press, Squat, Deadlift +2"
+    @JsonKey(includeFromJson: false, includeToJson: false)
+    String? exerciseSummary,
   }) = _Workout;
 
   factory Workout.fromJson(Map<String, dynamic> json) =>
