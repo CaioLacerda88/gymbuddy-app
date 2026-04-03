@@ -65,6 +65,39 @@ class _ActiveWorkoutBody extends ConsumerStatefulWidget {
 
 class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
   bool _reorderMode = false;
+  bool _isEditingName = false;
+  late TextEditingController _nameController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.state.workout.name);
+  }
+
+  @override
+  void didUpdateWidget(_ActiveWorkoutBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_isEditingName &&
+        oldWidget.state.workout.name != widget.state.workout.name) {
+      _nameController.text = widget.state.workout.name;
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  void _submitName() {
+    final trimmed = _nameController.text.trim();
+    if (trimmed.isNotEmpty) {
+      ref.read(activeWorkoutProvider.notifier).renameWorkout(trimmed);
+    } else {
+      _nameController.text = widget.state.workout.name;
+    }
+    setState(() => _isEditingName = false);
+  }
 
   bool get _hasCompletedSet =>
       widget.state.exercises.any((e) => e.sets.any((s) => s.isCompleted));
@@ -147,11 +180,50 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
             tooltip: 'Discard workout',
           ),
           title: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                widget.state.workout.name,
-                style: theme.textTheme.titleMedium,
-              ),
+              if (_isEditingName)
+                SizedBox(
+                  height: 36,
+                  child: TextField(
+                    controller: _nameController,
+                    autofocus: true,
+                    textAlign: TextAlign.center,
+                    textCapitalization: TextCapitalization.sentences,
+                    style: theme.textTheme.titleMedium,
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      border: UnderlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(vertical: 4),
+                    ),
+                    onSubmitted: (_) => _submitName(),
+                    onTapOutside: (_) => _submitName(),
+                  ),
+                )
+              else
+                GestureDetector(
+                  onTap: () {
+                    _nameController.text = widget.state.workout.name;
+                    setState(() => _isEditingName = true);
+                  },
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        widget.state.workout.name,
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.edit,
+                        size: 14,
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               _ElapsedTimer(startedAt: widget.state.workout.startedAt),
             ],
           ),

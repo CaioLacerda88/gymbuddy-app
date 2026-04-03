@@ -50,7 +50,11 @@ class _StartWorkoutButton extends ConsumerWidget {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () => _showStartDialog(context, ref),
+          onTap: () async {
+            await ref.read(activeWorkoutProvider.notifier).startWorkout();
+            if (!context.mounted) return;
+            context.go('/workout/active');
+          },
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 20),
             child: Row(
@@ -75,49 +79,5 @@ class _StartWorkoutButton extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  Future<void> _showStartDialog(BuildContext context, WidgetRef ref) async {
-    final controller = TextEditingController(text: 'Workout');
-    controller.selection = TextSelection(
-      baseOffset: 0,
-      extentOffset: controller.text.length,
-    );
-
-    final name = await showDialog<String>(
-      context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          title: const Text('Workout Name'),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(hintText: 'e.g. Push Day'),
-            onSubmitted: (value) => Navigator.of(ctx).pop(value.trim()),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
-              child: const Text('Start'),
-            ),
-          ],
-        );
-      },
-    );
-
-    controller.dispose();
-
-    if (name == null || name.isEmpty) return;
-    if (!context.mounted) return;
-
-    await ref.read(activeWorkoutProvider.notifier).startWorkout(name);
-
-    if (!context.mounted) return;
-    context.go('/workout/active');
   }
 }
