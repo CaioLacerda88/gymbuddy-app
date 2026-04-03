@@ -425,7 +425,20 @@ class _ExerciseCard extends ConsumerWidget {
                       tooltip: 'Move down',
                     ),
                   ),
-                ] else
+                ] else ...[
+                  Semantics(
+                    label: 'Swap exercise',
+                    child: IconButton(
+                      onPressed: () => _swapExercise(context, ref),
+                      icon: Icon(
+                        Icons.swap_horiz,
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.5,
+                        ),
+                      ),
+                      tooltip: 'Swap exercise',
+                    ),
+                  ),
                   Semantics(
                     label: 'Remove exercise',
                     child: IconButton(
@@ -437,6 +450,7 @@ class _ExerciseCard extends ConsumerWidget {
                       tooltip: 'Remove exercise',
                     ),
                   ),
+                ],
               ],
             ),
 
@@ -514,9 +528,7 @@ class _SetColumnHeaders extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
-          SizedBox(width: 28, child: Text('SET', style: style)),
-          SizedBox(width: 36, child: Text('TYPE', style: style)),
-          const SizedBox(width: 4),
+          SizedBox(width: 48, child: Text('SET', style: style)),
           Expanded(
             child: Text('WEIGHT', style: style, textAlign: TextAlign.center),
           ),
@@ -525,7 +537,7 @@ class _SetColumnHeaders extends StatelessWidget {
             child: Text('REPS', style: style, textAlign: TextAlign.center),
           ),
           SizedBox(
-            width: 36,
+            width: 48,
             child: Text('RPE', style: style, textAlign: TextAlign.center),
           ),
           const SizedBox(width: 48),
