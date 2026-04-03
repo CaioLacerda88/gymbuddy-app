@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_text_field.dart';
+import '../../profile/providers/profile_providers.dart';
 import '../providers/onboarding_provider.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
@@ -21,9 +22,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _nameController = TextEditingController();
   String _fitnessLevel = 'beginner';
 
-  // Page 3: Workout choice
-  String? _workoutChoice;
-
   @override
   void dispose() {
     _pageController.dispose();
@@ -32,7 +30,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   void _nextPage() {
-    if (_currentPage < 2) {
+    if (_currentPage < 1) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
@@ -40,10 +38,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     }
   }
 
-  void _finishOnboarding() {
-    // TODO: Save profile data to Supabase (will be wired in profile feature)
+  Future<void> _finishOnboarding() async {
+    await ref
+        .read(profileProvider.notifier)
+        .saveOnboardingProfile(
+          displayName: _nameController.text.trim(),
+          fitnessLevel: _fitnessLevel,
+        );
     ref.read(needsOnboardingProvider.notifier).state = false;
-    context.go('/home');
+    if (mounted) context.go('/home');
   }
 
   @override
@@ -58,7 +61,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               child: Row(
-                children: List.generate(3, (index) {
+                children: List.generate(2, (index) {
                   final isActive = index <= _currentPage;
                   return Expanded(
                     child: Container(
@@ -92,13 +95,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     fitnessLevel: _fitnessLevel,
                     onFitnessLevelChanged: (level) {
                       setState(() => _fitnessLevel = level);
-                    },
-                    onNext: _nextPage,
-                  ),
-                  _WorkoutChoicePage(
-                    selectedChoice: _workoutChoice,
-                    onChoiceChanged: (choice) {
-                      setState(() => _workoutChoice = choice);
                     },
                     onFinish: _finishOnboarding,
                   ),
@@ -167,13 +163,13 @@ class _ProfileSetupPage extends StatelessWidget {
     required this.nameController,
     required this.fitnessLevel,
     required this.onFitnessLevelChanged,
-    required this.onNext,
+    required this.onFinish,
   });
 
   final TextEditingController nameController;
   final String fitnessLevel;
   final ValueChanged<String> onFitnessLevelChanged;
-  final VoidCallback onNext;
+  final VoidCallback onFinish;
 
   static const _fitnessLevels = ['beginner', 'intermediate', 'advanced'];
 
@@ -234,171 +230,9 @@ class _ProfileSetupPage extends StatelessWidget {
             }).toList(),
           ),
           const Spacer(),
-          AppButton(label: 'NEXT', onPressed: onNext),
+          AppButton(label: "LET'S GO", onPressed: onFinish),
           const SizedBox(height: 32),
         ],
-      ),
-    );
-  }
-}
-
-// --- Page 3: First Workout Choice ---
-
-class _WorkoutChoicePage extends StatelessWidget {
-  const _WorkoutChoicePage({
-    required this.selectedChoice,
-    required this.onChoiceChanged,
-    required this.onFinish,
-  });
-
-  final String? selectedChoice;
-  final ValueChanged<String> onChoiceChanged;
-  final VoidCallback onFinish;
-
-  static const _choices = [
-    _WorkoutOption(
-      id: 'full_body',
-      title: 'Full Body Starter',
-      subtitle: 'A balanced template to get going',
-      icon: Icons.accessibility_new,
-    ),
-    _WorkoutOption(
-      id: 'blank',
-      title: 'Start Blank',
-      subtitle: 'Build your own from scratch',
-      icon: Icons.add_circle_outline,
-    ),
-    _WorkoutOption(
-      id: 'browse',
-      title: 'Browse Exercises',
-      subtitle: 'Explore the exercise library first',
-      icon: Icons.search,
-    ),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(height: 32),
-          Text(
-            'Your first workout',
-            style: theme.textTheme.headlineLarge,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'How do you want to start?',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 32),
-          ..._choices.map((option) {
-            final isSelected = option.id == selectedChoice;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _WorkoutChoiceCard(
-                option: option,
-                isSelected: isSelected,
-                onTap: () => onChoiceChanged(option.id),
-              ),
-            );
-          }),
-          const Spacer(),
-          AppButton(
-            label: "LET'S GO",
-            onPressed: selectedChoice != null ? onFinish : null,
-          ),
-          const SizedBox(height: 32),
-        ],
-      ),
-    );
-  }
-}
-
-class _WorkoutOption {
-  const _WorkoutOption({
-    required this.id,
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-  });
-
-  final String id;
-  final String title;
-  final String subtitle;
-  final IconData icon;
-}
-
-class _WorkoutChoiceCard extends StatelessWidget {
-  const _WorkoutChoiceCard({
-    required this.option,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final _WorkoutOption option;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: theme.cardTheme.color,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? theme.colorScheme.primary : Colors.transparent,
-            width: 2,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              option.icon,
-              size: 32,
-              color: isSelected
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.onSurface.withValues(alpha: 0.7),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    option.title,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: isSelected ? theme.colorScheme.primary : null,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    option.subtitle,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (isSelected)
-              Icon(Icons.check_circle, color: theme.colorScheme.primary),
-          ],
-        ),
       ),
     );
   }
