@@ -14,6 +14,7 @@ import '../../features/exercises/ui/exercise_detail_screen.dart';
 import '../../features/exercises/ui/exercise_list_screen.dart';
 import '../../features/workouts/models/active_workout_state.dart';
 import '../../features/workouts/providers/workout_providers.dart';
+import '../../features/profile/ui/profile_screen.dart';
 import '../../features/workouts/ui/active_workout_screen.dart';
 import '../../features/workouts/ui/home_screen.dart';
 import '../../features/workouts/ui/workout_detail_screen.dart';
@@ -112,8 +113,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/profile',
-            builder: (context, state) =>
-                const _TabPlaceholder(title: 'Profile'),
+            builder: (context, state) => const ProfileScreen(),
           ),
         ],
       ),
@@ -236,18 +236,5 @@ class _ActiveWorkoutBanner extends ConsumerWidget {
     final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
     if (d.inHours > 0) return '${d.inHours}:$m:$s';
     return '$m:$s';
-  }
-}
-
-class _TabPlaceholder extends StatelessWidget {
-  const _TabPlaceholder({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(title, style: Theme.of(context).textTheme.headlineMedium),
-    );
   }
 }
