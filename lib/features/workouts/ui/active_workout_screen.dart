@@ -8,24 +8,27 @@ import '../models/active_workout_state.dart';
 import '../providers/workout_providers.dart';
 import 'widgets/discard_workout_dialog.dart';
 import 'widgets/exercise_picker_sheet.dart';
+import 'widgets/rest_timer_overlay.dart';
 import 'widgets/set_row.dart';
 
 /// Full-screen active workout experience.
 ///
 /// Displayed outside the shell route (no bottom nav). Watches
 /// [activeWorkoutProvider] and renders exercise cards with sets.
+/// Overlays the [RestTimerOverlay] when a rest timer is running.
 class ActiveWorkoutScreen extends ConsumerWidget {
   const ActiveWorkoutScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncState = ref.watch(activeWorkoutProvider);
+    final timerState = ref.watch(restTimerProvider);
 
     // valueOrNull retains the previous data during AsyncLoading transitions.
     final displayState = asyncState.valueOrNull;
 
     if (displayState == null && !asyncState.isLoading) {
-      // Workout was finished or discarded — navigate home.
+      // Workout was finished or discarded -- navigate home.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (context.mounted) context.go('/home');
       });
@@ -43,28 +46,38 @@ class ActiveWorkoutScreen extends ConsumerWidget {
           const ModalBarrier(dismissible: false, color: Colors.black54),
         if (asyncState.isLoading)
           const Center(child: CircularProgressIndicator()),
+        if (timerState != null) const RestTimerOverlay(),
       ],
     );
   }
 }
 
-class _ActiveWorkoutBody extends ConsumerWidget {
+class _ActiveWorkoutBody extends ConsumerStatefulWidget {
   const _ActiveWorkoutBody({required this.state});
 
   final ActiveWorkoutState state;
 
-  bool get _hasCompletedSet =>
-      state.exercises.any((e) => e.sets.any((s) => s.isCompleted));
+  @override
+  ConsumerState<_ActiveWorkoutBody> createState() => _ActiveWorkoutBodyState();
+}
 
-  Future<void> _onBackPressed(BuildContext context, WidgetRef ref) async {
-    final elapsed = DateTime.now().toUtc().difference(state.workout.startedAt);
+class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
+  bool _reorderMode = false;
+
+  bool get _hasCompletedSet =>
+      widget.state.exercises.any((e) => e.sets.any((s) => s.isCompleted));
+
+  Future<void> _onBackPressed() async {
+    final elapsed = DateTime.now().toUtc().difference(
+      widget.state.workout.startedAt,
+    );
     final shouldDiscard = await DiscardWorkoutDialog.show(
       context,
       elapsedDuration: elapsed,
     );
-    if (shouldDiscard == true && context.mounted) {
+    if (shouldDiscard == true && mounted) {
       await ref.read(activeWorkoutProvider.notifier).discardWorkout();
-      if (!context.mounted) return;
+      if (!mounted) return;
 
       final result = ref.read(activeWorkoutProvider);
       if (result.hasError) {
@@ -79,9 +92,9 @@ class _ActiveWorkoutBody extends ConsumerWidget {
     }
   }
 
-  Future<void> _onFinish(BuildContext context, WidgetRef ref) async {
+  Future<void> _onFinish() async {
     await ref.read(activeWorkoutProvider.notifier).finishWorkout();
-    if (!context.mounted) return;
+    if (!mounted) return;
 
     final result = ref.read(activeWorkoutProvider);
     if (result.hasError) {
@@ -93,58 +106,70 @@ class _ActiveWorkoutBody extends ConsumerWidget {
     context.go('/home');
   }
 
-  Future<void> _onAddExercise(BuildContext context, WidgetRef ref) async {
+  Future<void> _onAddExercise() async {
     final exercise = await ExercisePickerSheet.show(context);
     if (exercise != null) {
       ref.read(activeWorkoutProvider.notifier).addExercise(exercise);
     }
   }
 
+  void _toggleReorderMode() {
+    setState(() => _reorderMode = !_reorderMode);
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _onBackPressed(context, ref);
+        if (!didPop) _onBackPressed();
       },
       child: Scaffold(
         appBar: AppBar(
           leading: IconButton(
-            onPressed: () => _onBackPressed(context, ref),
+            onPressed: _onBackPressed,
             icon: const Icon(Icons.close),
             tooltip: 'Discard workout',
           ),
           title: Column(
             children: [
-              Text(state.workout.name, style: theme.textTheme.titleMedium),
-              _ElapsedTimer(startedAt: state.workout.startedAt),
+              Text(
+                widget.state.workout.name,
+                style: theme.textTheme.titleMedium,
+              ),
+              _ElapsedTimer(startedAt: widget.state.workout.startedAt),
             ],
           ),
           centerTitle: true,
           actions: [
+            if (widget.state.exercises.length > 1)
+              IconButton(
+                onPressed: _toggleReorderMode,
+                icon: Icon(_reorderMode ? Icons.done : Icons.swap_vert),
+                tooltip: _reorderMode
+                    ? 'Exit reorder mode'
+                    : 'Reorder exercises',
+              ),
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: FilledButton(
-                onPressed: _hasCompletedSet
-                    ? () => _onFinish(context, ref)
-                    : null,
+                onPressed: _hasCompletedSet ? _onFinish : null,
                 child: const Text('Finish'),
               ),
             ),
           ],
         ),
-        body: state.exercises.isEmpty
-            ? _EmptyWorkoutBody(
-                onAddExercise: () => _onAddExercise(context, ref),
-              )
+        body: widget.state.exercises.isEmpty
+            ? _EmptyWorkoutBody(onAddExercise: _onAddExercise)
             : _ExerciseList(
-                exercises: state.exercises,
-                onAddExercise: () => _onAddExercise(context, ref),
+                exercises: widget.state.exercises,
+                onAddExercise: _onAddExercise,
+                reorderMode: _reorderMode,
               ),
-        floatingActionButton: state.exercises.isNotEmpty
-            ? _AddExerciseFab(onPressed: () => _onAddExercise(context, ref))
+        floatingActionButton: widget.state.exercises.isNotEmpty
+            ? _AddExerciseFab(onPressed: _onAddExercise)
             : null,
       ),
     );
@@ -233,26 +258,43 @@ class _EmptyWorkoutBody extends StatelessWidget {
 }
 
 class _ExerciseList extends StatelessWidget {
-  const _ExerciseList({required this.exercises, required this.onAddExercise});
+  const _ExerciseList({
+    required this.exercises,
+    required this.onAddExercise,
+    required this.reorderMode,
+  });
 
   final List<ActiveWorkoutExercise> exercises;
   final VoidCallback onAddExercise;
+  final bool reorderMode;
 
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
       padding: const EdgeInsets.only(bottom: 88, top: 8),
       itemCount: exercises.length,
-      itemBuilder: (context, index) =>
-          _ExerciseCard(activeExercise: exercises[index]),
+      itemBuilder: (context, index) => _ExerciseCard(
+        activeExercise: exercises[index],
+        reorderMode: reorderMode,
+        isFirst: index == 0,
+        isLast: index == exercises.length - 1,
+      ),
     );
   }
 }
 
 class _ExerciseCard extends ConsumerWidget {
-  const _ExerciseCard({required this.activeExercise});
+  const _ExerciseCard({
+    required this.activeExercise,
+    required this.reorderMode,
+    required this.isFirst,
+    required this.isLast,
+  });
 
   final ActiveWorkoutExercise activeExercise;
+  final bool reorderMode;
+  final bool isFirst;
+  final bool isLast;
 
   Future<void> _confirmRemove(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
@@ -285,6 +327,32 @@ class _ExerciseCard extends ConsumerWidget {
     }
   }
 
+  Future<void> _swapExercise(BuildContext context, WidgetRef ref) async {
+    final exercise = await ExercisePickerSheet.show(context);
+    if (exercise != null) {
+      ref
+          .read(activeWorkoutProvider.notifier)
+          .swapExercise(activeExercise.workoutExercise.id, exercise);
+    }
+  }
+
+  void _onSetCompleted(WidgetRef ref) {
+    final restSeconds = activeExercise.workoutExercise.restSeconds ?? 90;
+    ref.read(restTimerProvider.notifier).start(restSeconds);
+  }
+
+  void _fillRemaining(BuildContext context, WidgetRef ref) {
+    ref
+        .read(activeWorkoutProvider.notifier)
+        .fillRemainingSets(activeExercise.workoutExercise.id);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Filled remaining sets'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
@@ -298,7 +366,7 @@ class _ExerciseCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header: image + name + delete button
+            // Header: image + name + reorder/delete buttons
             Row(
               children: [
                 if (exercise?.imageStartUrl != null) ...[
@@ -312,22 +380,63 @@ class _ExerciseCard extends ConsumerWidget {
                   const SizedBox(width: 12),
                 ],
                 Expanded(
-                  child: Text(
-                    exercise?.name ?? 'Exercise',
-                    style: theme.textTheme.titleMedium,
-                  ),
-                ),
-                Semantics(
-                  label: 'Remove exercise',
-                  child: IconButton(
-                    onPressed: () => _confirmRemove(context, ref),
-                    icon: Icon(
-                      Icons.delete_outline,
-                      color: theme.colorScheme.error.withValues(alpha: 0.7),
+                  child: Semantics(
+                    label:
+                        'Exercise: ${exercise?.name ?? 'Exercise'}. Long press to swap.',
+                    child: GestureDetector(
+                      onLongPress: () => _swapExercise(context, ref),
+                      child: Text(
+                        exercise?.name ?? 'Exercise',
+                        style: theme.textTheme.titleMedium,
+                      ),
                     ),
-                    tooltip: 'Remove exercise',
                   ),
                 ),
+                if (reorderMode) ...[
+                  Semantics(
+                    label: 'Move exercise up',
+                    child: IconButton(
+                      onPressed: isFirst
+                          ? null
+                          : () => ref
+                                .read(activeWorkoutProvider.notifier)
+                                .reorderExercise(weId, -1),
+                      icon: const Icon(Icons.arrow_upward),
+                      constraints: const BoxConstraints(
+                        minWidth: 48,
+                        minHeight: 48,
+                      ),
+                      tooltip: 'Move up',
+                    ),
+                  ),
+                  Semantics(
+                    label: 'Move exercise down',
+                    child: IconButton(
+                      onPressed: isLast
+                          ? null
+                          : () => ref
+                                .read(activeWorkoutProvider.notifier)
+                                .reorderExercise(weId, 1),
+                      icon: const Icon(Icons.arrow_downward),
+                      constraints: const BoxConstraints(
+                        minWidth: 48,
+                        minHeight: 48,
+                      ),
+                      tooltip: 'Move down',
+                    ),
+                  ),
+                ] else
+                  Semantics(
+                    label: 'Remove exercise',
+                    child: IconButton(
+                      onPressed: () => _confirmRemove(context, ref),
+                      icon: Icon(
+                        Icons.delete_outline,
+                        color: theme.colorScheme.error.withValues(alpha: 0.7),
+                      ),
+                      tooltip: 'Remove exercise',
+                    ),
+                  ),
               ],
             ),
 
@@ -344,18 +453,41 @@ class _ExerciseCard extends ConsumerWidget {
                   key: ValueKey(s.id),
                   set: s,
                   workoutExerciseId: weId,
+                  onCompleted: () => _onSetCompleted(ref),
                 ),
               ),
             ],
 
-            // Add set button
+            // Add set + fill remaining
             const SizedBox(height: 8),
             Center(
-              child: TextButton.icon(
-                onPressed: () =>
-                    ref.read(activeWorkoutProvider.notifier).addSet(weId),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Add Set'),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextButton.icon(
+                    onPressed: () =>
+                        ref.read(activeWorkoutProvider.notifier).addSet(weId),
+                    onLongPress: () => _fillRemaining(context, ref),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Add Set'),
+                  ),
+                  if (activeExercise.sets.any((s) => s.isCompleted))
+                    Semantics(
+                      label: 'Fill remaining sets with last completed values',
+                      child: TextButton(
+                        onPressed: () => _fillRemaining(context, ref),
+                        child: Text(
+                          'Fill',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.primary.withValues(
+                              alpha: 0.7,
+                            ),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ],
@@ -391,6 +523,10 @@ class _SetColumnHeaders extends StatelessWidget {
           SizedBox(
             width: 140,
             child: Text('REPS', style: style, textAlign: TextAlign.center),
+          ),
+          SizedBox(
+            width: 36,
+            child: Text('RPE', style: style, textAlign: TextAlign.center),
           ),
           const SizedBox(width: 48),
         ],

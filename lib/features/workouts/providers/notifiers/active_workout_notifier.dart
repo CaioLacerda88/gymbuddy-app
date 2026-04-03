@@ -208,6 +208,128 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
     _saveToHive(newState);
   }
 
+  /// Copy weight and reps from the previous set into the given set.
+  void copyLastSet(String workoutExerciseId, String setId) {
+    final current = state.value;
+    if (current == null) return;
+
+    final newState = current.copyWith(
+      exercises: current.exercises.map((e) {
+        if (e.workoutExercise.id != workoutExerciseId) return e;
+
+        final targetIndex = e.sets.indexWhere((s) => s.id == setId);
+        if (targetIndex <= 0) return e; // no previous set or not found
+
+        final previous = e.sets[targetIndex - 1];
+        final updated = e.sets[targetIndex].copyWith(
+          weight: previous.weight,
+          reps: previous.reps,
+        );
+
+        return e.copyWith(
+          sets: [
+            ...e.sets.sublist(0, targetIndex),
+            updated,
+            ...e.sets.sublist(targetIndex + 1),
+          ],
+        );
+      }).toList(),
+    );
+    state = AsyncData(newState);
+    _saveToHive(newState);
+  }
+
+  /// Fill all incomplete sets after the last completed set with its values.
+  void fillRemainingSets(String workoutExerciseId) {
+    final current = state.value;
+    if (current == null) return;
+
+    final newState = current.copyWith(
+      exercises: current.exercises.map((e) {
+        if (e.workoutExercise.id != workoutExerciseId) return e;
+
+        // Find the last completed set (highest setNumber).
+        ExerciseSet? lastCompleted;
+        for (final s in e.sets) {
+          if (s.isCompleted) {
+            if (lastCompleted == null ||
+                s.setNumber > lastCompleted.setNumber) {
+              lastCompleted = s;
+            }
+          }
+        }
+        if (lastCompleted == null) return e;
+
+        return e.copyWith(
+          sets: e.sets.map((s) {
+            if (!s.isCompleted && s.setNumber > lastCompleted!.setNumber) {
+              return s.copyWith(
+                weight: lastCompleted.weight,
+                reps: lastCompleted.reps,
+              );
+            }
+            return s;
+          }).toList(),
+        );
+      }).toList(),
+    );
+    state = AsyncData(newState);
+    _saveToHive(newState);
+  }
+
+  /// Reorder an exercise by swapping it with its neighbour.
+  ///
+  /// [direction] must be -1 (move up) or +1 (move down).
+  void reorderExercise(String workoutExerciseId, int direction) {
+    assert(direction == -1 || direction == 1, 'direction must be -1 or 1');
+    final current = state.value;
+    if (current == null) return;
+
+    final exercises = [...current.exercises];
+    final index = exercises.indexWhere(
+      (e) => e.workoutExercise.id == workoutExerciseId,
+    );
+    if (index < 0) return;
+
+    final targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= exercises.length) return;
+
+    // Swap order fields.
+    final a = exercises[index];
+    final b = exercises[targetIndex];
+    exercises[index] = b.copyWith(
+      workoutExercise: b.workoutExercise.copyWith(order: index),
+    );
+    exercises[targetIndex] = a.copyWith(
+      workoutExercise: a.workoutExercise.copyWith(order: targetIndex),
+    );
+
+    final newState = current.copyWith(exercises: exercises);
+    state = AsyncData(newState);
+    _saveToHive(newState);
+  }
+
+  /// Replace the exercise on a [WorkoutExercise] while keeping all sets.
+  void swapExercise(String workoutExerciseId, Exercise newExercise) {
+    final current = state.value;
+    if (current == null) return;
+
+    final newState = current.copyWith(
+      exercises: current.exercises.map((e) {
+        if (e.workoutExercise.id != workoutExerciseId) return e;
+
+        return e.copyWith(
+          workoutExercise: e.workoutExercise.copyWith(
+            exerciseId: newExercise.id,
+            exercise: newExercise,
+          ),
+        );
+      }).toList(),
+    );
+    state = AsyncData(newState);
+    _saveToHive(newState);
+  }
+
   /// Discard the active workout (deletes from server and clears local state).
   Future<void> discardWorkout() async {
     final current = state.value;
