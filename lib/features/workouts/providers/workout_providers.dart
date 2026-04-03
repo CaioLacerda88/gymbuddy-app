@@ -6,6 +6,7 @@ import '../data/workout_repository.dart';
 import '../models/exercise_set.dart';
 
 export 'notifiers/active_workout_notifier.dart';
+export 'notifiers/rest_timer_notifier.dart';
 
 /// Provides the [WorkoutRepository] singleton.
 final workoutRepositoryProvider = Provider<WorkoutRepository>((ref) {
