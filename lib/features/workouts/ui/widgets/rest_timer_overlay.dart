@@ -93,33 +93,87 @@ class _RestTimerOverlayState extends ConsumerState<RestTimerOverlay> {
                 ),
               ),
               const SizedBox(height: 32),
-              // Skip button
-              Semantics(
-                label: 'Skip rest timer',
-                button: true,
-                child: SizedBox(
-                  width: 160,
-                  height: 56,
-                  child: TextButton(
-                    onPressed: () =>
-                        ref.read(restTimerProvider.notifier).skip(),
-                    style: TextButton.styleFrom(
-                      foregroundColor: theme.colorScheme.onSurface,
-                      textStyle: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(
-                          color: theme.colorScheme.onSurface.withValues(
-                            alpha: 0.3,
+              // -30s / Skip / +30s button row
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Semantics(
+                    label: 'Subtract 30 seconds',
+                    button: true,
+                    child: SizedBox(
+                      width: 64,
+                      height: 56,
+                      child: TextButton(
+                        onPressed: () => ref
+                            .read(restTimerProvider.notifier)
+                            .adjustTime(-30),
+                        style: TextButton.styleFrom(
+                          foregroundColor: theme.colorScheme.onSurface,
+                          backgroundColor: Colors.white12,
+                          textStyle: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
+                        child: const Text('-30s'),
                       ),
                     ),
-                    child: const Text('Skip'),
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  Semantics(
+                    label: 'Skip rest timer',
+                    button: true,
+                    child: SizedBox(
+                      width: 120,
+                      height: 56,
+                      child: TextButton(
+                        onPressed: () =>
+                            ref.read(restTimerProvider.notifier).skip(),
+                        style: TextButton.styleFrom(
+                          foregroundColor: theme.colorScheme.onSurface,
+                          textStyle: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.3,
+                              ),
+                            ),
+                          ),
+                        ),
+                        child: const Text('Skip'),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Semantics(
+                    label: 'Add 30 seconds',
+                    button: true,
+                    child: SizedBox(
+                      width: 64,
+                      height: 56,
+                      child: TextButton(
+                        onPressed: () =>
+                            ref.read(restTimerProvider.notifier).adjustTime(30),
+                        style: TextButton.styleFrom(
+                          foregroundColor: theme.colorScheme.onSurface,
+                          backgroundColor: Colors.white12,
+                          textStyle: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('+30s'),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

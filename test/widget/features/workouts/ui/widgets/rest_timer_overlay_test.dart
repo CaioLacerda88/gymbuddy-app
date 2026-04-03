@@ -109,6 +109,29 @@ void main() {
 
         expect(find.text('Skip'), findsOneWidget);
       });
+
+      testWidgets('displays -30s and +30s buttons when timer is active', (
+        tester,
+      ) async {
+        const state = RestTimerState(
+          totalSeconds: 60,
+          remainingSeconds: 30,
+          isActive: true,
+        );
+        await tester.pumpWidget(buildOverlay(state));
+
+        expect(find.text('-30s'), findsOneWidget);
+        expect(find.text('+30s'), findsOneWidget);
+      });
+
+      testWidgets('does not display -30s or +30s buttons when timer is null', (
+        tester,
+      ) async {
+        await tester.pumpWidget(buildOverlay(null));
+
+        expect(find.text('-30s'), findsNothing);
+        expect(find.text('+30s'), findsNothing);
+      });
     });
 
     group('interactions', () {
@@ -142,6 +165,76 @@ void main() {
         await tester.pump();
 
         expect(container.read(restTimerProvider), isNull);
+      });
+    });
+
+    group('adjustment button interactions', () {
+      testWidgets('tapping +30s calls adjustTime(30) on notifier', (
+        tester,
+      ) async {
+        const state = RestTimerState(
+          totalSeconds: 60,
+          remainingSeconds: 60,
+          isActive: true,
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            restTimerProvider.overrideWith(() => _FakeRestTimerNotifier(state)),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              theme: AppTheme.dark,
+              home: const Scaffold(body: RestTimerOverlay()),
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('+30s'));
+        await tester.pump();
+
+        final updatedState = container.read(restTimerProvider);
+        expect(updatedState!.totalSeconds, 90);
+        expect(updatedState.remainingSeconds, 90);
+      });
+
+      testWidgets('tapping -30s calls adjustTime(-30) on notifier', (
+        tester,
+      ) async {
+        const state = RestTimerState(
+          totalSeconds: 90,
+          remainingSeconds: 90,
+          isActive: true,
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            restTimerProvider.overrideWith(() => _FakeRestTimerNotifier(state)),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              theme: AppTheme.dark,
+              home: const Scaffold(body: RestTimerOverlay()),
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('-30s'));
+        await tester.pump();
+
+        final updatedState = container.read(restTimerProvider);
+        expect(updatedState!.totalSeconds, 60);
+        expect(updatedState.remainingSeconds, 60);
       });
     });
 
