@@ -194,21 +194,26 @@ class _ActiveWorkoutBanner extends ConsumerWidget {
       child: Container(
         height: 56,
         width: double.infinity,
-        color: theme.colorScheme.primary.withValues(alpha: 0.15),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.primary.withValues(alpha: 0.85),
+          border: Border(
+            top: BorderSide(color: theme.colorScheme.primary, width: 2),
+          ),
+        ),
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
           children: [
             Icon(
               Icons.fitness_center,
-              color: theme.colorScheme.primary,
+              color: theme.colorScheme.onPrimary,
               size: 20,
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 state.workout.name,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: theme.colorScheme.primary,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: theme.colorScheme.onPrimary,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -219,12 +224,12 @@ class _ActiveWorkoutBanner extends ConsumerWidget {
                 loading: () => '...',
                 error: (_, _) => '',
               ),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.primary,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onPrimary.withValues(alpha: 0.8),
               ),
             ),
             const SizedBox(width: 8),
-            Icon(Icons.chevron_right, color: theme.colorScheme.primary),
+            Icon(Icons.chevron_right, color: theme.colorScheme.onPrimary),
           ],
         ),
       ),
