@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -197,5 +199,143 @@ void main() {
 
       expect(find.byIcon(Icons.person), findsOneWidget);
     });
+
+    testWidgets(
+      'tapping the lbs segment calls toggleWeightUnit on the notifier',
+      (tester) async {
+        var toggleCalled = false;
+
+        // Use a notifier that records the call.
+        final notifier = _TrackingProfileNotifier(
+          profile: const Profile(
+            id: 'user-1',
+            displayName: 'Jane',
+            weightUnit: 'kg',
+          ),
+          onToggle: () => toggleCalled = true,
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              profileProvider.overrideWith(() => notifier),
+              authRepositoryProvider.overrideWithValue(
+                MockAuthRepository()
+                  ..setCurrentUser(null)
+                  ..setSignOut(),
+              ),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.dark,
+              home: const ProfileScreen(),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        // Tap the 'lbs' segment to trigger toggleWeightUnit.
+        await tester.tap(find.text('lbs'));
+        await tester.pump();
+
+        expect(toggleCalled, isTrue);
+      },
+    );
+
+    testWidgets(
+      'tapping the kg segment calls toggleWeightUnit when lbs is active',
+      (tester) async {
+        var toggleCalled = false;
+
+        final notifier = _TrackingProfileNotifier(
+          profile: const Profile(id: 'user-1', weightUnit: 'lbs'),
+          onToggle: () => toggleCalled = true,
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              profileProvider.overrideWith(() => notifier),
+              authRepositoryProvider.overrideWithValue(
+                MockAuthRepository()
+                  ..setCurrentUser(null)
+                  ..setSignOut(),
+              ),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.dark,
+              home: const ProfileScreen(),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        await tester.tap(find.text('kg'));
+        await tester.pump();
+
+        expect(toggleCalled, isTrue);
+      },
+    );
+
+    testWidgets('shows LinearProgressIndicator while profile is loading', (
+      tester,
+    ) async {
+      // Use a notifier that stays in loading state indefinitely.
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            profileProvider.overrideWith(() => _LoadingProfileNotifier()),
+            authRepositoryProvider.overrideWithValue(
+              MockAuthRepository()
+                ..setCurrentUser(null)
+                ..setSignOut(),
+            ),
+          ],
+          child: MaterialApp(theme: AppTheme.dark, home: const ProfileScreen()),
+        ),
+      );
+      // Only pump once so we catch the loading frame.
+      await tester.pump();
+
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    });
   });
+}
+
+// ---------------------------------------------------------------------------
+// Extra notifier stubs used in the additional tests above
+// ---------------------------------------------------------------------------
+
+class _TrackingProfileNotifier extends AsyncNotifier<Profile?>
+    with Mock
+    implements ProfileNotifier {
+  _TrackingProfileNotifier({required this.profile, required this.onToggle});
+
+  final Profile? profile;
+  final VoidCallback onToggle;
+
+  @override
+  Future<Profile?> build() async => profile;
+
+  @override
+  Future<void> toggleWeightUnit() async => onToggle();
+}
+
+class _LoadingProfileNotifier extends AsyncNotifier<Profile?>
+    with Mock
+    implements ProfileNotifier {
+  @override
+  Future<Profile?> build() => Completer<Profile?>().future; // never resolves
+
+  @override
+  Future<void> toggleWeightUnit() async {}
+}
+
+extension _MockAuthRepositoryExt on MockAuthRepository {
+  void setCurrentUser(User? user) {
+    when(() => currentUser).thenReturn(user);
+  }
+
+  void setSignOut() {
+    when(() => signOut()).thenAnswer((_) async {});
+  }
 }

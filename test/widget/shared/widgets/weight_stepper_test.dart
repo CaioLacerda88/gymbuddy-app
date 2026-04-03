@@ -196,6 +196,86 @@ void main() {
       });
     });
 
+    group('tap-to-type edge cases', () {
+      testWidgets('entering non-numeric text does not call onChanged', (
+        tester,
+      ) async {
+        double? emitted;
+        await tester.pumpWidget(
+          buildTestWidget(
+            WeightStepper(value: 60, onChanged: (v) => emitted = v),
+          ),
+        );
+
+        await tester.tap(find.text('60'));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextField), 'abc');
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
+
+        expect(emitted, isNull);
+      });
+
+      testWidgets('entering empty string does not call onChanged', (
+        tester,
+      ) async {
+        double? emitted;
+        await tester.pumpWidget(
+          buildTestWidget(
+            WeightStepper(value: 60, onChanged: (v) => emitted = v),
+          ),
+        );
+
+        await tester.tap(find.text('60'));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextField), '');
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
+
+        expect(emitted, isNull);
+      });
+
+      testWidgets('entering negative number does not call onChanged', (
+        tester,
+      ) async {
+        double? emitted;
+        await tester.pumpWidget(
+          buildTestWidget(
+            WeightStepper(value: 60, onChanged: (v) => emitted = v),
+          ),
+        );
+
+        await tester.tap(find.text('60'));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextField), '-10');
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
+
+        expect(emitted, isNull);
+      });
+
+      testWidgets('entering zero calls onChanged with 0.0', (tester) async {
+        double? emitted;
+        await tester.pumpWidget(
+          buildTestWidget(
+            WeightStepper(value: 60, onChanged: (v) => emitted = v),
+          ),
+        );
+
+        await tester.tap(find.text('60'));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextField), '0');
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
+
+        expect(emitted, 0.0);
+      });
+    });
+
     group('custom increment', () {
       testWidgets('uses default increment of 2.5 when not specified', (
         tester,

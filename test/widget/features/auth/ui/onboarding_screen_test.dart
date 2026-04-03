@@ -81,5 +81,69 @@ void main() {
 
       expect(find.text('Set up your profile'), findsOneWidget);
     });
+
+    testWidgets('profile page is the last page — no NEXT button on page 2', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildTestWidget());
+
+      await tester.tap(find.text('GET STARTED'));
+      await tester.pumpAndSettle();
+
+      // Page 2 has "LET'S GO" as the final CTA, not "NEXT".
+      expect(find.text("LET'S GO"), findsOneWidget);
+      expect(find.text('NEXT'), findsNothing);
+    });
+
+    testWidgets('display name field accepts text input', (tester) async {
+      await tester.pumpWidget(buildTestWidget());
+
+      await tester.tap(find.text('GET STARTED'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'Alice');
+      expect(find.text('Alice'), findsOneWidget);
+    });
+
+    testWidgets('selecting a fitness level chip marks it as selected', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildTestWidget());
+
+      await tester.tap(find.text('GET STARTED'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Intermediate'));
+      await tester.pump();
+
+      final chip = tester.widget<ChoiceChip>(
+        find.widgetWithText(ChoiceChip, 'Intermediate'),
+      );
+      expect(chip.selected, isTrue);
+    });
+
+    testWidgets('only one fitness level chip can be selected at a time', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildTestWidget());
+
+      await tester.tap(find.text('GET STARTED'));
+      await tester.pumpAndSettle();
+
+      // Select Beginner first, then Intermediate.
+      await tester.tap(find.text('Beginner'));
+      await tester.pump();
+      await tester.tap(find.text('Intermediate'));
+      await tester.pump();
+
+      final beginnerChip = tester.widget<ChoiceChip>(
+        find.widgetWithText(ChoiceChip, 'Beginner'),
+      );
+      final intermediateChip = tester.widget<ChoiceChip>(
+        find.widgetWithText(ChoiceChip, 'Intermediate'),
+      );
+      expect(beginnerChip.selected, isFalse);
+      expect(intermediateChip.selected, isTrue);
+    });
   });
 }

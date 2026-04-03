@@ -1578,4 +1578,77 @@ void main() {
       expect(notifier.incompleteSetsCount, 1);
     });
   });
+
+  // ----------------------------------------------------------------- addSet with defaults
+  group('ActiveWorkoutNotifier — addSet with pre-fill defaults', () {
+    test('new set uses defaultWeight and defaultReps when provided', () async {
+      final initial = makeState(exerciseCount: 1, setsPerExercise: 0);
+      final container = makeContainer(initial);
+      addTearDown(container.dispose);
+      await container.read(activeWorkoutProvider.future);
+
+      final weId = initial.exercises.first.workoutExercise.id;
+      container
+          .read(activeWorkoutProvider.notifier)
+          .addSet(weId, defaultWeight: 80.0, defaultReps: 6);
+
+      final newSet = container
+          .read(activeWorkoutProvider)
+          .value!
+          .exercises
+          .first
+          .sets
+          .first;
+      expect(newSet.weight, 80.0);
+      expect(newSet.reps, 6);
+    });
+
+    test(
+      'new set weight defaults to 0 when defaultWeight is not provided',
+      () async {
+        final initial = makeState(exerciseCount: 1, setsPerExercise: 0);
+        final container = makeContainer(initial);
+        addTearDown(container.dispose);
+        await container.read(activeWorkoutProvider.future);
+
+        final weId = initial.exercises.first.workoutExercise.id;
+        container.read(activeWorkoutProvider.notifier).addSet(weId);
+
+        final newSet = container
+            .read(activeWorkoutProvider)
+            .value!
+            .exercises
+            .first
+            .sets
+            .first;
+        expect(newSet.weight, 0);
+        expect(newSet.reps, 0);
+      },
+    );
+
+    test(
+      'new set uses only defaultWeight when defaultReps is omitted',
+      () async {
+        final initial = makeState(exerciseCount: 1, setsPerExercise: 0);
+        final container = makeContainer(initial);
+        addTearDown(container.dispose);
+        await container.read(activeWorkoutProvider.future);
+
+        final weId = initial.exercises.first.workoutExercise.id;
+        container
+            .read(activeWorkoutProvider.notifier)
+            .addSet(weId, defaultWeight: 60.0);
+
+        final newSet = container
+            .read(activeWorkoutProvider)
+            .value!
+            .exercises
+            .first
+            .sets
+            .first;
+        expect(newSet.weight, 60.0);
+        expect(newSet.reps, 0);
+      },
+    );
+  });
 }

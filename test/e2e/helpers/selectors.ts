@@ -50,21 +50,27 @@ export const AUTH = {
 } as const;
 
 // ---------------------------------------------------------------------------
-// Onboarding — OnboardingScreen (3-page flow after first sign-up)
+// Onboarding — OnboardingScreen (2-page flow after first sign-up, Step 5e)
+//
+// Step 5e trimmed onboarding from 3 pages to 2:
+//   Page 1: Welcome ("Track every rep, every time") → GET STARTED
+//   Page 2: Profile setup (display name + fitness level) → LET'S GO
+//
+// The old NEXT button and workout-choice page (page 3) were removed.
 // ---------------------------------------------------------------------------
 export const ONBOARDING = {
-  /** Page 1 CTA */
+  /** Page 1 CTA — takes user to profile setup */
   getStartedButton: 'text=GET STARTED',
-  /** Page 2 CTA */
+  /**
+   * NEXT button — was used on page 2 of the old 3-page flow.
+   * After Step 5e this button no longer exists. The selector is kept here
+   * so tests can assert `not.toBeVisible()` on it.
+   */
   nextButton: 'text=NEXT',
   /** Display name input on page 2 */
   displayNameInput: '[aria-label="Display name"]',
-  /** Page 3 CTA (enabled only when a choice is selected) */
+  /** Page 2 final CTA — submits onboarding profile and navigates to home */
   letsGoButton: "text=LET'S GO",
-  /** Workout choice card titles */
-  fullBodyOption: 'text=Full Body Starter',
-  startBlankOption: 'text=Start Blank',
-  browseExercisesOption: 'text=Browse Exercises',
 } as const;
 
 // ---------------------------------------------------------------------------
