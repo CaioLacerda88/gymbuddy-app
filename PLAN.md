@@ -80,10 +80,13 @@ ALTER TABLE workout_templates ADD CONSTRAINT valid_exercises_json
 /workout/active                                      (no shell, full-screen)
 ShellRoute:
   /home
+  /home/history
+  /home/history/:workoutId
   /exercises
   /exercises/:id
-  /history
-  /history/:workoutId
+  /routines
+  /routines/create
+  /routines/:id/edit
   /profile
 ```
 
@@ -418,23 +421,164 @@ Added after a joint Product Owner + UI/UX Critic audit of the current app (2026-
 
 **Sequencing rationale:** This sprint hardens the foundation before Step 6 adds templates. Templates become the first onboarding payoff (page 3 "Full Body Starter") and the primary "start workout" path. If the core logging loop has friction (tiny numbers, overflow, no previous data), templates amplify it by making that friction the first experience for every new user.
 
-### Step 6: Workout Templates
-- Save current workout as template: `WorkoutTemplate.fromWorkout(Workout)` factory maps workout exercises to JSONB structure
-- "Start from template" option: pre-fills exercises and target reps/weight from template
-- Template list screen:
-  - "Starter Templates" and "My Templates" sections clearly labeled
-  - Template cards: large "Start" action (entire card tappable or large right-side button)
-  - Zero templates state: "Finish a workout to save it as a template" (show only starters for new users)
-- Starter templates (seeded in Step 2) shown alongside user templates
-- Template with deleted exercise: load-time check joins exercise IDs against `exercises` table. Deleted exercise shown grayed out with warning badge and substitution option.
-- Auto-generate template name from exercises ("Chest & Back — 5 exercises") but allow rename
-- Basic template editing: add/remove/reorder exercises within a template
+### Step 6: Routines
 
-**Deferred to v1.1:** Full template edit screen with set config editing
+Refined after joint Product Owner + UI/UX Critic + Tech Lead review (2026-04-03). Renamed from "Workout Templates" to **"Routines"** — the term gym-goers already use ("What's your routine?"). "Templates" is developer jargon; "Training Sessions" describes completed events, not reusable structures. Strong, Hevy, and JEFIT all use "Routines" — the market vocabulary is settled.
+
+#### Navigation Change
+
+**Replace History tab with Routines in bottom nav.** History does not need prime real estate — users check it occasionally, not before every session. Routines are needed before every session.
+
+New bottom nav: **Home | Exercises | Routines | Profile**
+
+History moves inside the Home screen as a "Recent Workouts" section with a "View All" link that navigates to the full history screen. The History screen and Workout Detail screen are unchanged — they just get navigated to from Home instead of from the bottom nav.
+
+**Files:** `lib/core/router/app_router.dart` — swap `/history` at index 2 for `/routines`, nest `/history` and `/history/:id` as sub-routes under `/home`.
+
+#### Home Screen Rebuild
+
+The home screen becomes a routine launchpad. Current state (greeting + single button) is replaced with:
+
+**For users with routines:**
+```
+[GymBuddy]                              [today's date]
+
+MY ROUTINES
+[ Push A          chest · shoulders · triceps    ]  72dp card
+[ Pull A          back · biceps                  ]  72dp card
+[ Legs A          quads · hamstrings · calves    ]  72dp card
+
+RECENT
+[ Push A · 3 days ago · 52 min · 18,200kg       ]  compact row
+[ Pull A · 5 days ago · 48 min · 14,800kg       ]  compact row
+
+                              [ Start Empty Workout ]  secondary button
+```
+
+Each routine card is a full-width tap target (72dp min height). Tap → workout starts immediately (no preview screen). Muscle groups shown as subtitle from the routine's exercises. "Start Empty Workout" is secondary, positioned below.
+
+**For new users (no routines):**
+```
+[GymBuddy]
+
+STARTER ROUTINES
+[ Push Day        chest · shoulders · triceps    ]  72dp card
+[ Pull Day        back · biceps                  ]  72dp card
+[ Leg Day         quads · hamstrings · calves    ]  72dp card
+[ Full Body       full body                      ]  72dp card
+
+[ + Create Your First Routine                    ]  primary green card
+
+                              [ Start Empty Workout ]  secondary
+```
+
+Starter routines (already seeded in `supabase/seed.sql` with `is_default = true`) are shown immediately. No blank empty state — new users always see actionable content.
+
+**Providers needed:**
+- Reuse `workoutHistoryProvider` for "Recent Workouts" section (`.take(3)` from existing paginated data)
+- New `routineListProvider` from the routines feature
+
+#### Routines Feature Module
+
+New feature at `lib/features/routines/`:
+
+```
+lib/features/routines/
+  data/
+    routine_repository.dart         # CRUD against workout_templates table
+  models/
+    routine.dart                    # Freezed: Routine, RoutineExercise, RoutineSetConfig
+  providers/
+    routine_providers.dart          # routineRepositoryProvider, routineListProvider
+    notifiers/
+      routine_list_notifier.dart    # AsyncNotifier for routine list
+  ui/
+    routine_list_screen.dart        # Routines tab screen (My Routines + Starters)
+    create_routine_screen.dart      # Create/edit routine
+    widgets/
+      routine_card.dart             # Reusable routine card (72dp, full-width tap)
+```
+
+**Models:**
+
+```dart
+@freezed class Routine {
+  id, userId?, name, isDefault, exercises (List<RoutineExercise>), createdAt
+}
+
+@freezed class RoutineExercise {
+  exerciseId, setConfigs (List<RoutineSetConfig>), exercise? (resolved at query time)
+}
+
+@freezed class RoutineSetConfig {
+  targetReps, targetWeight? (always null — weights come from lastWorkoutSetsProvider), restSeconds?
+}
+```
+
+**Design decision:** Routines do NOT store target weights. Weights are always sourced from the user's last session for that exercise via `lastWorkoutSetsProvider`. The routine only defines structure: exercise order, number of sets, target reps, rest seconds. The `target_weight` field exists in the JSONB schema but is always null — leave the schema as-is for future flexibility.
+
+**Repository:** Standard `BaseRepository` + `mapException` pattern. Two-query approach for exercise name resolution: (1) fetch routines, (2) batch-fetch exercise details by IDs extracted from JSONB. Methods: `getRoutines(userId)`, `getRoutine(id)`, `createRoutine(...)`, `updateRoutine(...)`, `deleteRoutine(id, userId)`.
+
+#### Start-from-Routine Flow
+
+**Tap count goal: 2 taps from app open to first set logged.** Open app (0) → tap routine card (1) → workout pre-filled → tap set checkmark (2).
+
+When user taps a routine card:
+1. Routines UI constructs a `RoutineStartConfig` DTO (defined in `lib/features/workouts/models/`) containing: routine name, list of `({String exerciseId, Exercise exercise, int setCount, int? targetReps, int? restSeconds})`
+2. Calls `ref.read(activeWorkoutProvider.notifier).startFromRoutine(config)`
+3. `startFromRoutine` method on `ActiveWorkoutNotifier`:
+   - Creates active workout shell via `_repo.createActiveWorkout(userId, config.name)`
+   - Fetches last-workout weights via `_repo.getLastWorkoutSets(exerciseIds)`
+   - Pre-creates `ActiveWorkoutExercise` entries with sets pre-filled (set count from routine, weight/reps from last session, rest seconds from routine)
+   - Persists to Hive, navigates to `/workout/active`
+
+**Cross-feature architecture:** `RoutineStartConfig` lives in `lib/features/workouts/models/` so the workouts feature owns its input contract. The routines feature imports only the workout provider and DTO — no internal workout implementation details. This preserves feature isolation per the architecture rules.
+
+#### Routine Creation Flow (MVP)
+
+**Create from scratch** — the only MVP creation path:
+
+1. User taps "+ Create Routine" (on Home or Routines tab)
+2. **Create Routine screen:** Name field (auto-suggest from muscle groups, e.g., "Push Day") + exercise list builder
+3. Exercise list builder reuses `ExercisePickerSheet` (same bottom sheet from active workout). User adds exercises, reorders them.
+4. Per exercise: set count stepper (default 3, range 1-10). No weight fields — weights are per-session.
+5. Optional: rest seconds per exercise (default 90s)
+6. Save → routine appears in list
+
+**The creation screen is a simplified version of the active workout screen** — exercise cards with set count steppers instead of full set rows. No timer, no completion checkboxes. The user is defining structure, not logging.
+
+#### Routine List Screen (Routines Tab)
+
+Two sections:
+- **My Routines** — user-created routines, ordered by most recently used (or created_at)
+- **Starter Routines** — seeded defaults with `is_default = true`
+
+Routine cards: 72dp height, full-width tap to start workout. Show routine name + muscle group summary + exercise count. Long-press for edit/delete menu (no swipe-to-delete — too dangerous on gym floor with sweaty hands).
+
+**Zero-state for My Routines:** "Your routines appear here. Start from a Starter Routine or create your own." with arrow toward starter section.
+
+#### Deleted Exercise Handling (Simplified for MVP)
+
+When a routine is loaded and an exercise has been soft-deleted:
+- Show a banner at the top of the active workout screen: "1 exercise is no longer available"
+- The deleted exercise is omitted from the pre-filled workout
+- User can add a substitute manually via the exercise picker
+
+**Deferred to v1.1:** Exercise substitution suggestions (same muscle group + equipment type).
+
+#### Deferred to v1.1
+
+- "Save as Routine" from workout history detail screen (one-tap creation from past workouts)
+- "Last performed X days ago" on routine cards
+- "Edit for today" mode (modify routine exercises for one session without mutating the saved routine)
+- Exercise substitution suggestions for deleted exercises
+- Routine folders/organization
+- `updated_at` column on `workout_templates` table
 
 **Tests:**
-- Unit: template-to-workout conversion (`WorkoutTemplate.fromWorkout` factory), template repository CRUD, deleted exercise detection
-- Widget: template list (starter vs user sections, empty state), start-from-template flow, deleted exercise warning UX
+- Unit: Routine model serialization (JSONB parsing), RoutineRepository CRUD, RoutineStartConfig construction, `startFromRoutine` on ActiveWorkoutNotifier (pre-fills correct exercises/sets/weights)
+- Widget: Routine list screen (my routines + starters, empty state, long-press menu), Create routine screen (add exercises, set count stepper, name field, save), Home screen (routine cards, recent workouts, quick start), Start-from-routine flow (tap card → active workout pre-filled)
+- Navigation: Routines tab in bottom nav, History accessible from Home
 
 ### Step 7: Personal Records
 
@@ -482,29 +626,24 @@ Added after a joint Product Owner + UI/UX Critic audit of the current app (2026-
 - Unit: PR detection (max weight, max reps, volume), edge cases (0 weight bodyweight, 0 reps skip, first workout consolidated, 999kg, PR ties not counted, warmup sets excluded), idempotent creation, batch query
 - Widget: PR celebration (flash, banner, haptic), PR list (empty state, bodyweight display), first workout message, multi-PR summary
 
-### Step 8: Home Screen & Navigation
+### Step 8: Home Screen Polish & PR Integration
 
-**Bottom navigation:** Home, Exercises, History, Profile
+> **Note:** The home screen rebuild, bottom navigation change (Home | Exercises | Routines | Profile), and profile screen were completed in Steps 5e and 6. This step focuses on polish and PR integration that depends on Step 7.
 
-**Home screen:**
-- Quick "Start Workout" button: min 72dp tall, full-width or 80% width, bottom third of screen, fixed-position, always visible
-- "Repeat Last Workout" shortcut: creates workout pre-filled from most recent workout's exercises and weights
-- Resume unfinished workout banner: MOST prominent element when present — full-width, pulsing border, above everything
-- Recent workouts summary (via `recentWorkouts(limit: 5)` repository method)
-- Recent PRs
-- First-time user: "Ready for your first workout?" with Start button and starter templates. No blank screen.
-- Edge case: empty workouts (started and immediately finished) filtered out or shown muted
+**Resume unfinished workout banner:** MOST prominent element when present — full-width, pulsing border, above routine cards. Tapping resumes from Hive cache.
 
-**Workout history detail screen:** Full workout detail (exercises, sets, weights, duration, total volume). Extends basic history from Step 5.
+**Recent PRs section on home screen:** Below "Recent Workouts", show latest PRs (depends on Step 7 PR detection). "View All" links to PR list screen.
 
-**Profile screen:** User info, fitness level, weight unit toggle (kg/lbs), logout
+**Workout history detail screen:** Full workout detail (exercises, sets, weights, duration, total volume). Extends basic history from Step 5. Show PR badges on sets that were records at time of workout.
 
-**Smart defaults:** Suggest pre-filling from last session's weights when starting a workout
+**Edge cases:**
+- Empty workouts (started and immediately finished) filtered out or shown muted in recent list
+- Resume banner disappears when workout is finished or discarded from another device
 
 **Deferred to v1.1:** Muscle group coverage insight ("You haven't trained back in 8 days")
 
 **Tests:**
-- Widget: home screen (start workout button sizing/position, resume banner prominence, recent workouts/PRs, empty state, repeat last workout), profile screen (logout, weight unit toggle), navigation (tab switching), workout history detail
+- Widget: resume banner (prominence, tap to resume, disappears after finish), recent PRs section (empty state, PR cards, view all link), workout history detail (full data, PR badges)
 
 ### Step 9: E2E Testing, Release Pipeline & Final QA
 
@@ -527,7 +666,7 @@ test/e2e/
 │   ├── auth.full.spec.ts
 │   ├── exercise-library.spec.ts
 │   ├── workout-logging.spec.ts
-│   ├── templates.spec.ts
+│   ├── routines.spec.ts
 │   ├── personal-records.spec.ts
 │   ├── home-navigation.spec.ts
 │   └── crash-recovery.spec.ts

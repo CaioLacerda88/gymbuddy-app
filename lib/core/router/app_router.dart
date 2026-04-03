@@ -15,9 +15,12 @@ import '../../features/exercises/ui/exercise_list_screen.dart';
 import '../../features/workouts/models/active_workout_state.dart';
 import '../../features/workouts/providers/workout_providers.dart';
 import '../../features/profile/ui/profile_screen.dart';
+import '../../features/routines/ui/create_routine_screen.dart';
+import '../../features/routines/ui/routine_list_screen.dart';
 import '../../features/workouts/ui/active_workout_screen.dart';
 import '../../features/workouts/ui/home_screen.dart';
 import '../../features/workouts/ui/workout_detail_screen.dart';
+import '../../features/routines/models/routine.dart';
 import '../../features/workouts/ui/workout_history_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -83,6 +86,20 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/home',
             builder: (context, state) => const HomeScreen(),
+            routes: [
+              GoRoute(
+                path: 'history',
+                builder: (context, state) => const WorkoutHistoryScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':id',
+                    builder: (context, state) => WorkoutDetailScreen(
+                      workoutId: state.pathParameters['id']!,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
           GoRoute(
             path: '/exercises',
@@ -101,13 +118,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
           GoRoute(
-            path: '/history',
-            builder: (context, state) => const WorkoutHistoryScreen(),
+            path: '/routines',
+            builder: (context, state) => const RoutineListScreen(),
             routes: [
               GoRoute(
-                path: ':id',
+                path: 'create',
                 builder: (context, state) =>
-                    WorkoutDetailScreen(workoutId: state.pathParameters['id']!),
+                    CreateRoutineScreen(routine: state.extra as Routine?),
               ),
             ],
           ),
@@ -139,7 +156,7 @@ class _ShellScaffold extends ConsumerWidget {
   int _currentIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
     if (location.startsWith('/exercises')) return 1;
-    if (location.startsWith('/history')) return 2;
+    if (location.startsWith('/routines')) return 2;
     if (location.startsWith('/profile')) return 3;
     return 0;
   }
@@ -157,7 +174,7 @@ class _ShellScaffold extends ConsumerWidget {
           NavigationBar(
             selectedIndex: _currentIndex(context),
             onDestinationSelected: (index) {
-              final routes = ['/home', '/exercises', '/history', '/profile'];
+              final routes = ['/home', '/exercises', '/routines', '/profile'];
               context.go(routes[index]);
             },
             destinations: const [
@@ -167,8 +184,8 @@ class _ShellScaffold extends ConsumerWidget {
                 label: 'Exercises',
               ),
               NavigationDestination(
-                icon: Icon(Icons.history),
-                label: 'History',
+                icon: Icon(Icons.calendar_today),
+                label: 'Routines',
               ),
               NavigationDestination(icon: Icon(Icons.person), label: 'Profile'),
             ],

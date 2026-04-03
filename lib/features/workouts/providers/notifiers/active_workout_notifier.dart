@@ -11,6 +11,7 @@ import '../../data/workout_local_storage.dart';
 import '../../data/workout_repository.dart';
 import '../../models/active_workout_state.dart';
 import '../../models/exercise_set.dart';
+import '../../models/routine_start_config.dart';
 import '../../models/set_type.dart';
 import '../../models/workout_exercise.dart';
 import '../workout_providers.dart';
@@ -65,6 +66,70 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
       final activeState = ActiveWorkoutState(
         workout: workout,
         exercises: const [],
+      );
+      _saveToHive(activeState);
+      return activeState;
+    });
+  }
+
+  /// Start a workout pre-populated from a routine template.
+  Future<void> startFromRoutine(RoutineStartConfig config) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final userId = _userId;
+      final workout = await _repo.createActiveWorkout(
+        userId: userId,
+        name: config.routineName,
+      );
+
+      // Fetch last-workout weights for pre-filling sets.
+      final exerciseIds = config.exercises.map((e) => e.exerciseId).toList();
+      final lastSets = await _repo.getLastWorkoutSets(exerciseIds);
+
+      // Build exercises with pre-filled sets.
+      final exercises = <ActiveWorkoutExercise>[];
+      for (var i = 0; i < config.exercises.length; i++) {
+        final re = config.exercises[i];
+        final workoutExerciseId = _uuid.v4();
+
+        final workoutExercise = WorkoutExercise(
+          id: workoutExerciseId,
+          workoutId: workout.id,
+          exerciseId: re.exerciseId,
+          order: i,
+          restSeconds: re.restSeconds,
+          exercise: re.exercise,
+        );
+
+        final previousSets = lastSets[re.exerciseId] ?? [];
+        final sets = List.generate(re.setCount, (setIndex) {
+          // Use the matching previous set, or the last previous set if fewer.
+          final prev = previousSets.isNotEmpty
+              ? previousSets[setIndex < previousSets.length
+                    ? setIndex
+                    : previousSets.length - 1]
+              : null;
+
+          return ExerciseSet(
+            id: _uuid.v4(),
+            workoutExerciseId: workoutExerciseId,
+            setNumber: setIndex + 1,
+            weight: prev?.weight ?? 0,
+            reps: re.targetReps ?? prev?.reps ?? 0,
+            setType: SetType.working,
+            isCompleted: false,
+            createdAt: DateTime.now().toUtc(),
+          );
+        });
+
+        exercises.add(
+          ActiveWorkoutExercise(workoutExercise: workoutExercise, sets: sets),
+        );
+      }
+
+      final activeState = ActiveWorkoutState(
+        workout: workout,
+        exercises: exercises,
       );
       _saveToHive(activeState);
       return activeState;
