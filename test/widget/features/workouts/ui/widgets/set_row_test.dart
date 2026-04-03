@@ -198,7 +198,7 @@ void main() {
       );
 
       testWidgets(
-        'tapping set type badge cycles set type from working to warmup',
+        'long-pressing set number cycles set type from working to warmup',
         (tester) async {
           final stateJson = TestActiveWorkoutStateFactory.createWithExercises(
             exerciseCount: 1,
@@ -221,8 +221,8 @@ void main() {
             ),
           );
 
-          // Tap the 'W' badge (working set type).
-          await tester.tap(find.text('W'));
+          // Long-press the set number area to cycle set type.
+          await tester.longPress(find.text('${set.setNumber}'));
           await tester.pump();
 
           final updatedState = container.read(activeWorkoutProvider).value;
@@ -235,22 +235,21 @@ void main() {
     });
 
     group('accessibility semantics', () {
-      testWidgets(
-        'set type badge has correct semantics label for working set',
-        (tester) async {
-          final set = makeSet(setType: SetType.working);
-          await tester.pumpWidget(
-            buildTestWidget(SetRow(set: set, workoutExerciseId: 'we-001')),
-          );
+      testWidgets('set number has correct semantics label with type info', (
+        tester,
+      ) async {
+        final set = makeSet(setType: SetType.working);
+        await tester.pumpWidget(
+          buildTestWidget(SetRow(set: set, workoutExerciseId: 'we-001')),
+        );
 
-          expect(
-            find.bySemanticsLabel(
-              RegExp(r'Set type: Working\. Tap to change\.'),
-            ),
-            findsOneWidget,
-          );
-        },
-      );
+        expect(
+          find.bySemanticsLabel(
+            RegExp(r'Set 1.*Long press to change type: Working'),
+          ),
+          findsOneWidget,
+        );
+      });
 
       testWidgets('uncompleted checkbox has "Mark set as done" semantics', (
         tester,

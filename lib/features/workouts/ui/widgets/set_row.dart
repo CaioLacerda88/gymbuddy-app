@@ -81,71 +81,61 @@ class SetRow extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(
           children: [
-            // Set number / copy-last-set button
-            SizedBox(
-              width: 28,
-              child: set.setNumber > 1
-                  ? Semantics(
-                      label: 'Copy previous set values',
-                      child: GestureDetector(
-                        onTap: () => _copyLastSet(ref),
-                        child: Tooltip(
-                          message: 'Copy previous set',
-                          child: Text(
-                            '${set.setNumber}',
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.primary.withValues(
-                                alpha: 0.8,
-                              ),
-                              fontWeight: FontWeight.w700,
-                              decoration: TextDecoration.underline,
-                              decorationColor: theme.colorScheme.primary
-                                  .withValues(alpha: 0.4),
-                            ),
+            // Set number with copy-last-set and long-press for set type.
+            // Uses 48dp minimum touch target per Material guidelines.
+            Semantics(
+              label: set.setNumber > 1
+                  ? 'Set ${set.setNumber}. Tap to copy previous set. '
+                        'Long press to change type: ${set.setType.displayName}'
+                  : 'Set ${set.setNumber}. '
+                        'Long press to change type: ${set.setType.displayName}',
+              child: InkWell(
+                onTap: set.setNumber > 1 ? () => _copyLastSet(ref) : null,
+                onLongPress: () => _cycleSetType(ref),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  constraints: const BoxConstraints(
+                    minWidth: 48,
+                    minHeight: 48,
+                  ),
+                  alignment: Alignment.center,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${set.setNumber}',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: set.setNumber > 1
+                              ? theme.colorScheme.primary.withValues(alpha: 0.8)
+                              : theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.6,
+                                ),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      // Show set type label below the number
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _setTypeBadgeColor(theme, set.setType),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          _setTypeLabels[set.setType] ?? 'W',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
-                    )
-                  : Text(
-                      '${set.setNumber}',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.6,
-                        ),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-            ),
-
-            // Set type badge
-            Semantics(
-              label: 'Set type: ${set.setType.displayName}. Tap to change.',
-              child: InkWell(
-                onTap: () => _cycleSetType(ref),
-                borderRadius: BorderRadius.circular(6),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _setTypeBadgeColor(theme, set.setType),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    _setTypeLabels[set.setType] ?? 'W',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    ],
                   ),
                 ),
               ),
             ),
-
-            const SizedBox(width: 4),
 
             // Weight stepper + "kg" label
             Expanded(
@@ -246,8 +236,7 @@ class _RpeIndicator extends StatelessWidget {
           ),
         ),
         child: Container(
-          width: 36,
-          height: 28,
+          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: rpe != null
