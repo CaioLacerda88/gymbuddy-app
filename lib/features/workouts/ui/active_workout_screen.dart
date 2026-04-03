@@ -237,14 +237,24 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
                     ? 'Exit reorder mode'
                     : 'Reorder exercises',
               ),
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: FilledButton(
-                onPressed: _hasCompletedSet ? _onFinish : null,
-                child: const Text('Finish'),
+          ],
+        ),
+        bottomNavigationBar: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: FilledButton.icon(
+              onPressed: _hasCompletedSet ? _onFinish : null,
+              icon: const Icon(Icons.check_circle),
+              label: const Text('Finish Workout'),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(double.infinity, 56),
+                textStyle: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
-          ],
+          ),
         ),
         body: widget.state.exercises.isEmpty
             ? _EmptyWorkoutBody(onAddExercise: _onAddExercise)
@@ -559,36 +569,38 @@ class _ExerciseCard extends ConsumerWidget {
 
             // Add set + fill remaining
             const SizedBox(height: 8),
-            Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextButton.icon(
-                    onPressed: () =>
-                        ref.read(activeWorkoutProvider.notifier).addSet(weId),
-                    onLongPress: () => _fillRemaining(context, ref),
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Add Set'),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: OutlinedButton.icon(
+                onPressed: () =>
+                    ref.read(activeWorkoutProvider.notifier).addSet(weId),
+                onLongPress: () => _fillRemaining(context, ref),
+                icon: const Icon(Icons.add, size: 20),
+                label: const Text('Add Set'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 48),
+                  side: BorderSide(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
                   ),
-                  if (activeExercise.sets.any((s) => s.isCompleted))
-                    Semantics(
-                      label: 'Fill remaining sets with last completed values',
-                      child: TextButton(
-                        onPressed: () => _fillRemaining(context, ref),
-                        child: Text(
-                          'Fill',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.primary.withValues(
-                              alpha: 0.7,
-                            ),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
+                ),
               ),
             ),
+            if (activeExercise.sets.any((s) => s.isCompleted))
+              Center(
+                child: Semantics(
+                  label: 'Fill remaining sets with last completed values',
+                  child: TextButton(
+                    onPressed: () => _fillRemaining(context, ref),
+                    child: Text(
+                      'Fill',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.7),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
