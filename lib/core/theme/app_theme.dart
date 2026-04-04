@@ -17,6 +17,9 @@ class AppTheme {
     colors: [Color(0xFFFF5252), Color(0xFFD32F2F)],
   );
 
+  /// Color for personal record badges (trophy icons on workout detail).
+  static const prBadgeColor = Color(0xFFFFD54F); // Amber 300
+
   static ThemeData get dark {
     const colorScheme = ColorScheme.dark(
       primary: _primaryColor,
