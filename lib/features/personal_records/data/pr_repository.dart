@@ -125,6 +125,35 @@ class PRRepository extends BaseRepository {
     });
   }
 
+  /// Fetch personal records that were achieved in a specific workout.
+  ///
+  /// Uses a two-query approach:
+  /// 1. Fetch all set IDs belonging to the workout via the
+  ///    `workout_exercises` join.
+  /// 2. Filter `personal_records` to only those whose `set_id` is in that list.
+  Future<List<PersonalRecord>> getPRsForWorkout(
+    String workoutId,
+    String userId,
+  ) {
+    return mapException(() async {
+      final setRows = await _client
+          .from('sets')
+          .select('id, workout_exercises!inner(workout_id)')
+          .eq('workout_exercises.workout_id', workoutId);
+
+      final setIds = setRows.map<String>((r) => r['id'] as String).toList();
+
+      if (setIds.isEmpty) return [];
+
+      final data = await _records
+          .select()
+          .eq('user_id', userId)
+          .inFilter('set_id', setIds);
+
+      return data.map(PersonalRecord.fromJson).toList();
+    });
+  }
+
   /// Upsert personal records.
   ///
   /// Uses the unique constraint on (user_id, exercise_id, record_type) to

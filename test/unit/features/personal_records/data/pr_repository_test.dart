@@ -20,6 +20,18 @@ class FakeSupabaseClient extends Fake implements supabase.SupabaseClient {
   supabase.SupabaseQueryBuilder from(String table) => fakeBuilder;
 }
 
+/// A fake client that routes `from(table)` to different builders,
+/// used when a method queries multiple tables.
+class FakeRoutingSupabaseClient extends Fake
+    implements supabase.SupabaseClient {
+  FakeRoutingSupabaseClient(this.builders);
+  final Map<String, FakePRQueryBuilder> builders;
+
+  @override
+  supabase.SupabaseQueryBuilder from(String table) =>
+      builders[table] ?? (throw StateError('Unexpected table: $table'));
+}
+
 /// Records every chained call so tests can assert on query shape.
 class FakePRQueryBuilder extends Fake implements supabase.SupabaseQueryBuilder {
   FakePRQueryBuilder({this.data = const [], this.error});
@@ -266,6 +278,138 @@ void main() {
       expect(item.record, isA<PersonalRecord>());
       expect(item.exerciseName, isA<String>());
       expect(item.equipmentType, isA<EquipmentType>());
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // getPRsForWorkout
+  // -------------------------------------------------------------------------
+
+  group('PRRepository.getPRsForWorkout', () {
+    /// Builds a sets row as Supabase returns it (with the nested join).
+    Map<String, dynamic> setRow(String id, String workoutId) => {
+      'id': id,
+      'workout_exercises': {'workout_id': workoutId},
+    };
+
+    test('returns PRs whose set_id belongs to the workout', () async {
+      const workoutId = 'workout-001';
+      const userId = 'user-001';
+
+      final setsBuilder = FakePRQueryBuilder(
+        data: [setRow('set-001', workoutId), setRow('set-002', workoutId)],
+      );
+
+      final prRow1 = TestPersonalRecordFactory.create(
+        id: 'pr-001',
+        userId: userId,
+        setId: 'set-001',
+      );
+      final prRow2 = TestPersonalRecordFactory.create(
+        id: 'pr-002',
+        userId: userId,
+        setId: 'set-002',
+      );
+      final prBuilder = FakePRQueryBuilder(data: [prRow1, prRow2]);
+
+      final repo = PRRepository(
+        FakeRoutingSupabaseClient({
+          'sets': setsBuilder,
+          'personal_records': prBuilder,
+        }),
+      );
+
+      final result = await repo.getPRsForWorkout(workoutId, userId);
+
+      expect(result, hasLength(2));
+      expect(result[0].id, 'pr-001');
+      expect(result[1].id, 'pr-002');
+    });
+
+    test('returns empty list when workout has no sets', () async {
+      const workoutId = 'workout-empty';
+      const userId = 'user-001';
+
+      // No sets for this workout.
+      final setsBuilder = FakePRQueryBuilder(data: []);
+      // PR builder should never be queried — use empty data just in case.
+      final prBuilder = FakePRQueryBuilder(data: []);
+
+      final repo = PRRepository(
+        FakeRoutingSupabaseClient({
+          'sets': setsBuilder,
+          'personal_records': prBuilder,
+        }),
+      );
+
+      final result = await repo.getPRsForWorkout(workoutId, userId);
+
+      expect(result, isEmpty);
+      // The second query (inFilter) must not have been called.
+      expect(prBuilder.calledMethods, isEmpty);
+    });
+
+    test('returns empty list when no PRs match the set IDs', () async {
+      const workoutId = 'workout-001';
+      const userId = 'user-001';
+
+      final setsBuilder = FakePRQueryBuilder(
+        data: [setRow('set-001', workoutId)],
+      );
+      // Sets table exists but no PR row references those sets.
+      final prBuilder = FakePRQueryBuilder(data: []);
+
+      final repo = PRRepository(
+        FakeRoutingSupabaseClient({
+          'sets': setsBuilder,
+          'personal_records': prBuilder,
+        }),
+      );
+
+      final result = await repo.getPRsForWorkout(workoutId, userId);
+
+      expect(result, isEmpty);
+    });
+
+    test('filters PR query by user_id', () async {
+      const workoutId = 'workout-001';
+      const userId = 'user-abc';
+
+      final setsBuilder = FakePRQueryBuilder(
+        data: [setRow('set-001', workoutId)],
+      );
+      final prBuilder = FakePRQueryBuilder(data: []);
+
+      final repo = PRRepository(
+        FakeRoutingSupabaseClient({
+          'sets': setsBuilder,
+          'personal_records': prBuilder,
+        }),
+      );
+
+      await repo.getPRsForWorkout(workoutId, userId);
+
+      expect(prBuilder.calledMethods, contains('eq:user_id=$userId'));
+    });
+
+    test('filters PR query by set_id using inFilter', () async {
+      const workoutId = 'workout-001';
+
+      final setsBuilder = FakePRQueryBuilder(
+        data: [setRow('set-001', workoutId), setRow('set-002', workoutId)],
+      );
+      final prBuilder = FakePRQueryBuilder(data: []);
+
+      final repo = PRRepository(
+        FakeRoutingSupabaseClient({
+          'sets': setsBuilder,
+          'personal_records': prBuilder,
+        }),
+      );
+
+      await repo.getPRsForWorkout(workoutId, 'user-001');
+
+      expect(prBuilder.calledMethods, contains('inFilter:set_id'));
     });
   });
 }
