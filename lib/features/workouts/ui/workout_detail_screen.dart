@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/workout_formatters.dart';
 import '../data/workout_repository.dart';
 import '../models/exercise_set.dart';
@@ -264,7 +265,11 @@ class _ReadOnlySetRow extends StatelessWidget {
           SizedBox(
             width: 40,
             child: isPR
-                ? Icon(Icons.emoji_events, size: 18, color: Colors.amber[300])
+                ? const Icon(
+                    Icons.emoji_events,
+                    size: 18,
+                    color: AppTheme.prBadgeColor,
+                  )
                 : Text(
                     '${set.setNumber}.',
                     style: textStyle?.copyWith(

@@ -74,7 +74,7 @@ Widget buildBanner(
         routes: [
           GoRoute(
             path: '/',
-            builder: (context, state) => Scaffold(
+            builder: (context, state) => const Scaffold(
               body: SingleChildScrollView(
                 child: Column(children: [ResumeWorkoutBanner()]),
               ),

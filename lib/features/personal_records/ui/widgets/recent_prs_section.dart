@@ -23,18 +23,13 @@ class RecentPRsSection extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Builder(
-                  builder: (context) {
-                    final theme = Theme.of(context);
-                    return Text(
-                      'RECENT RECORDS',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.5,
-                        ),
-                      ),
-                    );
-                  },
+                Text(
+                  'RECENT RECORDS',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
                 ),
                 TextButton(
                   onPressed: () => context.go('/records'),
