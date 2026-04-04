@@ -84,6 +84,47 @@ class PRRepository extends BaseRepository {
     });
   }
 
+  /// Fetch the most recent personal records for a user with exercise details.
+  ///
+  /// Uses a Supabase join with a server-side LIMIT to avoid over-fetching.
+  Future<
+    List<
+      ({
+        PersonalRecord record,
+        String exerciseName,
+        EquipmentType equipmentType,
+      })
+    >
+  >
+  getRecentRecordsWithExercises(String userId, {int limit = 3}) {
+    return mapException(() async {
+      final data = await _records
+          .select('*, exercises(name, equipment_type)')
+          .eq('user_id', userId)
+          .order('achieved_at', ascending: false)
+          .limit(limit);
+
+      return data.map((row) {
+        final exerciseData = row['exercises'] as Map<String, dynamic>?;
+        final exerciseName =
+            (exerciseData?['name'] as String?) ?? 'Unknown Exercise';
+        final equipmentType = EquipmentType.fromString(
+          (exerciseData?['equipment_type'] as String?) ?? 'barbell',
+        );
+
+        // Remove the nested exercises key before parsing the record.
+        final recordRow = Map<String, dynamic>.from(row)..remove('exercises');
+        final record = PersonalRecord.fromJson(recordRow);
+
+        return (
+          record: record,
+          exerciseName: exerciseName,
+          equipmentType: equipmentType,
+        );
+      }).toList();
+    });
+  }
+
   /// Upsert personal records.
   ///
   /// Uses the unique constraint on (user_id, exercise_id, record_type) to
