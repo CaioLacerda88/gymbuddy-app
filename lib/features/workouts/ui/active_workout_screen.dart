@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/exercise_image.dart';
 import '../models/active_workout_state.dart';
+import '../../personal_records/providers/pr_providers.dart';
 import '../providers/workout_providers.dart';
 import '../providers/workout_history_providers.dart';
 import 'widgets/discard_workout_dialog.dart';
@@ -137,7 +138,19 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
     );
     if (result == null || !mounted) return;
 
-    await notifier.finishWorkout(notes: result.notes);
+    // Capture exercise names before finishing (state is cleared after).
+    final currentState = ref.read(activeWorkoutProvider).valueOrNull;
+    final exerciseNames = <String, String>{};
+    if (currentState != null) {
+      for (final e in currentState.exercises) {
+        final ex = e.workoutExercise.exercise;
+        if (ex != null) {
+          exerciseNames[e.workoutExercise.exerciseId] = ex.name;
+        }
+      }
+    }
+
+    final prResult = await notifier.finishWorkout(notes: result.notes);
     if (!mounted) return;
 
     final state = ref.read(activeWorkoutProvider);
@@ -147,9 +160,20 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
       );
       return;
     }
-    // Invalidate history so it refreshes on next visit.
+
+    // Invalidate caches.
     ref.invalidate(workoutHistoryProvider);
-    context.go('/home');
+    ref.invalidate(prListProvider);
+
+    // Navigate to PR celebration if there are new records, otherwise go home.
+    if (prResult != null && prResult.hasNewRecords) {
+      context.go(
+        '/pr-celebration',
+        extra: {'result': prResult, 'exerciseNames': exerciseNames},
+      );
+    } else {
+      context.go('/home');
+    }
   }
 
   Future<void> _onAddExercise() async {

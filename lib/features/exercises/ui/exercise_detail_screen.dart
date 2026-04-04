@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 
 import '../../../core/exceptions/app_exception.dart';
 import '../../../shared/widgets/exercise_image.dart';
+import '../../personal_records/models/record_type.dart';
+import '../../personal_records/providers/pr_providers.dart';
 import '../models/exercise.dart';
 import '../providers/exercise_providers.dart'
     show exerciseListProvider, exerciseRepositoryProvider;
@@ -120,7 +122,7 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
   }
 }
 
-class _ExerciseDetailBody extends StatelessWidget {
+class _ExerciseDetailBody extends ConsumerWidget {
   const _ExerciseDetailBody({
     required this.exercise,
     required this.isDeleting,
@@ -132,7 +134,7 @@ class _ExerciseDetailBody extends StatelessWidget {
   final VoidCallback? onDelete;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
     final dateFormat = DateFormat.yMMMMd();
@@ -181,21 +183,9 @@ class _ExerciseDetailBody extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 24),
-          Row(
-            children: [
-              Icon(
-                Icons.emoji_events_rounded,
-                size: 20,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                'Personal records & workout history coming soon',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
-                ),
-              ),
-            ],
+          _PRSection(
+            exerciseId: exercise.id,
+            equipmentType: exercise.equipmentType,
           ),
           if (onDelete != null) ...[
             const SizedBox(height: 32),
@@ -316,6 +306,112 @@ class _ExerciseImageRow extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+class _PRSection extends ConsumerWidget {
+  const _PRSection({required this.exerciseId, required this.equipmentType});
+
+  final String exerciseId;
+  final EquipmentType equipmentType;
+
+  String _formatValue(RecordType type, double value) {
+    return switch (type) {
+      RecordType.maxWeight => '$value kg',
+      RecordType.maxReps => '${value.toInt()} reps',
+      RecordType.maxVolume => '$value kg',
+    };
+  }
+
+  IconData _iconForType(RecordType type) {
+    return switch (type) {
+      RecordType.maxWeight => Icons.fitness_center,
+      RecordType.maxReps => Icons.repeat,
+      RecordType.maxVolume => Icons.bar_chart,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final asyncRecords = ref.watch(exercisePRsProvider(exerciseId));
+
+    return asyncRecords.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      ),
+      error: (_, _) => _emptyPRRow(theme),
+      data: (records) {
+        if (records.isEmpty) return _emptyPRRow(theme);
+
+        // For bodyweight exercises, skip maxWeight and maxVolume if absent.
+        final filtered = equipmentType == EquipmentType.bodyweight
+            ? records.where((r) => r.recordType == RecordType.maxReps).toList()
+            : records;
+
+        if (filtered.isEmpty) return _emptyPRRow(theme);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Personal Records', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            ...filtered.map(
+              (r) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Icon(
+                      _iconForType(r.recordType),
+                      size: 18,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      r.recordType.displayName,
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    const Spacer(),
+                    Text(
+                      _formatValue(r.recordType, r.value),
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _emptyPRRow(ThemeData theme) {
+    return Row(
+      children: [
+        Icon(
+          Icons.emoji_events_rounded,
+          size: 20,
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          'No records yet',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+          ),
+        ),
+      ],
     );
   }
 }

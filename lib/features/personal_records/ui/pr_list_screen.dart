@@ -1,0 +1,194 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../models/record_type.dart';
+import '../providers/pr_providers.dart';
+
+/// Displays all personal records grouped by exercise.
+class PRListScreen extends ConsumerWidget {
+  const PRListScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asyncPRs = ref.watch(prListWithExercisesProvider);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Personal Records')),
+      body: asyncPRs.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(
+          child: Text(
+            'Failed to load records',
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+        ),
+        data: (records) {
+          if (records.isEmpty) return _EmptyState();
+          return _RecordsList(records: records);
+        },
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.emoji_events,
+              size: 64,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+            ),
+            const SizedBox(height: 16),
+            Text('No Records Yet', style: theme.textTheme.headlineMedium),
+            const SizedBox(height: 8),
+            Text(
+              'Complete a workout to start tracking records',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => context.go('/home'),
+              child: const Text('Start Workout'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RecordsList extends StatelessWidget {
+  const _RecordsList({required this.records});
+
+  final List<PRWithExercise> records;
+
+  @override
+  Widget build(BuildContext context) {
+    // Group by exerciseId.
+    final grouped = <String, List<PRWithExercise>>{};
+    for (final pr in records) {
+      (grouped[pr.record.exerciseId] ??= []).add(pr);
+    }
+
+    final exerciseIds = grouped.keys.toList();
+
+    return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 16, top: 8),
+      itemCount: exerciseIds.length,
+      itemBuilder: (context, index) {
+        final exerciseRecords = grouped[exerciseIds[index]]!;
+        return _ExerciseRecordCard(records: exerciseRecords);
+      },
+    );
+  }
+}
+
+class _ExerciseRecordCard extends StatelessWidget {
+  const _ExerciseRecordCard({required this.records});
+
+  final List<PRWithExercise> records;
+
+  String _formatValue(RecordType type, double value) {
+    return switch (type) {
+      RecordType.maxWeight => '$value kg',
+      RecordType.maxReps => '${value.toInt()} reps',
+      RecordType.maxVolume => '$value kg',
+    };
+  }
+
+  IconData _iconForType(RecordType type) {
+    return switch (type) {
+      RecordType.maxWeight => Icons.fitness_center,
+      RecordType.maxReps => Icons.repeat,
+      RecordType.maxVolume => Icons.bar_chart,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final first = records.first;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(first.exerciseName, style: theme.textTheme.titleLarge),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              children: records.map((pr) {
+                return _RecordTile(
+                  icon: _iconForType(pr.record.recordType),
+                  label: pr.record.recordType.displayName,
+                  value: _formatValue(pr.record.recordType, pr.record.value),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RecordTile extends StatelessWidget {
+  const _RecordTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 20, color: theme.colorScheme.primary),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

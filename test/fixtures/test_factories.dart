@@ -181,6 +181,28 @@ class TestRoutineFactory {
   }
 }
 
+class TestPersonalRecordFactory {
+  static Map<String, dynamic> create({
+    String? id,
+    String? userId,
+    String? exerciseId,
+    String? recordType,
+    double? value,
+    String? achievedAt,
+    String? setId,
+  }) {
+    return {
+      'id': id ?? 'pr-001',
+      'user_id': userId ?? 'user-001',
+      'exercise_id': exerciseId ?? 'exercise-001',
+      'record_type': recordType ?? 'max_weight',
+      'value': value ?? 100.0,
+      'achieved_at': achievedAt ?? '2026-01-01T10:30:00Z',
+      'set_id': setId,
+    };
+  }
+}
+
 class TestActiveWorkoutStateFactory {
   static Map<String, dynamic> create({
     Map<String, dynamic>? workout,

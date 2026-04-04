@@ -17,6 +17,9 @@ import '../../features/workouts/providers/workout_providers.dart';
 import '../../features/profile/ui/profile_screen.dart';
 import '../../features/routines/ui/create_routine_screen.dart';
 import '../../features/routines/ui/routine_list_screen.dart';
+import '../../features/personal_records/domain/pr_detection_service.dart';
+import '../../features/personal_records/ui/pr_celebration_screen.dart';
+import '../../features/personal_records/ui/pr_list_screen.dart';
 import '../../features/workouts/ui/active_workout_screen.dart';
 import '../../features/workouts/ui/home_screen.dart';
 import '../../features/workouts/ui/workout_detail_screen.dart';
@@ -80,6 +83,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/workout/active',
         builder: (context, state) => const ActiveWorkoutScreen(),
       ),
+      GoRoute(
+        path: '/pr-celebration',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          return PRCelebrationScreen(
+            result: extra['result'] as PRDetectionResult,
+            exerciseNames: extra['exerciseNames'] as Map<String, String>,
+          );
+        },
+      ),
       ShellRoute(
         builder: (context, state, child) => _ShellScaffold(child: child),
         routes: [
@@ -127,6 +140,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                     CreateRoutineScreen(routine: state.extra as Routine?),
               ),
             ],
+          ),
+          GoRoute(
+            path: '/records',
+            builder: (context, state) => const PRListScreen(),
           ),
           GoRoute(
             path: '/profile',
