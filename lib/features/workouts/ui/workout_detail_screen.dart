@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/workout_formatters.dart';
 import '../data/workout_repository.dart';
 import '../models/exercise_set.dart';
 import '../models/set_type.dart';
 import '../models/workout_exercise.dart';
 import '../providers/workout_history_providers.dart';
+import '../../personal_records/providers/pr_providers.dart';
 
 /// Read-only detail view of a completed workout.
 class WorkoutDetailScreen extends ConsumerWidget {
@@ -91,7 +93,11 @@ class _WorkoutDetailBody extends StatelessWidget {
           delegate: SliverChildBuilderDelegate((context, index) {
             final exercise = detail.exercises[index];
             final sets = detail.setsByExercise[exercise.id] ?? [];
-            return _ReadOnlyExerciseCard(exercise: exercise, sets: sets);
+            return _ReadOnlyExerciseCard(
+              exercise: exercise,
+              sets: sets,
+              workoutId: detail.workout.id,
+            );
           }, childCount: detail.exercises.length),
         ),
         // Notes section
@@ -149,15 +155,22 @@ class _WorkoutDetailBody extends StatelessWidget {
   }
 }
 
-class _ReadOnlyExerciseCard extends StatelessWidget {
-  const _ReadOnlyExerciseCard({required this.exercise, required this.sets});
+class _ReadOnlyExerciseCard extends ConsumerWidget {
+  const _ReadOnlyExerciseCard({
+    required this.exercise,
+    required this.sets,
+    required this.workoutId,
+  });
 
   final WorkoutExercise exercise;
   final List<ExerciseSet> sets;
+  final String workoutId;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final prSetIds =
+        ref.watch(workoutPRSetIdsProvider(workoutId)).valueOrNull ?? {};
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -175,7 +188,9 @@ class _ReadOnlyExerciseCard extends StatelessWidget {
               // Column headers
               _SetColumnHeaders(theme: theme),
               const Divider(height: 1),
-              ...sets.map((s) => _ReadOnlySetRow(set: s)),
+              ...sets.map(
+                (s) => _ReadOnlySetRow(set: s, isPR: prSetIds.contains(s.id)),
+              ),
             ],
           ],
         ),
@@ -219,9 +234,10 @@ class _SetColumnHeaders extends StatelessWidget {
 }
 
 class _ReadOnlySetRow extends StatelessWidget {
-  const _ReadOnlySetRow({required this.set});
+  const _ReadOnlySetRow({required this.set, this.isPR = false});
 
   final ExerciseSet set;
+  final bool isPR;
 
   String get _typeLabel => switch (set.setType) {
     SetType.working => 'W',
@@ -248,12 +264,18 @@ class _ReadOnlySetRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 40,
-            child: Text(
-              '${set.setNumber}.',
-              style: textStyle?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-              ),
-            ),
+            child: isPR
+                ? const Icon(
+                    Icons.emoji_events,
+                    size: 18,
+                    color: AppTheme.prBadgeColor,
+                  )
+                : Text(
+                    '${set.setNumber}.',
+                    style: textStyle?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    ),
+                  ),
           ),
           Expanded(
             child: Text(

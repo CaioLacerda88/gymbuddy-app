@@ -9,9 +9,11 @@ import '../../routines/models/routine.dart';
 import '../../routines/providers/notifiers/routine_list_notifier.dart';
 import '../../routines/ui/start_routine_action.dart';
 import '../../routines/ui/widgets/routine_card.dart';
+import '../../personal_records/ui/widgets/recent_prs_section.dart';
 import '../models/workout.dart';
 import '../providers/workout_history_providers.dart';
 import '../providers/workout_providers.dart';
+import 'widgets/resume_workout_banner.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -28,6 +30,9 @@ class HomeScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Resume active workout banner (hidden when no active workout)
+            const ResumeWorkoutBanner(),
+
             // Header
             const SizedBox(height: 8),
             Text('GymBuddy', style: theme.textTheme.displayMedium),
@@ -137,6 +142,9 @@ class HomeScreen extends ConsumerWidget {
                 );
               },
             ),
+
+            // Recent personal records
+            const RecentPRsSection(),
 
             // Start empty workout
             Center(

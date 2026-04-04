@@ -63,24 +63,84 @@ class PRRepository extends BaseRepository {
           .eq('user_id', userId)
           .order('achieved_at', ascending: false);
 
-      return data.map((row) {
-        final exerciseData = row['exercises'] as Map<String, dynamic>?;
-        final exerciseName =
-            (exerciseData?['name'] as String?) ?? 'Unknown Exercise';
-        final equipmentType = EquipmentType.fromString(
-          (exerciseData?['equipment_type'] as String?) ?? 'barbell',
-        );
+      return data.map(_parseRecordWithExercise).toList();
+    });
+  }
 
-        // Remove the nested exercises key before parsing the record.
-        final recordRow = Map<String, dynamic>.from(row)..remove('exercises');
-        final record = PersonalRecord.fromJson(recordRow);
+  /// Fetch the most recent personal records for a user with exercise details.
+  ///
+  /// Uses a Supabase join with a server-side LIMIT to avoid over-fetching.
+  Future<
+    List<
+      ({
+        PersonalRecord record,
+        String exerciseName,
+        EquipmentType equipmentType,
+      })
+    >
+  >
+  getRecentRecordsWithExercises(String userId, {int limit = 3}) {
+    return mapException(() async {
+      final data = await _records
+          .select('*, exercises(name, equipment_type)')
+          .eq('user_id', userId)
+          .order('achieved_at', ascending: false)
+          .limit(limit);
 
-        return (
-          record: record,
-          exerciseName: exerciseName,
-          equipmentType: equipmentType,
-        );
-      }).toList();
+      return data.map(_parseRecordWithExercise).toList();
+    });
+  }
+
+  /// Parse a row with joined exercise data into a typed record.
+  static ({
+    PersonalRecord record,
+    String exerciseName,
+    EquipmentType equipmentType,
+  })
+  _parseRecordWithExercise(Map<String, dynamic> row) {
+    final exerciseData = row['exercises'] as Map<String, dynamic>?;
+    final exerciseName =
+        (exerciseData?['name'] as String?) ?? 'Unknown Exercise';
+    final equipmentType = EquipmentType.fromString(
+      (exerciseData?['equipment_type'] as String?) ?? 'barbell',
+    );
+
+    final recordRow = Map<String, dynamic>.from(row)..remove('exercises');
+    final record = PersonalRecord.fromJson(recordRow);
+
+    return (
+      record: record,
+      exerciseName: exerciseName,
+      equipmentType: equipmentType,
+    );
+  }
+
+  /// Fetch personal records that were achieved in a specific workout.
+  ///
+  /// Uses a two-query approach:
+  /// 1. Fetch all set IDs belonging to the workout via the
+  ///    `workout_exercises` join.
+  /// 2. Filter `personal_records` to only those whose `set_id` is in that list.
+  Future<List<PersonalRecord>> getPRsForWorkout(
+    String workoutId,
+    String userId,
+  ) {
+    return mapException(() async {
+      final setRows = await _client
+          .from('sets')
+          .select('id, workout_exercises!inner(workout_id)')
+          .eq('workout_exercises.workout_id', workoutId);
+
+      final setIds = setRows.map<String>((r) => r['id'] as String).toList();
+
+      if (setIds.isEmpty) return [];
+
+      final data = await _records
+          .select()
+          .eq('user_id', userId)
+          .inFilter('set_id', setIds);
+
+      return data.map(PersonalRecord.fromJson).toList();
     });
   }
 
