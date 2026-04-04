@@ -50,3 +50,25 @@ final prListWithExercisesProvider = FutureProvider<List<PRWithExercise>>((ref) {
   if (user == null) return [];
   return repo.getRecordsWithExercises(user.id);
 });
+
+/// Fetches the 3 most recent PRs with exercise details.
+/// Used by the home screen to show recent achievements.
+final recentPRsProvider = FutureProvider.autoDispose<List<PRWithExercise>>((
+  ref,
+) {
+  final repo = ref.watch(prRepositoryProvider);
+  final user = ref.watch(authRepositoryProvider).currentUser;
+  if (user == null) return [];
+  return repo.getRecentRecordsWithExercises(user.id, limit: 3);
+});
+
+/// Returns the set of set IDs that are PRs within a given workout.
+/// Used by the workout finish/summary screen to highlight PR sets.
+final workoutPRSetIdsProvider = FutureProvider.autoDispose
+    .family<Set<String>, String>((ref, workoutId) async {
+      final user = ref.watch(authRepositoryProvider).currentUser;
+      if (user == null) return {};
+      final repo = ref.watch(prRepositoryProvider);
+      final prs = await repo.getPRsForWorkout(workoutId, user.id);
+      return prs.map((pr) => pr.setId).whereType<String>().toSet();
+    });
