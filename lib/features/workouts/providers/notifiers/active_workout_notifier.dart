@@ -7,6 +7,8 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/exceptions/app_exception.dart' as app;
 import '../../../auth/providers/auth_providers.dart';
 import '../../../exercises/models/exercise.dart';
+import '../../../personal_records/domain/pr_detection_service.dart';
+import '../../../personal_records/providers/pr_providers.dart';
 import '../../data/workout_local_storage.dart';
 import '../../data/workout_repository.dart';
 import '../../models/active_workout_state.dart';
@@ -466,12 +468,22 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
     });
   }
 
-  /// Finish the active workout and save it to the server.
-  Future<void> finishWorkout({String? notes}) async {
+  /// Finish the active workout, save to server, detect PRs, and return results.
+  Future<PRDetectionResult?> finishWorkout({String? notes}) async {
     final current = state.value;
-    if (current == null) return;
+    if (current == null) return null;
+
+    // Capture workout data BEFORE setting loading state.
+    final exercises = current.exercises;
+    final exerciseIds = exercises
+        .map((e) => e.workoutExercise.exerciseId)
+        .toSet()
+        .toList();
 
     state = const AsyncLoading();
+
+    PRDetectionResult? prResult;
+
     state = await AsyncValue.guard(() async {
       final now = DateTime.now().toUtc();
       final durationSeconds = now
@@ -485,19 +497,46 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
         notes: notes,
       );
 
-      final exercises = current.exercises
-          .map((e) => e.workoutExercise)
-          .toList();
-      final sets = current.exercises.expand((e) => e.sets).toList();
+      final workoutExercises = exercises.map((e) => e.workoutExercise).toList();
+      final sets = exercises.expand((e) => e.sets).toList();
 
       await _repo.saveWorkout(
         workout: workout,
-        exercises: exercises,
+        exercises: workoutExercises,
         sets: sets,
       );
+
+      // PR detection: batch-fetch existing records, then detect new ones.
+      try {
+        final prRepo = ref.read(prRepositoryProvider);
+        final prService = ref.read(prDetectionServiceProvider);
+
+        final existingRecords = await prRepo.getRecordsForExercises(
+          exerciseIds,
+        );
+        prResult = prService.detectPRs(
+          userId: _userId,
+          exercises: exercises,
+          existingRecords: existingRecords,
+        );
+
+        if (prResult!.hasNewRecords) {
+          await prRepo.upsertRecords(prResult!.newRecords);
+        }
+      } catch (e) {
+        // PR detection failure should NOT fail the workout save.
+        log(
+          'PR detection failed: $e',
+          name: 'ActiveWorkoutNotifier',
+          level: 900,
+        );
+      }
+
       await _localStorage.clearActiveWorkout();
       return null;
     });
+
+    return prResult;
   }
 
   /// Persist the current state to Hive (fire-and-forget).
