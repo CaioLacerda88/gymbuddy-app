@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -117,6 +119,66 @@ void main() {
       // Both set numbers shown
       expect(find.text('1.'), findsOneWidget);
       expect(find.text('2.'), findsOneWidget);
+    });
+
+    testWidgets(
+      'shows no trophy icons while workoutPRSetIdsProvider is loading',
+      (tester) async {
+        final detail = makeDetail();
+        // Never completes during this test — simulates in-flight async fetch.
+        final completer = Completer<Set<String>>();
+
+        await tester.pumpWidget(
+          buildTestWidget(
+            overrides: [
+              workoutDetailProvider(
+                'w-1',
+              ).overrideWith((ref) => Future.value(detail)),
+              workoutPRSetIdsProvider(
+                'w-1',
+              ).overrideWith((ref) => completer.future),
+            ],
+          ),
+        );
+        // One pump: workout detail resolves, but PR provider is still loading.
+        await tester.pump();
+        await tester.pump();
+
+        // Workout content is visible.
+        expect(find.text('Bench Press'), findsOneWidget);
+        // No trophy icons rendered during loading state.
+        expect(find.byIcon(Icons.emoji_events), findsNothing);
+
+        // Resolve the completer to avoid pending timer assertion.
+        completer.complete({'set-1'});
+        await tester.pump();
+        await tester.pump();
+
+        // After resolution, badge appears for set-1.
+        expect(find.byIcon(Icons.emoji_events), findsOneWidget);
+      },
+    );
+
+    testWidgets('trophy icon is rendered at 18dp', (tester) async {
+      final detail = makeDetail();
+
+      await tester.pumpWidget(
+        buildTestWidget(
+          overrides: [
+            workoutDetailProvider(
+              'w-1',
+            ).overrideWith((ref) => Future.value(detail)),
+            workoutPRSetIdsProvider(
+              'w-1',
+            ).overrideWith((ref) => Future.value({'set-1'})),
+          ],
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final iconWidget = tester.widget<Icon>(find.byIcon(Icons.emoji_events));
+      expect(iconWidget.size, 18.0);
     });
   });
 }

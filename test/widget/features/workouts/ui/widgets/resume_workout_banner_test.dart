@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
 import 'package:gymbuddy_app/features/workouts/models/active_workout_state.dart';
 import 'package:gymbuddy_app/features/workouts/models/workout.dart';
@@ -65,7 +66,28 @@ ActiveWorkoutState _makeStateWithExercises({String name = 'Test Workout'}) =>
 Widget buildBanner(
   ActiveWorkoutState? activeState, {
   Duration elapsed = Duration.zero,
+  GoRouter? router,
 }) {
+  final effectiveRouter =
+      router ??
+      GoRouter(
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (context, state) => Scaffold(
+              body: SingleChildScrollView(
+                child: Column(children: [ResumeWorkoutBanner()]),
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/workout/active',
+            builder: (context, state) =>
+                const Scaffold(body: Text('Active Workout')),
+          ),
+        ],
+      );
+
   return ProviderScope(
     overrides: [
       activeWorkoutProvider.overrideWith(
@@ -76,13 +98,9 @@ Widget buildBanner(
         (ref, startedAt) => Stream.value(elapsed),
       ),
     ],
-    child: MaterialApp(
+    child: MaterialApp.router(
       theme: AppTheme.dark,
-      home: const Scaffold(
-        body: SingleChildScrollView(
-          child: Column(children: [ResumeWorkoutBanner()]),
-        ),
-      ),
+      routerConfig: effectiveRouter,
     ),
   );
 }
@@ -164,6 +182,20 @@ void main() {
           expect(find.text('1:02:03'), findsOneWidget);
         },
       );
+    });
+
+    group('tap behaviour', () {
+      testWidgets('tapping banner navigates to /workout/active', (
+        tester,
+      ) async {
+        await tester.pumpWidget(buildBanner(_makeStateWithExercises()));
+        await tester.pump();
+
+        await tester.tap(find.byType(GestureDetector));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Active Workout'), findsOneWidget);
+      });
     });
   });
 }

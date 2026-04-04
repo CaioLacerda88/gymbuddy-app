@@ -254,5 +254,101 @@ void main() {
 
       expect(find.text('Records Screen'), findsOneWidget);
     });
+
+    testWidgets('shows Yesterday for PR achieved one day ago', (tester) async {
+      final yesterday = DateTime.now().toUtc().subtract(const Duration(days: 1));
+      await tester.pumpWidget(
+        buildTestWidget(
+          overrides: [
+            recentPRsProvider.overrideWith(
+              (ref) async => [makePR(achievedAt: yesterday)],
+            ),
+          ],
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.textContaining('Yesterday'), findsOneWidget);
+    });
+
+    testWidgets('shows Xd ago for PRs achieved 2–6 days ago', (tester) async {
+      final threeDaysAgo = DateTime.now().toUtc().subtract(
+        const Duration(days: 3),
+      );
+      await tester.pumpWidget(
+        buildTestWidget(
+          overrides: [
+            recentPRsProvider.overrideWith(
+              (ref) async => [makePR(achievedAt: threeDaysAgo)],
+            ),
+          ],
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.textContaining('3d ago'), findsOneWidget);
+    });
+
+    testWidgets('shows Xw ago for PRs achieved 7–29 days ago', (tester) async {
+      final twoWeeksAgo = DateTime.now().toUtc().subtract(
+        const Duration(days: 14),
+      );
+      await tester.pumpWidget(
+        buildTestWidget(
+          overrides: [
+            recentPRsProvider.overrideWith(
+              (ref) async => [makePR(achievedAt: twoWeeksAgo)],
+            ),
+          ],
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.textContaining('2w ago'), findsOneWidget);
+    });
+
+    testWidgets('shows Xmo ago for PRs achieved 30+ days ago', (tester) async {
+      final twoMonthsAgo = DateTime.now().toUtc().subtract(
+        const Duration(days: 62),
+      );
+      await tester.pumpWidget(
+        buildTestWidget(
+          overrides: [
+            recentPRsProvider.overrideWith(
+              (ref) async => [makePR(achievedAt: twoMonthsAgo)],
+            ),
+          ],
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.textContaining('2mo ago'), findsOneWidget);
+    });
+
+    testWidgets('shows formatted value in kg for maxVolume', (tester) async {
+      await tester.pumpWidget(
+        buildTestWidget(
+          overrides: [
+            recentPRsProvider.overrideWith(
+              (ref) async => [
+                makePR(
+                  exerciseName: 'Bench Press',
+                  recordType: RecordType.maxVolume,
+                  value: 2500.0,
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('2500 kg'), findsOneWidget);
+    });
   });
 }
