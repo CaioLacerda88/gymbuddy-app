@@ -63,24 +63,7 @@ class PRRepository extends BaseRepository {
           .eq('user_id', userId)
           .order('achieved_at', ascending: false);
 
-      return data.map((row) {
-        final exerciseData = row['exercises'] as Map<String, dynamic>?;
-        final exerciseName =
-            (exerciseData?['name'] as String?) ?? 'Unknown Exercise';
-        final equipmentType = EquipmentType.fromString(
-          (exerciseData?['equipment_type'] as String?) ?? 'barbell',
-        );
-
-        // Remove the nested exercises key before parsing the record.
-        final recordRow = Map<String, dynamic>.from(row)..remove('exercises');
-        final record = PersonalRecord.fromJson(recordRow);
-
-        return (
-          record: record,
-          exerciseName: exerciseName,
-          equipmentType: equipmentType,
-        );
-      }).toList();
+      return data.map(_parseRecordWithExercise).toList();
     });
   }
 
@@ -104,25 +87,32 @@ class PRRepository extends BaseRepository {
           .order('achieved_at', ascending: false)
           .limit(limit);
 
-      return data.map((row) {
-        final exerciseData = row['exercises'] as Map<String, dynamic>?;
-        final exerciseName =
-            (exerciseData?['name'] as String?) ?? 'Unknown Exercise';
-        final equipmentType = EquipmentType.fromString(
-          (exerciseData?['equipment_type'] as String?) ?? 'barbell',
-        );
-
-        // Remove the nested exercises key before parsing the record.
-        final recordRow = Map<String, dynamic>.from(row)..remove('exercises');
-        final record = PersonalRecord.fromJson(recordRow);
-
-        return (
-          record: record,
-          exerciseName: exerciseName,
-          equipmentType: equipmentType,
-        );
-      }).toList();
+      return data.map(_parseRecordWithExercise).toList();
     });
+  }
+
+  /// Parse a row with joined exercise data into a typed record.
+  static ({
+    PersonalRecord record,
+    String exerciseName,
+    EquipmentType equipmentType,
+  })
+  _parseRecordWithExercise(Map<String, dynamic> row) {
+    final exerciseData = row['exercises'] as Map<String, dynamic>?;
+    final exerciseName =
+        (exerciseData?['name'] as String?) ?? 'Unknown Exercise';
+    final equipmentType = EquipmentType.fromString(
+      (exerciseData?['equipment_type'] as String?) ?? 'barbell',
+    );
+
+    final recordRow = Map<String, dynamic>.from(row)..remove('exercises');
+    final record = PersonalRecord.fromJson(recordRow);
+
+    return (
+      record: record,
+      exerciseName: exerciseName,
+      equipmentType: equipmentType,
+    );
   }
 
   /// Fetch personal records that were achieved in a specific workout.
