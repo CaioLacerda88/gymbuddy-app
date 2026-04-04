@@ -229,9 +229,12 @@ class _ActiveWorkoutBanner extends ConsumerWidget {
         height: 56,
         width: double.infinity,
         decoration: BoxDecoration(
-          color: theme.colorScheme.primary.withValues(alpha: 0.85),
+          color: theme.colorScheme.primary,
           border: Border(
-            top: BorderSide(color: theme.colorScheme.primary, width: 2),
+            top: BorderSide(
+              color: theme.colorScheme.onPrimary.withValues(alpha: 0.3),
+              width: 2,
+            ),
           ),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 16),
