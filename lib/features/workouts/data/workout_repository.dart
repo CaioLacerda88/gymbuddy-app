@@ -219,6 +219,19 @@ class WorkoutRepository extends BaseRepository {
     });
   }
 
+  /// Get the total count of finished workouts for a user.
+  Future<int> getFinishedWorkoutCount(String userId) {
+    return mapException(() async {
+      final result = await _workouts
+          .select()
+          .eq('user_id', userId)
+          .eq('is_active', false)
+          .not('finished_at', 'is', null)
+          .count(supabase.CountOption.exact);
+      return result.count;
+    });
+  }
+
   /// Discard (delete) an active workout.
   Future<void> discardWorkout(String workoutId, {required String userId}) {
     return mapException(() async {

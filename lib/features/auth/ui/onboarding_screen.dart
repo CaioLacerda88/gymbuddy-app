@@ -39,14 +39,24 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<void> _finishOnboarding() async {
-    await ref
-        .read(profileProvider.notifier)
-        .saveOnboardingProfile(
-          displayName: _nameController.text.trim(),
-          fitnessLevel: _fitnessLevel,
+    try {
+      await ref
+          .read(profileProvider.notifier)
+          .saveOnboardingProfile(
+            displayName: _nameController.text.trim(),
+            fitnessLevel: _fitnessLevel,
+          );
+      ref.read(needsOnboardingProvider.notifier).state = false;
+      if (mounted) context.go('/home');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to save profile. Please try again.'),
+          ),
         );
-    ref.read(needsOnboardingProvider.notifier).state = false;
-    if (mounted) context.go('/home');
+      }
+    }
   }
 
   @override

@@ -81,7 +81,7 @@ class _WorkoutHistoryScreenState extends ConsumerState<WorkoutHistoryScreen> {
               itemCount: workouts.length,
               itemBuilder: (context, index) => _WorkoutHistoryCard(
                 workout: workouts[index],
-                onTap: () => context.go('/history/${workouts[index].id}'),
+                onTap: () => context.go('/home/history/${workouts[index].id}'),
               ),
             ),
           );

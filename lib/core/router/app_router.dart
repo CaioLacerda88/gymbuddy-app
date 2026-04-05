@@ -81,12 +81,23 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/workout/active',
+        redirect: (context, state) {
+          final hasActive = ref.read(hasActiveWorkoutProvider);
+          if (!hasActive) return '/home';
+          return null;
+        },
         builder: (context, state) => const ActiveWorkoutScreen(),
       ),
       GoRoute(
         path: '/pr-celebration',
+        redirect: (context, state) {
+          if (state.extra == null || state.extra is! Map<String, dynamic>) {
+            return '/home';
+          }
+          return null;
+        },
         builder: (context, state) {
-          final extra = state.extra as Map<String, dynamic>;
+          final extra = state.extra! as Map<String, dynamic>;
           return PRCelebrationScreen(
             result: extra['result'] as PRDetectionResult,
             exerciseNames: extra['exerciseNames'] as Map<String, String>,

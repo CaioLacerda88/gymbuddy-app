@@ -79,13 +79,23 @@ class SetRow extends ConsumerWidget {
       background: _DismissBackground(theme: theme),
       onDismissed: (_) {
         HapticFeedback.lightImpact();
+        // Save the set data before deleting so we can restore on undo.
+        final deletedSet = set;
         notifier.deleteSet(workoutExerciseId, set.id);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Set ${set.setNumber} deleted'),
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text('Set ${deletedSet.setNumber} deleted'),
+              duration: const Duration(seconds: 4),
+              action: SnackBarAction(
+                label: 'Undo',
+                onPressed: () {
+                  notifier.restoreSet(workoutExerciseId, deletedSet);
+                },
+              ),
+            ),
+          );
       },
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

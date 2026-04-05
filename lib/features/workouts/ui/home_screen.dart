@@ -14,6 +14,7 @@ import '../models/workout.dart';
 import '../providers/workout_history_providers.dart';
 import '../providers/workout_providers.dart';
 import 'widgets/resume_workout_banner.dart';
+import 'widgets/resume_workout_dialog.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -150,6 +151,28 @@ class HomeScreen extends ConsumerWidget {
             Center(
               child: TextButton.icon(
                 onPressed: () async {
+                  final existingWorkout = ref
+                      .read(activeWorkoutProvider)
+                      .valueOrNull;
+                  if (existingWorkout != null) {
+                    if (!context.mounted) return;
+                    final result = await ResumeWorkoutDialog.show(
+                      context,
+                      workoutName: existingWorkout.workout.name,
+                    );
+                    if (!context.mounted) return;
+                    if (result == ResumeWorkoutResult.resume) {
+                      context.go('/workout/active');
+                      return;
+                    }
+                    if (result == ResumeWorkoutResult.discard) {
+                      await ref
+                          .read(activeWorkoutProvider.notifier)
+                          .discardWorkout();
+                    } else {
+                      return; // dismissed
+                    }
+                  }
                   await ref.read(activeWorkoutProvider.notifier).startWorkout();
                   if (!context.mounted) return;
                   context.go('/workout/active');

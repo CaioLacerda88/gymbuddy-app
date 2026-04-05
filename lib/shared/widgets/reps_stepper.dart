@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 
 /// A reusable stepper widget for rep counts.
 ///
-/// Supports tap and long-press (repeating every 100ms) on the +/- buttons.
+/// Supports tap and long-press with progressive acceleration on the +/- buttons.
+/// Initial hold delay of 400ms, then repeats at 150ms intervals.
 /// Displays integer values only.
 class RepsStepper extends StatefulWidget {
   const RepsStepper({
@@ -36,7 +37,13 @@ class _RepsStepperState extends State<RepsStepper> {
 
   void _startRepeating(VoidCallback action) {
     action();
-    _timer = Timer.periodic(const Duration(milliseconds: 100), (_) => action());
+    _timer?.cancel();
+    _timer = Timer(const Duration(milliseconds: 400), () {
+      _timer = Timer.periodic(
+        const Duration(milliseconds: 150),
+        (_) => action(),
+      );
+    });
   }
 
   void _stopRepeating() {

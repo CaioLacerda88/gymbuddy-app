@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../features/auth/providers/auth_providers.dart';
+import '../../../features/auth/providers/notifiers/auth_notifier.dart';
 import '../providers/profile_providers.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -184,7 +185,7 @@ class _LogoutButton extends ConsumerWidget {
     );
 
     if (confirmed == true) {
-      await ref.read(authRepositoryProvider).signOut();
+      await ref.read(authNotifierProvider.notifier).signOut();
     }
   }
 }
