@@ -204,3 +204,77 @@ export const PR = {
   /** "RECENT RECORDS" section on the progress tab */
   recentRecordsSection: 'text=RECENT RECORDS',
 } as const;
+
+// ---------------------------------------------------------------------------
+// Routines list — RoutinesScreen
+// ---------------------------------------------------------------------------
+export const ROUTINE = {
+  /** Page heading */
+  heading: 'text=Routines',
+  /** "MY ROUTINES" section header */
+  myRoutinesSection: 'text=MY ROUTINES',
+  /** "STARTER ROUTINES" section header */
+  starterRoutinesSection: 'text=STARTER ROUTINES',
+  /** AppBar action button or on-screen CTA to create a routine */
+  createButton: 'text=Create Routine',
+  /** Routine card identified by name */
+  routineName: (name: string) => `text=${name}`,
+  /** Context menu or overflow "Edit" option */
+  editOption: 'text=Edit',
+  /** Context menu or overflow "Delete" option */
+  deleteOption: 'text=Delete',
+  /** Delete confirmation dialog title */
+  deleteDialogTitle: 'text=Delete Routine',
+  /** "Cancel" button in delete dialog */
+  cancelButton: 'text=Cancel',
+  /** "Delete" confirm button in delete dialog */
+  deleteConfirmButton: 'text=Delete',
+} as const;
+
+// ---------------------------------------------------------------------------
+// Create/Edit routine — CreateRoutineScreen
+// ---------------------------------------------------------------------------
+export const CREATE_ROUTINE = {
+  /** Name text field — hintText "Routine name" */
+  nameInput: 'input',
+  /** "Add Exercise" button */
+  addExerciseButton: 'text=Add Exercise',
+  /** "Save" button */
+  saveButton: 'text=Save',
+  /** Sets label in set configuration row */
+  setsLabel: 'text=Sets',
+  /** Rest label in set configuration row */
+  restLabel: 'text=Rest',
+} as const;
+
+// ---------------------------------------------------------------------------
+// Workout history — HistoryScreen
+// ---------------------------------------------------------------------------
+export const HISTORY = {
+  /** Page heading */
+  heading: 'text=History',
+  /** Empty state message when no workouts have been logged */
+  emptyState: 'text=No workouts yet',
+  /** CTA in empty state */
+  emptyStateCta: 'text=Start your first workout',
+  /** Retry button shown on error state */
+  retryButton: 'text=Retry',
+} as const;
+
+// ---------------------------------------------------------------------------
+// Profile screen — ProfileScreen
+// ---------------------------------------------------------------------------
+export const PROFILE = {
+  /** Page heading */
+  heading: 'text=Profile',
+  /** Primary "Log Out" button */
+  logOutButton: 'text=Log Out',
+  /** Confirmation dialog body text */
+  logOutConfirmDialog: 'text=Are you sure you want to log out?',
+  /** Cancel button in the confirmation dialog */
+  cancelButton: 'text=Cancel',
+  /** Weight unit "kg" option */
+  kgOption: 'text=kg',
+  /** Weight unit "lbs" option */
+  lbsOption: 'text=lbs',
+} as const;

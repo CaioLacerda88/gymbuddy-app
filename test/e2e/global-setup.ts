@@ -18,9 +18,18 @@ import path from 'path';
 dotenv.config({ path: path.join(__dirname, '.env.local') });
 
 const TEST_USERS = [
+  // Smoke suite users
   'e2e-smoke-auth@test.local',
   'e2e-smoke-workout@test.local',
   'e2e-smoke-pr@test.local',
+  // Full suite users (one per spec file)
+  'e2e-full-auth@test.local',
+  'e2e-full-exercises@test.local',
+  'e2e-full-workout@test.local',
+  'e2e-full-routines@test.local',
+  'e2e-full-pr@test.local',
+  'e2e-full-home@test.local',
+  'e2e-full-crash@test.local',
 ];
 
 async function globalSetup(): Promise<void> {
