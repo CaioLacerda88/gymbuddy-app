@@ -1,25 +1,11 @@
 /**
  * Auth helpers: login and logout flows.
  *
- * These helpers interact with the real Supabase backend. Test users must exist
- * before running tests. Create them once in the Supabase dashboard or via the
- * signup flow, then store their credentials in environment variables:
+ * Test users are created by global-setup.ts using the Supabase Admin Auth API
+ * and credentials in test/e2e/.env.local. No manual setup is required.
  *
- *   TEST_USER_EMAIL=e2e-test@example.com
- *   TEST_USER_PASSWORD=TestPassword123!
- *
- * Set these in a .env file at test/e2e/.env (never commit this file) or
- * export them in the shell before running tests.
- *
- * The test/e2e/.env file should be listed in .gitignore — verify before
- * committing.
- *
- * Recommended test user setup:
- *   1. Sign up through the app's own flow so the user record exists in both
- *      Supabase Auth and the profiles table.
- *   2. Confirm the email address (or disable email confirmation in Supabase
- *      Auth settings for the test project).
- *   3. Export TEST_USER_EMAIL and TEST_USER_PASSWORD.
+ * Import specific user credentials from fixtures/test-users.ts rather than
+ * using getTestCredentials() for new tests.
  */
 
 import { Page, expect } from '@playwright/test';
@@ -53,21 +39,22 @@ export async function login(
 }
 
 /**
- * Log out by navigating to the Profile tab and tapping the logout option.
+ * Log out by navigating to the Profile tab and confirming in the dialog.
  *
- * Note: The Profile tab is currently a placeholder screen (no logout button
- * implemented in Steps 1-4). This helper is a stub — update it once the
- * profile feature (Step 6) adds a real logout action.
- *
- * When profile is implemented, the expected selector for logout will be
- * something like: '[aria-label="Log out"]' or 'text=Log out'
+ * Flow: Profile tab → "Log Out" button → confirmation dialog → "Log Out" (last).
+ * After logout the router redirects to /login.
  */
 export async function logout(page: Page): Promise<void> {
   await page.click(NAV.profileTab);
 
-  // TODO: update selector when profile screen implements logout (Step 6).
-  // For now we click a "Log out" text button as a placeholder expectation.
-  await page.click('text=Log out');
+  // Click the "Log Out" button on the profile screen.
+  await page.click('text=Log Out');
+
+  // A confirmation dialog appears. Click the "Log Out" button inside the dialog
+  // (the last occurrence — the first is the button that opened the dialog).
+  const logOutButtons = page.locator('text=Log Out');
+  await expect(logOutButtons.last()).toBeVisible({ timeout: 5_000 });
+  await logOutButtons.last().click();
 
   // After logout, the router redirects to /login.
   await expect(page.locator(AUTH.appTitle)).toBeVisible({ timeout: 15_000 });
@@ -76,20 +63,26 @@ export async function logout(page: Page): Promise<void> {
 /**
  * Read test credentials from environment variables.
  *
- * Throws a descriptive error if the variables are not set, so tests fail
- * clearly rather than attempting to log in with empty strings.
+ * Prefers TEST_USER_EMAIL / TEST_USER_PASSWORD environment variables for
+ * backward compatibility. Falls back to the smokeAuth user from fixtures if
+ * the env vars are not set.
+ *
+ * For new tests, import TEST_USERS from fixtures/test-users.ts directly
+ * instead of calling this function.
  */
 export function getTestCredentials(): { email: string; password: string } {
   const email = process.env['TEST_USER_EMAIL'];
-  const password = process.env['TEST_USER_PASSWORD'];
+  const password =
+    process.env['TEST_USER_PASSWORD'] ?? 'TestPassword123!';
 
-  if (!email || !password) {
-    throw new Error(
-      'Missing test credentials. Set TEST_USER_EMAIL and TEST_USER_PASSWORD ' +
-        'environment variables before running e2e tests. ' +
-        'See test/e2e/README.md for setup instructions.',
-    );
+  if (email) {
+    return { email, password };
   }
 
-  return { email, password };
+  // Fall back to the smoke auth test user so older tests remain runnable
+  // after the fixture-based setup is in place.
+  return {
+    email: 'e2e-smoke-auth@test.local',
+    password,
+  };
 }
