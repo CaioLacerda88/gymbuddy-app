@@ -28,6 +28,8 @@ jobs:
           node-version: '20'
 
       - uses: supabase/setup-cli@v1
+        with:
+          version: latest
 
       - name: Start local Supabase
         run: supabase start
