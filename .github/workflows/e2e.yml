@@ -1,0 +1,91 @@
+name: E2E Tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.41.6'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: supabase/setup-cli@v1
+
+      - name: Start local Supabase
+        run: supabase start
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Run code generation
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Build Flutter web
+        run: flutter build web --web-renderer html
+
+      - name: Serve Flutter web app
+        run: |
+          npx serve -s build/web -l 8080 &
+          npx wait-on http://localhost:8080 --timeout 30000
+
+      - name: Install Playwright and dependencies
+        working-directory: test/e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Write .env.local for Playwright
+        run: |
+          # supabase status -o env emits KEY=value lines we can source directly.
+          # We also need the service role key which is not in the Flutter .env.
+          supabase status -o env > /tmp/sb_status.env
+
+          SUPABASE_URL=$(grep '^API_URL=' /tmp/sb_status.env | cut -d= -f2-)
+          SUPABASE_ANON_KEY=$(grep '^ANON_KEY=' /tmp/sb_status.env | cut -d= -f2-)
+          SERVICE_ROLE_KEY=$(grep '^SERVICE_ROLE_KEY=' /tmp/sb_status.env | cut -d= -f2-)
+
+          cat > test/e2e/.env.local <<EOF
+FLUTTER_APP_URL=http://localhost:8080
+SUPABASE_URL=${SUPABASE_URL}
+SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+SUPABASE_SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY}
+TEST_USER_PASSWORD=Test1234!
+EOF
+
+      - name: Run Playwright smoke tests (PR)
+        if: github.event_name == 'pull_request'
+        working-directory: test/e2e
+        run: npx playwright test --project=smoke
+
+      - name: Run Playwright full test suite (push to main)
+        if: github.event_name == 'push'
+        working-directory: test/e2e
+        run: npx playwright test
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            test/e2e/playwright-report/
+            test/e2e/test-results/
+          retention-days: 7
