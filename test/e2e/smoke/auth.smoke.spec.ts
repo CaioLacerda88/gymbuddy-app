@@ -1,20 +1,17 @@
 /**
  * Auth smoke tests — critical login/logout journey.
  *
- * Skipped by default. Remove test.skip() and set environment variables to run:
- *   TEST_USER_EMAIL=<email>
- *   TEST_USER_PASSWORD=<password>
- *
- * See test/e2e/README.md for full setup instructions.
+ * Uses the dedicated smokeAuth test user created in global-setup.ts.
+ * The Flutter web app must be served at localhost:8080 before running:
+ *   flutter build web --web-renderer html
+ *   cd build/web && python3 -m http.server 8080
  */
 
 import { test, expect } from '@playwright/test';
-import { waitForAppReady, navigateToTab } from '../helpers/app';
-import { login, logout, getTestCredentials } from '../helpers/auth';
+import { waitForAppReady } from '../helpers/app';
+import { login, logout } from '../helpers/auth';
 import { AUTH, NAV } from '../helpers/selectors';
-
-// Requires: running Flutter web app at localhost:8080 and test Supabase credentials.
-test.skip(true, 'Requires running Flutter web app and test Supabase credentials');
+import { TEST_USERS } from '../fixtures/test-users';
 
 test.describe('Auth smoke', () => {
   test('login screen is shown on first load', async ({ page }) => {
@@ -37,14 +34,14 @@ test.describe('Auth smoke', () => {
   test('login with valid credentials lands on home screen with bottom nav', async ({
     page,
   }) => {
-    const { email, password } = getTestCredentials();
+    const { email, password } = TEST_USERS.smokeAuth;
 
     await login(page, email, password);
 
     // The shell scaffold renders the bottom NavigationBar on all main routes.
     await expect(page.locator(NAV.homeTab)).toBeVisible();
     await expect(page.locator(NAV.exercisesTab)).toBeVisible();
-    await expect(page.locator(NAV.historyTab)).toBeVisible();
+    await expect(page.locator(NAV.routinesTab)).toBeVisible();
     await expect(page.locator(NAV.profileTab)).toBeVisible();
   });
 
@@ -65,7 +62,7 @@ test.describe('Auth smoke', () => {
   });
 
   test('logout returns to login screen', async ({ page }) => {
-    const { email, password } = getTestCredentials();
+    const { email, password } = TEST_USERS.smokeAuth;
 
     await login(page, email, password);
     await logout(page);

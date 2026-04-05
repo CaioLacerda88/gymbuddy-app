@@ -48,19 +48,19 @@ export async function waitForAppReady(page: Page): Promise<void> {
 /**
  * Navigate to a bottom navigation tab by its label.
  *
- * Tabs: 'Home' | 'Exercises' | 'History' | 'Profile'
+ * Tabs: 'Home' | 'Exercises' | 'Routines' | 'Profile'
  *
  * The NavigationBar destinations emit aria-label via Flutter Semantics, so we
  * target them with the selector map in NAV.
  */
 export async function navigateToTab(
   page: Page,
-  tabName: 'Home' | 'Exercises' | 'History' | 'Profile',
+  tabName: 'Home' | 'Exercises' | 'Routines' | 'Profile',
 ): Promise<void> {
   const selectorMap: Record<string, string> = {
     Home: NAV.homeTab,
     Exercises: NAV.exercisesTab,
-    History: NAV.historyTab,
+    Routines: NAV.routinesTab,
     Profile: NAV.profileTab,
   };
 
@@ -68,11 +68,6 @@ export async function navigateToTab(
   await page.click(selector);
 
   // Wait for the tab content heading to appear as a signal that navigation
-  // completed. The heading text matches the tab label for placeholder screens.
-  if (tabName === 'Exercises') {
-    await page.waitForSelector('text=Exercises', { timeout: 15_000 });
-  } else {
-    // Placeholder screens render the tab name as a centered heading.
-    await page.waitForSelector(`text=${tabName}`, { timeout: 15_000 });
-  }
+  // completed. The heading text matches the tab label for most screens.
+  await page.waitForSelector(`text=${tabName}`, { timeout: 15_000 });
 }
