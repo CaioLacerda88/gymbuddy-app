@@ -32,6 +32,19 @@ jobs:
       - name: Start local Supabase
         run: supabase start
 
+      - name: Extract Supabase keys and write env files
+        run: |
+          supabase status -o env > /tmp/sb_status.env
+          SB_URL=$(grep '^API_URL=' /tmp/sb_status.env | cut -d= -f2-)
+          SB_ANON=$(grep '^ANON_KEY=' /tmp/sb_status.env | cut -d= -f2-)
+          SB_SERVICE=$(grep '^SERVICE_ROLE_KEY=' /tmp/sb_status.env | cut -d= -f2-)
+
+          # Flutter app .env (loaded by flutter_dotenv at runtime)
+          printf "SUPABASE_URL=%s\nSUPABASE_ANON_KEY=%s\n" "$SB_URL" "$SB_ANON" > .env
+
+          # Playwright .env.local (loaded by global-setup.ts)
+          printf "FLUTTER_APP_URL=http://localhost:8080\nSUPABASE_URL=%s\nSUPABASE_ANON_KEY=%s\nSUPABASE_SERVICE_ROLE_KEY=%s\nTEST_USER_PASSWORD=Test1234!\n" "$SB_URL" "$SB_ANON" "$SB_SERVICE" > test/e2e/.env.local
+
       - name: Install Flutter dependencies
         run: flutter pub get
 
@@ -51,24 +64,6 @@ jobs:
         run: |
           npm ci
           npx playwright install --with-deps chromium
-
-      - name: Write .env.local for Playwright
-        run: |
-          # supabase status -o env emits KEY=value lines we can source directly.
-          # We also need the service role key which is not in the Flutter .env.
-          supabase status -o env > /tmp/sb_status.env
-
-          SUPABASE_URL=$(grep '^API_URL=' /tmp/sb_status.env | cut -d= -f2-)
-          SUPABASE_ANON_KEY=$(grep '^ANON_KEY=' /tmp/sb_status.env | cut -d= -f2-)
-          SERVICE_ROLE_KEY=$(grep '^SERVICE_ROLE_KEY=' /tmp/sb_status.env | cut -d= -f2-)
-
-          cat > test/e2e/.env.local <<EOF
-FLUTTER_APP_URL=http://localhost:8080
-SUPABASE_URL=${SUPABASE_URL}
-SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-SUPABASE_SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY}
-TEST_USER_PASSWORD=Test1234!
-EOF
 
       - name: Run Playwright smoke tests (PR)
         if: github.event_name == 'pull_request'
