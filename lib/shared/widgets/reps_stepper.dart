@@ -104,23 +104,27 @@ class _RepsStepperState extends State<RepsStepper> {
             constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
           ),
         ),
-        GestureDetector(
-          onTap: _showNumberInput,
-          child: SizedBox(
-            width: 56,
-            child: Text(
-              widget.value.toString(),
-              textAlign: TextAlign.center,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                color: theme.colorScheme.primary,
-                shadows: [
-                  Shadow(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                    blurRadius: 8,
-                  ),
-                ],
+        Semantics(
+          label: 'Reps value: ${widget.value}. Tap to enter reps.',
+          button: true,
+          child: GestureDetector(
+            onTap: _showNumberInput,
+            child: SizedBox(
+              width: 56,
+              child: Text(
+                widget.value.toString(),
+                textAlign: TextAlign.center,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: theme.colorScheme.primary,
+                  shadows: [
+                    Shadow(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

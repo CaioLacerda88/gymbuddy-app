@@ -8,18 +8,19 @@
  * Uses the dedicated smokeWorkout test user to avoid shared state with
  * other smoke specs. User is created in global-setup.ts.
  *
- * The Flutter web app must be served at localhost:8080 before running:
- *   flutter build web --web-renderer html
- *   cd build/web && python3 -m http.server 8080
+ * The Flutter web app is served automatically by Playwright's webServer config
+ * during local dev. In CI the FLUTTER_APP_URL env var is set by the workflow.
  */
 
 import { test, expect } from '@playwright/test';
 import { waitForAppReady } from '../helpers/app';
 import { login } from '../helpers/auth';
-import { NAV, HOME, WORKOUT, EXERCISE_PICKER } from '../helpers/selectors';
+import { NAV, HOME, WORKOUT } from '../helpers/selectors';
 import {
   startEmptyWorkout,
   addExercise,
+  setWeight,
+  setReps,
   completeSet,
   finishWorkout,
 } from '../helpers/workout';
@@ -64,25 +65,11 @@ test.describe('Workout smoke', () => {
       timeout: 10_000,
     });
 
-    // 3. The first set row is pre-populated. Set weight to 60 kg and reps to 8.
-    //    Tap the weight/reps values to open the entry dialogs.
-    const weightValue = page.locator('text=0').first();
-    await weightValue.click();
-
-    // Dialog for weight entry.
-    const weightInput = page.locator('input').last();
-    await weightInput.clear();
-    await weightInput.fill('60');
-    await page.locator('text=OK').click();
-
-    const repsValue = page.locator('text=0').first();
-    await repsValue.click();
-
-    // Dialog for reps entry.
-    const repsInput = page.locator('input').last();
-    await repsInput.clear();
-    await repsInput.fill('8');
-    await page.locator('text=OK').click();
+    // 3. The first set row is pre-populated with "0" for weight and reps.
+    //    Use the setWeight / setReps helpers which tap the value text,
+    //    interact with the AlertDialog, and dismiss it.
+    await setWeight(page, '60');
+    await setReps(page, '8');
 
     // 4. Mark the set as done.
     await completeSet(page, 0);
@@ -93,11 +80,6 @@ test.describe('Workout smoke', () => {
     // After finishing, the app navigates to the PR celebration screen (first
     // workout) or back to Home. Either way we wait for the celebration or
     // Home tab to become visible.
-    const celebrationOrHome = page.locator(
-      `text=First Workout Complete!, ${NAV.homeTab}`,
-    );
-
-    // Accept either outcome — PR screen with Continue, or directly on Home.
     const isPRScreen = await page
       .locator('text=First Workout Complete!')
       .isVisible({ timeout: 15_000 })

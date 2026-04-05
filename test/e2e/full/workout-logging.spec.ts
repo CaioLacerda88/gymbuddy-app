@@ -13,7 +13,8 @@
  *  9. Workout name is auto-generated with date (contains em-dash separator)
  *
  * Uses the dedicated `fullWorkout` test user.
- * The Flutter web app must be served at localhost:8080 before running.
+ * The Flutter web app is served automatically by Playwright's webServer config
+ * during local dev. In CI the FLUTTER_APP_URL env var is set by the workflow.
  */
 
 import { test, expect } from '@playwright/test';
@@ -22,6 +23,8 @@ import { NAV, WORKOUT, PR } from '../helpers/selectors';
 import {
   startEmptyWorkout,
   addExercise,
+  setWeight,
+  setReps,
   completeSet,
   finishWorkout,
 } from '../helpers/workout';
@@ -90,45 +93,14 @@ test.describe('Workout logging — full suite', () => {
     await startEmptyWorkout(page);
     await addExercise(page, SEED_EXERCISES.benchPress);
 
-    // The default value for both weight and reps is "0".
-    // Tap the first "0" to open the weight entry dialog.
-    const firstZero = page.locator('text=0').first();
-    await firstZero.click();
+    // Set weight to 100 kg via the dialog helper.
+    await setWeight(page, '100');
 
-    // Dialog title confirms we are entering weight.
-    await expect(page.locator('text=Enter weight')).toBeVisible({
-      timeout: 5_000,
-    });
-
-    const weightInput = page.locator('input').last();
-    await weightInput.clear();
-    await weightInput.fill('100');
-    await page.locator('text=OK').click();
-
-    // The dialog must dismiss.
-    await expect(page.locator('text=Enter weight')).not.toBeVisible({
-      timeout: 5_000,
-    });
-
-    // The weight value must update to 100 in the set row.
+    // The dialog must dismiss and the weight value must update to 100 in the set row.
     await expect(page.locator('text=100')).toBeVisible({ timeout: 5_000 });
 
-    // Tap reps "0" to open the reps dialog.
-    const repsZero = page.locator('text=0').first();
-    await repsZero.click();
-
-    await expect(page.locator('text=Enter reps')).toBeVisible({
-      timeout: 5_000,
-    });
-
-    const repsInput = page.locator('input').last();
-    await repsInput.clear();
-    await repsInput.fill('5');
-    await page.locator('text=OK').click();
-
-    await expect(page.locator('text=Enter reps')).not.toBeVisible({
-      timeout: 5_000,
-    });
+    // Set reps to 5 via the dialog helper.
+    await setReps(page, '5');
 
     // Discard.
     await page.locator(WORKOUT.discardButton).click();
@@ -249,20 +221,9 @@ test.describe('Workout logging — full suite', () => {
     await startEmptyWorkout(page);
     await addExercise(page, SEED_EXERCISES.benchPress);
 
-    // Set weight and reps.
-    const weightZero = page.locator('text=0').first();
-    await weightZero.click();
-    const wInput = page.locator('input').last();
-    await wInput.clear();
-    await wInput.fill('60');
-    await page.locator('text=OK').click();
-
-    const repsZero = page.locator('text=0').first();
-    await repsZero.click();
-    const rInput = page.locator('input').last();
-    await rInput.clear();
-    await rInput.fill('8');
-    await page.locator('text=OK').click();
+    // Set weight and reps using the helpers.
+    await setWeight(page, '60');
+    await setReps(page, '8');
 
     await completeSet(page, 0);
     await finishWorkout(page);

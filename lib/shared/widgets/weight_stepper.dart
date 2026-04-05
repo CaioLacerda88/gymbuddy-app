@@ -111,23 +111,28 @@ class _WeightStepperState extends State<WeightStepper> {
             constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
           ),
         ),
-        GestureDetector(
-          onTap: _showNumberInput,
-          child: SizedBox(
-            width: 72,
-            child: Text(
-              _formatWeight(widget.value),
-              textAlign: TextAlign.center,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                color: theme.colorScheme.primary,
-                shadows: [
-                  Shadow(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                    blurRadius: 8,
-                  ),
-                ],
+        Semantics(
+          label:
+              'Weight value: ${_formatWeight(widget.value)} kg. Tap to enter weight.',
+          button: true,
+          child: GestureDetector(
+            onTap: _showNumberInput,
+            child: SizedBox(
+              width: 72,
+              child: Text(
+                _formatWeight(widget.value),
+                textAlign: TextAlign.center,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: theme.colorScheme.primary,
+                  shadows: [
+                    Shadow(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

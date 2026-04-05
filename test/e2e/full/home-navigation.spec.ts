@@ -13,7 +13,8 @@
  *  9. Profile weight unit toggle shows kg and lbs options
  *
  * Uses the dedicated `fullHome` test user.
- * The Flutter web app must be served at localhost:8080 before running.
+ * The Flutter web app is served automatically by Playwright's webServer config
+ * during local dev. In CI the FLUTTER_APP_URL env var is set by the workflow.
  */
 
 import { test, expect } from '@playwright/test';
@@ -31,6 +32,8 @@ import {
 import {
   startEmptyWorkout,
   addExercise,
+  setWeight,
+  setReps,
   completeSet,
   finishWorkout,
 } from '../helpers/workout';
@@ -109,22 +112,11 @@ test.describe('Home screen and navigation — full suite', () => {
   test('completing a workout makes RECENT section appear on the home screen', async ({
     page,
   }) => {
-    // Start and finish a minimal workout.
+    // Start and finish a minimal workout with one completed set.
     await startEmptyWorkout(page);
     await addExercise(page, SEED_EXERCISES.benchPress);
-
-    await page.locator('text=0').first().click();
-    const wInput = page.locator('input').last();
-    await wInput.clear();
-    await wInput.fill('60');
-    await page.locator('text=OK').click();
-
-    await page.locator('text=0').first().click();
-    const rInput = page.locator('input').last();
-    await rInput.clear();
-    await rInput.fill('5');
-    await page.locator('text=OK').click();
-
+    await setWeight(page, '60');
+    await setReps(page, '5');
     await completeSet(page, 0);
     await finishWorkout(page);
 

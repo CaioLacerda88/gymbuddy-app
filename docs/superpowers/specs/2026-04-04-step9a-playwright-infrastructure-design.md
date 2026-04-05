@@ -9,7 +9,7 @@ Stand up production-quality Playwright E2E infrastructure against the local Supa
 ### Test Environment
 
 - **Local Supabase** (Docker via `supabase start`): API at `http://127.0.0.1:54321`, DB at port 54322
-- **Flutter web** (HTML renderer): served at `http://localhost:8080` via `flutter build web --web-renderer html` + static server
+- **Flutter web**: served at `http://localhost:8080` via `flutter build web` + static server
 - **Email confirmation disabled** in local config (`enable_confirmations = false`), so signups are instant
 - **Service role key** (`sb_secret_...`): used in global-setup to create/delete test users via Supabase Admin Auth API
 

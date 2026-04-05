@@ -91,14 +91,17 @@ class _FinishWorkoutDialogState extends State<FinishWorkoutDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Keep Going'),
         ),
-        FilledButton(
-          onPressed: () {
-            final notes = _notesController.text.trim();
-            Navigator.of(
-              context,
-            ).pop(FinishWorkoutResult(notes: notes.isEmpty ? null : notes));
-          },
-          child: const Text('Finish Workout'),
+        Semantics(
+          label: 'Confirm finish workout',
+          child: FilledButton(
+            onPressed: () {
+              final notes = _notesController.text.trim();
+              Navigator.of(
+                context,
+              ).pop(FinishWorkoutResult(notes: notes.isEmpty ? null : notes));
+            },
+            child: const Text('Finish Workout'),
+          ),
         ),
       ],
     );

@@ -198,10 +198,13 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
       },
       child: Scaffold(
         appBar: AppBar(
-          leading: IconButton(
-            onPressed: _onBackPressed,
-            icon: const Icon(Icons.close),
-            tooltip: 'Discard workout',
+          leading: Semantics(
+            label: 'Discard workout',
+            child: IconButton(
+              onPressed: _onBackPressed,
+              icon: const Icon(Icons.close),
+              tooltip: 'Discard workout',
+            ),
           ),
           title: Column(
             mainAxisSize: MainAxisSize.min,
@@ -225,27 +228,30 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
                   ),
                 )
               else
-                GestureDetector(
-                  onTap: () {
-                    _nameController.text = widget.state.workout.name;
-                    setState(() => _isEditingName = true);
-                  },
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        widget.state.workout.name,
-                        style: theme.textTheme.titleMedium,
-                      ),
-                      const SizedBox(width: 4),
-                      Icon(
-                        Icons.edit,
-                        size: 14,
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.4,
+                Semantics(
+                  label: '${widget.state.workout.name}. Tap to rename workout.',
+                  child: GestureDetector(
+                    onTap: () {
+                      _nameController.text = widget.state.workout.name;
+                      setState(() => _isEditingName = true);
+                    },
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          widget.state.workout.name,
+                          style: theme.textTheme.titleMedium,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.edit,
+                          size: 14,
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.4,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               _ElapsedTimer(startedAt: widget.state.workout.startedAt),

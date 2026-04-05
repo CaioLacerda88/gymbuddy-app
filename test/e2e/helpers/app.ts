@@ -1,17 +1,16 @@
 /**
  * App-level helpers: launch, readiness checks, and navigation.
  *
- * The Flutter app must be served BEFORE running tests. Playwright does not
- * start the app server automatically.
+ * The Flutter app is served automatically by Playwright's webServer config
+ * during local dev (port 4200 by default). In CI the FLUTTER_APP_URL env var
+ * is set by the workflow and Playwright connects to the pre-running server.
  *
- * Serve the app with:
- *   flutter build web --web-renderer html
- *   cd build/web && python3 -m http.server 8080
+ * To start the server manually for debugging:
+ *   flutter build web
+ *   npx serve -s build/web -l 4200
  *
  * OR during active development (with hot-reload):
- *   flutter run -d chrome --web-port 8080 --web-renderer html
- *
- * The baseURL in playwright.config.ts is set to http://localhost:8080.
+ *   flutter run -d chrome --web-port 4200
  */
 
 import { Page } from '@playwright/test';
@@ -20,28 +19,50 @@ import { NAV } from './selectors';
 /**
  * Wait for the Flutter app to finish its initial load.
  *
- * The SplashScreen is shown while auth state resolves, then the router
- * redirects to /login or /home. We wait for the splash to disappear by
- * checking that at least one of the known post-splash elements is visible.
+ * Flutter web (CanvasKit) renders to <canvas> and does NOT enable the
+ * accessibility/semantics tree by default. It shows a hidden
+ * "Enable accessibility" placeholder button instead. We must activate it
+ * so that flt-semantics elements are generated for Playwright to interact with.
  *
- * Flutter web (HTML renderer) mounts a <flutter-view> root. We wait for that
- * first, then for the app content to stabilise.
+ * After enabling semantics and waiting for auth to resolve, the router
+ * redirects to /login, /home, or /onboarding.
+ *
+ * Timeout is generous (60s) to accommodate CanvasKit WASM download.
  */
 export async function waitForAppReady(page: Page): Promise<void> {
-  // Wait for Flutter to mount its root element.
-  await page.waitForSelector('flutter-view, flt-glass-pane', {
-    timeout: 30_000,
+  // 1. Wait for Flutter to render and show the accessibility placeholder.
+  await page.waitForSelector(
+    'flt-semantics-placeholder[aria-label="Enable accessibility"]',
+    { timeout: 60_000 },
+  );
+
+  // 2. Enable the full semantics tree. Flutter web activates semantics in
+  //    response to real user interaction. We dispatch a focused click sequence
+  //    on the placeholder element AND press Tab as a fallback.
+  await page.evaluate(() => {
+    const btn = document.querySelector(
+      'flt-semantics-placeholder[aria-label="Enable accessibility"]',
+    ) as HTMLElement | null;
+    if (btn) {
+      btn.focus();
+      btn.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+      btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      btn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+      btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    }
   });
 
-  // Wait for the splash screen transition to complete. After auth resolves,
-  // the router shows either the login screen (GymBuddy title) or the shell
-  // nav bar. We poll for either landmark.
-  await page.waitForFunction(
-    () => {
-      const text = document.body.innerText ?? '';
-      return text.includes('GymBuddy') || text.includes('Home');
-    },
-    { timeout: 30_000, polling: 500 },
+  // Tab key is an additional signal that Flutter uses to enable semantics.
+  await page.keyboard.press('Tab');
+
+  // 3. Wait for a known post-splash landmark to confirm the app is ready.
+  await page.waitForSelector(
+    [
+      '[aria-label="LOG IN"]',
+      '[aria-label="Home"]',
+      '[aria-label="GET STARTED"]',
+    ].join(', '),
+    { timeout: 30_000 },
   );
 }
 

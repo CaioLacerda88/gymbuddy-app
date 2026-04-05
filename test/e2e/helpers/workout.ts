@@ -5,6 +5,22 @@
  * isolates a single UI action so smoke specs remain readable.
  *
  * Assumes the user is already logged in before calling these helpers.
+ *
+ * CanvasKit renderer notes
+ * ------------------------
+ * Flutter web (CanvasKit) does not render standard HTML elements for most
+ * widgets — it draws to <canvas>. However, text fields are an exception:
+ * Flutter injects a hidden <input> overlay into the DOM when a TextField
+ * receives focus so that the OS keyboard and clipboard work. Playwright can
+ * interact with this overlay using the generic 'input' selector.
+ *
+ * The weight and reps entry dialogs work as follows:
+ *   1. Tap the large value text in the set row (initially "0" for both).
+ *      WeightStepper / RepsStepper open an AlertDialog with a TextField.
+ *   2. The AlertDialog title ("Enter weight" / "Enter reps") confirms focus.
+ *   3. Flutter renders a hidden <input> overlay for the focused TextField.
+ *      Using `page.locator('input').last()` targets this overlay.
+ *   4. Clear and fill the input, then click "OK" to confirm.
  */
 
 import { Page, expect } from '@playwright/test';
@@ -54,36 +70,63 @@ export async function addExercise(
 }
 
 /**
- * Set the weight for the most recent set by opening the weight dialog.
+ * Set the weight for the next uncompleted set by tapping its value.
  *
- * Taps the weight value text to open an AlertDialog, clears the field,
- * types the new value, and confirms with "OK".
+ * Taps the first visible weight value text to open the "Enter weight" dialog,
+ * clears the existing value, types the new value, and confirms with "OK".
+ *
+ * Implementation note: WeightStepper shows the current value as large text
+ * (e.g. "0") inside a GestureDetector. Tapping it opens an AlertDialog.
+ * Flutter renders a hidden <input> overlay for the focused TextField inside
+ * the dialog, which Playwright can target with `page.locator('input').last()`.
  */
 export async function setWeight(page: Page, value: string): Promise<void> {
-  await page.click(WORKOUT.enterWeightDialog);
+  // The weight value is a large text node showing the current value (e.g. "0").
+  // Clicking it opens the "Enter weight" AlertDialog.
+  await page.locator('text=0').first().click();
 
-  // The dialog contains a TextField. Clear it and type the value.
-  const input = page.locator('input[type="number"], input[type="text"]').last();
+  // Wait for the dialog title to confirm the correct dialog opened.
+  await expect(page.locator('text=Enter weight')).toBeVisible({ timeout: 5_000 });
+
+  // Target the Flutter text editing overlay (<input> injected by CanvasKit).
+  const input = page.locator('input').last();
   await input.clear();
   await input.fill(value);
 
   await page.click('text=OK');
+
+  // Wait for the dialog to dismiss before returning.
+  await expect(page.locator('text=Enter weight')).not.toBeVisible({
+    timeout: 5_000,
+  });
 }
 
 /**
- * Set the reps for the most recent set by opening the reps dialog.
+ * Set the reps for the next uncompleted set by tapping its value.
  *
- * Taps the reps value text to open an AlertDialog, clears the field,
- * types the new value, and confirms with "OK".
+ * Taps the first visible reps value text to open the "Enter reps" dialog,
+ * clears the existing value, types the new value, and confirms with "OK".
+ *
+ * Implementation note: After setting weight, the weight cell shows the new
+ * value (no longer "0"), so the first "0" text visible is now the reps value.
  */
 export async function setReps(page: Page, value: string): Promise<void> {
-  await page.click(WORKOUT.enterRepsDialog);
+  // After weight is set, the first remaining "0" is the reps value.
+  await page.locator('text=0').first().click();
 
-  const input = page.locator('input[type="number"], input[type="text"]').last();
+  // Wait for the dialog title to confirm the correct dialog opened.
+  await expect(page.locator('text=Enter reps')).toBeVisible({ timeout: 5_000 });
+
+  const input = page.locator('input').last();
   await input.clear();
   await input.fill(value);
 
   await page.click('text=OK');
+
+  // Wait for the dialog to dismiss before returning.
+  await expect(page.locator('text=Enter reps')).not.toBeVisible({
+    timeout: 5_000,
+  });
 }
 
 /**
