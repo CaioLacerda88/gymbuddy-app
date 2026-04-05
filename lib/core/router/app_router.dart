@@ -82,8 +82,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/workout/active',
         redirect: (context, state) {
-          final hasActive = ref.read(hasActiveWorkoutProvider);
-          if (!hasActive) return '/home';
+          // Check in-memory state first (set immediately by startWorkout),
+          // then fall back to Hive (persisted across restarts).
+          final inMemory = ref.read(activeWorkoutProvider).valueOrNull;
+          final inHive = ref.read(hasActiveWorkoutProvider);
+          if (inMemory == null && !inHive) return '/home';
           return null;
         },
         builder: (context, state) => const ActiveWorkoutScreen(),

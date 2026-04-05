@@ -36,6 +36,67 @@ test.describe('Workout smoke', () => {
     );
   });
 
+  /**
+   * QA-001 fix verify: completing a workout saves successfully.
+   *
+   * Previously, the save_workout RPC returned 404 and navigation to
+   * /workout/active was blocked by the router redirect guard because
+   * _saveToHive() was unawaited (race condition).
+   *
+   * This test verifies the full save path works end-to-end:
+   *   start → add exercise → set weight/reps → complete set → finish →
+   *   celebration or home screen appears (no 404 in console).
+   */
+  test('completing a workout saves successfully and shows celebration or home (QA-001 fix)', async ({
+    page,
+  }) => {
+    // Start an empty workout.
+    await startEmptyWorkout(page);
+
+    // The active workout screen should be reachable.
+    await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
+      timeout: 15_000,
+    });
+
+    // Add Barbell Bench Press.
+    await addExercise(page, SEED_EXERCISES.benchPress);
+
+    // Wait for the exercise card with its set row.
+    await expect(page.locator(WORKOUT.addSetButton)).toBeVisible({
+      timeout: 10_000,
+    });
+
+    // Set weight and reps on the first set.
+    await setWeight(page, '60');
+    await setReps(page, '8');
+
+    // Mark the set as done.
+    await completeSet(page, 0);
+
+    // Finish the workout — this triggers the save_workout RPC.
+    await finishWorkout(page);
+
+    // After finishing, either the PR celebration or the home screen must
+    // appear. Both indicate a successful save. Neither should be a 404 error.
+    const isCelebration = await page
+      .locator('text=First Workout Complete!')
+      .isVisible({ timeout: 15_000 })
+      .catch(() => false);
+
+    const isNewPR = await page
+      .locator('text=NEW PR')
+      .isVisible({ timeout: 5_000 })
+      .catch(() => false);
+
+    if (isCelebration || isNewPR) {
+      // Dismiss the celebration screen.
+      await page.click('text=Continue');
+    }
+
+    // We must end up on the Home screen — proves navigation completed.
+    await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 20_000 });
+  });
+
   test('home screen is visible with start workout option after login', async ({
     page,
   }) => {

@@ -166,9 +166,13 @@ class HomeScreen extends ConsumerWidget {
                       return;
                     }
                     if (result == ResumeWorkoutResult.discard) {
-                      await ref
-                          .read(activeWorkoutProvider.notifier)
-                          .discardWorkout();
+                      try {
+                        await ref
+                            .read(activeWorkoutProvider.notifier)
+                            .discardWorkout();
+                      } catch (_) {
+                        return; // discard failed — don't start a new workout
+                      }
                     } else {
                       return; // dismissed
                     }

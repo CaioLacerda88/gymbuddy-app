@@ -22,6 +22,7 @@ const TEST_USERS = [
   'e2e-smoke-auth@test.local',
   'e2e-smoke-workout@test.local',
   'e2e-smoke-pr@test.local',
+  'e2e-smoke-exercise@test.local',
   // Full suite users (one per spec file)
   'e2e-full-auth@test.local',
   'e2e-full-exercises@test.local',
