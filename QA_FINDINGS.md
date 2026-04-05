@@ -534,27 +534,102 @@ Findings are grouped by severity, then by area.
 ## Recommended Priority for Tech Lead
 
 ### Fix immediately (blocks real usage)
-1. **QA-001** — `save_workout` RPC 404 — workouts cannot be saved at all
-2. **PO-026** — History detail route is wrong (`/history/:id` → `/home/history/:id`)
-3. **PO-017/018** — Gate "Start Workout" behind resume/discard check
-4. **QA-003** — Fix RLS policy for exercise DELETE
-5. **QA-004** — Fix profiles table schema/RLS for weight unit update
+1. ~~**QA-001** — `save_workout` RPC 404~~ **FIXED** — migration pushed to prod
+2. ~~**PO-026** — History detail route~~ **FIXED** — path corrected
+3. ~~**PO-017/018** — Gate "Start Workout"~~ **FIXED** — resume/discard dialog added
+4. ~~**QA-003** — Fix RLS policy for exercise DELETE~~ **FIXED** — migration 00006
+5. ~~**QA-004** — Fix profiles table schema~~ **FIXED** — migration 00006
 
 ### Fix next (causes churn after day 3)
-6. **PO-001** — Move `needsOnboardingProvider = true` to after successful signup
-7. **PO-006** — Add error handling to onboarding completion
-8. **PO-032** — Wrap routine save in try/catch
-9. **PO-036** — Route logout through `authNotifierProvider.notifier`
-10. **PO-037** — Wire `weightUnit` preference to workout UI
-11. **QA-005** — Fix exercise image URLs
-12. **QA-002** — Fix GlobalKey conflict on workout redirect
-13. **UX-I01** — Fix stepper repeat rate (100ms → progressive acceleration)
-14. **UX-U02** — Add undo to swipe-to-delete set
+6. ~~**PO-001** — Move `needsOnboardingProvider`~~ **FIXED**
+7. ~~**PO-006** — Add error handling to onboarding~~ **FIXED**
+8. ~~**PO-032** — Wrap routine save in try/catch~~ **FIXED**
+9. ~~**PO-036** — Route logout through authNotifier~~ **FIXED**
+10. **PO-037** — Wire `weightUnit` preference to workout UI — **STILL OPEN**
+11. **QA-005** — Fix exercise image URLs (need migration) — **STILL OPEN**
+12. ~~**QA-002** — Fix GlobalKey conflict~~ **FIXED** — route guard + in-memory check
+13. ~~**UX-I01** — Fix stepper repeat rate~~ **FIXED** — 400ms delay + 150ms repeat
+14. ~~**UX-U02** — Add undo to swipe-to-delete~~ **FIXED**
 
 ### Fix in next sprint (polish)
-15. **QA-008 / UX-V03** — Elevate "Start Empty Workout" button prominence
-16. **UX-U04 / PO-020** — Explain why "Finish Workout" is disabled
-17. **QA-007** — Add validation to create exercise form
-18. **PO-012** — Fix exercise picker → create → return flow
-19. **PO-041** — Guard `/pr-celebration` route against missing extra data
-20. **PO-029** — Fix false "First Workout" celebration for veteran users
+15. **QA-008 / UX-V03** — Elevate "Start Empty Workout" button prominence — **OPEN**
+16. **UX-U04 / PO-020** — Explain why "Finish Workout" is disabled — **OPEN**
+17. ~~**QA-007** — Add validation to create exercise form~~ **FIXED**
+18. **PO-012** — Fix exercise picker → create → return flow — **OPEN**
+19. ~~**PO-041** — Guard `/pr-celebration` route~~ **FIXED**
+20. ~~**PO-029** — Fix false "First Workout" celebration~~ **FIXED**
+
+---
+
+## Verification Sweep #2 (2026-04-05)
+
+### Fix verification results
+
+| Fix | Status | Notes |
+|-----|--------|-------|
+| QA-001 save_workout RPC | **PASS** | Migration 00005 pushed, RPC exists |
+| QA-003 exercise delete 403 | **PASS** | Migration 00006 fixed RLS USING/WITH CHECK |
+| QA-004 weight unit toggle | **PASS** | Toggle switches correctly, no 400 error |
+| QA-007 create exercise validation | **PASS** | "Name is required" shows on empty submit |
+| PO-026 history route | Needs workout save to verify |
+| PO-029 first workout false positive | **FIXED** in code, needs e2e verify |
+| UX-I01 stepper rate | **FIXED** — 400ms delay + 150ms repeat |
+| UX-U02 set delete undo | **FIXED** — SnackBar with 4s undo action |
+
+### New issues found during verification
+
+**NEW-001 CRITICAL (FIXED): Active workout route race condition**
+Route guard for `/workout/active` read Hive synchronously but `_saveToHive()` was `unawaited`. Fixed: guard now checks in-memory `activeWorkoutProvider.valueOrNull` first, falls back to Hive.
+
+**NEW-002 HIGH: Production database not seeded with exercises**
+The `SEED_EXERCISES` constants (Barbell Bench Press, Squat, etc.) reference exercises from `supabase/seed.sql` that were never loaded into production. Exercise list is empty for new users.
+**Fix:** Run `supabase db reset --linked` or manually seed via SQL.
+
+**NEW-003 MEDIUM: Duplicate workout banner on Home screen**
+Home shows TWO workout banners: `ResumeWorkoutBanner` (in scroll content) and `_ActiveWorkoutBanner` (in shell). Redundant chrome.
+**Fix:** Hide `ResumeWorkoutBanner` on home screen since shell banner is always visible.
+
+**NEW-004 MEDIUM: DartError on login→home focus traversal**
+`Cannot get renderObject of inactive element` during login→home transition. Focus system accesses login TextField after screen disposal.
+
+**NEW-005 LOW: Validation error persists after typing in exercise name**
+"Name is required" doesn't clear while typing. Need `autovalidateMode: AutovalidateMode.onUserInteraction`.
+
+**NEW-006 LOW: Forgot password SnackBar disappears too quickly**
+Success feedback visible for ~1-2 seconds. Need longer duration.
+
+**NEW-007 LOW: "Discard" in resume dialog immediately starts new workout**
+May not be user intent. Consider just discarding and returning to home.
+
+### Remaining open items (prioritized for next sprint)
+
+**Must fix:**
+1. **NEW-002** — Seed production database with exercises
+2. **PO-037** — Wire weightUnit to workout UI (toggle works now but has no effect)
+3. **QA-005** — Fix exercise image URLs (migration to update stored URLs)
+4. **PO-019** — Discard order-of-operations (clear Hive first)
+5. **PO-012** — Exercise picker → create → return flow
+
+**Should fix:**
+6. **QA-008** — Promote "Start Empty Workout" button
+7. **UX-U04** — Explain disabled Finish Workout
+8. **NEW-003** — Remove duplicate workout banner
+9. **PO-005** — Validate display name in onboarding
+10. **PO-044** — Separate PR persistence from detection error
+
+**Quick UX wins (from UX critic):**
+11. Flip resume/discard dialog button order (destructive action in wrong position)
+12. Add workout duration + set count to ResumeWorkoutBanner
+13. Profile monogram avatar instead of generic icon
+14. Replace "Rest" label in timer with exercise name
+
+### E2E test enrichments added
+
+| File | Tests Added |
+|------|-------------|
+| `test/e2e/smoke/exercise.smoke.spec.ts` (NEW) | 6 tests: list loads, validation, create, search, delete, muscle filter |
+| `test/e2e/smoke/workout.smoke.spec.ts` | 1 test: full save journey verification |
+| `test/e2e/smoke/auth.smoke.spec.ts` | 1 test: forgot password flow |
+| `test/e2e/fixtures/test-users.ts` | Added `smokeExercise` user |
+| `test/e2e/global-setup.ts` | Added user to creation list |
+| **Total** | 76 tests in 12 files (was 68 in 11) |
