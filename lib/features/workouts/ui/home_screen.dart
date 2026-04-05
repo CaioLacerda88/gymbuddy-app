@@ -13,7 +13,6 @@ import '../../personal_records/ui/widgets/recent_prs_section.dart';
 import '../models/workout.dart';
 import '../providers/workout_history_providers.dart';
 import '../providers/workout_providers.dart';
-import 'widgets/resume_workout_banner.dart';
 import 'widgets/resume_workout_dialog.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -31,9 +30,6 @@ class HomeScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Resume active workout banner (hidden when no active workout)
-            const ResumeWorkoutBanner(),
-
             // Header
             const SizedBox(height: 8),
             Text('GymBuddy', style: theme.textTheme.displayMedium),
@@ -149,40 +145,57 @@ class HomeScreen extends ConsumerWidget {
 
             // Start empty workout
             Center(
-              child: TextButton.icon(
-                onPressed: () async {
-                  final existingWorkout = ref
-                      .read(activeWorkoutProvider)
-                      .valueOrNull;
-                  if (existingWorkout != null) {
-                    if (!context.mounted) return;
-                    final result = await ResumeWorkoutDialog.show(
-                      context,
-                      workoutName: existingWorkout.workout.name,
-                    );
-                    if (!context.mounted) return;
-                    if (result == ResumeWorkoutResult.resume) {
-                      context.go('/workout/active');
-                      return;
-                    }
-                    if (result == ResumeWorkoutResult.discard) {
-                      try {
-                        await ref
-                            .read(activeWorkoutProvider.notifier)
-                            .discardWorkout();
-                      } catch (_) {
-                        return; // discard failed — don't start a new workout
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final existingWorkout = ref
+                        .read(activeWorkoutProvider)
+                        .valueOrNull;
+                    if (existingWorkout != null) {
+                      if (!context.mounted) return;
+                      final result = await ResumeWorkoutDialog.show(
+                        context,
+                        workoutName: existingWorkout.workout.name,
+                      );
+                      if (!context.mounted) return;
+                      if (result == ResumeWorkoutResult.resume) {
+                        context.go('/workout/active');
+                        return;
                       }
-                    } else {
-                      return; // dismissed
+                      if (result == ResumeWorkoutResult.discard) {
+                        try {
+                          await ref
+                              .read(activeWorkoutProvider.notifier)
+                              .discardWorkout();
+                        } catch (_) {
+                          return; // discard failed — don't start a new workout
+                        }
+                      } else {
+                        return; // dismissed
+                      }
                     }
-                  }
-                  await ref.read(activeWorkoutProvider.notifier).startWorkout();
-                  if (!context.mounted) return;
-                  context.go('/workout/active');
-                },
-                icon: const Icon(Icons.play_arrow_rounded),
-                label: const Text('Start Empty Workout'),
+                    await ref
+                        .read(activeWorkoutProvider.notifier)
+                        .startWorkout();
+                    if (!context.mounted) return;
+                    context.go('/workout/active');
+                  },
+                  icon: const Icon(Icons.play_arrow_rounded),
+                  label: const Text('Start Empty Workout'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 52),
+                    side: BorderSide(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.5),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 24),

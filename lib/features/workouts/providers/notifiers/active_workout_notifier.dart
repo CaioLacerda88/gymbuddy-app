@@ -491,8 +491,8 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
 
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      await _repo.discardWorkout(current.workout.id, userId: _userId);
       await _localStorage.clearActiveWorkout();
+      await _repo.discardWorkout(current.workout.id, userId: _userId);
       return null;
     });
   }
@@ -556,7 +556,17 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
         );
 
         if (prResult!.hasNewRecords) {
-          await prRepo.upsertRecords(prResult!.newRecords);
+          try {
+            await prRepo.upsertRecords(prResult!.newRecords);
+          } catch (e) {
+            log(
+              'PR record save failed: $e',
+              name: 'ActiveWorkoutNotifier',
+              level: 900,
+            );
+            // prResult is still set — user sees celebration even if save failed.
+            // Records will be re-detected on next workout finish.
+          }
         }
       } catch (e) {
         // PR detection failure should NOT fail the workout save.

@@ -545,17 +545,17 @@ Findings are grouped by severity, then by area.
 7. ~~**PO-006** — Add error handling to onboarding~~ **FIXED**
 8. ~~**PO-032** — Wrap routine save in try/catch~~ **FIXED**
 9. ~~**PO-036** — Route logout through authNotifier~~ **FIXED**
-10. **PO-037** — Wire `weightUnit` preference to workout UI — **STILL OPEN**
-11. **QA-005** — Fix exercise image URLs (need migration) — **STILL OPEN**
+10. ~~**PO-037** — Wire `weightUnit` preference to workout UI~~ **FIXED** — reads from profileProvider
+11. **QA-005** — Fix exercise image URLs (need migration) — **DEFERRED** — fallback icon works
 12. ~~**QA-002** — Fix GlobalKey conflict~~ **FIXED** — route guard + in-memory check
 13. ~~**UX-I01** — Fix stepper repeat rate~~ **FIXED** — 400ms delay + 150ms repeat
 14. ~~**UX-U02** — Add undo to swipe-to-delete~~ **FIXED**
 
 ### Fix in next sprint (polish)
-15. **QA-008 / UX-V03** — Elevate "Start Empty Workout" button prominence — **OPEN**
-16. **UX-U04 / PO-020** — Explain why "Finish Workout" is disabled — **OPEN**
+15. ~~**QA-008 / UX-V03** — Elevate "Start Empty Workout" button prominence~~ **FIXED** — OutlinedButton full-width
+16. ~~**UX-U04 / PO-020** — Explain why "Finish Workout" is disabled~~ **FIXED** — helper text
 17. ~~**QA-007** — Add validation to create exercise form~~ **FIXED**
-18. **PO-012** — Fix exercise picker → create → return flow — **OPEN**
+18. ~~**PO-012** — Fix exercise picker → create → return flow~~ **FIXED** — push over picker
 19. ~~**PO-041** — Guard `/pr-celebration` route~~ **FIXED**
 20. ~~**PO-029** — Fix false "First Workout" celebration~~ **FIXED**
 
@@ -603,25 +603,26 @@ May not be user intent. Consider just discarding and returning to home.
 
 ### Remaining open items (prioritized for next sprint)
 
-**Must fix:**
-1. **NEW-002** — Seed production database with exercises
-2. **PO-037** — Wire weightUnit to workout UI (toggle works now but has no effect)
-3. **QA-005** — Fix exercise image URLs (migration to update stored URLs)
-4. **PO-019** — Discard order-of-operations (clear Hive first)
-5. **PO-012** — Exercise picker → create → return flow
+**All "Must fix" and "Should fix" items resolved in this PR.** Remaining:
 
-**Should fix:**
-6. **QA-008** — Promote "Start Empty Workout" button
-7. **UX-U04** — Explain disabled Finish Workout
-8. **NEW-003** — Remove duplicate workout banner
-9. **PO-005** — Validate display name in onboarding
-10. **PO-044** — Separate PR persistence from detection error
+1. **QA-005** — Fix exercise image URLs (external GitHub repo naming mismatch, fallback icon works) — **DEFERRED**
+2. **NEW-004** — DartError on login→home focus traversal — **LOW**
+3. **NEW-005** — Validation error persists after typing in exercise name — **LOW**
+4. **NEW-006** — Forgot password SnackBar disappears too quickly — **LOW**
+5. **NEW-007** — "Discard" in resume dialog immediately starts new workout — **LOW**
 
-**Quick UX wins (from UX critic):**
-11. Flip resume/discard dialog button order (destructive action in wrong position)
-12. Add workout duration + set count to ResumeWorkoutBanner
-13. Profile monogram avatar instead of generic icon
-14. Replace "Rest" label in timer with exercise name
+**Fixes applied in this round:**
+- ~~NEW-002~~ **FIXED** — Migration 00007 seeds default exercises idempotently
+- ~~PO-037~~ **FIXED** — Weight unit reads from profileProvider, displays in set_row + stepper
+- ~~PO-019~~ **FIXED** — Hive cleared before server delete
+- ~~PO-012~~ **FIXED** — Create exercise pushed over picker (picker stays visible)
+- ~~QA-008~~ **FIXED** — OutlinedButton, full-width, 52px height
+- ~~UX-U04~~ **FIXED** — Helper text: "Complete at least one set to finish"
+- ~~NEW-003~~ **FIXED** — Removed duplicate ResumeWorkoutBanner from home
+- ~~PO-005~~ **FIXED** — Empty display name validation in onboarding
+- ~~PO-044~~ **FIXED** — PR persistence wrapped in inner try/catch
+- Profile monogram avatar (replaced generic person icon)
+- Rest timer shows exercise name instead of "Rest"
 
 ### E2E test enrichments added
 

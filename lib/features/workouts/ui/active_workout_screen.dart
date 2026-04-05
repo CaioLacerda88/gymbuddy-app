@@ -272,17 +272,34 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
         bottomNavigationBar: SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: FilledButton.icon(
-              onPressed: _hasCompletedSet ? _onFinish : null,
-              icon: const Icon(Icons.check_circle),
-              label: const Text('Finish Workout'),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(double.infinity, 56),
-                textStyle: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (!_hasCompletedSet)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      'Complete at least one set to finish',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ),
+                FilledButton.icon(
+                  onPressed: _hasCompletedSet ? _onFinish : null,
+                  icon: const Icon(Icons.check_circle),
+                  label: const Text('Finish Workout'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 56),
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
@@ -463,7 +480,10 @@ class _ExerciseCard extends ConsumerWidget {
 
   void _onSetCompleted(WidgetRef ref) {
     final restSeconds = activeExercise.workoutExercise.restSeconds ?? 90;
-    ref.read(restTimerProvider.notifier).start(restSeconds);
+    final exerciseName = activeExercise.workoutExercise.exercise?.name;
+    ref
+        .read(restTimerProvider.notifier)
+        .start(restSeconds, exerciseName: exerciseName);
   }
 
   void _fillRemaining(BuildContext context, WidgetRef ref) {

@@ -80,11 +80,18 @@ class _IdentityCard extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 32,
-              backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.2),
-              child: Icon(
-                Icons.person,
-                size: 32,
-                color: theme.colorScheme.primary,
+              backgroundColor: theme.colorScheme.primary,
+              child: Text(
+                (displayName?.isNotEmpty == true
+                        ? displayName![0]
+                        : email.isNotEmpty
+                        ? email[0]
+                        : '?')
+                    .toUpperCase(),
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  color: theme.colorScheme.onPrimary,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             const SizedBox(width: 16),

@@ -87,10 +87,11 @@ class _RestTimerOverlayState extends ConsumerState<RestTimerOverlay> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Rest',
+                timerState.exerciseName ?? 'Rest',
                 style: theme.textTheme.titleLarge?.copyWith(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
               // -30s / Skip / +30s button row

@@ -12,12 +12,16 @@ class WeightStepper extends StatefulWidget {
     required this.value,
     required this.onChanged,
     this.increment = 2.5,
+    this.unit = 'kg',
     super.key,
   });
 
   final double value;
   final double increment;
   final ValueChanged<double> onChanged;
+
+  /// The weight unit label displayed in the input dialog and semantics.
+  final String unit;
 
   @override
   State<WeightStepper> createState() => _WeightStepperState();
@@ -73,7 +77,7 @@ class _WeightStepperState extends State<WeightStepper> {
           controller: controller,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           autofocus: true,
-          decoration: const InputDecoration(suffixText: 'kg'),
+          decoration: InputDecoration(suffixText: widget.unit),
           onSubmitted: (text) {
             final parsed = double.tryParse(text);
             if (parsed != null && parsed >= 0) {
@@ -120,7 +124,7 @@ class _WeightStepperState extends State<WeightStepper> {
         ),
         Semantics(
           label:
-              'Weight value: ${_formatWeight(widget.value)} kg. Tap to enter weight.',
+              'Weight value: ${_formatWeight(widget.value)} ${widget.unit}. Tap to enter weight.',
           button: true,
           child: GestureDetector(
             onTap: _showNumberInput,

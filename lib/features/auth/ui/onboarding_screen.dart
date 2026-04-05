@@ -39,11 +39,20 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<void> _finishOnboarding() async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter your name.')),
+        );
+      }
+      return;
+    }
     try {
       await ref
           .read(profileProvider.notifier)
           .saveOnboardingProfile(
-            displayName: _nameController.text.trim(),
+            displayName: name,
             fitnessLevel: _fitnessLevel,
           );
       ref.read(needsOnboardingProvider.notifier).state = false;

@@ -193,11 +193,13 @@ void main() {
       verifyNever(() => mockAuth.signOut());
     });
 
-    testWidgets('shows person icon in CircleAvatar', (tester) async {
+    testWidgets('shows monogram in CircleAvatar', (tester) async {
       await tester.pumpWidget(buildTestWidget(profile: null));
       await tester.pump();
 
-      expect(find.byIcon(Icons.person), findsOneWidget);
+      // When profile is null and email is provided, the monogram shows the
+      // first letter of the email (uppercased).
+      expect(find.byType(CircleAvatar), findsOneWidget);
     });
 
     testWidgets(

@@ -948,27 +948,32 @@ void main() {
       verifyNever(() => mockStorage.clearActiveWorkout());
     });
 
-    test('repo error: state becomes AsyncError', () async {
-      final initial = makeState(exerciseCount: 0, setsPerExercise: 0);
-      final (:container, :mockRepo, :mockStorage, :mockAuth) =
-          makeAsyncContainer(initial);
-      addTearDown(container.dispose);
+    test(
+      'repo error: state becomes AsyncError but Hive is already cleared',
+      () async {
+        final initial = makeState(exerciseCount: 0, setsPerExercise: 0);
+        final (:container, :mockRepo, :mockStorage, :mockAuth) =
+            makeAsyncContainer(initial);
+        addTearDown(container.dispose);
 
-      when(() => mockAuth.currentUser).thenReturn(fakeUser());
-      when(
-        () => mockRepo.discardWorkout(any(), userId: any(named: 'userId')),
-      ).thenThrow(Exception('Delete failed'));
+        when(() => mockAuth.currentUser).thenReturn(fakeUser());
+        when(() => mockStorage.clearActiveWorkout()).thenAnswer((_) async {});
+        when(
+          () => mockRepo.discardWorkout(any(), userId: any(named: 'userId')),
+        ).thenThrow(Exception('Delete failed'));
 
-      await container.read(activeWorkoutProvider.future);
-      await container.read(activeWorkoutProvider.notifier).discardWorkout();
+        await container.read(activeWorkoutProvider.future);
+        await container.read(activeWorkoutProvider.notifier).discardWorkout();
 
-      expect(
-        container.read(activeWorkoutProvider),
-        isA<AsyncError<ActiveWorkoutState?>>(),
-      );
-      // Hive must NOT be cleared when the network call fails.
-      verifyNever(() => mockStorage.clearActiveWorkout());
-    });
+        expect(
+          container.read(activeWorkoutProvider),
+          isA<AsyncError<ActiveWorkoutState?>>(),
+        );
+        // Hive is cleared FIRST (before the failing network call) to prevent
+        // orphaned local data if the app crashes between the two operations.
+        verify(() => mockStorage.clearActiveWorkout()).called(1);
+      },
+    );
   });
 
   // ================================================================
