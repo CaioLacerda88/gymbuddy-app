@@ -647,6 +647,29 @@ When a routine is loaded and an exercise has been soft-deleted:
 
 ### Step 9: E2E Testing, Release Pipeline & Final QA
 
+**Decomposed into 4 sub-steps:**
+
+#### Step 9a: Playwright Infrastructure + Smoke Tests
+- Playwright config, helpers, fixtures, global setup/teardown
+- 3 smoke spec files: auth, workout, PR detection
+- `package.json` with scripts, local dev instructions
+- Validates against local Supabase stack (Docker)
+
+#### Step 9b: Full E2E Test Suite
+- 7 full spec files covering all features + edge cases
+- Extra risk area tests (network failure, double-tap, crash recovery)
+- All tests parallel-safe with unique users
+
+#### Step 9c: CI/CD Pipelines
+- `e2e.yml` — Flutter web build → Playwright (smoke on PRs, full on merge)
+- `release.yml` — `v*` tag → split APKs → GitHub Release
+
+#### Step 9d: Final QA Pass
+- Manual testing on physical devices
+- Manual QA checklist verification
+
+---
+
 **Playwright test suite structure:**
 ```
 test/e2e/
