@@ -168,13 +168,13 @@ BEGIN
       FROM ex WHERE ex.name IN ('Barbell Squat','Barbell Bench Press','Barbell Bent-Over Row','Overhead Press','Barbell Curl','Plank')
     )
     INSERT INTO workout_templates (user_id, name, is_default, exercises)
-    SELECT NULL, 'Push Day',   true, exercises FROM push_day
+    SELECT NULL::uuid, 'Push Day',   true, exercises FROM push_day
     UNION ALL
-    SELECT NULL, 'Pull Day',   true, exercises FROM pull_day
+    SELECT NULL::uuid, 'Pull Day',   true, exercises FROM pull_day
     UNION ALL
-    SELECT NULL, 'Leg Day',    true, exercises FROM leg_day
+    SELECT NULL::uuid, 'Leg Day',    true, exercises FROM leg_day
     UNION ALL
-    SELECT NULL, 'Full Body',  true, exercises FROM full_body;
+    SELECT NULL::uuid, 'Full Body',  true, exercises FROM full_body;
   END IF;
 END
 $$;
