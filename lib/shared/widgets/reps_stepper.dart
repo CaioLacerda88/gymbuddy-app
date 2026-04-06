@@ -107,30 +107,39 @@ class _RepsStepperState extends State<RepsStepper> {
           onLongPressEnd: (_) => _stopRepeating(),
           child: IconButton(
             onPressed: widget.value >= widget.increment ? _decrement : null,
-            icon: const Icon(Icons.remove),
-            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            icon: const Icon(Icons.remove, size: 18),
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 44),
+            padding: EdgeInsets.zero,
+            visualDensity: VisualDensity.compact,
           ),
         ),
-        Semantics(
-          label: 'Reps value: ${widget.value}. Tap to enter reps.',
-          button: true,
-          child: GestureDetector(
-            onTap: _showNumberInput,
-            child: SizedBox(
-              width: 56,
-              child: Text(
-                widget.value.toString(),
-                textAlign: TextAlign.center,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  color: theme.colorScheme.primary,
-                  shadows: [
-                    Shadow(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                      blurRadius: 8,
+        Flexible(
+          child: Semantics(
+            label: 'Reps value: ${widget.value}. Tap to enter reps.',
+            button: true,
+            child: GestureDetector(
+              onTap: _showNumberInput,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 28),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    widget.value.toString(),
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      color: theme.colorScheme.primary,
+                      shadows: [
+                        Shadow(
+                          color: theme.colorScheme.primary.withValues(
+                            alpha: 0.3,
+                          ),
+                          blurRadius: 8,
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -141,8 +150,10 @@ class _RepsStepperState extends State<RepsStepper> {
           onLongPressEnd: (_) => _stopRepeating(),
           child: IconButton(
             onPressed: _increment,
-            icon: const Icon(Icons.add),
-            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            icon: const Icon(Icons.add, size: 18),
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 44),
+            padding: EdgeInsets.zero,
+            visualDensity: VisualDensity.compact,
           ),
         ),
       ],

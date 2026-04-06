@@ -118,31 +118,40 @@ class _WeightStepperState extends State<WeightStepper> {
           onLongPressEnd: (_) => _stopRepeating(),
           child: IconButton(
             onPressed: widget.value >= widget.increment ? _decrement : null,
-            icon: const Icon(Icons.remove),
-            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            icon: const Icon(Icons.remove, size: 18),
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 44),
+            padding: EdgeInsets.zero,
+            visualDensity: VisualDensity.compact,
           ),
         ),
-        Semantics(
-          label:
-              'Weight value: ${_formatWeight(widget.value)} ${widget.unit}. Tap to enter weight.',
-          button: true,
-          child: GestureDetector(
-            onTap: _showNumberInput,
-            child: SizedBox(
-              width: 72,
-              child: Text(
-                _formatWeight(widget.value),
-                textAlign: TextAlign.center,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  color: theme.colorScheme.primary,
-                  shadows: [
-                    Shadow(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                      blurRadius: 8,
+        Flexible(
+          child: Semantics(
+            label:
+                'Weight value: ${_formatWeight(widget.value)} ${widget.unit}. Tap to enter weight.',
+            button: true,
+            child: GestureDetector(
+              onTap: _showNumberInput,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 32),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    _formatWeight(widget.value),
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      color: theme.colorScheme.primary,
+                      shadows: [
+                        Shadow(
+                          color: theme.colorScheme.primary.withValues(
+                            alpha: 0.3,
+                          ),
+                          blurRadius: 8,
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -153,8 +162,10 @@ class _WeightStepperState extends State<WeightStepper> {
           onLongPressEnd: (_) => _stopRepeating(),
           child: IconButton(
             onPressed: _increment,
-            icon: const Icon(Icons.add),
-            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            icon: const Icon(Icons.add, size: 18),
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 44),
+            padding: EdgeInsets.zero,
+            visualDensity: VisualDensity.compact,
           ),
         ),
       ],

@@ -132,8 +132,8 @@ class SetRow extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(8),
                     child: Container(
                       constraints: const BoxConstraints(
-                        minWidth: 48,
-                        minHeight: 48,
+                        minWidth: 40,
+                        minHeight: 40,
                       ),
                       alignment: Alignment.center,
                       child: Column(
@@ -178,16 +178,19 @@ class SetRow extends ConsumerWidget {
 
                 // Weight stepper + unit label
                 Expanded(
+                  flex: 3,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      WeightStepper(
-                        value: set.weight ?? 0,
-                        unit: weightUnit,
-                        onChanged: (v) => notifier.updateSet(
-                          workoutExerciseId,
-                          set.id,
-                          weight: v,
+                      Flexible(
+                        child: WeightStepper(
+                          value: set.weight ?? 0,
+                          unit: weightUnit,
+                          onChanged: (v) => notifier.updateSet(
+                            workoutExerciseId,
+                            set.id,
+                            weight: v,
+                          ),
                         ),
                       ),
                       Text(
@@ -204,6 +207,7 @@ class SetRow extends ConsumerWidget {
 
                 // Reps stepper
                 Expanded(
+                  flex: 2,
                   child: RepsStepper(
                     value: set.reps ?? 0,
                     onChanged: (v) =>
