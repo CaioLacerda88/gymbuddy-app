@@ -47,7 +47,7 @@ jobs:
           printf "SUPABASE_URL=%s\nSUPABASE_ANON_KEY=%s\n" "$SB_URL" "$SB_ANON" > .env
 
           # Playwright .env.local (loaded by global-setup.ts)
-          printf "FLUTTER_APP_URL=http://localhost:8080\nSUPABASE_URL=%s\nSUPABASE_ANON_KEY=%s\nSUPABASE_SERVICE_ROLE_KEY=%s\nTEST_USER_PASSWORD=Test1234!\n" "$SB_URL" "$SB_ANON" "$SB_SERVICE" > test/e2e/.env.local
+          printf "FLUTTER_APP_URL=http://localhost:8080\nSUPABASE_URL=%s\nSUPABASE_ANON_KEY=%s\nSUPABASE_SERVICE_ROLE_KEY=%s\nTEST_USER_PASSWORD=TestPassword123!\n" "$SB_URL" "$SB_ANON" "$SB_SERVICE" > test/e2e/.env.local
 
       - name: Verify Supabase is healthy
         run: |
