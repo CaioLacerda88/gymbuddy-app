@@ -120,8 +120,8 @@ export const EXERCISE_DETAIL = {
   appBarTitle: 'text=Exercise Details',
   /** "Custom exercise" badge (only on user-created exercises) */
   customBadge: 'text=Custom exercise',
-  /** Delete button — role selector for computed accessible name */
-  deleteButton: 'role=button[name*="Delete exercise"]',
+  /** Delete button — case-insensitive match for "Delete Exercise" / "Delete exercise" */
+  deleteButton: 'role=button[name=/delete exercise/i]',
   /** Confirmation dialog title */
   deleteDialogTitle: 'text=Delete Exercise',
   /** Confirm delete action in dialog — exact match to avoid "Delete Exercise" collision */

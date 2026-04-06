@@ -101,8 +101,11 @@ export async function setWeight(page: Page, value: string): Promise<void> {
   // Click the first matching weight button to open the "Enter weight" dialog.
   await page.locator('role=button[name*="Weight value"]').first().click();
 
-  // Wait for the dialog title to confirm the correct dialog opened.
-  await expect(page.locator('text=Enter weight')).toBeVisible({ timeout: 5_000 });
+  // Wait for the OK button to confirm the dialog is open. We avoid using
+  // `text=Enter weight` because the weight button's own semantics label
+  // ("...Tap to enter weight.") also matches that selector.
+  const okButton = page.locator('text="OK"');
+  await expect(okButton).toBeVisible({ timeout: 5_000 });
 
   // The dialog TextField focuses automatically. Select all existing content
   // and type the new value using real keyboard events.
@@ -110,12 +113,10 @@ export async function setWeight(page: Page, value: string): Promise<void> {
   await page.keyboard.press('Control+a');
   await page.keyboard.type(value, { delay: 10 });
 
-  await page.click('text=OK');
+  await okButton.click();
 
-  // Wait for the dialog to dismiss before returning.
-  await expect(page.locator('text=Enter weight')).not.toBeVisible({
-    timeout: 5_000,
-  });
+  // Wait for the OK button to disappear — confirms the dialog dismissed.
+  await expect(okButton).not.toBeVisible({ timeout: 5_000 });
 }
 
 /**
@@ -132,8 +133,11 @@ export async function setReps(page: Page, value: string): Promise<void> {
   // Click the first matching reps button to open the "Enter reps" dialog.
   await page.locator('role=button[name*="Reps value"]').first().click();
 
-  // Wait for the dialog title to confirm the correct dialog opened.
-  await expect(page.locator('text=Enter reps')).toBeVisible({ timeout: 5_000 });
+  // Wait for the OK button to confirm the dialog is open. We avoid using
+  // `text=Enter reps` because the reps button's own semantics label
+  // ("...Tap to enter reps.") also matches that selector.
+  const okButton = page.locator('text="OK"');
+  await expect(okButton).toBeVisible({ timeout: 5_000 });
 
   // The dialog TextField focuses automatically. Select all existing content
   // and type the new value using real keyboard events.
@@ -141,12 +145,10 @@ export async function setReps(page: Page, value: string): Promise<void> {
   await page.keyboard.press('Control+a');
   await page.keyboard.type(value, { delay: 10 });
 
-  await page.click('text=OK');
+  await okButton.click();
 
-  // Wait for the dialog to dismiss before returning.
-  await expect(page.locator('text=Enter reps')).not.toBeVisible({
-    timeout: 5_000,
-  });
+  // Wait for the OK button to disappear — confirms the dialog dismissed.
+  await expect(okButton).not.toBeVisible({ timeout: 5_000 });
 }
 
 /**
