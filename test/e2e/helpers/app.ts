@@ -158,11 +158,6 @@ export async function flutterFill(
   // text editing connection is established and the field is ready for input.
   const input = page.locator('input').last();
   await input.waitFor({ state: 'attached', timeout: 5_000 });
-
-  // Explicitly focus the native input to ensure keyboard events reach it.
-  // Flutter should have already focused it, but some fields (especially
-  // after navigation) may not propagate focus to the DOM element.
-  await input.focus();
   await page.waitForTimeout(200);
 
   // Select all existing content (if any) so typing replaces it.
