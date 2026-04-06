@@ -84,9 +84,9 @@ export async function addExercise(
  * the dialog, which Playwright can target with `page.locator('input').last()`.
  */
 export async function setWeight(page: Page, value: string): Promise<void> {
-  // The weight value is a large text node showing the current value (e.g. "0").
-  // Clicking it opens the "Enter weight" AlertDialog.
-  await page.locator('text=0').first().click();
+  // The weight value has a Semantics label like "Weight value: 0 kg. Tap to enter weight."
+  // Click the first matching weight button to open the "Enter weight" dialog.
+  await page.locator('role=button[name*="Weight value"]').first().click();
 
   // Wait for the dialog title to confirm the correct dialog opened.
   await expect(page.locator('text=Enter weight')).toBeVisible({ timeout: 5_000 });
@@ -115,8 +115,9 @@ export async function setWeight(page: Page, value: string): Promise<void> {
  * value (no longer "0"), so the first "0" text visible is now the reps value.
  */
 export async function setReps(page: Page, value: string): Promise<void> {
-  // After weight is set, the first remaining "0" is the reps value.
-  await page.locator('text=0').first().click();
+  // The reps value has a Semantics label like "Reps value: 0. Tap to enter reps."
+  // Click the first matching reps button to open the "Enter reps" dialog.
+  await page.locator('role=button[name*="Reps value"]').first().click();
 
   // Wait for the dialog title to confirm the correct dialog opened.
   await expect(page.locator('text=Enter reps')).toBeVisible({ timeout: 5_000 });

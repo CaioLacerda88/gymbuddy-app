@@ -69,8 +69,9 @@ test.describe('Exercise smoke', () => {
     await page.click(CREATE_EXERCISE.saveButton);
 
     // The form must show a "Name is required" validation error.
-    // Flutter AppTextField renders the helper text in the accessibility tree.
-    await expect(page.locator('text=Name is required')).toBeVisible({
+    // Flutter renders both a visible span and an ARIA announcement element
+    // with the same text — use a specific CSS selector to avoid strict mode.
+    await expect(page.locator('flt-semantics:has-text("Name is required")')).toBeVisible({
       timeout: 5_000,
     });
 
@@ -91,8 +92,9 @@ test.describe('Exercise smoke', () => {
     await flutterFill(page,CREATE_EXERCISE.nameInput, CUSTOM_EXERCISE_NAME);
 
     // Select a muscle group (Chest) and equipment (Barbell).
-    await page.click('[aria-label="Muscle group: Chest Chest"]');
-    await page.click('[aria-label="Equipment type: Barbell Barbell"]');
+    // Use role selectors — aria-label may not be set on these buttons.
+    await page.locator('role=button[name*="Muscle group: Chest"]').first().click();
+    await page.locator('role=button[name*="Equipment type: Barbell"]').first().click();
 
     // Submit the form.
     await page.click(CREATE_EXERCISE.saveButton);
@@ -136,8 +138,8 @@ test.describe('Exercise smoke', () => {
       timeout: 10_000,
     });
     await flutterFill(page,CREATE_EXERCISE.nameInput, deleteTargetName);
-    await page.click('[aria-label="Muscle group: Back Back"]');
-    await page.click('[aria-label="Equipment type: Dumbbell Dumbbell"]');
+    await page.locator('role=button[name*="Muscle group: Back"]').first().click();
+    await page.locator('role=button[name*="Equipment type: Dumbbell"]').first().click();
     await page.click(CREATE_EXERCISE.saveButton);
 
     // Wait for navigation back to the list.
@@ -190,6 +192,6 @@ test.describe('Exercise smoke', () => {
     // The filter chip should now be in the selected state.
     await expect(
       page.locator(EXERCISE_LIST.muscleGroupFilter('Chest')),
-    ).toHaveAttribute('aria-selected', 'true');
+    ).toHaveAttribute('aria-current', 'true');
   });
 });
