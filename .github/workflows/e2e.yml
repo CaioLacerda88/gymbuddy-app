@@ -41,11 +41,19 @@ jobs:
           SB_ANON=$(grep '^ANON_KEY=' /tmp/sb_status.env | cut -d= -f2-)
           SB_SERVICE=$(grep '^SERVICE_ROLE_KEY=' /tmp/sb_status.env | cut -d= -f2-)
 
+          echo "--- Supabase API URL: $SB_URL ---"
+
           # Flutter app .env (loaded by flutter_dotenv at runtime)
           printf "SUPABASE_URL=%s\nSUPABASE_ANON_KEY=%s\n" "$SB_URL" "$SB_ANON" > .env
 
           # Playwright .env.local (loaded by global-setup.ts)
           printf "FLUTTER_APP_URL=http://localhost:8080\nSUPABASE_URL=%s\nSUPABASE_ANON_KEY=%s\nSUPABASE_SERVICE_ROLE_KEY=%s\nTEST_USER_PASSWORD=Test1234!\n" "$SB_URL" "$SB_ANON" "$SB_SERVICE" > test/e2e/.env.local
+
+      - name: Verify Supabase is healthy
+        run: |
+          curl -sf http://127.0.0.1:54321/auth/v1/settings && echo "Auth endpoint OK" || echo "Auth endpoint FAILED"
+          curl -sf http://localhost:54321/auth/v1/settings && echo "Auth (localhost) OK" || echo "Auth (localhost) FAILED"
+          cat .env | head -1
 
       - name: Install Flutter dependencies
         run: flutter pub get
@@ -54,7 +62,18 @@ jobs:
         run: dart run build_runner build --delete-conflicting-outputs
 
       - name: Build Flutter web
-        run: flutter build web
+        run: flutter build web --no-web-resources-cdn
+
+      - name: Verify .env in build output
+        run: |
+          # flutter_dotenv loads .env from the asset bundle. In web builds,
+          # assets are bundled into build/web/assets/. Verify it's there.
+          if [ -f build/web/assets/AssetManifest.json ]; then
+            grep -q '\.env' build/web/assets/AssetManifest.json && echo ".env found in AssetManifest" || echo ".env NOT in AssetManifest"
+          fi
+          ls -la build/web/assets/.env 2>/dev/null || echo ".env not at build/web/assets/.env"
+          # Also check the bin format used by newer Flutter
+          ls -la build/web/assets/AssetManifest.bin 2>/dev/null || true
 
       - name: Serve Flutter web app
         run: |

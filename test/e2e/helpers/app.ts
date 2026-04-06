@@ -30,11 +30,31 @@ import { NAV } from './selectors';
  * Timeout is generous (60s) to accommodate CanvasKit WASM download.
  */
 export async function waitForAppReady(page: Page): Promise<void> {
+  // Collect console errors for diagnostics if the app hangs.
+  const consoleErrors: string[] = [];
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      consoleErrors.push(`[console.error] ${msg.text()}`);
+    }
+  });
+  page.on('pageerror', (err) => {
+    consoleErrors.push(`[page error] ${err.message}`);
+  });
+
   // 1. Wait for Flutter to render and show the accessibility placeholder.
-  await page.waitForSelector(
-    'flt-semantics-placeholder[aria-label="Enable accessibility"]',
-    { timeout: 60_000 },
-  );
+  try {
+    await page.waitForSelector(
+      'flt-semantics-placeholder[aria-label="Enable accessibility"]',
+      { timeout: 60_000 },
+    );
+  } catch (e) {
+    const bodyText = await page.evaluate(() => document.body?.innerText ?? '');
+    throw new Error(
+      `Flutter app failed to render. ` +
+        `Body text: "${bodyText.slice(0, 500)}". ` +
+        `Console errors: ${JSON.stringify(consoleErrors)}`,
+    );
+  }
 
   // 2. Enable the full semantics tree. Flutter web activates semantics in
   //    response to real user interaction. We dispatch a focused click sequence
@@ -56,14 +76,32 @@ export async function waitForAppReady(page: Page): Promise<void> {
   await page.keyboard.press('Tab');
 
   // 3. Wait for a known post-splash landmark to confirm the app is ready.
-  await page.waitForSelector(
-    [
-      '[aria-label="LOG IN"]',
-      '[aria-label="Home"]',
-      '[aria-label="GET STARTED"]',
-    ].join(', '),
-    { timeout: 30_000 },
-  );
+  //    The auth stream has a 10-second timeout fallback, so the splash screen
+  //    will resolve within ~12 seconds even if Supabase is unreachable.
+  try {
+    await page.waitForSelector(
+      [
+        '[aria-label="LOG IN"]',
+        '[aria-label="Home"]',
+        '[aria-label="GET STARTED"]',
+      ].join(', '),
+      { timeout: 30_000 },
+    );
+  } catch (e) {
+    // Dump diagnostics: what's actually on screen + any console errors.
+    const snapshot = await page.evaluate(() => {
+      const els = document.querySelectorAll('flt-semantics');
+      return Array.from(els)
+        .map((el) => el.getAttribute('aria-label'))
+        .filter(Boolean)
+        .join(', ');
+    });
+    throw new Error(
+      `App stuck on splash — auth stream may not have emitted. ` +
+        `Visible semantics: [${snapshot}]. ` +
+        `Console errors: ${JSON.stringify(consoleErrors)}`,
+    );
+  }
 }
 
 /**
