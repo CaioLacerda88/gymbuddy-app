@@ -203,22 +203,37 @@ class _ShellScaffold extends ConsumerWidget {
         children: [
           if (activeState != null) _ActiveWorkoutBanner(state: activeState),
           NavigationBar(
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            indicatorColor: Theme.of(
+              context,
+            ).colorScheme.primary.withValues(alpha: 0.15),
+            surfaceTintColor: Colors.transparent,
             selectedIndex: _currentIndex(context),
             onDestinationSelected: (index) {
               final routes = ['/home', '/exercises', '/routines', '/profile'];
               context.go(routes[index]);
             },
             destinations: const [
-              NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
+              NavigationDestination(
+                icon: Icon(Icons.home),
+                label: 'Home',
+                tooltip: '',
+              ),
               NavigationDestination(
                 icon: Icon(Icons.fitness_center),
                 label: 'Exercises',
+                tooltip: '',
               ),
               NavigationDestination(
                 icon: Icon(Icons.calendar_today),
                 label: 'Routines',
+                tooltip: '',
               ),
-              NavigationDestination(icon: Icon(Icons.person), label: 'Profile'),
+              NavigationDestination(
+                icon: Icon(Icons.person),
+                label: 'Profile',
+                tooltip: '',
+              ),
             ],
           ),
         ],

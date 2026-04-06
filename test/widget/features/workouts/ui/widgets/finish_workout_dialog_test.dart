@@ -85,13 +85,13 @@ void main() {
         expect(find.text('Add notes (optional)'), findsOneWidget);
       });
 
-      testWidgets('shows "Keep Going" and "Finish Workout" buttons', (
+      testWidgets('shows "Keep Going" and "Save & Finish" buttons', (
         tester,
       ) async {
         await showDialog(tester, incompleteCount: 0);
 
         expect(find.text('Keep Going'), findsOneWidget);
-        expect(find.text('Finish Workout'), findsOneWidget);
+        expect(find.text('Save & Finish'), findsOneWidget);
       });
     });
 
@@ -129,7 +129,7 @@ void main() {
       });
     });
 
-    group('"Finish Workout" button', () {
+    group('"Save & Finish" button', () {
       testWidgets(
         'returns FinishWorkoutResult with null notes when field is empty',
         (tester) async {
@@ -157,7 +157,7 @@ void main() {
           await tester.tap(find.text('Open'));
           await tester.pumpAndSettle();
 
-          await tester.tap(find.text('Finish Workout'));
+          await tester.tap(find.text('Save & Finish'));
           await tester.pumpAndSettle();
 
           expect(captured, isNotNull);
@@ -193,7 +193,7 @@ void main() {
           await tester.pumpAndSettle();
 
           await tester.enterText(find.byType(TextField), 'Great session today');
-          await tester.tap(find.text('Finish Workout'));
+          await tester.tap(find.text('Save & Finish'));
           await tester.pumpAndSettle();
 
           expect(captured, isNotNull);
@@ -227,7 +227,7 @@ void main() {
         await tester.pumpAndSettle();
 
         await tester.enterText(find.byType(TextField), '   ');
-        await tester.tap(find.text('Finish Workout'));
+        await tester.tap(find.text('Save & Finish'));
         await tester.pumpAndSettle();
 
         expect(captured, isNotNull);
@@ -253,7 +253,7 @@ void main() {
         await tester.tap(find.text('Open'));
         await tester.pumpAndSettle();
 
-        await tester.tap(find.text('Finish Workout'));
+        await tester.tap(find.text('Save & Finish'));
         await tester.pumpAndSettle();
 
         expect(find.text('Finish Workout?'), findsNothing);

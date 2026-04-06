@@ -78,6 +78,42 @@ test.describe('Auth — edge cases', () => {
     await expect(page.locator(AUTH.appTitle)).toBeVisible();
   });
 
+  // ---------------------------------------------------------------------------
+  // AUTH-006 gap (P1) — Malformed email validation
+  // LoginScreen._validateEmail uses a regex that requires "@". Submitting a
+  // malformed email (without "@") must surface a validation error inline.
+  // ---------------------------------------------------------------------------
+  test('AUTH-006: malformed email (missing @) shows a validation error', async ({
+    page,
+  }) => {
+    // Enter an email that is clearly malformed — no "@" symbol.
+    await page.fill(AUTH.emailInput, 'notanemail');
+    await page.fill(AUTH.passwordInput, 'AnyPassword123!');
+    await page.click(AUTH.loginButton);
+
+    // LoginScreen._validateEmail returns 'Enter a valid email' for this case.
+    // The error surfaces as inline field error text below the email input.
+    const hasValidationError =
+      (await page
+        .locator('text=Enter a valid email')
+        .isVisible({ timeout: 8_000 })
+        .catch(() => false)) ||
+      (await page
+        .locator('text=valid email')
+        .isVisible({ timeout: 2_000 })
+        .catch(() => false)) ||
+      (await page
+        .locator(AUTH.errorMessage)
+        .isVisible({ timeout: 2_000 })
+        .catch(() => false));
+
+    expect(hasValidationError).toBe(true);
+
+    // Must remain on the login screen — no navigation on validation error.
+    await expect(page.locator(AUTH.appTitle)).toBeVisible();
+    await expect(page.locator(AUTH.loginButton)).toBeVisible();
+  });
+
   test('toggle to sign-up mode and back to login mode', async ({ page }) => {
     // Initially in login mode.
     await expect(page.locator(AUTH.loginButton)).toBeVisible();

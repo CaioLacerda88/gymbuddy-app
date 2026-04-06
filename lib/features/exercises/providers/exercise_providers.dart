@@ -61,6 +61,30 @@ final exerciseListProvider =
       );
     });
 
+/// Fetches a single exercise by ID. Auto-disposes when detail screen is popped.
+final exerciseByIdProvider = FutureProvider.autoDispose
+    .family<Exercise, String>((ref, exerciseId) {
+      final repo = ref.watch(exerciseRepositoryProvider);
+      return repo.getExerciseById(exerciseId);
+    });
+
+/// Deletes an exercise (soft-delete) and invalidates dependent providers.
+///
+/// Accepts [WidgetRef] so it can be called from UI code without the widget
+/// touching the repository directly.
+Future<void> deleteExercise(
+  WidgetRef ref,
+  String exerciseId, {
+  required String userId,
+}) async {
+  final repo = ref.read(exerciseRepositoryProvider);
+  await repo.softDeleteExercise(exerciseId, userId: userId);
+  // Invalidate the detail cache for this exercise.
+  ref.invalidate(exerciseByIdProvider(exerciseId));
+  // Invalidate all filtered list caches so the deleted exercise disappears.
+  ref.invalidate(exerciseListProvider);
+}
+
 /// Combines filter state providers and watches [exerciseListProvider].
 final filteredExerciseListProvider = Provider<AsyncValue<List<Exercise>>>((
   ref,

@@ -7,9 +7,10 @@ import '../../../core/exceptions/app_exception.dart';
 import '../../../shared/widgets/exercise_image.dart';
 import '../../personal_records/models/record_type.dart';
 import '../../personal_records/providers/pr_providers.dart';
+import '../../profile/providers/profile_providers.dart';
 import '../models/exercise.dart';
 import '../providers/exercise_providers.dart'
-    show exerciseListProvider, exerciseRepositoryProvider;
+    show deleteExercise, exerciseByIdProvider;
 
 class ExerciseDetailScreen extends ConsumerStatefulWidget {
   const ExerciseDetailScreen({super.key, required this.exerciseId});
@@ -22,16 +23,7 @@ class ExerciseDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
-  late Future<Exercise> _exerciseFuture;
   bool _isDeleting = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _exerciseFuture = ref
-        .read(exerciseRepositoryProvider)
-        .getExerciseById(widget.exerciseId);
-  }
 
   Future<void> _deleteExercise(Exercise exercise) async {
     final userId = exercise.userId;
@@ -70,10 +62,7 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
     setState(() => _isDeleting = true);
 
     try {
-      await ref
-          .read(exerciseRepositoryProvider)
-          .softDeleteExercise(exercise.id, userId: userId);
-      ref.invalidate(exerciseListProvider);
+      await deleteExercise(ref, exercise.id, userId: userId);
       if (mounted) context.pop();
     } on AppException catch (e) {
       if (mounted) {
@@ -89,34 +78,31 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final asyncExercise = ref.watch(exerciseByIdProvider(widget.exerciseId));
 
     return Scaffold(
       appBar: AppBar(title: const Text('Exercise Details')),
-      body: FutureBuilder<Exercise>(
-        future: _exerciseFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Failed to load exercise',
-                style: theme.textTheme.bodyLarge,
+      body: asyncExercise.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Failed to load exercise', style: theme.textTheme.bodyLarge),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: () =>
+                    ref.invalidate(exerciseByIdProvider(widget.exerciseId)),
+                child: const Text('Retry'),
               ),
-            );
-          }
-
-          final exercise = snapshot.data!;
-          return _ExerciseDetailBody(
-            exercise: exercise,
-            isDeleting: _isDeleting,
-            onDelete: exercise.isDefault
-                ? null
-                : () => _deleteExercise(exercise),
-          );
-        },
+            ],
+          ),
+        ),
+        data: (exercise) => _ExerciseDetailBody(
+          exercise: exercise,
+          isDeleting: _isDeleting,
+          onDelete: exercise.isDefault ? null : () => _deleteExercise(exercise),
+        ),
       ),
     );
   }
@@ -316,11 +302,11 @@ class _PRSection extends ConsumerWidget {
   final String exerciseId;
   final EquipmentType equipmentType;
 
-  String _formatValue(RecordType type, double value) {
+  String _formatValue(RecordType type, double value, String weightUnit) {
     return switch (type) {
-      RecordType.maxWeight => '$value kg',
+      RecordType.maxWeight => '$value $weightUnit',
       RecordType.maxReps => '${value.toInt()} reps',
-      RecordType.maxVolume => '$value kg',
+      RecordType.maxVolume => '$value $weightUnit',
     };
   }
 
@@ -336,6 +322,8 @@ class _PRSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final asyncRecords = ref.watch(exercisePRsProvider(exerciseId));
+    final weightUnit =
+        ref.watch(profileProvider).valueOrNull?.weightUnit ?? 'kg';
 
     return asyncRecords.when(
       loading: () => const Padding(
@@ -381,7 +369,7 @@ class _PRSection extends ConsumerWidget {
                     ),
                     const Spacer(),
                     Text(
-                      _formatValue(r.recordType, r.value),
+                      _formatValue(r.recordType, r.value, weightUnit),
                       style: theme.textTheme.bodyLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),

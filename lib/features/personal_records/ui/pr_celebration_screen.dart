@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../profile/providers/profile_providers.dart';
 import '../domain/pr_detection_service.dart';
 import '../models/personal_record.dart';
 import '../models/record_type.dart';
@@ -26,26 +27,50 @@ class PRCelebrationScreen extends ConsumerStatefulWidget {
       _PRCelebrationScreenState();
 }
 
-class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen> {
+class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen>
+    with SingleTickerProviderStateMixin {
   double _flashOpacity = 0.3;
+  late final AnimationController _scaleController;
+  late final Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
     HapticFeedback.heavyImpact();
+
+    _scaleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _scaleAnimation = CurvedAnimation(
+      parent: _scaleController,
+      curve: Curves.elasticOut,
+    );
+
     // Start the green flash fade-out after the first frame.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         setState(() => _flashOpacity = 0.0);
+        _scaleController.forward();
+        // Second haptic pulse for extra punch.
+        Future.delayed(const Duration(milliseconds: 300), () {
+          HapticFeedback.mediumImpact();
+        });
       }
     });
   }
 
-  String _formatValue(PersonalRecord record) {
+  @override
+  void dispose() {
+    _scaleController.dispose();
+    super.dispose();
+  }
+
+  String _formatValue(PersonalRecord record, String weightUnit) {
     return switch (record.recordType) {
-      RecordType.maxWeight => '${record.value} kg',
+      RecordType.maxWeight => '${record.value} $weightUnit',
       RecordType.maxReps => '${record.value.toInt()} reps',
-      RecordType.maxVolume => '${record.value} kg',
+      RecordType.maxVolume => '${record.value} $weightUnit',
     };
   }
 
@@ -60,6 +85,8 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final weightUnit =
+        ref.watch(profileProvider).valueOrNull?.weightUnit ?? 'kg';
 
     return Scaffold(
       body: Stack(
@@ -71,9 +98,9 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen> {
               child: Column(
                 children: [
                   if (widget.result.isFirstWorkout)
-                    _buildFirstWorkoutContent(theme)
+                    _buildFirstWorkoutContent(theme, weightUnit)
                   else
-                    _buildPRContent(theme),
+                    _buildPRContent(theme, weightUnit),
                   const SizedBox(height: 40),
                   SizedBox(
                     width: double.infinity,
@@ -90,7 +117,7 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen> {
           IgnorePointer(
             child: AnimatedOpacity(
               opacity: _flashOpacity,
-              duration: const Duration(milliseconds: 200),
+              duration: const Duration(milliseconds: 400),
               child: Container(color: theme.colorScheme.primary),
             ),
           ),
@@ -99,7 +126,7 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen> {
     );
   }
 
-  Widget _buildFirstWorkoutContent(ThemeData theme) {
+  Widget _buildFirstWorkoutContent(ThemeData theme, String weightUnit) {
     // Group records by exercise.
     final grouped = <String, List<PersonalRecord>>{};
     for (final record in widget.result.newRecords) {
@@ -110,7 +137,20 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen> {
 
     return Column(
       children: [
-        Icon(Icons.emoji_events, size: 64, color: theme.colorScheme.primary),
+        ScaleTransition(
+          scale: _scaleAnimation,
+          child: Icon(
+            Icons.emoji_events,
+            size: 72,
+            color: theme.colorScheme.primary,
+            shadows: [
+              Shadow(
+                color: theme.colorScheme.primary.withValues(alpha: 0.5),
+                blurRadius: 24,
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 16),
         Text(
           'First Workout Complete!',
@@ -130,7 +170,7 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen> {
           (entry) => _ExerciseRecordGroup(
             exerciseName: entry.key,
             records: entry.value,
-            formatValue: _formatValue,
+            formatValue: (r) => _formatValue(r, weightUnit),
             iconForType: _iconForType,
           ),
         ),
@@ -138,14 +178,23 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen> {
     );
   }
 
-  Widget _buildPRContent(ThemeData theme) {
+  Widget _buildPRContent(ThemeData theme, String weightUnit) {
     return Column(
       children: [
-        Text(
-          'NEW PR',
-          style: theme.textTheme.displayMedium?.copyWith(
-            color: theme.colorScheme.primary,
-            fontWeight: FontWeight.w900,
+        ScaleTransition(
+          scale: _scaleAnimation,
+          child: Text(
+            'NEW PR',
+            style: theme.textTheme.displayMedium?.copyWith(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w900,
+              shadows: [
+                Shadow(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.6),
+                  blurRadius: 20,
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 24),
@@ -155,7 +204,7 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen> {
           return _AnimatedRecordCard(
             exerciseName: name,
             record: record,
-            formattedValue: _formatValue(record),
+            formattedValue: _formatValue(record, weightUnit),
             icon: _iconForType(record.recordType),
           );
         }),

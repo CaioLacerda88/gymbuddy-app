@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../profile/providers/profile_providers.dart';
 import '../models/record_type.dart';
 import '../providers/pr_providers.dart';
 
@@ -70,13 +71,18 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-class _RecordsList extends StatelessWidget {
+class _RecordsList extends ConsumerWidget {
   const _RecordsList({required this.records});
 
   final List<PRWithExercise> records;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Hoist the weightUnit read here so each card does not independently
+    // watch profileProvider.
+    final weightUnit =
+        ref.watch(profileProvider).valueOrNull?.weightUnit ?? 'kg';
+
     // Group by exerciseId.
     final grouped = <String, List<PRWithExercise>>{};
     for (final pr in records) {
@@ -90,22 +96,26 @@ class _RecordsList extends StatelessWidget {
       itemCount: exerciseIds.length,
       itemBuilder: (context, index) {
         final exerciseRecords = grouped[exerciseIds[index]]!;
-        return _ExerciseRecordCard(records: exerciseRecords);
+        return _ExerciseRecordCard(
+          records: exerciseRecords,
+          weightUnit: weightUnit,
+        );
       },
     );
   }
 }
 
 class _ExerciseRecordCard extends StatelessWidget {
-  const _ExerciseRecordCard({required this.records});
+  const _ExerciseRecordCard({required this.records, required this.weightUnit});
 
   final List<PRWithExercise> records;
+  final String weightUnit;
 
-  String _formatValue(RecordType type, double value) {
+  String _formatValue(RecordType type, double value, String weightUnit) {
     return switch (type) {
-      RecordType.maxWeight => '$value kg',
+      RecordType.maxWeight => '$value $weightUnit',
       RecordType.maxReps => '${value.toInt()} reps',
-      RecordType.maxVolume => '$value kg',
+      RecordType.maxVolume => '$value $weightUnit',
     };
   }
 
@@ -137,7 +147,11 @@ class _ExerciseRecordCard extends StatelessWidget {
                 return _RecordTile(
                   icon: _iconForType(pr.record.recordType),
                   label: pr.record.recordType.displayName,
-                  value: _formatValue(pr.record.recordType, pr.record.value),
+                  value: _formatValue(
+                    pr.record.recordType,
+                    pr.record.value,
+                    weightUnit,
+                  ),
                 );
               }).toList(),
             ),

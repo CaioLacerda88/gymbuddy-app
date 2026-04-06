@@ -189,6 +189,14 @@ export const HOME = {
   recentSection: 'text="RECENT"',
   /** "View All" link to the full workout history */
   viewAllHistory: 'text=View All',
+  /**
+   * Active workout banner in the shell bottom bar — shown when an active
+   * workout is in progress on any tab. _ActiveWorkoutBanner (app_router.dart)
+   * renders the auto-generated workout name which always starts with
+   * "Workout \u2014" (em-dash). Matching on this prefix is reliable because
+   * no other text on the home screen contains an em-dash.
+   */
+  activeBanner: 'flt-semantics[aria-label*="Workout \u2014"]',
 } as const;
 
 // ---------------------------------------------------------------------------

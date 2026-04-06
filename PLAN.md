@@ -664,7 +664,7 @@ When a routine is loaded and an exercise has been soft-deleted:
 - `e2e.yml` — Flutter web build → Playwright (smoke on PRs, full on merge)
 - `release.yml` — `v*` tag → split APKs → GitHub Release
 
-#### Step 9d: Final QA Pass
+#### Step 9d: Final QA Pass (DONE)
 - Manual testing on physical devices
 - Manual QA checklist verification
 
@@ -733,6 +733,86 @@ test/e2e/
 **`release.yml` workflow:** Triggered by `v*` tags. Build split APKs (arm64, armeabi-v7a, x86_64) → GitHub Release via softprops/action-gh-release. No code signing for MVP. Alpha/beta tags → pre-release.
 
 - Final manual QA pass on physical devices
+
+## QA Status (as of 2026-04-06)
+
+> Consolidated from `BUGS_FOUND.md` and `QA_FINDINGS.md`. All Critical items and most High items resolved.
+
+### Resolved (32+ items)
+
+All **Critical** bugs fixed: `save_workout` RPC 404 (QA-001), blank home on bad route (QA-002), history detail route (PO-026), silent workout data loss on restart (PO-017/018), onboarding flag race (PO-001), exercise name too small (UX-V01), swipe-to-delete undo (UX-U02).
+
+All blocking **High** bugs fixed: exercise DELETE RLS (QA-003), profile update 400 (QA-004), exercise picker→create flow (PO-012), error handling gaps (PO-006, PO-032), auth logout path (PO-036), weight unit wiring (PO-037), PR persistence (PO-044), stepper repeat rate (UX-I01), finish button guidance (UX-U04), start workout button (QA-008), exercise validation (QA-007), first workout false positive (PO-029), pr-celebration route guard (PO-041).
+
+Semantics/accessibility fixed: login error live region (BUG-001), weight/reps stepper labels (BUG-003/004), workout AppBar labels (BUG-005/006). Layout overflow fixed (responsive steppers with Flexible+FittedBox). Active workout route race (NEW-001). Production exercise seed (NEW-002). Duplicate resume banner (NEW-003). Empty display name validation (PO-005). Discard order-of-operations (PO-019).
+
+### Open — High
+
+| ID | Area | Issue | Notes |
+|----|------|-------|-------|
+| QA-005 | Exercises | Image URLs return 404 from GitHub | DEFERRED — fallback icon works, needs URL migration |
+| QA-006 | Auth | Forgot password triggers immediately, no confirmation | Needs confirmation step + dedicated screen |
+| UX-A01 | Auth | Google sign-in uses wrong icon (`Icons.g_mobiledata`) | Replace with Google logo asset |
+| UX-D01 | Design | Two primary button widgets used inconsistently | Consolidate AppButton/GradientButton |
+
+### Open — Medium
+
+| ID | Area | Issue |
+|----|------|-------|
+| BUG-002 | Shared | `AppButton` label lost during loading state (no accessible name) |
+| BUG-007 | Workout | `FinishWorkoutDialog` button label ambiguous with bottom bar |
+| QA-011 | Nav | Tooltip labels persist on bottom nav bar |
+| QA-012 | Exercises | Detail screen chart area broken/empty |
+| PO-002 | Auth | Email confirmation shows blank email after app restart |
+| PO-008 | Home | Layout shift when workout history loads (needs skeleton) |
+| PO-009 | Home | May render duplicate STARTER ROUTINES sections |
+| PO-013 | Exercises | Detail screen uses raw `Future`, never refetches |
+| PO-030 | PRs | Volume displayed as "kg" instead of volume unit |
+| PO-033 | Routines | Action sheet duplicated between home and routine list |
+| UX-V02 | Workout | Weight/reps have identical visual treatment — no hierarchy |
+| UX-V04 | Routines | Cards have no visual affordance for launching workouts |
+| UX-V06 | PRs | Celebration screen visually flat for an emotional moment |
+| UX-V07 | Home | Section headers at 50% opacity may fail WCAG contrast |
+| UX-V08 | Nav | Bottom nav is unstyled Material 3 defaults |
+| UX-U03 | Workout | Long-press to swap exercise is invisible |
+| UX-U05 | Workout | Copy-last-set (tap set number) is undiscoverable |
+| UX-U06 | Profile | Profile screen sparse — no stats, streaks, or PR count |
+| UX-U09 | Workout | Rest timer overlay blocks entire screen |
+| UX-I05 | Workout | Set type cycling (long-press) is hidden |
+
+### Open — Low
+
+| ID | Issue |
+|----|-------|
+| NEW-004 | DartError on login→home focus traversal |
+| NEW-005 | Exercise validation error persists while typing |
+| NEW-006 | Forgot password SnackBar disappears too quickly |
+| NEW-007 | Discard in resume dialog immediately starts new workout |
+| PO-004 | Password retained when toggling login/signup |
+| PO-007 | Onboarding has no back from page 2 |
+| PO-010 | Routines error state has no retry button |
+| PO-016 | Exercise list has no pull-to-refresh |
+| PO-028 | History load-more has no loading indicator |
+| PO-031 | PR cards not tappable (no link to source workout) |
+| PO-039 | No way to change display name post-onboarding |
+| UX-V05 | Login icon `Icons.fitness_center` reads as placeholder |
+| UX-D03 | Border radius inconsistency (8/12/16 with no rule) |
+| UX-D05 | `_SectionHeader` widget duplicated in two files |
+
+### Feature Gaps (v1.1+)
+
+| Feature | Current State |
+|---------|--------------|
+| Edit custom exercises | Not implemented |
+| Per-exercise notes in workout | Model exists, no UI |
+| RPE tracking | Widget exists but hidden |
+| Reorder exercises in routine builder | Not implemented (active workout has it) |
+| Edit workout post-hoc | Read-only detail screen |
+| Offline caching (exercises, history) | Only active workout (Hive) |
+| Dark/Light mode toggle | Dark only |
+| PRs in bottom nav | Only via home "View All" |
+
+---
 
 ## Verification
 

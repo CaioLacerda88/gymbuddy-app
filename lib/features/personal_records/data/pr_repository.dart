@@ -144,6 +144,17 @@ class PRRepository extends BaseRepository {
     });
   }
 
+  /// Get the total count of personal records for a user.
+  Future<int> getRecordCount(String userId) {
+    return mapException(() async {
+      final result = await _records
+          .select()
+          .eq('user_id', userId)
+          .count(supabase.CountOption.exact);
+      return result.count;
+    });
+  }
+
   /// Upsert personal records.
   ///
   /// Uses the unique constraint on (user_id, exercise_id, record_type) to

@@ -11,6 +11,7 @@
  *  7. Finish workout with completed sets → PR celebration or home
  *  8. Discard workout — confirm dialog, returns to home without saving
  *  9. Workout name is auto-generated with date (contains em-dash separator)
+ * 10. WK-023 (P1) — Decimal weight (22.5 kg) round-trip
  *
  * Uses the dedicated `fullWorkout` test user.
  * The Flutter web app is served automatically by Playwright's webServer config
@@ -19,7 +20,7 @@
 
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth';
-import { NAV, WORKOUT, PR } from '../helpers/selectors';
+import { NAV, WORKOUT, PR, HOME, HISTORY } from '../helpers/selectors';
 import {
   startEmptyWorkout,
   addExercise,
@@ -296,5 +297,70 @@ test.describe('Workout logging — full suite', () => {
     ) {
       await confirmDiscard.click();
     }
+  });
+
+  // ---------------------------------------------------------------------------
+  // WK-023 (P1) — Decimal weight round-trip
+  // Sets weight to 22.5, completes the set, finishes the workout, then checks
+  // that "22.5" appears in the recent workouts section on the home screen.
+  // This verifies that decimal values survive the save → reload → display cycle.
+  // ---------------------------------------------------------------------------
+  test('WK-023: decimal weight 22.5 survives the full save and display round-trip', async ({
+    page,
+  }) => {
+    await startEmptyWorkout(page);
+    await addExercise(page, SEED_EXERCISES.benchPress);
+
+    // Enter the decimal weight via the dialog helper.
+    await setWeight(page, '22.5');
+
+    // Confirm the decimal value is visible in the set row immediately after entry.
+    await expect(page.locator('text=22.5')).toBeVisible({ timeout: 5_000 });
+
+    await setReps(page, '10');
+    await completeSet(page, 0);
+    await finishWorkout(page);
+
+    // Dismiss PR celebration if shown.
+    const isCelebration = await page
+      .locator(PR.firstWorkoutHeading)
+      .isVisible({ timeout: 15_000 })
+      .catch(() => false);
+    const isNewPR = await page
+      .locator(PR.newPRHeading)
+      .isVisible({ timeout: isCelebration ? 0 : 3_000 })
+      .catch(() => false);
+
+    if (isCelebration || isNewPR) {
+      await page.click(PR.continueButton);
+    }
+
+    await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
+
+    // Navigate to the history screen to verify the saved value.
+    // The "View All" link appears after at least one workout is saved.
+    const viewAllVisible = await page
+      .locator(HOME.viewAllHistory)
+      .isVisible({ timeout: 5_000 })
+      .catch(() => false);
+
+    if (viewAllVisible) {
+      await page.click(HOME.viewAllHistory);
+    } else {
+      // If RECENT section isn't shown (first workout for this user), navigate
+      // directly to the history route.
+      await page.goto('/home/history');
+    }
+
+    // The history screen must be visible.
+    await expect(page.locator(HISTORY.heading)).toBeVisible({ timeout: 15_000 });
+
+    // Tap the most recent workout card to open its detail.
+    const firstHistoryCard = page.locator('[aria-label*="Workout"]').first();
+    await expect(firstHistoryCard).toBeVisible({ timeout: 10_000 });
+    await firstHistoryCard.click();
+
+    // The workout detail screen must display "22.5" as the logged weight.
+    await expect(page.locator('text=22.5')).toBeVisible({ timeout: 10_000 });
   });
 });

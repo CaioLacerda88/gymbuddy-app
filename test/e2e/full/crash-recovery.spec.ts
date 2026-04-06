@@ -11,6 +11,7 @@
  *  3. Start a workout → navigate away via the URL bar → come back → banner present
  *  4. Finish button is not re-triggerable after the workout has been saved
  *     (only one workout entry is created even if Finish is tapped rapidly)
+ *  5. HOME-004 (P0) — Resume banner disappears after finishing the workout
  *
  * Simulation notes:
  *  - "Close browser tab" is simulated by calling page.reload() which clears JS
@@ -27,13 +28,14 @@
 
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth';
-import { NAV, WORKOUT, PR } from '../helpers/selectors';
+import { NAV, WORKOUT, PR, HOME } from '../helpers/selectors';
 import {
   startEmptyWorkout,
   addExercise,
   setWeight,
   setReps,
   completeSet,
+  finishWorkout,
 } from '../helpers/workout';
 import { TEST_USERS } from '../fixtures/test-users';
 import { SEED_EXERCISES } from '../fixtures/test-exercises';
@@ -216,6 +218,64 @@ test.describe('Crash and session recovery — full suite', () => {
       await confirmDiscard.click();
     }
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
+  });
+
+  // ---------------------------------------------------------------------------
+  // HOME-004 (P0) — Resume banner disappears after finishing the workout
+  // Start a workout, navigate away (banner appears), then return to the workout
+  // screen and finish it. Returning to home must show NO banner.
+  // ---------------------------------------------------------------------------
+  test('HOME-004: resume banner disappears from home after finishing the workout', async ({
+    page,
+  }) => {
+    // Start a workout with one completed set so Finish succeeds cleanly.
+    await startEmptyWorkout(page);
+    await addExercise(page, SEED_EXERCISES.benchPress);
+    await setWeight(page, '60');
+    await setReps(page, '8');
+    await completeSet(page, 0);
+
+    // Navigate to Home — the active workout banner must appear in the shell.
+    await page.click(NAV.homeTab);
+    await expect(page.locator('text=GymBuddy')).toBeVisible({ timeout: 15_000 });
+
+    // The _ActiveWorkoutBanner renders the workout name which starts with
+    // "Workout \u2014". Verify it is present before finishing.
+    const bannerBeforeFinish = page.locator(HOME.activeBanner);
+    await expect(bannerBeforeFinish).toBeVisible({ timeout: 10_000 });
+
+    // Tap the banner to return to the active workout screen.
+    await bannerBeforeFinish.click();
+    await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
+      timeout: 15_000,
+    });
+
+    // Finish the workout.
+    await finishWorkout(page);
+
+    // Dismiss the PR celebration if shown.
+    const isCelebration = await page
+      .locator(PR.firstWorkoutHeading)
+      .isVisible({ timeout: 15_000 })
+      .catch(() => false);
+    const isNewPR = await page
+      .locator(PR.newPRHeading)
+      .isVisible({ timeout: isCelebration ? 0 : 3_000 })
+      .catch(() => false);
+
+    if (isCelebration || isNewPR) {
+      await page.click(PR.continueButton);
+    }
+
+    // Return to home if not already there.
+    await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
+    await page.click(NAV.homeTab);
+    await expect(page.locator('text=GymBuddy')).toBeVisible({ timeout: 15_000 });
+
+    // The banner must no longer be visible — the workout is finished.
+    await expect(page.locator(HOME.activeBanner)).not.toBeVisible({
+      timeout: 5_000,
+    });
   });
 
   test('rapid double-tap on Finish does not create duplicate workouts', async ({

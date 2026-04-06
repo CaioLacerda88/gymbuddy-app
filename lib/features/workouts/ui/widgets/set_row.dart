@@ -126,51 +126,67 @@ class SetRow extends ConsumerWidget {
                             'Long press to change type: ${set.setType.displayName}'
                       : 'Set ${set.setNumber}. '
                             'Long press to change type: ${set.setType.displayName}',
-                  child: InkWell(
-                    onTap: set.setNumber > 1 ? () => _copyLastSet(ref) : null,
-                    onLongPress: () => _cycleSetType(ref),
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      constraints: const BoxConstraints(
-                        minWidth: 40,
-                        minHeight: 40,
-                      ),
-                      alignment: Alignment.center,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '${set.setNumber}',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: set.setNumber > 1
-                                  ? theme.colorScheme.primary.withValues(
-                                      alpha: 0.8,
-                                    )
-                                  : theme.colorScheme.onSurface.withValues(
-                                      alpha: 0.6,
-                                    ),
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          // Show set type label below the number
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 4,
-                              vertical: 1,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _setTypeBadgeColor(theme, set.setType),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              _setTypeLabels[set.setType] ?? 'W',
+                  child: Tooltip(
+                    message: set.setNumber > 1
+                        ? 'Tap: copy last set\nHold: change type'
+                        : 'Hold: change type',
+                    preferBelow: true,
+                    child: InkWell(
+                      onTap: set.setNumber > 1 ? () => _copyLastSet(ref) : null,
+                      onLongPress: () => _cycleSetType(ref),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        constraints: const BoxConstraints(
+                          minWidth: 40,
+                          minHeight: 40,
+                        ),
+                        alignment: Alignment.center,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '${set.setNumber}',
                               style: theme.textTheme.bodyMedium?.copyWith(
-                                fontSize: 9,
+                                color: set.setNumber > 1
+                                    ? theme.colorScheme.primary.withValues(
+                                        alpha: 0.8,
+                                      )
+                                    : theme.colorScheme.onSurface.withValues(
+                                        alpha: 0.6,
+                                      ),
                                 fontWeight: FontWeight.w700,
+                                // Underline hint for tap-to-copy on sets > 1.
+                                decoration: set.setNumber > 1
+                                    ? TextDecoration.underline
+                                    : null,
+                                decorationColor: set.setNumber > 1
+                                    ? theme.colorScheme.primary.withValues(
+                                        alpha: 0.4,
+                                      )
+                                    : null,
+                                decorationStyle: TextDecorationStyle.dotted,
                               ),
                             ),
-                          ),
-                        ],
+                            // Show set type label below the number
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 1,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _setTypeBadgeColor(theme, set.setType),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                _setTypeLabels[set.setType] ?? 'W',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

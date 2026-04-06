@@ -10,8 +10,11 @@
  *  6. Clear filters resets the list
  *  7. Tap exercise card opens detail screen with name visible
  *  8. Create custom exercise, verify it appears in the list
- *  9. Delete custom exercise, verify it is gone
+ *  9. Delete custom exercise, verify it is gone from list [EX-008]
  * 10. Back navigation from detail returns to the list
+ * 11. Soft-deleted exercise is excluded from search results [EX-003 — P0]
+ * 12. Filter combination with zero results shows empty state [EX-005 — P1]
+ * 13. Duplicate exercise name shows validation error [EX-007 — P1]
  *
  * Uses the dedicated `fullExercises` test user.
  * The Flutter web app is served automatically by Playwright's webServer config
@@ -276,5 +279,166 @@ test.describe('Exercise library — full suite', () => {
     await expect(
       page.locator('[aria-label^="Exercise:"]').first(),
     ).toBeVisible({ timeout: 10_000 });
+  });
+
+  // ---------------------------------------------------------------------------
+  // EX-003 (P0) — Soft-deleted exercise excluded from search
+  // Extends the delete test: after deletion, searching for the deleted name
+  // must return zero results.
+  // ---------------------------------------------------------------------------
+  test('EX-003: deleted exercise does not appear in search results', async ({
+    page,
+  }) => {
+    const customName = 'E2E SoftDelete SearchTest';
+
+    // Create the exercise.
+    await page.click(EXERCISE_LIST.createFab);
+    await expect(page.locator(CREATE_EXERCISE.nameInput)).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.fill(CREATE_EXERCISE.nameInput, customName);
+    await page.click(CREATE_EXERCISE.saveButton);
+    await expect(page.locator(EXERCISE_LIST.heading)).toBeVisible({
+      timeout: 15_000,
+    });
+
+    // Verify it exists in the list before deletion.
+    const card = page.locator(EXERCISE_LIST.exerciseCard(customName));
+    await expect(card).toBeVisible({ timeout: 10_000 });
+
+    // Open the detail and delete.
+    await card.click();
+    await expect(page.locator(EXERCISE_DETAIL.appBarTitle)).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.click(EXERCISE_DETAIL.deleteButton);
+    await expect(page.locator(EXERCISE_DETAIL.deleteDialogTitle)).toBeVisible({
+      timeout: 5_000,
+    });
+    await page.click(EXERCISE_DETAIL.deleteConfirmButton);
+
+    // Should navigate back to the list.
+    await expect(page.locator(EXERCISE_LIST.heading)).toBeVisible({
+      timeout: 15_000,
+    });
+
+    // Now search for the deleted exercise name — must return zero results.
+    await page.fill(EXERCISE_LIST.searchInput, customName);
+    // Allow the 300 ms debounce to fire plus a safety buffer.
+    await page.waitForTimeout(700);
+
+    // Either the filtered empty state or zero matching cards must be shown.
+    const matchingCards = page.locator(
+      EXERCISE_LIST.exerciseCard(customName),
+    );
+    const count = await matchingCards.count();
+    expect(count).toBe(0);
+  });
+
+  // ---------------------------------------------------------------------------
+  // EX-005 (P1) — Filter combination zero results shows empty state
+  // Core + Kettlebell is unlikely to have a seeded match; if it does, the
+  // test still passes because the assertion is on the empty state itself.
+  // We exhaust filters until we reach zero, then assert the empty state text.
+  // ---------------------------------------------------------------------------
+  test('EX-005: filter combination with zero results shows filtered empty state', async ({
+    page,
+  }) => {
+    // Wait for the full list to load before filtering.
+    const allCards = page.locator('[aria-label^="Exercise:"]');
+    await expect(allCards.first()).toBeVisible({ timeout: 10_000 });
+
+    // Apply Core muscle group + Kettlebell equipment — a combination unlikely
+    // to be in the seed data. If it IS seeded, the test falls back to a further
+    // search term that will guarantee zero results.
+    await page.click(EXERCISE_LIST.muscleGroupFilter('Core'));
+    await page.waitForTimeout(600);
+    await page.click(EXERCISE_LIST.equipmentFilter('Kettlebell'));
+    await page.waitForTimeout(600);
+
+    // Check if the empty state appeared. If not (seed has Core+Kettlebell
+    // exercises), also apply a nonsense search to force zero results.
+    const emptyStateVisible = await page
+      .locator(EXERCISE_LIST.emptyStateFiltered)
+      .isVisible({ timeout: 3_000 })
+      .catch(() => false);
+
+    if (!emptyStateVisible) {
+      await page.fill(EXERCISE_LIST.searchInput, 'ZZZnoResultsXXX');
+      await page.waitForTimeout(700);
+    }
+
+    // The filtered empty state text must now be visible.
+    await expect(page.locator(EXERCISE_LIST.emptyStateFiltered)).toBeVisible({
+      timeout: 5_000,
+    });
+
+    // The "Clear Filters" button must accompany the empty state.
+    await expect(page.locator(EXERCISE_LIST.clearFiltersButton)).toBeVisible({
+      timeout: 3_000,
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // EX-007 (P1) — Duplicate exercise name validation
+  // Create one exercise, then attempt to create another with the same name.
+  // The server (or client-side check) must return a validation error.
+  // ---------------------------------------------------------------------------
+  test('EX-007: submitting a duplicate exercise name shows a validation error', async ({
+    page,
+  }) => {
+    const uniqueName = `E2E DuplicateCheck ${Date.now()}`;
+
+    // Helper: fill the create form with the given name and the required
+    // muscle group + equipment type selections, then submit.
+    async function createExercise(name: string) {
+      await page.click(EXERCISE_LIST.createFab);
+      await expect(page.locator(CREATE_EXERCISE.nameInput)).toBeVisible({
+        timeout: 10_000,
+      });
+      await page.fill(CREATE_EXERCISE.nameInput, name);
+
+      // Select Chest muscle group (first selectable card in the grid).
+      await page.click('role=button[name*="Muscle group: Chest"]');
+      // Select Barbell equipment type.
+      await page.click('role=button[name*="Equipment type: Barbell"]');
+
+      await page.click(CREATE_EXERCISE.saveButton);
+    }
+
+    // First creation — must succeed and return to the list.
+    await createExercise(uniqueName);
+    await expect(page.locator(EXERCISE_LIST.heading)).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(
+      page.locator(EXERCISE_LIST.exerciseCard(uniqueName)),
+    ).toBeVisible({ timeout: 10_000 });
+
+    // Second creation with the same name — must show a validation error.
+    await createExercise(uniqueName);
+
+    // The validation error appears as inline form field error text.
+    // The CreateExerciseScreen surfaces it via ValidationException → _nameError.
+    const hasValidationError =
+      (await page
+        .locator('text=already exists')
+        .isVisible({ timeout: 10_000 })
+        .catch(() => false)) ||
+      (await page
+        .locator('text=duplicate')
+        .isVisible({ timeout: 3_000 })
+        .catch(() => false)) ||
+      (await page
+        .locator('[aria-live="polite"]')
+        .isVisible({ timeout: 3_000 })
+        .catch(() => false));
+
+    expect(hasValidationError).toBe(true);
+
+    // Must still be on the create screen (no navigation on error).
+    await expect(page.locator(CREATE_EXERCISE.nameInput)).toBeVisible({
+      timeout: 5_000,
+    });
   });
 });

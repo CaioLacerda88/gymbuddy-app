@@ -61,4 +61,8 @@ export const TEST_USERS = {
     email: 'e2e-full-crash@test.local',
     password: 'TestPassword123!',
   },
+  fullHistory: {
+    email: 'e2e-full-history@test.local',
+    password: 'TestPassword123!',
+  },
 } as const;
