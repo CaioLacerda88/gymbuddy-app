@@ -43,7 +43,8 @@ test.describe('Exercise smoke', () => {
     page,
   }) => {
     // The page heading and search input must be present.
-    await expect(page.locator(EXERCISE_LIST.heading)).toBeVisible();
+    // Use first() because "Exercises" text also appears in the bottom nav tab.
+    await expect(page.locator(EXERCISE_LIST.heading).first()).toBeVisible();
     await expect(page.locator(EXERCISE_LIST.searchInput)).toBeVisible();
 
     // The muscle group "All" filter chip is always rendered.
@@ -97,7 +98,7 @@ test.describe('Exercise smoke', () => {
     await page.click(CREATE_EXERCISE.saveButton);
 
     // Should navigate back to the exercise list.
-    await expect(page.locator(EXERCISE_LIST.heading)).toBeVisible({
+    await expect(page.locator(EXERCISE_LIST.heading).first()).toBeVisible({
       timeout: 15_000,
     });
   });
@@ -140,7 +141,7 @@ test.describe('Exercise smoke', () => {
     await page.click(CREATE_EXERCISE.saveButton);
 
     // Wait for navigation back to the list.
-    await expect(page.locator(EXERCISE_LIST.heading)).toBeVisible({
+    await expect(page.locator(EXERCISE_LIST.heading).first()).toBeVisible({
       timeout: 15_000,
     });
 
@@ -167,7 +168,7 @@ test.describe('Exercise smoke', () => {
     await page.click(EXERCISE_DETAIL.deleteConfirmButton);
 
     // After deletion the app should navigate back to the exercise list.
-    await expect(page.locator(EXERCISE_LIST.heading)).toBeVisible({
+    await expect(page.locator(EXERCISE_LIST.heading).first()).toBeVisible({
       timeout: 15_000,
     });
 

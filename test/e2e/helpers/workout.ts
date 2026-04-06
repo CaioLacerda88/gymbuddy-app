@@ -89,10 +89,11 @@ export async function setWeight(page: Page, value: string): Promise<void> {
   // Wait for the dialog title to confirm the correct dialog opened.
   await expect(page.locator('text=Enter weight')).toBeVisible({ timeout: 5_000 });
 
-  // Target the Flutter text editing overlay (<input> injected by CanvasKit).
-  const input = page.locator('input').last();
-  await input.clear();
-  await input.fill(value);
+  // The dialog TextField focuses automatically. Select all existing content
+  // and type the new value using real keyboard events.
+  await page.waitForTimeout(300);
+  await page.keyboard.press('Control+a');
+  await page.keyboard.type(value, { delay: 10 });
 
   await page.click('text=OK');
 
@@ -118,9 +119,11 @@ export async function setReps(page: Page, value: string): Promise<void> {
   // Wait for the dialog title to confirm the correct dialog opened.
   await expect(page.locator('text=Enter reps')).toBeVisible({ timeout: 5_000 });
 
-  const input = page.locator('input').last();
-  await input.clear();
-  await input.fill(value);
+  // The dialog TextField focuses automatically. Select all existing content
+  // and type the new value using real keyboard events.
+  await page.waitForTimeout(300);
+  await page.keyboard.press('Control+a');
+  await page.keyboard.type(value, { delay: 10 });
 
   await page.click('text=OK');
 
