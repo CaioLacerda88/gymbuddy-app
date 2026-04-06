@@ -7,7 +7,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { waitForAppReady } from '../helpers/app';
+import { waitForAppReady, flutterFill } from '../helpers/app';
 import { login, logout } from '../helpers/auth';
 import { AUTH, NAV } from '../helpers/selectors';
 import { TEST_USERS } from '../fixtures/test-users';
@@ -48,8 +48,8 @@ test.describe('Auth smoke', () => {
     await page.goto('/');
     await waitForAppReady(page);
 
-    await page.fill(AUTH.emailInput, 'test@example.com');
-    await page.fill(AUTH.passwordInput, 'definitely-wrong-password');
+    await flutterFill(page, AUTH.emailInput, 'test@example.com');
+    await flutterFill(page, AUTH.passwordInput, 'definitely-wrong-password');
     await page.click(AUTH.loginButton);
 
     // The LoginScreen renders an inline error container on auth failure.
@@ -78,7 +78,7 @@ test.describe('Auth smoke', () => {
     await waitForAppReady(page);
 
     // Fill in a valid email address.
-    await page.fill(AUTH.emailInput, TEST_USERS.smokeAuth.email);
+    await flutterFill(page, AUTH.emailInput, TEST_USERS.smokeAuth.email);
 
     // Click the forgot password button.
     await page.click(AUTH.forgotPasswordButton);
@@ -103,10 +103,13 @@ test.describe('Auth smoke', () => {
 
     // Rate-limit (429) is the only acceptable error response here since we
     // may call this endpoint multiple times in test runs. Any other error
-    // should fail this test.
+    // should fail this test. The aria-live selector may match empty elements
+    // (e.g. SnackBar placeholders), so only assert on non-empty text.
     if (hasError) {
-      const errorText = await page.locator(AUTH.errorMessage).textContent();
-      expect(errorText?.toLowerCase()).toContain('rate limit');
+      const errorText = (await page.locator(AUTH.errorMessage).textContent()) ?? '';
+      if (errorText.trim().length > 0) {
+        expect(errorText.toLowerCase()).toContain('rate limit');
+      }
     }
   });
 

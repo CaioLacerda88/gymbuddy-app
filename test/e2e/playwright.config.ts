@@ -30,7 +30,9 @@ export default defineConfig({
     ? {}
     : {
         webServer: {
-          command: `npx serve -s ../../build/web -l ${LOCAL_PORT}`,
+          // python3 serves all files including dotfiles (.env).
+          // npx serve -s hides dotfiles, breaking flutter_dotenv.
+          command: `python3 -m http.server ${LOCAL_PORT} --directory ../../build/web`,
           port: LOCAL_PORT,
           reuseExistingServer: true,
           timeout: 30_000,

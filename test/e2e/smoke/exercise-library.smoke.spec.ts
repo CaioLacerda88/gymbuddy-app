@@ -31,7 +31,7 @@ test.describe('Exercise library smoke', () => {
   test('exercise list screen renders the heading and filter controls', async ({
     page,
   }) => {
-    await expect(page.locator(EXERCISE_LIST.heading)).toBeVisible();
+    await expect(page.locator(EXERCISE_LIST.heading).first()).toBeVisible();
     await expect(page.locator(EXERCISE_LIST.searchInput)).toBeVisible();
 
     // The "All" muscle group filter is always present.
@@ -144,7 +144,7 @@ test.describe('Exercise library smoke', () => {
     await page.goBack();
 
     // We should be back on the list screen.
-    await expect(page.locator(EXERCISE_LIST.heading)).toBeVisible({
+    await expect(page.locator(EXERCISE_LIST.heading).first()).toBeVisible({
       timeout: 10_000,
     });
   });

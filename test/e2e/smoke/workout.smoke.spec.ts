@@ -157,17 +157,27 @@ test.describe('Workout smoke', () => {
   test('finished workout appears in the recent section on the home screen', async ({
     page,
   }) => {
-    // Start and immediately finish a minimal workout (no exercises, just finish).
+    // Complete a minimal workout — the Finish button is disabled until at
+    // least one set is marked as done.
     await startEmptyWorkout(page);
+    await addExercise(page, SEED_EXERCISES.benchPress);
+    await setWeight(page, '50');
+    await setReps(page, '5');
+    await completeSet(page, 0);
     await finishWorkout(page);
 
-    // Dismiss PR / celebration screen if shown.
+    // Dismiss PR / celebration screen if shown (first workout or NEW PR).
     const isCelebration = await page
       .locator('text=First Workout Complete!')
       .isVisible({ timeout: 10_000 })
       .catch(() => false);
 
-    if (isCelebration) {
+    const isNewPR = await page
+      .locator('text=NEW PR')
+      .isVisible({ timeout: 5_000 })
+      .catch(() => false);
+
+    if (isCelebration || isNewPR) {
       await page.click('text=Continue');
     }
 

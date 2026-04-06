@@ -24,6 +24,7 @@
  */
 
 import { Page, expect } from '@playwright/test';
+import { flutterFill } from './app';
 import { WORKOUT, EXERCISE_PICKER } from './selectors';
 
 /**
@@ -56,10 +57,12 @@ export async function addExercise(
     timeout: 10_000,
   });
 
-  await page.fill(EXERCISE_PICKER.searchInput, exerciseName);
+  await flutterFill(page, EXERCISE_PICKER.searchInput, exerciseName);
 
   // Wait for the debounce / filter to apply, then select the exercise.
-  const addButton = page.locator(EXERCISE_PICKER.addExerciseButton(exerciseName));
+  // Flutter CanvasKit renders duplicate semantics nodes for each exercise card,
+  // so we use .first() to avoid strict-mode violations.
+  const addButton = page.locator(EXERCISE_PICKER.addExerciseButton(exerciseName)).first();
   await expect(addButton).toBeVisible({ timeout: 10_000 });
   await addButton.click();
 
@@ -67,6 +70,19 @@ export async function addExercise(
   await expect(page.locator(EXERCISE_PICKER.searchInput)).not.toBeVisible({
     timeout: 10_000,
   });
+
+  // The exercise starts with zero sets (ActiveWorkoutNotifier.addExercise
+  // creates with `sets: const []`). Click "Add Set" to create the first set
+  // row so that weight/reps buttons are available for subsequent interactions.
+  await expect(page.locator(WORKOUT.addSetButton)).toBeVisible({
+    timeout: 10_000,
+  });
+  await page.locator(WORKOUT.addSetButton).first().click();
+
+  // Wait for the set row to render — the weight button confirms it.
+  await expect(
+    page.locator('role=button[name*="Weight value"]').first(),
+  ).toBeVisible({ timeout: 10_000 });
 }
 
 /**
@@ -81,24 +97,26 @@ export async function addExercise(
  * the dialog, which Playwright can target with `page.locator('input').last()`.
  */
 export async function setWeight(page: Page, value: string): Promise<void> {
-  // The weight value is a large text node showing the current value (e.g. "0").
-  // Clicking it opens the "Enter weight" AlertDialog.
-  await page.locator('text=0').first().click();
+  // The weight value has a Semantics label like "Weight value: 0 kg. Tap to enter weight."
+  // Click the first matching weight button to open the "Enter weight" dialog.
+  await page.locator('role=button[name*="Weight value"]').first().click();
 
-  // Wait for the dialog title to confirm the correct dialog opened.
-  await expect(page.locator('text=Enter weight')).toBeVisible({ timeout: 5_000 });
+  // Wait for the OK button to confirm the dialog is open. We avoid using
+  // `text=Enter weight` because the weight button's own semantics label
+  // ("...Tap to enter weight.") also matches that selector.
+  const okButton = page.locator('text="OK"');
+  await expect(okButton).toBeVisible({ timeout: 5_000 });
 
-  // Target the Flutter text editing overlay (<input> injected by CanvasKit).
-  const input = page.locator('input').last();
-  await input.clear();
-  await input.fill(value);
+  // The dialog TextField focuses automatically. Select all existing content
+  // and type the new value using real keyboard events.
+  await page.waitForTimeout(300);
+  await page.keyboard.press('Control+a');
+  await page.keyboard.type(value, { delay: 10 });
 
-  await page.click('text=OK');
+  await okButton.click();
 
-  // Wait for the dialog to dismiss before returning.
-  await expect(page.locator('text=Enter weight')).not.toBeVisible({
-    timeout: 5_000,
-  });
+  // Wait for the OK button to disappear — confirms the dialog dismissed.
+  await expect(okButton).not.toBeVisible({ timeout: 5_000 });
 }
 
 /**
@@ -111,22 +129,26 @@ export async function setWeight(page: Page, value: string): Promise<void> {
  * value (no longer "0"), so the first "0" text visible is now the reps value.
  */
 export async function setReps(page: Page, value: string): Promise<void> {
-  // After weight is set, the first remaining "0" is the reps value.
-  await page.locator('text=0').first().click();
+  // The reps value has a Semantics label like "Reps value: 0. Tap to enter reps."
+  // Click the first matching reps button to open the "Enter reps" dialog.
+  await page.locator('role=button[name*="Reps value"]').first().click();
 
-  // Wait for the dialog title to confirm the correct dialog opened.
-  await expect(page.locator('text=Enter reps')).toBeVisible({ timeout: 5_000 });
+  // Wait for the OK button to confirm the dialog is open. We avoid using
+  // `text=Enter reps` because the reps button's own semantics label
+  // ("...Tap to enter reps.") also matches that selector.
+  const okButton = page.locator('text="OK"');
+  await expect(okButton).toBeVisible({ timeout: 5_000 });
 
-  const input = page.locator('input').last();
-  await input.clear();
-  await input.fill(value);
+  // The dialog TextField focuses automatically. Select all existing content
+  // and type the new value using real keyboard events.
+  await page.waitForTimeout(300);
+  await page.keyboard.press('Control+a');
+  await page.keyboard.type(value, { delay: 10 });
 
-  await page.click('text=OK');
+  await okButton.click();
 
-  // Wait for the dialog to dismiss before returning.
-  await expect(page.locator('text=Enter reps')).not.toBeVisible({
-    timeout: 5_000,
-  });
+  // Wait for the OK button to disappear — confirms the dialog dismissed.
+  await expect(okButton).not.toBeVisible({ timeout: 5_000 });
 }
 
 /**

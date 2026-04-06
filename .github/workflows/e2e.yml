@@ -41,11 +41,19 @@ jobs:
           SB_ANON=$(grep '^ANON_KEY=' /tmp/sb_status.env | cut -d= -f2-)
           SB_SERVICE=$(grep '^SERVICE_ROLE_KEY=' /tmp/sb_status.env | cut -d= -f2-)
 
+          echo "--- Supabase API URL: $SB_URL ---"
+
           # Flutter app .env (loaded by flutter_dotenv at runtime)
           printf "SUPABASE_URL=%s\nSUPABASE_ANON_KEY=%s\n" "$SB_URL" "$SB_ANON" > .env
 
           # Playwright .env.local (loaded by global-setup.ts)
-          printf "FLUTTER_APP_URL=http://localhost:8080\nSUPABASE_URL=%s\nSUPABASE_ANON_KEY=%s\nSUPABASE_SERVICE_ROLE_KEY=%s\nTEST_USER_PASSWORD=Test1234!\n" "$SB_URL" "$SB_ANON" "$SB_SERVICE" > test/e2e/.env.local
+          printf "FLUTTER_APP_URL=http://localhost:8080\nSUPABASE_URL=%s\nSUPABASE_ANON_KEY=%s\nSUPABASE_SERVICE_ROLE_KEY=%s\nTEST_USER_PASSWORD=TestPassword123!\n" "$SB_URL" "$SB_ANON" "$SB_SERVICE" > test/e2e/.env.local
+
+      - name: Verify Supabase is healthy
+        run: |
+          curl -sf http://127.0.0.1:54321/auth/v1/settings && echo "Auth endpoint OK" || echo "Auth endpoint FAILED"
+          curl -sf http://localhost:54321/auth/v1/settings && echo "Auth (localhost) OK" || echo "Auth (localhost) FAILED"
+          cat .env | head -1
 
       - name: Install Flutter dependencies
         run: flutter pub get
@@ -54,11 +62,24 @@ jobs:
         run: dart run build_runner build --delete-conflicting-outputs
 
       - name: Build Flutter web
-        run: flutter build web
+        run: flutter build web --no-web-resources-cdn
+
+      - name: Verify .env in build output
+        run: |
+          # flutter_dotenv loads .env from the asset bundle. In web builds,
+          # assets are bundled into build/web/assets/. Verify it's there.
+          if [ -f build/web/assets/AssetManifest.json ]; then
+            grep -q '\.env' build/web/assets/AssetManifest.json && echo ".env found in AssetManifest" || echo ".env NOT in AssetManifest"
+          fi
+          ls -la build/web/assets/.env 2>/dev/null || echo ".env not at build/web/assets/.env"
+          # Also check the bin format used by newer Flutter
+          ls -la build/web/assets/AssetManifest.bin 2>/dev/null || true
 
       - name: Serve Flutter web app
         run: |
-          npx serve -s build/web -l 8080 &
+          # python3 http.server serves ALL files including dotfiles (.env).
+          # npx serve -s hides dotfiles, causing dotenv.load() to fail.
+          cd build/web && python3 -m http.server 8080 &
           npx wait-on http://localhost:8080 --timeout 30000
 
       - name: Install Playwright and dependencies
@@ -66,6 +87,30 @@ jobs:
         run: |
           npm ci
           npx playwright install --with-deps chromium
+
+      - name: Smoke-test app in headless Chrome
+        working-directory: test/e2e
+        run: |
+          # Quick check: load the app, capture JS errors, verify it gets past splash.
+          node -e "
+          const { chromium } = require('playwright-core');
+          (async () => {
+            const browser = await chromium.launch();
+            const page = await browser.newPage();
+            const errors = [];
+            page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+            page.on('pageerror', e => errors.push(String(e)));
+            await page.goto('http://localhost:8080', { waitUntil: 'networkidle' });
+            await page.waitForTimeout(15000);
+            const title = await page.title();
+            const bodySnippet = await page.evaluate(() => document.body?.innerText?.slice(0,300) ?? '');
+            console.log('Page title:', title);
+            console.log('Body snippet:', bodySnippet);
+            console.log('JS errors:', JSON.stringify(errors, null, 2));
+            await browser.close();
+            if (errors.length > 0) { console.log('WARN: JS errors detected, but continuing'); }
+          })().catch(e => { console.error('Smoke check failed:', e); process.exit(1); });
+          " || true
 
       - name: Run Playwright smoke tests (PR)
         if: github.event_name == 'pull_request'

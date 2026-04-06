@@ -44,8 +44,8 @@ export const AUTH = {
   appTitle: 'text=GymBuddy',
   /** "Welcome back" subtitle (sign-in mode) */
   welcomeBack: 'text=Welcome back',
-  /** Inline error message container */
-  errorMessage: 'flt-semantics[role="alert"]',
+  /** Inline error message — Semantics(liveRegion: true) sets aria-live */
+  errorMessage: '[aria-live="polite"]',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -88,22 +88,22 @@ export const NAV = {
 // Exercise list — ExerciseListScreen
 // ---------------------------------------------------------------------------
 export const EXERCISE_LIST = {
-  /** Page heading */
+  /** Page heading — use first() to avoid strict-mode collision with nav tab */
   heading: 'text=Exercises',
-  /** Search field — Semantics label "Search exercises" */
-  searchInput: '[aria-label="Search exercises"]',
-  /** "All" muscle group filter button */
-  allMuscleGroupFilter: '[aria-label="All muscle group filter"]',
-  /** Muscle group filter buttons — pass the MuscleGroup.displayName, e.g. "Chest" */
+  /** Search field — role selector matches computed accessible name */
+  searchInput: 'role=textbox[name*="Search exercises"]',
+  /** "All" muscle group filter — role selector matches computed accessible name */
+  allMuscleGroupFilter: 'role=button[name*="All muscle group filter"]',
+  /** Muscle group filter buttons — role selector for computed accessible name */
   muscleGroupFilter: (name: string) =>
-    `[aria-label="${name} muscle group filter"]`,
-  /** Equipment FilterChip — pass EquipmentType.displayName, e.g. "Barbell" */
+    `role=button[name*="${name} muscle group filter"]`,
+  /** Equipment FilterChip — role selector for computed accessible name */
   equipmentFilter: (name: string) =>
-    `[aria-label="${name} equipment filter"]`,
-  /** Individual exercise card — Semantics label "Exercise: <name>" */
-  exerciseCard: (name: string) => `[aria-label="Exercise: ${name}"]`,
-  /** FAB — Semantics label "Create new exercise" */
-  createFab: '[aria-label="Create new exercise"]',
+    `role=checkbox[name*="${name}"]`,
+  /** Individual exercise card — role selector for computed accessible name */
+  exerciseCard: (name: string) => `role=button[name*="Exercise: ${name}"]`,
+  /** FAB — role selector for computed accessible name */
+  createFab: 'role=button[name*="Create new exercise"]',
   /** Empty state when no filters applied */
   emptyStateNoFilter: 'text=Your exercises will appear here',
   /** Empty state when filters yield no results */
@@ -120,12 +120,12 @@ export const EXERCISE_DETAIL = {
   appBarTitle: 'text=Exercise Details',
   /** "Custom exercise" badge (only on user-created exercises) */
   customBadge: 'text=Custom exercise',
-  /** Delete button — Semantics label "Delete exercise" */
-  deleteButton: '[aria-label="Delete exercise"]',
+  /** Delete button — case-insensitive match for "Delete Exercise" / "Delete exercise" */
+  deleteButton: 'role=button[name=/delete exercise/i]',
   /** Confirmation dialog title */
   deleteDialogTitle: 'text=Delete Exercise',
-  /** Confirm delete action in dialog */
-  deleteConfirmButton: 'text=Delete',
+  /** Confirm delete action in dialog — exact match to avoid "Delete Exercise" collision */
+  deleteConfirmButton: 'text="Delete"',
   /** Cancel delete action in dialog */
   deleteCancelButton: 'text=Cancel',
   /** Coming-soon placeholder text */
@@ -137,8 +137,9 @@ export const EXERCISE_DETAIL = {
 // AppTextField label is "Exercise Name", button label is "CREATE EXERCISE"
 // ---------------------------------------------------------------------------
 export const CREATE_EXERCISE = {
-  nameInput: '[aria-label="Exercise Name"]',
-  saveButton: 'text=CREATE EXERCISE',
+  nameInput: 'role=textbox[name*="Exercise Name"]',
+  /** Case-sensitive exact match avoids collision with heading "Create Exercise" */
+  saveButton: 'text="CREATE EXERCISE"',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -173,19 +174,19 @@ export const WORKOUT = {
 // Exercise picker — bottom sheet shown when adding exercises to a workout
 // ---------------------------------------------------------------------------
 export const EXERCISE_PICKER = {
-  /** Search field inside the exercise picker bottom sheet */
-  searchInput: 'flt-semantics[aria-label="Search exercises to add"]',
-  /** "Add <name>" tile for a specific exercise */
+  /** Search field — role selector matches computed accessible name */
+  searchInput: 'role=textbox[name*="Search exercises to add"]',
+  /** "Add <name>" tile — role selector for computed accessible name */
   addExerciseButton: (name: string) =>
-    `flt-semantics[aria-label="Add ${name}"]`,
+    `role=button[name*="Add ${name}"]`,
 } as const;
 
 // ---------------------------------------------------------------------------
 // Home screen
 // ---------------------------------------------------------------------------
 export const HOME = {
-  /** "RECENT" section heading on the home screen */
-  recentSection: 'text=RECENT',
+  /** "RECENT" section heading on the home screen — exact match avoids "RECENT RECORDS" collision */
+  recentSection: 'text="RECENT"',
   /** "View All" link to the full workout history */
   viewAllHistory: 'text=View All',
 } as const;
@@ -226,8 +227,8 @@ export const ROUTINE = {
   deleteDialogTitle: 'text=Delete Routine',
   /** "Cancel" button in delete dialog */
   cancelButton: 'text=Cancel',
-  /** "Delete" confirm button in delete dialog */
-  deleteConfirmButton: 'text=Delete',
+  /** "Delete" confirm button in delete dialog — exact match to avoid title collision */
+  deleteConfirmButton: 'text="Delete"',
 } as const;
 
 // ---------------------------------------------------------------------------

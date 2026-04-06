@@ -30,11 +30,31 @@ import { NAV } from './selectors';
  * Timeout is generous (60s) to accommodate CanvasKit WASM download.
  */
 export async function waitForAppReady(page: Page): Promise<void> {
+  // Collect console errors for diagnostics if the app hangs.
+  const consoleErrors: string[] = [];
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      consoleErrors.push(`[console.error] ${msg.text()}`);
+    }
+  });
+  page.on('pageerror', (err) => {
+    consoleErrors.push(`[page error] ${String(err)}`);
+  });
+
   // 1. Wait for Flutter to render and show the accessibility placeholder.
-  await page.waitForSelector(
-    'flt-semantics-placeholder[aria-label="Enable accessibility"]',
-    { timeout: 60_000 },
-  );
+  try {
+    await page.waitForSelector(
+      'flt-semantics-placeholder[aria-label="Enable accessibility"]',
+      { timeout: 60_000 },
+    );
+  } catch (e) {
+    const bodyText = await page.evaluate(() => document.body?.innerText ?? '');
+    throw new Error(
+      `Flutter app failed to render. ` +
+        `Body text: "${bodyText.slice(0, 500)}". ` +
+        `Console errors: ${JSON.stringify(consoleErrors)}`,
+    );
+  }
 
   // 2. Enable the full semantics tree. Flutter web activates semantics in
   //    response to real user interaction. We dispatch a focused click sequence
@@ -56,14 +76,32 @@ export async function waitForAppReady(page: Page): Promise<void> {
   await page.keyboard.press('Tab');
 
   // 3. Wait for a known post-splash landmark to confirm the app is ready.
-  await page.waitForSelector(
-    [
-      '[aria-label="LOG IN"]',
-      '[aria-label="Home"]',
-      '[aria-label="GET STARTED"]',
-    ].join(', '),
-    { timeout: 30_000 },
-  );
+  //    The auth stream has a 10-second timeout fallback, so the splash screen
+  //    will resolve within ~12 seconds even if Supabase is unreachable.
+  try {
+    await page.waitForSelector(
+      [
+        '[aria-label="LOG IN"]',
+        '[aria-label="Home"]',
+        '[aria-label="GET STARTED"]',
+      ].join(', '),
+      { timeout: 30_000 },
+    );
+  } catch (e) {
+    // Dump diagnostics: what's actually on screen + any console errors.
+    const snapshot = await page.evaluate(() => {
+      const els = document.querySelectorAll('flt-semantics');
+      return Array.from(els)
+        .map((el) => el.getAttribute('aria-label'))
+        .filter(Boolean)
+        .join(', ');
+    });
+    throw new Error(
+      `App stuck on splash — auth stream may not have emitted. ` +
+        `Visible semantics: [${snapshot}]. ` +
+        `Console errors: ${JSON.stringify(consoleErrors)}`,
+    );
+  }
 }
 
 /**
@@ -91,4 +129,42 @@ export async function navigateToTab(
   // Wait for the tab content heading to appear as a signal that navigation
   // completed. The heading text matches the tab label for most screens.
   await page.waitForSelector(`text=${tabName}`, { timeout: 15_000 });
+}
+
+/**
+ * Fill a Flutter text field via CanvasKit semantics.
+ *
+ * Flutter CanvasKit renders to <canvas> — the flt-semantics elements are
+ * accessibility overlays (divs), not real <input> elements. Flutter uses a
+ * single shared native <input> proxy for text editing. When focus moves
+ * between TextFields, values set via Playwright's fill() on this proxy are
+ * lost because Flutter doesn't commit the value back to its internal
+ * TextEditingController on the focus transition.
+ *
+ * Instead we click the semantics node to focus the TextField, then use
+ * page.keyboard to send real key events at the window level. Flutter
+ * captures these and routes them to the focused text field, bypassing the
+ * native input proxy entirely.
+ */
+export async function flutterFill(
+  page: Page,
+  selector: string,
+  value: string,
+): Promise<void> {
+  // Click the semantics element to focus the Flutter TextField.
+  await page.click(selector);
+
+  // Wait for Flutter's native <input> proxy to appear — this confirms the
+  // text editing connection is established and the field is ready for input.
+  const input = page.locator('input').last();
+  await input.waitFor({ state: 'attached', timeout: 5_000 });
+  await page.waitForTimeout(200);
+
+  // Select all existing content (if any) so typing replaces it.
+  await page.keyboard.press('Control+a');
+
+  // Type the value using real key events — the browser routes these to the
+  // focused native <input>, which fires real input events that Flutter
+  // processes correctly (unlike fill() which uses synthetic events).
+  await page.keyboard.type(value, { delay: 10 });
 }

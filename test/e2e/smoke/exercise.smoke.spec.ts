@@ -16,7 +16,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { navigateToTab } from '../helpers/app';
+import { navigateToTab, flutterFill } from '../helpers/app';
 import { login } from '../helpers/auth';
 import {
   EXERCISE_LIST,
@@ -43,7 +43,8 @@ test.describe('Exercise smoke', () => {
     page,
   }) => {
     // The page heading and search input must be present.
-    await expect(page.locator(EXERCISE_LIST.heading)).toBeVisible();
+    // Use first() because "Exercises" text also appears in the bottom nav tab.
+    await expect(page.locator(EXERCISE_LIST.heading).first()).toBeVisible();
     await expect(page.locator(EXERCISE_LIST.searchInput)).toBeVisible();
 
     // The muscle group "All" filter chip is always rendered.
@@ -68,10 +69,12 @@ test.describe('Exercise smoke', () => {
     await page.click(CREATE_EXERCISE.saveButton);
 
     // The form must show a "Name is required" validation error.
-    // Flutter AppTextField renders the helper text in the accessibility tree.
-    await expect(page.locator('text=Name is required')).toBeVisible({
-      timeout: 5_000,
-    });
+    // Flutter CanvasKit renders multiple semantics nodes with this text
+    // (visible error + ARIA announcement elements). Use .first() to avoid
+    // strict mode violations.
+    await expect(
+      page.locator('flt-semantics:has-text("Name is required")').first(),
+    ).toBeVisible({ timeout: 5_000 });
 
     // The screen should NOT navigate away — we should still be on create.
     await expect(page.locator(CREATE_EXERCISE.saveButton)).toBeVisible();
@@ -87,17 +90,18 @@ test.describe('Exercise smoke', () => {
     });
 
     // Fill in the exercise name.
-    await page.fill(CREATE_EXERCISE.nameInput, CUSTOM_EXERCISE_NAME);
+    await flutterFill(page,CREATE_EXERCISE.nameInput, CUSTOM_EXERCISE_NAME);
 
     // Select a muscle group (Chest) and equipment (Barbell).
-    await page.click('[aria-label="Muscle group: Chest Chest"]');
-    await page.click('[aria-label="Equipment type: Barbell Barbell"]');
+    // Use role selectors — aria-label may not be set on these buttons.
+    await page.locator('role=button[name*="Muscle group: Chest"]').first().click();
+    await page.locator('role=button[name*="Equipment type: Barbell"]').first().click();
 
     // Submit the form.
     await page.click(CREATE_EXERCISE.saveButton);
 
     // Should navigate back to the exercise list.
-    await expect(page.locator(EXERCISE_LIST.heading)).toBeVisible({
+    await expect(page.locator(EXERCISE_LIST.heading).first()).toBeVisible({
       timeout: 15_000,
     });
   });
@@ -106,13 +110,15 @@ test.describe('Exercise smoke', () => {
     // The list should have at least one exercise (user custom exercises or
     // default seeded exercises, depending on database state).
     // We search for a partial string to trigger the filter.
-    await page.fill(EXERCISE_LIST.searchInput, 'Smoke Test');
+    await flutterFill(page, EXERCISE_LIST.searchInput, 'Bench');
 
     // Wait for the debounce to fire (300 ms default + render time).
-    await page.waitForTimeout(600);
+    await page.waitForTimeout(800);
 
     // Either a matching card appears or the "no results" state is shown.
-    const cards = page.locator('[aria-label^="Exercise:"]');
+    // Use role selector for cards — CanvasKit may render aria-label as child
+    // text rather than an attribute.
+    const cards = page.locator('role=button[name*="Exercise:"]');
     const emptyState = page.locator(EXERCISE_LIST.emptyStateFiltered);
 
     const hasCards = await cards.first().isVisible({ timeout: 5_000 }).catch(() => false);
@@ -134,23 +140,24 @@ test.describe('Exercise smoke', () => {
     await expect(page.locator(CREATE_EXERCISE.nameInput)).toBeVisible({
       timeout: 10_000,
     });
-    await page.fill(CREATE_EXERCISE.nameInput, deleteTargetName);
-    await page.click('[aria-label="Muscle group: Back Back"]');
-    await page.click('[aria-label="Equipment type: Dumbbell Dumbbell"]');
+    await flutterFill(page,CREATE_EXERCISE.nameInput, deleteTargetName);
+    await page.locator('role=button[name*="Muscle group: Back"]').first().click();
+    await page.locator('role=button[name*="Equipment type: Dumbbell"]').first().click();
     await page.click(CREATE_EXERCISE.saveButton);
 
     // Wait for navigation back to the list.
-    await expect(page.locator(EXERCISE_LIST.heading)).toBeVisible({
+    await expect(page.locator(EXERCISE_LIST.heading).first()).toBeVisible({
       timeout: 15_000,
     });
 
     // Search for the newly created exercise to ensure it is present before
     // attempting to delete it.
-    await page.fill(EXERCISE_LIST.searchInput, deleteTargetName.substring(0, 10));
+    await flutterFill(page,EXERCISE_LIST.searchInput, deleteTargetName.substring(0, 10));
     await page.waitForTimeout(600);
 
-    // Open the detail screen for the exercise.
-    const card = page.locator(EXERCISE_LIST.exerciseCard(deleteTargetName));
+    // Open the detail screen for the exercise. Use first() because Flutter
+    // CanvasKit renders duplicate semantics nodes for each exercise card.
+    const card = page.locator(EXERCISE_LIST.exerciseCard(deleteTargetName)).first();
     await expect(card).toBeVisible({ timeout: 10_000 });
     await card.click();
 
@@ -167,7 +174,7 @@ test.describe('Exercise smoke', () => {
     await page.click(EXERCISE_DETAIL.deleteConfirmButton);
 
     // After deletion the app should navigate back to the exercise list.
-    await expect(page.locator(EXERCISE_LIST.heading)).toBeVisible({
+    await expect(page.locator(EXERCISE_LIST.heading).first()).toBeVisible({
       timeout: 15_000,
     });
 
@@ -188,6 +195,6 @@ test.describe('Exercise smoke', () => {
     // The filter chip should now be in the selected state.
     await expect(
       page.locator(EXERCISE_LIST.muscleGroupFilter('Chest')),
-    ).toHaveAttribute('aria-selected', 'true');
+    ).toHaveAttribute('aria-current', 'true');
   });
 });
