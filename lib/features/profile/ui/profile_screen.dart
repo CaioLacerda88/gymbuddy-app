@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../features/auth/providers/auth_providers.dart';
@@ -55,9 +56,48 @@ class ProfileScreen extends ConsumerWidget {
               loading: () => const _WeightUnitToggle(weightUnit: 'kg'),
               error: (_, _) => const _WeightUnitToggle(weightUnit: 'kg'),
             ),
-            const SizedBox(height: 48),
+            const SizedBox(height: 32),
+            // Data management section
+            Text(
+              'DATA MANAGEMENT',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Material(
+              color: theme.cardTheme.color ?? theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(12),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => context.go('/profile/manage-data'),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Manage Data',
+                          style: theme.textTheme.titleMedium,
+                        ),
+                      ),
+                      Icon(
+                        Icons.chevron_right,
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
             // Logout button
-            _LogoutButton(),
+            const _LogoutButton(),
           ],
         ),
       ),
@@ -259,6 +299,8 @@ class _StatCard extends StatelessWidget {
 }
 
 class _LogoutButton extends ConsumerWidget {
+  const _LogoutButton();
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return OutlinedButton(

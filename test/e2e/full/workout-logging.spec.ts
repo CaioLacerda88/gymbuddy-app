@@ -12,6 +12,10 @@
  *  8. Discard workout — confirm dialog, returns to home without saving
  *  9. Workout name is auto-generated with date (contains em-dash separator)
  * 10. WK-023 (P1) — Decimal weight (22.5 kg) round-trip
+ * 11. EX-DETAIL-001 — Tapping exercise name during active workout opens bottom sheet
+ * 12. EX-DETAIL-002 — Bottom sheet shows exercise name and muscle group
+ * 13. EX-DETAIL-003 — Dismissing bottom sheet returns to workout with timer running
+ * 14. EX-DETAIL-004 — Workout state preserved after viewing exercise detail
  *
  * Uses the dedicated `fullWorkout` test user.
  * The Flutter web app is served automatically by Playwright's webServer config
@@ -362,5 +366,193 @@ test.describe('Workout logging — full suite', () => {
 
     // The workout detail screen must display "22.5" as the logged weight.
     await expect(page.locator('text=22.5')).toBeVisible({ timeout: 10_000 });
+  });
+
+  // ---------------------------------------------------------------------------
+  // EX-DETAIL-001 — Tapping exercise name during active workout opens bottom sheet
+  //
+  // _ExerciseCard wraps the exercise name in a Semantics + InkWell. Tapping
+  // calls _showExerciseDetail which opens a DraggableScrollableSheet via
+  // showModalBottomSheet. The sheet contains the exercise name as headlineMedium.
+  // ---------------------------------------------------------------------------
+  test('EX-DETAIL-001: tapping exercise name during active workout opens the detail bottom sheet', async ({
+    page,
+  }) => {
+    await startEmptyWorkout(page);
+    await addExercise(page, SEED_EXERCISES.benchPress);
+
+    // The exercise name is wrapped in a tappable Semantics area with
+    // label "Exercise: <name>. Tap for details. Long press to swap."
+    const exerciseTap = page.locator(
+      `flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`,
+    );
+    await expect(exerciseTap).toBeVisible({ timeout: 10_000 });
+    await exerciseTap.click();
+
+    // The bottom sheet must appear. The exercise name is the first text rendered
+    // inside the sheet at headlineMedium size.
+    // We wait for a second instance of the exercise name (the card heading is
+    // always visible; the sheet adds a second one).
+    await expect(
+      page.locator(`text=${SEED_EXERCISES.benchPress}`).nth(1),
+    ).toBeVisible({ timeout: 10_000 });
+
+    // Clean up — dismiss the sheet by pressing Escape, then discard the workout.
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(500);
+
+    await page.locator(WORKOUT.discardButton).click();
+    const confirmDiscard = page.locator('text=Discard').last();
+    if (await confirmDiscard.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await confirmDiscard.click();
+    }
+    await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
+  });
+
+  // ---------------------------------------------------------------------------
+  // EX-DETAIL-002 — Bottom sheet shows exercise name and muscle group chip
+  //
+  // _ExerciseDetailSheet renders the exercise name as headlineMedium text and
+  // muscle group as a _SheetChip with the muscle group's displayName.
+  // Barbell Bench Press belongs to the "Chest" muscle group.
+  // ---------------------------------------------------------------------------
+  test('EX-DETAIL-002: exercise detail bottom sheet shows exercise name and muscle group', async ({
+    page,
+  }) => {
+    await startEmptyWorkout(page);
+    await addExercise(page, SEED_EXERCISES.benchPress);
+
+    const exerciseTap = page.locator(
+      `flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`,
+    );
+    await expect(exerciseTap).toBeVisible({ timeout: 10_000 });
+    await exerciseTap.click();
+
+    // The sheet must show the exercise name (second occurrence — first is the card).
+    await expect(
+      page.locator(`text=${SEED_EXERCISES.benchPress}`).nth(1),
+    ).toBeVisible({ timeout: 10_000 });
+
+    // The muscle group chip must appear. Barbell Bench Press → Chest.
+    // _SheetChip renders the muscle group's displayName as a Text widget.
+    await expect(page.locator('text=Chest')).toBeVisible({ timeout: 5_000 });
+
+    // Dismiss.
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(500);
+
+    // Discard workout.
+    await page.locator(WORKOUT.discardButton).click();
+    const confirmDiscard = page.locator('text=Discard').last();
+    if (await confirmDiscard.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await confirmDiscard.click();
+    }
+    await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
+  });
+
+  // ---------------------------------------------------------------------------
+  // EX-DETAIL-003 — Dismissing the bottom sheet returns to the workout screen
+  //
+  // After closing the detail sheet the active workout screen must still be
+  // visible (Finish Workout button present) and the elapsed timer must still
+  // be running (timer text is visible in the AppBar).
+  // ---------------------------------------------------------------------------
+  test('EX-DETAIL-003: dismissing exercise detail sheet returns to workout with timer visible', async ({
+    page,
+  }) => {
+    await startEmptyWorkout(page);
+    await addExercise(page, SEED_EXERCISES.squat);
+
+    // Note the workout is now in progress — the elapsed timer is in the AppBar.
+    // Open the detail sheet.
+    const exerciseTap = page.locator(
+      `flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.squat}. Tap for details"]`,
+    );
+    await expect(exerciseTap).toBeVisible({ timeout: 10_000 });
+    await exerciseTap.click();
+
+    // Sheet is open — exercise name appears a second time.
+    await expect(
+      page.locator(`text=${SEED_EXERCISES.squat}`).nth(1),
+    ).toBeVisible({ timeout: 10_000 });
+
+    // Dismiss the sheet by pressing Escape.
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(500);
+
+    // The workout screen must still be active.
+    await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
+      timeout: 10_000,
+    });
+
+    // The elapsed timer format is MM:SS or H:MM:SS. We match on a colon digit
+    // pattern to verify it is still displayed in the AppBar.
+    // The AppBar title area contains the workout name + timer as a Column.
+    // The timer text is produced by _ElapsedTimer which renders e.g. "01:23".
+    await expect(page.locator('text=/\\d+:\\d+/')).toBeVisible({
+      timeout: 5_000,
+    });
+
+    // Discard.
+    await page.locator(WORKOUT.discardButton).click();
+    const confirmDiscard = page.locator('text=Discard').last();
+    if (await confirmDiscard.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await confirmDiscard.click();
+    }
+    await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
+  });
+
+  // ---------------------------------------------------------------------------
+  // EX-DETAIL-004 — Workout state preserved after viewing exercise detail
+  //
+  // Verifies that sets logged before opening the detail sheet are still present
+  // after it is dismissed. The sheet is read-only and must not affect state.
+  // ---------------------------------------------------------------------------
+  test('EX-DETAIL-004: workout set data is preserved after viewing exercise detail sheet', async ({
+    page,
+  }) => {
+    await startEmptyWorkout(page);
+    await addExercise(page, SEED_EXERCISES.benchPress);
+
+    // Enter weight and reps, then mark the set done.
+    await setWeight(page, '80');
+    await setReps(page, '10');
+    await completeSet(page, 0);
+
+    // The set is now completed — verify the checkbox state before opening sheet.
+    await expect(page.locator(WORKOUT.setCompleted).nth(0)).toBeVisible({
+      timeout: 5_000,
+    });
+
+    // Open the exercise detail sheet.
+    const exerciseTap = page.locator(
+      `flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`,
+    );
+    await expect(exerciseTap).toBeVisible({ timeout: 10_000 });
+    await exerciseTap.click();
+
+    await expect(
+      page.locator(`text=${SEED_EXERCISES.benchPress}`).nth(1),
+    ).toBeVisible({ timeout: 10_000 });
+
+    // Dismiss the sheet.
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(500);
+
+    // The completed set checkbox must still be in the completed state.
+    await expect(page.locator(WORKOUT.setCompleted).nth(0)).toBeVisible({
+      timeout: 5_000,
+    });
+
+    // The weight value must still be visible.
+    await expect(page.locator('text=80')).toBeVisible({ timeout: 5_000 });
+
+    // Discard.
+    await page.locator(WORKOUT.discardButton).click();
+    const confirmDiscard = page.locator('text=Discard').last();
+    if (await confirmDiscard.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await confirmDiscard.click();
+    }
+    await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
   });
 });

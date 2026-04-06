@@ -668,6 +668,33 @@ When a routine is loaded and an exercise has been soft-deleted:
 - Manual testing on physical devices
 - Manual QA checklist verification
 
+### Step 10: UX Improvements — Exercise Detail Link, Home Stat Cards, Data Management
+
+Three UX improvements informed by PO and UI/UX review. See `IMPROVEMENTS.md` for full design specs, mockups, and file-level implementation details.
+
+**10a — Exercise Detail Bottom Sheet in Active Workout:**
+- Remove 40x40 exercise thumbnail from workout exercise cards (wastes space mid-workout)
+- Make exercise name tappable → opens exercise detail as `showModalBottomSheet` (not GoRouter push — preserves workout state)
+- Add 14dp `Icons.info_outline` next to name at 35% opacity as affordance
+- Bottom sheet shows: exercise name, muscle group, equipment, images, PRs
+- Keep existing `onLongPress` for swap
+
+**10b — Stat Cards on Home Screen:**
+- Two tappable cards below header: Workouts count → `/home/history`, Records count → `/records`
+- Numbers: 24sp w700 primary green. Labels: 12sp muted. Cards: 72dp, `cardTheme.color`, borderRadius 12
+- Uses existing `workoutCountProvider` and `prCountProvider` (server-side COUNT)
+- Keep existing "View All" links in sections (different context)
+
+**10c — Manage Data (Profile):**
+- "Manage Data" row on Profile screen → sub-screen at `/profile/manage-data`
+- Option 1: "Delete Workout History" — two-step dialog, deletes finished workouts, PRs/routines/exercises survive
+- Option 2: "Reset All Account Data" — type "RESET" to confirm (full-screen modal), deletes workouts + PRs, routines + custom exercises survive
+- No scattered trash icons on other screens — all destructive actions centralized here
+
+**Tests:**
+- Widget: stat cards (counts, loading, navigation), exercise card (info icon, tap→sheet, long-press→swap), bottom sheet (content, dismiss), manage data screen (both options, confirmations), profile (manage data row)
+- Unit: `clearHistory` repo method, `clearAllRecords` repo method, `resetAllDataProvider`, provider invalidation
+
 ---
 
 **Playwright test suite structure:**

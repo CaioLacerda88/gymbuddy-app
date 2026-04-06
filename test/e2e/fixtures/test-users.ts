@@ -65,4 +65,8 @@ export const TEST_USERS = {
     email: 'e2e-full-history@test.local',
     password: 'TestPassword123!',
   },
+  fullManageData: {
+    email: 'e2e-full-manage-data@test.local',
+    password: 'TestPassword123!',
+  },
 } as const;

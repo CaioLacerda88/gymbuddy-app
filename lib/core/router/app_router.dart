@@ -14,6 +14,7 @@ import '../../features/exercises/ui/exercise_detail_screen.dart';
 import '../../features/exercises/ui/exercise_list_screen.dart';
 import '../../features/workouts/models/active_workout_state.dart';
 import '../../features/workouts/providers/workout_providers.dart';
+import '../../features/profile/ui/manage_data_screen.dart';
 import '../../features/profile/ui/profile_screen.dart';
 import '../../features/routines/ui/create_routine_screen.dart';
 import '../../features/routines/ui/routine_list_screen.dart';
@@ -162,6 +163,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/profile',
             builder: (context, state) => const ProfileScreen(),
+            routes: [
+              GoRoute(
+                path: 'manage-data',
+                builder: (context, state) => const ManageDataScreen(),
+              ),
+            ],
           ),
         ],
       ),

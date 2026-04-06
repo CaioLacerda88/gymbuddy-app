@@ -90,7 +90,7 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
         context.pop();
       }
     } on ValidationException catch (e) {
-      setState(() => _nameError = e.message);
+      setState(() => _nameError = e.userMessage);
       _formKey.currentState?.validate();
     } finally {
       if (mounted) setState(() => _isLoading = false);

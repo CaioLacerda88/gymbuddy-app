@@ -78,7 +78,7 @@ void main() {
           isA<NetworkException>().having(
             (e) => e.message,
             'message',
-            error.toString(),
+            'An unexpected error occurred.',
           ),
         ),
       );

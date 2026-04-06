@@ -172,6 +172,16 @@ export const WORKOUT = {
   enterRepsDialog: 'text=Enter reps',
   /** Optional notes input on the active workout screen */
   notesInput: 'flt-semantics[aria-label="Workout notes"]',
+  /**
+   * Exercise name tappable area inside an exercise card during an active workout.
+   *
+   * _ExerciseCard wraps the exercise name in a Semantics with the label:
+   *   "Exercise: <name>. Tap for details. Long press to swap."
+   * We match on the "Tap for details" substring to target the tappable region
+   * regardless of exercise name.
+   */
+  exerciseDetailTap: (name: string) =>
+    `flt-semantics[aria-label*="Exercise: ${name}. Tap for details"]`,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -289,4 +299,74 @@ export const PROFILE = {
   kgOption: 'text=kg',
   /** Weight unit "lbs" option */
   lbsOption: 'text=lbs',
+  /**
+   * "Manage Data" row in the DATA MANAGEMENT section.
+   * ProfileScreen renders this as a plain Text widget — match on visible text.
+   */
+  manageData: 'text=Manage Data',
+} as const;
+
+// ---------------------------------------------------------------------------
+// Manage Data screen — ManageDataScreen
+// ---------------------------------------------------------------------------
+export const MANAGE_DATA = {
+  /** AppBar title */
+  heading: 'text=Manage Data',
+  /**
+   * "Delete Workout History" list tile.
+   * Rendered as a ListTile with title Text — match on visible text.
+   */
+  deleteHistory: 'text=Delete Workout History',
+  /**
+   * "Reset All Account Data" list tile.
+   * Rendered as a ListTile with title Text — match on visible text.
+   */
+  resetAll: 'text=Reset All Account Data',
+  /**
+   * "Delete History" button inside the first confirmation dialog.
+   * Exact match avoids collision with the tile text "Delete Workout History".
+   */
+  deleteHistoryConfirmButton: 'text="Delete History"',
+  /**
+   * "Yes, Delete" button inside the second confirmation dialog.
+   */
+  yesDeleteButton: 'text="Yes, Delete"',
+  /**
+   * TextField inside the Reset Account full-screen dialog.
+   * Flutter renders a hidden <input> when the TextField is focused; we use the
+   * hint text to identify it via role selector.
+   */
+  resetInput: 'role=textbox[name*="RESET"]',
+  /**
+   * "Reset Account" GradientButton inside the Reset Account dialog.
+   * Match on visible text.
+   */
+  resetButton: 'text=Reset Account',
+  /**
+   * Close / cancel icon button in the Reset Account full-screen dialog.
+   * The IconButton has tooltip: 'Cancel'.
+   */
+  resetCancelButton: 'flt-semantics[aria-label="Cancel"]',
+  /** SnackBar confirmation after successful history deletion */
+  historyCleared: 'text=Workout history cleared',
+  /** SnackBar confirmation after successful reset */
+  accountReset: 'text=Account data reset',
+} as const;
+
+// ---------------------------------------------------------------------------
+// Home stat cards — _StatCardsRow in HomeScreen
+// ---------------------------------------------------------------------------
+export const HOME_STATS = {
+  /**
+   * Workouts stat card — Semantics label pattern:
+   *   "$count Workouts, tap to view workouts"  (when data loaded)
+   *   "Workouts loading"                        (while loading)
+   * We match on the substring "tap to view workouts" to target the data state.
+   */
+  workoutsCard: 'flt-semantics[aria-label*="tap to view workouts"]',
+  /**
+   * Records stat card — Semantics label pattern:
+   *   "$count Records, tap to view records"
+   */
+  recordsCard: 'flt-semantics[aria-label*="tap to view records"]',
 } as const;
