@@ -10,6 +10,27 @@ Building a gym training app from scratch where users can log workouts, track per
 
 **Design for the gym floor:** Users have sweaty hands, are between sets, glancing at their phone for 10 seconds. Every interaction must respect that context.
 
+## Implementation Progress
+
+| Step | Name | Status | PR(s) |
+|------|------|--------|-------|
+| 1 | Project Setup & CI | DONE | #1 |
+| 2 | Database Schema & Seed | DONE | #2 |
+| 3 | Auth & Onboarding | DONE | #3–#5 |
+| 3b | Auth UX Polish | DONE | #6 |
+| 4 | Exercise Library | DONE | #7–#9 |
+| 4b | Exercise Images | DONE | #10 |
+| 5 | Workout Logging (5a–5d) | DONE | #11–#15 |
+| 5e | UX Polish Sprint | DONE | #16–#18 |
+| 6 | Routines | DONE | #19 |
+| 7 | Personal Records | DONE | #20 |
+| 8 | Home Polish & PR Integration | DONE | #21 |
+| 9 | E2E Testing & CI/CD | DONE | #22–#23 |
+| 9d | Final QA Pass | DONE | #24 |
+| 10 | UX Improvements & Security | DONE | #25–#26 |
+
+**Current state:** All 10 implementation steps complete. App is functional on Android with full workout logging, routines, PR tracking, exercise library, and data management. See "QA Status" section for open bugs and "Feature Gaps" for v1.1 backlog.
+
 ## Tech Stack
 
 - **Frontend:** Flutter (Android-first, iOS later), SDK `^3.11.4`
@@ -87,7 +108,9 @@ ShellRoute:
   /routines
   /routines/create
   /routines/:id/edit
+  /records
   /profile
+  /profile/manage-data
 ```
 
 ## Project Structure
@@ -132,8 +155,12 @@ lib/
     └── widgets/                # AsyncValueBuilder, error overlay, themed buttons, form inputs
 
 supabase/
-├── migrations/                 # Timestamped SQL migrations
-└── seed.sql                    # Default exercises + starter templates
+├── migrations/                 # SQL migrations (00001–00008)
+│   ├── 00001_initial_schema.sql
+│   ├── 00002–00006 (schema additions, indexes, RLS)
+│   ├── 00007_seed_default_exercises.sql
+│   └── 00008_fix_personal_records_set_id_fk.sql  # FK → ON DELETE SET NULL
+└── seed.sql                    # Default exercises + starter routines
 
 test/
 ├── unit/                       # Unit tests (repositories, models, business logic)
@@ -146,7 +173,7 @@ Makefile                        # gen, gen-watch, analyze, format, test, ci targ
 
 ## Implementation Steps
 
-### Step 1: Project Setup, Architecture Foundation & CI
+### Step 1: Project Setup, Architecture Foundation & CI (DONE)
 
 **Tech lead builds:**
 - Initialize Flutter project with `flutter create`, pin SDK `^3.11.4`
@@ -183,7 +210,7 @@ Makefile                        # gen, gen-watch, analyze, format, test, ci targ
 
 **Tests:** Unit tests for base repository error mapping, exception hierarchy
 
-### Step 2: Database Schema, Migrations & Seed Data
+### Step 2: Database Schema, Migrations & Seed Data (DONE)
 - Create Supabase project, obtain URL + anon key, store in `.env`
 - Write initial migration: `supabase/migrations/00001_initial_schema.sql`
   - All tables, enums, indexes as defined in schema above
@@ -199,7 +226,7 @@ Makefile                        # gen, gen-watch, analyze, format, test, ci targ
 
 **Tests:** Integration tests for RLS policies (user isolation, default exercise visibility)
 
-### Step 3: Authentication & Onboarding
+### Step 3: Authentication & Onboarding (DONE)
 - Configure Supabase Auth (enable Google provider, set PKCE redirect URLs; Apple deferred to iOS phase)
 - Build auth repository extending base repository
 - Auth state provider (AsyncNotifier watching `onAuthStateChange` stream)
@@ -214,7 +241,7 @@ Makefile                        # gen, gen-watch, analyze, format, test, ci targ
 - Create profile on first login (database trigger)
 - Handle auth edge cases: token refresh, expired sessions, revoked social login
 
-### Step 3b: Auth UX Polish & Email Templates
+### Step 3b: Auth UX Polish & Email Templates (DONE)
 - **Post-signup feedback**: After email signup, show a confirmation screen/state informing the user that a verification email was sent, with instructions to check their inbox and a resend option
 - **Email confirmation flow**: Detect when user returns after confirming email and transition them seamlessly into onboarding
 - **Auth error feedback**: Clear, user-friendly error messages for all auth failures (wrong password, account exists, network error, etc.)
@@ -231,7 +258,7 @@ Makefile                        # gen, gen-watch, analyze, format, test, ci targ
 - Unit: auth repository (signup, login, logout, token refresh, error mapping)
 - Widget: login screen (form validation, button states), onboarding flow (screen transitions)
 
-### Step 4: Exercise Library
+### Step 4: Exercise Library (DONE)
 
 **Database migration** (new migration file):
 - Add `idx_exercises_unique_name` unique index on `(user_id, LOWER(name), muscle_group, equipment_type) WHERE deleted_at IS NULL`
@@ -300,6 +327,7 @@ Makefile                        # gen, gen-watch, analyze, format, test, ci targ
 **Tests:** 31 tests covering ExerciseImage widget (null/empty/provided URL, fallback sizing, borderRadius), detail screen (image row, single image, collapse, semantics, fullscreen open/close, loading, error states), and model serialization with image fields.
 
 ### Step 5: Workout Logging (DONE)
+> Shipped across 4 PRs (#12–#15) in sub-steps 5a–5d.
 
 Shipped across 4 PRs (#12–#15) in sub-steps 5a–5d.
 
@@ -325,7 +353,7 @@ Shipped across 4 PRs (#12–#15) in sub-steps 5a–5d.
 
 **Deferred:** Offline queue sync worker (Hive queue exists but no background sync), wakelock during rest timer, auth expiry handling during workout, auto-focus next set after timer.
 
-### Step 5e: UX Polish Sprint (Pre-Template Hardening)
+### Step 5e: UX Polish Sprint (Pre-Template Hardening) (DONE)
 
 Added after a joint Product Owner + UI/UX Critic audit of the current app (2026-04-02). The core logging loop and onboarding flow have friction points that must be resolved before Step 6 (Templates) ships — templates amplify any existing UX problems since they become the primary onboarding payoff.
 
@@ -421,7 +449,7 @@ Added after a joint Product Owner + UI/UX Critic audit of the current app (2026-
 
 **Sequencing rationale:** This sprint hardens the foundation before Step 6 adds templates. Templates become the first onboarding payoff (page 3 "Full Body Starter") and the primary "start workout" path. If the core logging loop has friction (tiny numbers, overflow, no previous data), templates amplify it by making that friction the first experience for every new user.
 
-### Step 6: Routines
+### Step 6: Routines (DONE)
 
 Refined after joint Product Owner + UI/UX Critic + Tech Lead review (2026-04-03). Renamed from "Workout Templates" to **"Routines"** — the term gym-goers already use ("What's your routine?"). "Templates" is developer jargon; "Training Sessions" describes completed events, not reusable structures. Strong, Hevy, and JEFIT all use "Routines" — the market vocabulary is settled.
 
@@ -580,7 +608,7 @@ When a routine is loaded and an exercise has been soft-deleted:
 - Widget: Routine list screen (my routines + starters, empty state, long-press menu), Create routine screen (add exercises, set count stepper, name field, save), Home screen (routine cards, recent workouts, quick start), Start-from-routine flow (tap card → active workout pre-filled)
 - Navigation: Routines tab in bottom nav, History accessible from Home
 
-### Step 7: Personal Records
+### Step 7: Personal Records (DONE)
 
 **PR detection logic:**
 - Wired into `finishWorkout()` from Step 5. Compare each exercise's working sets against existing PRs.
@@ -626,7 +654,7 @@ When a routine is loaded and an exercise has been soft-deleted:
 - Unit: PR detection (max weight, max reps, volume), edge cases (0 weight bodyweight, 0 reps skip, first workout consolidated, 999kg, PR ties not counted, warmup sets excluded), idempotent creation, batch query
 - Widget: PR celebration (flash, banner, haptic), PR list (empty state, bodyweight display), first workout message, multi-PR summary
 
-### Step 8: Home Screen Polish & PR Integration
+### Step 8: Home Screen Polish & PR Integration (DONE)
 
 > **Note:** The home screen rebuild, bottom navigation change (Home | Exercises | Routines | Profile), and profile screen were completed in Steps 5e and 6. This step focuses on polish and PR integration that depends on Step 7.
 
@@ -645,7 +673,7 @@ When a routine is loaded and an exercise has been soft-deleted:
 **Tests:**
 - Widget: resume banner (prominence, tap to resume, disappears after finish), recent PRs section (empty state, PR cards, view all link), workout history detail (full data, PR badges)
 
-### Step 9: E2E Testing, Release Pipeline & Final QA
+### Step 9: E2E Testing, Release Pipeline & Final QA (DONE)
 
 **Decomposed into 4 sub-steps:**
 
@@ -668,32 +696,53 @@ When a routine is loaded and an exercise has been soft-deleted:
 - Manual testing on physical devices
 - Manual QA checklist verification
 
-### Step 10: UX Improvements — Exercise Detail Link, Home Stat Cards, Data Management
+### Step 10: UX Improvements — Exercise Detail, Stat Cards, Data Management (DONE)
 
-Three UX improvements informed by PO and UI/UX review. See `IMPROVEMENTS.md` for full design specs, mockups, and file-level implementation details.
+Shipped in PRs #25 and #26. Three UX improvements informed by PO and UI/UX review.
 
-**10a — Exercise Detail Bottom Sheet in Active Workout:**
-- Remove 40x40 exercise thumbnail from workout exercise cards (wastes space mid-workout)
-- Make exercise name tappable → opens exercise detail as `showModalBottomSheet` (not GoRouter push — preserves workout state)
-- Add 14dp `Icons.info_outline` next to name at 35% opacity as affordance
-- Bottom sheet shows: exercise name, muscle group, equipment, images, PRs
-- Keep existing `onLongPress` for swap
+**10a — Exercise Detail Bottom Sheet in Active Workout (PR #25):**
+- Removed 40x40 `ExerciseImage` thumbnail from exercise cards (wastes space mid-workout)
+- Exercise name tappable → `showModalBottomSheet(isScrollControlled: true)` with `DraggableScrollableSheet(initialChildSize: 0.85)`
+- 14dp `Icons.info_outline` at 35% opacity as tap affordance, 6dp gap from name
+- Bottom sheet shows: exercise name, muscle group chip, equipment chip, start/end images, PRs
+- Uses modal sheet (not GoRouter push) to preserve active workout state
+- Existing `onLongPress` swap preserved
 
-**10b — Stat Cards on Home Screen:**
-- Two tappable cards below header: Workouts count → `/home/history`, Records count → `/records`
-- Numbers: 24sp w700 primary green. Labels: 12sp muted. Cards: 72dp, `cardTheme.color`, borderRadius 12
-- Uses existing `workoutCountProvider` and `prCountProvider` (server-side COUNT)
-- Keep existing "View All" links in sections (different context)
+**10b — Stat Cards on Home Screen (PR #25):**
+- `_StatCardsRow` + `_StatCard` widgets: two 72dp tappable cards below header
+- Workouts count → `/home/history`, Records count → `/records`
+- Numbers: `headlineMedium` (24sp w700) primary green, labels: `bodySmall` at 55% opacity
+- `workoutCountProvider` and `prCountProvider` (server-side `COUNT(*)`, not paginated list length)
+- Loading state shows `--`, zero state shows `0`
+- Semantics labels for accessibility
 
-**10c — Manage Data (Profile):**
-- "Manage Data" row on Profile screen → sub-screen at `/profile/manage-data`
-- Option 1: "Delete Workout History" — two-step dialog, deletes finished workouts, PRs/routines/exercises survive
-- Option 2: "Reset All Account Data" — type "RESET" to confirm (full-screen modal), deletes workouts + PRs, routines + custom exercises survive
-- No scattered trash icons on other screens — all destructive actions centralized here
+**10c — Manage Data in Profile (PR #25):**
+- "Manage Data" row on Profile screen → `/profile/manage-data` route
+- `ManageDataScreen` with two sections and escalating confirmation severity:
+  - **Delete Workout History**: two-step dialog confirmation, deletes finished workouts only, PRs/routines/exercises survive
+  - **Reset All Account Data**: full-screen type-to-confirm modal ("RESET", case-insensitive), deletes workouts + PRs, routines + custom exercises survive
+- Sequential delete order: PRs first, then workouts (FK-safe)
+- Error handling: `AppException.userMessage` in snackbars (never raw DB errors)
+- Heavy haptic on final confirmations, destructive gradient button
 
-**Tests:**
-- Widget: stat cards (counts, loading, navigation), exercise card (info icon, tap→sheet, long-press→swap), bottom sheet (content, dismiss), manage data screen (both options, confirmations), profile (manage data row)
-- Unit: `clearHistory` repo method, `clearAllRecords` repo method, `resetAllDataProvider`, provider invalidation
+**10d — Security: Error Message Sanitization (PR #26):**
+- Added `userMessage` getter to all `AppException` subtypes (safe, user-facing text)
+- `ErrorMapper` now `debugPrint`s raw Postgres errors, returns generic safe messages to UI
+- `AsyncValueBuilder.safeErrorMessage()` checks for `AppException` and uses `userMessage`
+- E2E regression tests with `assertNoTableNamesVisible()` scanning all visible text
+
+**Database migration:**
+- `00008_fix_personal_records_set_id_fk.sql`: Changed `personal_records.set_id` FK from `ON DELETE RESTRICT` to `ON DELETE SET NULL` — enables cascade-deleting workout sets without FK violation
+
+**Files created:**
+- `lib/features/profile/ui/manage_data_screen.dart` — ManageDataScreen with `_DataManagementTile`, `_ResetAllDialog`
+- `lib/features/profile/providers/manage_data_providers.dart` — `clearWorkoutHistory()`, `resetAllAccountData()`
+- `supabase/migrations/00008_fix_personal_records_set_id_fk.sql`
+
+**Tests (61 new):**
+- Widget: stat cards (6), exercise detail sheet (8), manage data screen (15), profile manage data row
+- Unit: `clearHistory` repo (4), `clearAllRecords` repo (4), `AppException.userMessage` (4), `ErrorMapper` sanitization (6)
+- E2E: `manage-data.spec.ts` (11), `home-navigation.spec.ts` (4), `workout-logging.spec.ts` (3)
 
 ---
 
@@ -763,7 +812,9 @@ test/e2e/
 
 ## QA Status (as of 2026-04-06)
 
-> Consolidated from `BUGS_FOUND.md` and `QA_FINDINGS.md`. All Critical items and most High items resolved.
+> Consolidated from original `BUGS_FOUND.md` and `QA_FINDINGS.md` (now deleted — all content lives here).
+> Full manual QA test plan: `tasks/manual-qa-testplan.md` (89 cases, 29 automated).
+> All Critical items and most High items resolved.
 
 ### Resolved (32+ items)
 

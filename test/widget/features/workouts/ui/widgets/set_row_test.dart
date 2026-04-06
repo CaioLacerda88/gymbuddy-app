@@ -295,6 +295,180 @@ void main() {
       );
     });
 
+    group('isNew checkbox lock', () {
+      testWidgets(
+        'checkbox is non-interactive within 600ms when isNew is true',
+        (tester) async {
+          final stateJson = TestActiveWorkoutStateFactory.createWithExercises(
+            exerciseCount: 1,
+            setsPerExercise: 1,
+          );
+          final workoutState = ActiveWorkoutState.fromJson(stateJson);
+          final weId = workoutState.exercises.first.workoutExercise.id;
+          final set = workoutState.exercises.first.sets.first;
+
+          final container = makeContainer(workoutState);
+          addTearDown(container.dispose);
+          await container.read(activeWorkoutProvider.future);
+
+          await tester.pumpWidget(
+            buildTestWidget(
+              SetRow(set: set, workoutExerciseId: weId, isNew: true),
+              container: container,
+            ),
+          );
+
+          // Tap the checkbox immediately — still within the 600ms lock window.
+          await tester.tap(find.byType(Checkbox));
+          await tester.pump();
+
+          // isCompleted should NOT have changed because the lock is active.
+          final state = container.read(activeWorkoutProvider).value;
+          expect(
+            state?.exercises.first.sets.first.isCompleted,
+            set.isCompleted,
+          );
+        },
+      );
+
+      testWidgets('checkbox becomes interactive after 600ms lock expires', (
+        tester,
+      ) async {
+        final stateJson = TestActiveWorkoutStateFactory.createWithExercises(
+          exerciseCount: 1,
+          setsPerExercise: 1,
+        );
+        final workoutState = ActiveWorkoutState.fromJson(stateJson);
+        final weId = workoutState.exercises.first.workoutExercise.id;
+        final set = workoutState.exercises.first.sets.first;
+        final initialCompleted = set.isCompleted;
+
+        final container = makeContainer(workoutState);
+        addTearDown(container.dispose);
+        await container.read(activeWorkoutProvider.future);
+
+        await tester.pumpWidget(
+          buildTestWidget(
+            SetRow(set: set, workoutExerciseId: weId, isNew: true),
+            container: container,
+          ),
+        );
+
+        // Advance time past the 600ms lock duration.
+        await tester.pump(const Duration(milliseconds: 601));
+
+        // Now tap the checkbox — the lock should have expired.
+        await tester.tap(find.byType(Checkbox));
+        await tester.pump();
+
+        final state = container.read(activeWorkoutProvider).value;
+        expect(
+          state?.exercises.first.sets.first.isCompleted,
+          isNot(initialCompleted),
+        );
+      });
+
+      testWidgets(
+        'checkbox is immediately interactive when isNew is false (default)',
+        (tester) async {
+          final stateJson = TestActiveWorkoutStateFactory.createWithExercises(
+            exerciseCount: 1,
+            setsPerExercise: 1,
+          );
+          final workoutState = ActiveWorkoutState.fromJson(stateJson);
+          final weId = workoutState.exercises.first.workoutExercise.id;
+          final set = workoutState.exercises.first.sets.first;
+          final initialCompleted = set.isCompleted;
+
+          final container = makeContainer(workoutState);
+          addTearDown(container.dispose);
+          await container.read(activeWorkoutProvider.future);
+
+          await tester.pumpWidget(
+            buildTestWidget(
+              // isNew defaults to false — no lock should apply.
+              SetRow(set: set, workoutExerciseId: weId),
+              container: container,
+            ),
+          );
+
+          await tester.tap(find.byType(Checkbox));
+          await tester.pump();
+
+          final state = container.read(activeWorkoutProvider).value;
+          expect(
+            state?.exercises.first.sets.first.isCompleted,
+            isNot(initialCompleted),
+          );
+        },
+      );
+    });
+
+    group('hint line suppression', () {
+      testWidgets('hint line is hidden when set values match lastSet exactly', (
+        tester,
+      ) async {
+        // Current set has the same weight/reps as lastSet — hint is redundant.
+        final set = makeSet(weight: 80.0, reps: 8, isCompleted: false);
+        final lastSet = makeSet(id: 'last-set', weight: 80.0, reps: 8);
+
+        await tester.pumpWidget(
+          buildTestWidget(
+            SetRow(set: set, workoutExerciseId: 'we-001', lastSet: lastSet),
+          ),
+        );
+
+        expect(find.textContaining('Last:'), findsNothing);
+      });
+
+      testWidgets(
+        'hint line is shown when current weight differs from lastSet',
+        (tester) async {
+          final set = makeSet(weight: 60.0, reps: 8, isCompleted: false);
+          final lastSet = makeSet(id: 'last-set', weight: 80.0, reps: 8);
+
+          await tester.pumpWidget(
+            buildTestWidget(
+              SetRow(set: set, workoutExerciseId: 'we-001', lastSet: lastSet),
+            ),
+          );
+
+          expect(find.text('Last: 80kg × 8'), findsOneWidget);
+        },
+      );
+
+      testWidgets('hint line is shown when current reps differ from lastSet', (
+        tester,
+      ) async {
+        final set = makeSet(weight: 80.0, reps: 10, isCompleted: false);
+        final lastSet = makeSet(id: 'last-set', weight: 80.0, reps: 8);
+
+        await tester.pumpWidget(
+          buildTestWidget(
+            SetRow(set: set, workoutExerciseId: 'we-001', lastSet: lastSet),
+          ),
+        );
+
+        expect(find.text('Last: 80kg × 8'), findsOneWidget);
+      });
+
+      testWidgets(
+        'hint line is shown when both weight and reps differ from lastSet',
+        (tester) async {
+          final set = makeSet(weight: 60.0, reps: 10, isCompleted: false);
+          final lastSet = makeSet(id: 'last-set', weight: 80.0, reps: 8);
+
+          await tester.pumpWidget(
+            buildTestWidget(
+              SetRow(set: set, workoutExerciseId: 'we-001', lastSet: lastSet),
+            ),
+          );
+
+          expect(find.text('Last: 80kg × 8'), findsOneWidget);
+        },
+      );
+    });
+
     group('accessibility semantics', () {
       testWidgets('set number has correct semantics label with type info', (
         tester,

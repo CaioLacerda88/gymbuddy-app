@@ -21,6 +21,8 @@ class CreateExerciseScreen extends ConsumerStatefulWidget {
 class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _formTipsController = TextEditingController();
   MuscleGroup? _selectedMuscleGroup;
   EquipmentType? _selectedEquipmentType;
   bool _isLoading = false;
@@ -29,6 +31,8 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _descriptionController.dispose();
+    _formTipsController.dispose();
     super.dispose();
   }
 
@@ -71,6 +75,8 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
         }
         return;
       }
+      final description = _descriptionController.text.trim();
+      final formTips = _formTipsController.text.trim();
       await ref
           .read(exerciseRepositoryProvider)
           .createExercise(
@@ -78,6 +84,8 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
             muscleGroup: _selectedMuscleGroup!,
             equipmentType: _selectedEquipmentType!,
             userId: userId,
+            description: description.isEmpty ? null : description,
+            formTips: formTips.isEmpty ? null : formTips,
           );
 
       // Invalidate the exercise list to trigger a refresh.
@@ -151,6 +159,35 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
                   labelFor: (v) => v.displayName,
                   iconFor: (v) => v.icon,
                   semanticPrefix: 'Equipment type',
+                ),
+                const SizedBox(height: 24),
+                TextField(
+                  controller: _descriptionController,
+                  maxLength: 300,
+                  maxLines: 3,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: InputDecoration(
+                    labelText: 'Description',
+                    hintText: 'Brief description of the exercise (optional)',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _formTipsController,
+                  maxLength: 500,
+                  maxLines: 5,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: InputDecoration(
+                    labelText: 'Form Tips',
+                    hintText: 'Form cues, one per line (optional)',
+                    helperText: 'Enter each tip on a new line',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 32),
                 GradientButton(

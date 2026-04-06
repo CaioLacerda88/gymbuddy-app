@@ -103,5 +103,79 @@ void main() {
 
       expect(roundTripped, exercise);
     });
+
+    test('fromJson parses description and formTips when present', () {
+      final json = TestExerciseFactory.create(
+        description: 'A hip-hinge movement targeting the hamstrings.',
+        formTips: 'Keep bar close\nHinge at hips\nSqueeze glutes',
+      );
+
+      final exercise = Exercise.fromJson(json);
+
+      expect(
+        exercise.description,
+        'A hip-hinge movement targeting the hamstrings.',
+      );
+      expect(
+        exercise.formTips,
+        'Keep bar close\nHinge at hips\nSqueeze glutes',
+      );
+    });
+
+    test('fromJson sets description and formTips to null when absent', () {
+      final json = TestExerciseFactory.create();
+
+      final exercise = Exercise.fromJson(json);
+
+      expect(exercise.description, isNull);
+      expect(exercise.formTips, isNull);
+    });
+
+    test('toJson round-trip preserves description and formTips', () {
+      final json = TestExerciseFactory.create(
+        description: 'Targets chest and anterior deltoids.',
+        formTips: 'Full range of motion\nControl the descent',
+      );
+      final exercise = Exercise.fromJson(json);
+      final roundTripped = Exercise.fromJson(exercise.toJson());
+
+      expect(roundTripped.description, exercise.description);
+      expect(roundTripped.formTips, exercise.formTips);
+      expect(roundTripped, exercise);
+    });
+
+    test('toJson round-trip preserves null description and formTips', () {
+      final json = TestExerciseFactory.create();
+      final exercise = Exercise.fromJson(json);
+      final roundTripped = Exercise.fromJson(exercise.toJson());
+
+      expect(roundTripped.description, isNull);
+      expect(roundTripped.formTips, isNull);
+    });
+
+    test('fromJson parses exercise with description but no formTips', () {
+      final json = TestExerciseFactory.create(
+        description: 'A compound push movement.',
+      );
+
+      final exercise = Exercise.fromJson(json);
+
+      expect(exercise.description, 'A compound push movement.');
+      expect(exercise.formTips, isNull);
+    });
+
+    test('fromJson parses exercise with formTips but no description', () {
+      final json = TestExerciseFactory.create(
+        formTips: 'Keep elbows at 45 degrees\nDrive through heels',
+      );
+
+      final exercise = Exercise.fromJson(json);
+
+      expect(exercise.description, isNull);
+      expect(
+        exercise.formTips,
+        'Keep elbows at 45 degrees\nDrive through heels',
+      );
+    });
   });
 }

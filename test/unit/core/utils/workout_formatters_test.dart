@@ -134,6 +134,79 @@ void main() {
     });
   });
 
+  group('WorkoutFormatters.formatRelativeDate', () {
+    test('returns "Today" for the current date', () {
+      final today = DateTime.now();
+      expect(WorkoutFormatters.formatRelativeDate(today), 'Today');
+    });
+
+    test('returns "Today" for earlier the same day', () {
+      final todayMorning = DateTime(
+        DateTime.now().year,
+        DateTime.now().month,
+        DateTime.now().day,
+        6,
+        0,
+      );
+      expect(WorkoutFormatters.formatRelativeDate(todayMorning), 'Today');
+    });
+
+    test('returns "Yesterday" for exactly 1 day ago', () {
+      final yesterday = DateTime.now().subtract(const Duration(days: 1));
+      expect(WorkoutFormatters.formatRelativeDate(yesterday), 'Yesterday');
+    });
+
+    test('returns "3 days ago" for 3 days ago', () {
+      final threeDaysAgo = DateTime.now().subtract(const Duration(days: 3));
+      expect(WorkoutFormatters.formatRelativeDate(threeDaysAgo), '3 days ago');
+    });
+
+    test('returns "6 days ago" for 6 days ago (boundary before 1 week)', () {
+      final sixDaysAgo = DateTime.now().subtract(const Duration(days: 6));
+      expect(WorkoutFormatters.formatRelativeDate(sixDaysAgo), '6 days ago');
+    });
+
+    test('returns "1w ago" for exactly 7 days ago', () {
+      final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
+      expect(WorkoutFormatters.formatRelativeDate(sevenDaysAgo), '1w ago');
+    });
+
+    test('returns "1w ago" for 13 days ago (upper boundary of first week)', () {
+      final thirteenDaysAgo = DateTime.now().subtract(const Duration(days: 13));
+      expect(WorkoutFormatters.formatRelativeDate(thirteenDaysAgo), '1w ago');
+    });
+
+    test('returns "2w ago" for exactly 14 days ago', () {
+      final fourteenDaysAgo = DateTime.now().subtract(const Duration(days: 14));
+      expect(WorkoutFormatters.formatRelativeDate(fourteenDaysAgo), '2w ago');
+    });
+
+    test('returns "4w ago" for 28 days ago (boundary before 1 month)', () {
+      final twentyEightDaysAgo = DateTime.now().subtract(
+        const Duration(days: 28),
+      );
+      expect(
+        WorkoutFormatters.formatRelativeDate(twentyEightDaysAgo),
+        '4w ago',
+      );
+    });
+
+    test('returns "1mo ago" for exactly 30 days ago', () {
+      final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
+      expect(WorkoutFormatters.formatRelativeDate(thirtyDaysAgo), '1mo ago');
+    });
+
+    test('returns "2mo ago" for 60 days ago', () {
+      final sixtyDaysAgo = DateTime.now().subtract(const Duration(days: 60));
+      expect(WorkoutFormatters.formatRelativeDate(sixtyDaysAgo), '2mo ago');
+    });
+
+    test('returns "12mo ago" for 365 days ago', () {
+      final oneYearAgo = DateTime.now().subtract(const Duration(days: 365));
+      expect(WorkoutFormatters.formatRelativeDate(oneYearAgo), '12mo ago');
+    });
+  });
+
   group('WorkoutFormatters.calculateVolume', () {
     test('returns 0 for empty list', () {
       expect(WorkoutFormatters.calculateVolume([]), 0.0);

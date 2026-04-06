@@ -29,6 +29,18 @@ final _testExercise = Exercise(
   createdAt: DateTime(2026),
 );
 
+final _testExerciseWithDetails = Exercise(
+  id: 'exercise-001',
+  name: 'Bench Press',
+  muscleGroup: MuscleGroup.chest,
+  equipmentType: EquipmentType.barbell,
+  isDefault: true,
+  description: 'A compound chest exercise performed lying on a flat bench.',
+  formTips:
+      'Arch the back slightly\nKeep feet flat on the floor\nControl the descent',
+  createdAt: DateTime(2026),
+);
+
 final _testWorkout = Workout(
   id: 'workout-001',
   userId: 'user-001',
@@ -38,7 +50,7 @@ final _testWorkout = Workout(
   createdAt: DateTime.now().toUtc(),
 );
 
-ActiveWorkoutState _makeState() => ActiveWorkoutState(
+ActiveWorkoutState _makeState({Exercise? exercise}) => ActiveWorkoutState(
   workout: _testWorkout,
   exercises: [
     ActiveWorkoutExercise(
@@ -47,7 +59,7 @@ ActiveWorkoutState _makeState() => ActiveWorkoutState(
         workoutId: 'workout-001',
         exerciseId: 'exercise-001',
         order: 1,
-        exercise: _testExercise,
+        exercise: exercise ?? _testExercise,
       ),
       sets: [
         ExerciseSet(
@@ -71,8 +83,11 @@ ActiveWorkoutState _makeState() => ActiveWorkoutState(
 
 class _TestActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?>
     implements ActiveWorkoutNotifier {
+  _TestActiveWorkoutNotifier({this.exercise});
+  final Exercise? exercise;
+
   @override
-  Future<ActiveWorkoutState?> build() async => _makeState();
+  Future<ActiveWorkoutState?> build() async => _makeState(exercise: exercise);
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -101,10 +116,12 @@ class _MockProfileNotifier extends AsyncNotifier<Profile?>
 // Helpers
 // ---------------------------------------------------------------------------
 
-Widget buildTestWidget({List<PersonalRecord>? prs}) {
+Widget buildTestWidget({List<PersonalRecord>? prs, Exercise? exercise}) {
   return ProviderScope(
     overrides: [
-      activeWorkoutProvider.overrideWith(() => _TestActiveWorkoutNotifier()),
+      activeWorkoutProvider.overrideWith(
+        () => _TestActiveWorkoutNotifier(exercise: exercise),
+      ),
       restTimerProvider.overrideWith(() => _NullRestTimerNotifier()),
       profileProvider.overrideWith(() => _MockProfileNotifier()),
       exercisePRsProvider.overrideWith(
@@ -221,6 +238,57 @@ void main() {
       // There should be no ExerciseImage within the card header.
       // The info_outline icon should be the visual indicator instead.
       expect(find.byIcon(Icons.info_outline), findsOneWidget);
+    });
+  });
+
+  group('Bottom sheet description and form tips', () {
+    testWidgets('shows ABOUT section when exercise has description', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        buildTestWidget(exercise: _testExerciseWithDetails),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(find.text('Bench Press').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('ABOUT'), findsOneWidget);
+      expect(find.textContaining('compound chest exercise'), findsOneWidget);
+    });
+
+    testWidgets('shows FORM TIPS section when exercise has formTips', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        buildTestWidget(exercise: _testExerciseWithDetails),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(find.text('Bench Press').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('FORM TIPS'), findsOneWidget);
+      expect(find.byIcon(Icons.check_circle_outline), findsNWidgets(3));
+      expect(find.text('Arch the back slightly'), findsOneWidget);
+      expect(find.text('Keep feet flat on the floor'), findsOneWidget);
+      expect(find.text('Control the descent'), findsOneWidget);
+    });
+
+    testWidgets('omits ABOUT and FORM TIPS when exercise has neither', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(find.text('Bench Press').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('ABOUT'), findsNothing);
+      expect(find.text('FORM TIPS'), findsNothing);
     });
   });
 }

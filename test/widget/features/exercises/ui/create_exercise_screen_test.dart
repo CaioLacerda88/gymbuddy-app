@@ -44,6 +44,11 @@ void main() {
     });
 
     testWidgets('validates empty name', (tester) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
       await tester.pumpWidget(buildTestWidget());
 
       // Select muscle group and equipment to bypass that validation
@@ -60,6 +65,11 @@ void main() {
     });
 
     testWidgets('validates short name', (tester) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
       await tester.pumpWidget(buildTestWidget());
 
       // Select muscle group and equipment
@@ -70,6 +80,7 @@ void main() {
 
       // Enter short name
       await tester.enterText(find.byType(TextFormField), 'A');
+
       await tester.tap(find.text('CREATE EXERCISE'));
       await tester.pump();
 
@@ -117,10 +128,16 @@ void main() {
     testWidgets('shows snackbar when submitting without selections', (
       tester,
     ) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
       await tester.pumpWidget(buildTestWidget());
 
       // Enter a valid name but don't select muscle group or equipment
       await tester.enterText(find.byType(TextFormField), 'My Exercise');
+
       await tester.tap(find.text('CREATE EXERCISE'));
       await tester.pump();
 

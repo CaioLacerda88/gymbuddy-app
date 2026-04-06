@@ -9,7 +9,9 @@ import 'package:gymbuddy_app/features/exercises/data/exercise_repository.dart';
 import 'package:gymbuddy_app/features/exercises/models/exercise.dart';
 import 'package:gymbuddy_app/features/exercises/providers/exercise_providers.dart';
 import 'package:gymbuddy_app/features/exercises/ui/exercise_detail_screen.dart';
+import 'package:gymbuddy_app/features/personal_records/providers/pr_providers.dart';
 import 'package:gymbuddy_app/shared/widgets/exercise_image.dart';
+import 'package:gymbuddy_app/shared/widgets/exercise_info_sections.dart';
 import 'package:mocktail/mocktail.dart';
 
 import '../../../../fixtures/test_factories.dart';
@@ -25,7 +27,11 @@ void main() {
 
   Widget buildTestWidget({required String exerciseId}) {
     return ProviderScope(
-      overrides: [exerciseRepositoryProvider.overrideWithValue(mockRepo)],
+      overrides: [
+        exerciseRepositoryProvider.overrideWithValue(mockRepo),
+        // Prevent PR section from touching real Supabase.
+        exercisePRsProvider.overrideWith((ref, _) => Future.value([])),
+      ],
       child: MaterialApp(
         theme: AppTheme.dark,
         home: ExerciseDetailScreen(exerciseId: exerciseId),
@@ -269,5 +275,116 @@ void main() {
       expect(urls, contains('https://cdn.example.com/chest/bench-start.jpg'));
       expect(urls, contains('https://cdn.example.com/chest/bench-end.jpg'));
     });
+  });
+
+  group('ExerciseDetailScreen description and form tips sections', () {
+    testWidgets('renders ABOUT section when exercise has a description', (
+      tester,
+    ) async {
+      final exercise = Exercise.fromJson(
+        TestExerciseFactory.create(
+          description: 'A compound push movement targeting the chest.',
+        ),
+      );
+      when(
+        () => mockRepo.getExerciseById('exercise-001'),
+      ).thenAnswer((_) async => exercise);
+
+      await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
+      await pumpAndResolve(tester);
+
+      expect(find.text('ABOUT'), findsOneWidget);
+      expect(
+        find.text('A compound push movement targeting the chest.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('omits ABOUT section when description is null', (tester) async {
+      final exercise = Exercise.fromJson(TestExerciseFactory.create());
+      when(
+        () => mockRepo.getExerciseById('exercise-001'),
+      ).thenAnswer((_) async => exercise);
+
+      await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
+      await pumpAndResolve(tester);
+
+      expect(find.text('ABOUT'), findsNothing);
+    });
+
+    testWidgets('renders FORM TIPS section when exercise has formTips', (
+      tester,
+    ) async {
+      final exercise = Exercise.fromJson(
+        TestExerciseFactory.create(
+          formTips: 'Keep elbows at 45 degrees\nDrive through heels',
+        ),
+      );
+      when(
+        () => mockRepo.getExerciseById('exercise-001'),
+      ).thenAnswer((_) async => exercise);
+
+      await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
+      await pumpAndResolve(tester);
+
+      expect(find.text('FORM TIPS'), findsOneWidget);
+      expect(find.text('Keep elbows at 45 degrees'), findsOneWidget);
+      expect(find.text('Drive through heels'), findsOneWidget);
+    });
+
+    testWidgets('omits FORM TIPS section when formTips is null', (
+      tester,
+    ) async {
+      final exercise = Exercise.fromJson(TestExerciseFactory.create());
+      when(
+        () => mockRepo.getExerciseById('exercise-001'),
+      ).thenAnswer((_) async => exercise);
+
+      await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
+      await pumpAndResolve(tester);
+
+      expect(find.text('FORM TIPS'), findsNothing);
+    });
+
+    testWidgets(
+      'renders both ABOUT and FORM TIPS when both fields are present',
+      (tester) async {
+        final exercise = Exercise.fromJson(
+          TestExerciseFactory.create(
+            description: 'Targets hamstrings and glutes.',
+            formTips: 'Hinge at hips\nKeep back flat',
+          ),
+        );
+        when(
+          () => mockRepo.getExerciseById('exercise-001'),
+        ).thenAnswer((_) async => exercise);
+
+        await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
+        await pumpAndResolve(tester);
+
+        expect(find.text('ABOUT'), findsOneWidget);
+        expect(find.text('FORM TIPS'), findsOneWidget);
+        expect(find.byType(ExerciseDescriptionSection), findsOneWidget);
+        expect(find.byType(ExerciseFormTipsSection), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'renders description but omits FORM TIPS when only description is set',
+      (tester) async {
+        final exercise = Exercise.fromJson(
+          TestExerciseFactory.create(description: 'Only description, no tips.'),
+        );
+        when(
+          () => mockRepo.getExerciseById('exercise-001'),
+        ).thenAnswer((_) async => exercise);
+
+        await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
+        await pumpAndResolve(tester);
+
+        expect(find.text('ABOUT'), findsOneWidget);
+        expect(find.text('FORM TIPS'), findsNothing);
+      },
+    );
   });
 }

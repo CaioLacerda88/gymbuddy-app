@@ -13,6 +13,8 @@ class TestExerciseFactory {
     String? userId,
     String? deletedAt,
     String? createdAt,
+    String? description,
+    String? formTips,
   }) {
     return {
       'id': id ?? 'exercise-001',
@@ -25,6 +27,8 @@ class TestExerciseFactory {
       'user_id': userId,
       'deleted_at': deletedAt,
       'created_at': createdAt ?? '2026-01-01T00:00:00Z',
+      'description': description,
+      'form_tips': formTips,
     };
   }
 }

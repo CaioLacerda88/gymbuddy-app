@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,12 +15,13 @@ import '../../providers/notifiers/active_workout_notifier.dart';
 ///
 /// Shows set number, type badge, weight/reps steppers, RPE indicator,
 /// and a completion checkbox. Wrapped in [Dismissible] for swipe-to-delete.
-class SetRow extends ConsumerWidget {
+class SetRow extends ConsumerStatefulWidget {
   const SetRow({
     required this.set,
     required this.workoutExerciseId,
     this.onCompleted,
     this.lastSet,
+    this.isNew = false,
     super.key,
   });
 
@@ -30,6 +33,18 @@ class SetRow extends ConsumerWidget {
 
   /// The matching set from the previous workout session, used to show a hint.
   final ExerciseSet? lastSet;
+
+  /// Whether this set was just added. When true, the completion checkbox
+  /// is locked for 600ms to prevent accidental taps from thumb drift.
+  final bool isNew;
+
+  @override
+  ConsumerState<SetRow> createState() => _SetRowState();
+}
+
+class _SetRowState extends ConsumerState<SetRow> {
+  bool _locked = false;
+  Timer? _lockTimer;
 
   static String _formatWeight(double value) {
     return value == value.roundToDouble()
@@ -44,34 +59,78 @@ class SetRow extends ConsumerWidget {
     SetType.failure: 'F',
   };
 
-  void _cycleSetType(WidgetRef ref) {
-    const types = SetType.values;
-    final nextIndex = (types.indexOf(set.setType) + 1) % types.length;
-    ref
-        .read(activeWorkoutProvider.notifier)
-        .updateSet(workoutExerciseId, set.id, setType: types[nextIndex]);
-  }
-
-  void _copyLastSet(WidgetRef ref) {
-    ref
-        .read(activeWorkoutProvider.notifier)
-        .copyLastSet(workoutExerciseId, set.id);
-  }
-
-  void _onComplete(WidgetRef ref) {
-    final wasCompleted = set.isCompleted;
-    ref
-        .read(activeWorkoutProvider.notifier)
-        .completeSet(workoutExerciseId, set.id);
-    if (!wasCompleted) {
-      HapticFeedback.mediumImpact();
-      onCompleted?.call();
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isNew) {
+      _locked = true;
+      _lockTimer = Timer(const Duration(milliseconds: 600), () {
+        if (mounted) setState(() => _locked = false);
+      });
     }
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void dispose() {
+    _lockTimer?.cancel();
+    super.dispose();
+  }
+
+  void _cycleSetType() {
+    const types = SetType.values;
+    final nextIndex = (types.indexOf(widget.set.setType) + 1) % types.length;
+    ref
+        .read(activeWorkoutProvider.notifier)
+        .updateSet(
+          widget.workoutExerciseId,
+          widget.set.id,
+          setType: types[nextIndex],
+        );
+  }
+
+  void _copyLastSet() {
+    ref
+        .read(activeWorkoutProvider.notifier)
+        .copyLastSet(widget.workoutExerciseId, widget.set.id);
+  }
+
+  void _onComplete() {
+    if (_locked) return;
+    final wasCompleted = widget.set.isCompleted;
+    ref
+        .read(activeWorkoutProvider.notifier)
+        .completeSet(widget.workoutExerciseId, widget.set.id);
+    if (!wasCompleted) {
+      HapticFeedback.mediumImpact();
+      widget.onCompleted?.call();
+    }
+  }
+
+  /// Whether the hint line should be shown.
+  ///
+  /// Suppress the hint when pre-filled values match the last session exactly
+  /// and the set is not yet completed (the hint is redundant in that case).
+  bool _shouldShowHint() {
+    final lastSet = widget.lastSet;
+    if (lastSet == null) return false;
+    if (widget.set.isCompleted) return false;
+
+    final currentWeight = widget.set.weight ?? 0;
+    final currentReps = widget.set.reps ?? 0;
+    final lastWeight = lastSet.weight ?? 0;
+    final lastReps = lastSet.reps ?? 0;
+
+    // Hide hint when values match exactly.
+    if (currentWeight == lastWeight.toDouble() && currentReps == lastReps) {
+      return false;
+    }
+    return true;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final set = widget.set;
     final weightUnit =
         ref.watch(profileProvider).valueOrNull?.weightUnit ?? 'kg';
     final notifier = ref.read(activeWorkoutProvider.notifier);
@@ -84,7 +143,7 @@ class SetRow extends ConsumerWidget {
         HapticFeedback.lightImpact();
         // Save the set data before deleting so we can restore on undo.
         final deletedSet = set;
-        notifier.deleteSet(workoutExerciseId, set.id);
+        notifier.deleteSet(widget.workoutExerciseId, set.id);
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(
@@ -94,7 +153,7 @@ class SetRow extends ConsumerWidget {
               action: SnackBarAction(
                 label: 'Undo',
                 onPressed: () {
-                  notifier.restoreSet(workoutExerciseId, deletedSet);
+                  notifier.restoreSet(widget.workoutExerciseId, deletedSet);
                 },
               ),
             ),
@@ -104,11 +163,11 @@ class SetRow extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (lastSet != null && !set.isCompleted)
+          if (_shouldShowHint())
             Padding(
               padding: const EdgeInsets.only(left: 48, bottom: 4),
               child: Text(
-                'Last: ${_formatWeight((lastSet!.weight ?? 0).toDouble())}$weightUnit × ${lastSet!.reps ?? 0}',
+                'Last: ${_formatWeight((widget.lastSet!.weight ?? 0).toDouble())}$weightUnit × ${widget.lastSet!.reps ?? 0}',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
                 ),
@@ -132,8 +191,8 @@ class SetRow extends ConsumerWidget {
                         : 'Hold: change type',
                     preferBelow: true,
                     child: InkWell(
-                      onTap: set.setNumber > 1 ? () => _copyLastSet(ref) : null,
-                      onLongPress: () => _cycleSetType(ref),
+                      onTap: set.setNumber > 1 ? _copyLastSet : null,
+                      onLongPress: _cycleSetType,
                       borderRadius: BorderRadius.circular(8),
                       child: Container(
                         constraints: const BoxConstraints(
@@ -203,7 +262,7 @@ class SetRow extends ConsumerWidget {
                           value: set.weight ?? 0,
                           unit: weightUnit,
                           onChanged: (v) => notifier.updateSet(
-                            workoutExerciseId,
+                            widget.workoutExerciseId,
                             set.id,
                             weight: v,
                           ),
@@ -226,8 +285,11 @@ class SetRow extends ConsumerWidget {
                   flex: 2,
                   child: RepsStepper(
                     value: set.reps ?? 0,
-                    onChanged: (v) =>
-                        notifier.updateSet(workoutExerciseId, set.id, reps: v),
+                    onChanged: (v) => notifier.updateSet(
+                      widget.workoutExerciseId,
+                      set.id,
+                      reps: v,
+                    ),
                   ),
                 ),
 
@@ -239,7 +301,7 @@ class SetRow extends ConsumerWidget {
                     height: 48,
                     child: Checkbox(
                       value: set.isCompleted,
-                      onChanged: (_) => _onComplete(ref),
+                      onChanged: (_) => _onComplete(),
                       activeColor: theme.colorScheme.primary,
                     ),
                   ),
