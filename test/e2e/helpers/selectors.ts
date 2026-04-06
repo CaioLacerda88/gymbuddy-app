@@ -185,8 +185,8 @@ export const EXERCISE_PICKER = {
 // Home screen
 // ---------------------------------------------------------------------------
 export const HOME = {
-  /** "RECENT" section heading on the home screen */
-  recentSection: 'text=RECENT',
+  /** "RECENT" section heading on the home screen — exact match avoids "RECENT RECORDS" collision */
+  recentSection: 'text="RECENT"',
   /** "View All" link to the full workout history */
   viewAllHistory: 'text=View All',
 } as const;

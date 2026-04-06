@@ -166,13 +166,18 @@ test.describe('Workout smoke', () => {
     await completeSet(page, 0);
     await finishWorkout(page);
 
-    // Dismiss PR / celebration screen if shown.
+    // Dismiss PR / celebration screen if shown (first workout or NEW PR).
     const isCelebration = await page
       .locator('text=First Workout Complete!')
       .isVisible({ timeout: 10_000 })
       .catch(() => false);
 
-    if (isCelebration) {
+    const isNewPR = await page
+      .locator('text=NEW PR')
+      .isVisible({ timeout: 5_000 })
+      .catch(() => false);
+
+    if (isCelebration || isNewPR) {
       await page.click('text=Continue');
     }
 
