@@ -38,7 +38,7 @@ export async function waitForAppReady(page: Page): Promise<void> {
     }
   });
   page.on('pageerror', (err) => {
-    consoleErrors.push(`[page error] ${err.message}`);
+    consoleErrors.push(`[page error] ${String(err)}`);
   });
 
   // 1. Wait for Flutter to render and show the accessibility placeholder.

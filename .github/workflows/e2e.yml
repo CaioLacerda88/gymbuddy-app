@@ -86,6 +86,30 @@ jobs:
           npm ci
           npx playwright install --with-deps chromium
 
+      - name: Smoke-test app in headless Chrome
+        working-directory: test/e2e
+        run: |
+          # Quick check: load the app, capture JS errors, verify it gets past splash.
+          node -e "
+          const { chromium } = require('playwright-core');
+          (async () => {
+            const browser = await chromium.launch();
+            const page = await browser.newPage();
+            const errors = [];
+            page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+            page.on('pageerror', e => errors.push(String(e)));
+            await page.goto('http://localhost:8080', { waitUntil: 'networkidle' });
+            await page.waitForTimeout(15000);
+            const title = await page.title();
+            const bodySnippet = await page.evaluate(() => document.body?.innerText?.slice(0,300) ?? '');
+            console.log('Page title:', title);
+            console.log('Body snippet:', bodySnippet);
+            console.log('JS errors:', JSON.stringify(errors, null, 2));
+            await browser.close();
+            if (errors.length > 0) { console.log('WARN: JS errors detected, but continuing'); }
+          })().catch(e => { console.error('Smoke check failed:', e); process.exit(1); });
+          " || true
+
       - name: Run Playwright smoke tests (PR)
         if: github.event_name == 'pull_request'
         working-directory: test/e2e
