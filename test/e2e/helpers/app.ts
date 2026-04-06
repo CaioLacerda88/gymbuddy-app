@@ -135,10 +135,16 @@ export async function navigateToTab(
  * Fill a Flutter text field via CanvasKit semantics.
  *
  * Flutter CanvasKit renders to <canvas> — the flt-semantics elements are
- * accessibility overlays (divs), not real <input> elements. When a
- * TextField has focus, Flutter injects a hidden native <input> into the
- * DOM for keyboard/clipboard interop. We click the semantics node to
- * trigger focus, then target that native <input> with Playwright's fill().
+ * accessibility overlays (divs), not real <input> elements. Flutter uses a
+ * single shared native <input> proxy for text editing. When focus moves
+ * between TextFields, values set via Playwright's fill() on this proxy are
+ * lost because Flutter doesn't commit the value back to its internal
+ * TextEditingController on the focus transition.
+ *
+ * Instead we click the semantics node to focus the TextField, then use
+ * page.keyboard to send real key events at the window level. Flutter
+ * captures these and routes them to the focused text field, bypassing the
+ * native input proxy entirely.
  */
 export async function flutterFill(
   page: Page,
@@ -148,9 +154,17 @@ export async function flutterFill(
   // Click the semantics element to focus the Flutter TextField.
   await page.click(selector);
 
-  // Flutter injects a hidden native <input> when a TextField is focused.
-  // Wait for it to appear, then fill it directly.
+  // Wait for Flutter's native <input> proxy to appear — this confirms the
+  // text editing connection is established and the field is ready for input.
   const input = page.locator('input').last();
   await input.waitFor({ state: 'attached', timeout: 5_000 });
-  await input.fill(value);
+  await page.waitForTimeout(200);
+
+  // Select all existing content (if any) so typing replaces it.
+  await page.keyboard.press('Control+a');
+
+  // Type the value using real key events — the browser routes these to the
+  // focused native <input>, which fires real input events that Flutter
+  // processes correctly (unlike fill() which uses synthetic events).
+  await page.keyboard.type(value, { delay: 10 });
 }
