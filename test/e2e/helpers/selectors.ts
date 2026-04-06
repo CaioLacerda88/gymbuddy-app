@@ -1,9 +1,8 @@
 /**
- * Centralized selectors for GymBuddy Flutter web (HTML renderer).
+ * Centralized selectors for GymBuddy Flutter web.
  *
- * Flutter web with --web-renderer html renders real DOM elements, so standard
- * Playwright selectors work. Flutter also emits ARIA attributes from Semantics
- * widgets, which we use where available.
+ * Flutter web emits flt-semantics elements with ARIA attributes from Semantics
+ * widgets. Standard Playwright selectors target these accessibility nodes.
  *
  * Where Semantics labels exist in the Dart code they are noted below.
  * Where no Semantics label was added, we fall back to visible text content.

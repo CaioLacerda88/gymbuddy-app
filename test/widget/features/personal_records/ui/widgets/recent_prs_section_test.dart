@@ -256,7 +256,9 @@ void main() {
     });
 
     testWidgets('shows Yesterday for PR achieved one day ago', (tester) async {
-      final yesterday = DateTime.now().toUtc().subtract(const Duration(days: 1));
+      final yesterday = DateTime.now().toUtc().subtract(
+        const Duration(days: 1),
+      );
       await tester.pumpWidget(
         buildTestWidget(
           overrides: [

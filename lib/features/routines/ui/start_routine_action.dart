@@ -4,16 +4,42 @@ import 'package:go_router/go_router.dart';
 
 import '../../workouts/models/routine_start_config.dart';
 import '../../workouts/providers/workout_providers.dart';
+import '../../workouts/ui/widgets/resume_workout_dialog.dart';
 import '../models/routine.dart';
 
 /// Builds a [RoutineStartConfig] from a routine and starts an active workout.
 ///
 /// Filters out exercises that are missing or soft-deleted.
+/// If an active workout already exists, prompts the user to resume or discard
+/// before starting the routine.
 Future<void> startRoutineWorkout(
   BuildContext context,
   WidgetRef ref,
   Routine routine,
 ) async {
+  // Guard: check for an active workout before overwriting.
+  final existingWorkout = ref.read(activeWorkoutProvider).valueOrNull;
+  if (existingWorkout != null) {
+    final result = await ResumeWorkoutDialog.show(
+      context,
+      workoutName: existingWorkout.workout.name,
+    );
+    if (!context.mounted) return;
+    if (result == ResumeWorkoutResult.resume) {
+      context.go('/workout/active');
+      return;
+    }
+    if (result == ResumeWorkoutResult.discard) {
+      try {
+        await ref.read(activeWorkoutProvider.notifier).discardWorkout();
+      } catch (_) {
+        return; // discard failed — don't start a new workout
+      }
+    } else {
+      return; // dismissed
+    }
+  }
+
   final exercises = routine.exercises
       .where((re) => re.exercise != null && re.exercise!.deletedAt == null)
       .map(

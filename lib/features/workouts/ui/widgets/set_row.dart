@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../shared/widgets/reps_stepper.dart';
 import '../../../../shared/widgets/weight_stepper.dart';
+import '../../../profile/providers/profile_providers.dart';
 import '../../models/exercise_set.dart';
 import '../../models/set_type.dart';
 import '../../providers/notifiers/active_workout_notifier.dart';
@@ -71,6 +72,8 @@ class SetRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final weightUnit =
+        ref.watch(profileProvider).valueOrNull?.weightUnit ?? 'kg';
     final notifier = ref.read(activeWorkoutProvider.notifier);
 
     return Dismissible(
@@ -79,13 +82,23 @@ class SetRow extends ConsumerWidget {
       background: _DismissBackground(theme: theme),
       onDismissed: (_) {
         HapticFeedback.lightImpact();
+        // Save the set data before deleting so we can restore on undo.
+        final deletedSet = set;
         notifier.deleteSet(workoutExerciseId, set.id);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Set ${set.setNumber} deleted'),
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text('Set ${deletedSet.setNumber} deleted'),
+              duration: const Duration(seconds: 4),
+              action: SnackBarAction(
+                label: 'Undo',
+                onPressed: () {
+                  notifier.restoreSet(workoutExerciseId, deletedSet);
+                },
+              ),
+            ),
+          );
       },
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -95,7 +108,7 @@ class SetRow extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.only(left: 48, bottom: 4),
               child: Text(
-                'Last: ${_formatWeight((lastSet!.weight ?? 0).toDouble())}kg × ${lastSet!.reps ?? 0}',
+                'Last: ${_formatWeight((lastSet!.weight ?? 0).toDouble())}$weightUnit × ${lastSet!.reps ?? 0}',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
                 ),
@@ -163,13 +176,14 @@ class SetRow extends ConsumerWidget {
                   ),
                 ),
 
-                // Weight stepper + "kg" label
+                // Weight stepper + unit label
                 Expanded(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       WeightStepper(
                         value: set.weight ?? 0,
+                        unit: weightUnit,
                         onChanged: (v) => notifier.updateSet(
                           workoutExerciseId,
                           set.id,
@@ -177,7 +191,7 @@ class SetRow extends ConsumerWidget {
                         ),
                       ),
                       Text(
-                        'kg',
+                        weightUnit,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurface.withValues(
                             alpha: 0.6,

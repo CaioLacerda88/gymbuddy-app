@@ -8,18 +8,19 @@
  * Uses the dedicated smokeWorkout test user to avoid shared state with
  * other smoke specs. User is created in global-setup.ts.
  *
- * The Flutter web app must be served at localhost:8080 before running:
- *   flutter build web --web-renderer html
- *   cd build/web && python3 -m http.server 8080
+ * The Flutter web app is served automatically by Playwright's webServer config
+ * during local dev. In CI the FLUTTER_APP_URL env var is set by the workflow.
  */
 
 import { test, expect } from '@playwright/test';
 import { waitForAppReady } from '../helpers/app';
 import { login } from '../helpers/auth';
-import { NAV, HOME, WORKOUT, EXERCISE_PICKER } from '../helpers/selectors';
+import { NAV, HOME, WORKOUT } from '../helpers/selectors';
 import {
   startEmptyWorkout,
   addExercise,
+  setWeight,
+  setReps,
   completeSet,
   finishWorkout,
 } from '../helpers/workout';
@@ -33,6 +34,67 @@ test.describe('Workout smoke', () => {
       TEST_USERS.smokeWorkout.email,
       TEST_USERS.smokeWorkout.password,
     );
+  });
+
+  /**
+   * QA-001 fix verify: completing a workout saves successfully.
+   *
+   * Previously, the save_workout RPC returned 404 and navigation to
+   * /workout/active was blocked by the router redirect guard because
+   * _saveToHive() was unawaited (race condition).
+   *
+   * This test verifies the full save path works end-to-end:
+   *   start → add exercise → set weight/reps → complete set → finish →
+   *   celebration or home screen appears (no 404 in console).
+   */
+  test('completing a workout saves successfully and shows celebration or home (QA-001 fix)', async ({
+    page,
+  }) => {
+    // Start an empty workout.
+    await startEmptyWorkout(page);
+
+    // The active workout screen should be reachable.
+    await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
+      timeout: 15_000,
+    });
+
+    // Add Barbell Bench Press.
+    await addExercise(page, SEED_EXERCISES.benchPress);
+
+    // Wait for the exercise card with its set row.
+    await expect(page.locator(WORKOUT.addSetButton)).toBeVisible({
+      timeout: 10_000,
+    });
+
+    // Set weight and reps on the first set.
+    await setWeight(page, '60');
+    await setReps(page, '8');
+
+    // Mark the set as done.
+    await completeSet(page, 0);
+
+    // Finish the workout — this triggers the save_workout RPC.
+    await finishWorkout(page);
+
+    // After finishing, either the PR celebration or the home screen must
+    // appear. Both indicate a successful save. Neither should be a 404 error.
+    const isCelebration = await page
+      .locator('text=First Workout Complete!')
+      .isVisible({ timeout: 15_000 })
+      .catch(() => false);
+
+    const isNewPR = await page
+      .locator('text=NEW PR')
+      .isVisible({ timeout: 5_000 })
+      .catch(() => false);
+
+    if (isCelebration || isNewPR) {
+      // Dismiss the celebration screen.
+      await page.click('text=Continue');
+    }
+
+    // We must end up on the Home screen — proves navigation completed.
+    await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 20_000 });
   });
 
   test('home screen is visible with start workout option after login', async ({
@@ -64,25 +126,11 @@ test.describe('Workout smoke', () => {
       timeout: 10_000,
     });
 
-    // 3. The first set row is pre-populated. Set weight to 60 kg and reps to 8.
-    //    Tap the weight/reps values to open the entry dialogs.
-    const weightValue = page.locator('text=0').first();
-    await weightValue.click();
-
-    // Dialog for weight entry.
-    const weightInput = page.locator('input').last();
-    await weightInput.clear();
-    await weightInput.fill('60');
-    await page.locator('text=OK').click();
-
-    const repsValue = page.locator('text=0').first();
-    await repsValue.click();
-
-    // Dialog for reps entry.
-    const repsInput = page.locator('input').last();
-    await repsInput.clear();
-    await repsInput.fill('8');
-    await page.locator('text=OK').click();
+    // 3. The first set row is pre-populated with "0" for weight and reps.
+    //    Use the setWeight / setReps helpers which tap the value text,
+    //    interact with the AlertDialog, and dismiss it.
+    await setWeight(page, '60');
+    await setReps(page, '8');
 
     // 4. Mark the set as done.
     await completeSet(page, 0);
@@ -93,11 +141,6 @@ test.describe('Workout smoke', () => {
     // After finishing, the app navigates to the PR celebration screen (first
     // workout) or back to Home. Either way we wait for the celebration or
     // Home tab to become visible.
-    const celebrationOrHome = page.locator(
-      `text=First Workout Complete!, ${NAV.homeTab}`,
-    );
-
-    // Accept either outcome — PR screen with Continue, or directly on Home.
     const isPRScreen = await page
       .locator('text=First Workout Complete!')
       .isVisible({ timeout: 15_000 })

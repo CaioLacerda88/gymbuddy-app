@@ -81,12 +81,26 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/workout/active',
+        redirect: (context, state) {
+          // Check in-memory state first (set immediately by startWorkout),
+          // then fall back to Hive (persisted across restarts).
+          final inMemory = ref.read(activeWorkoutProvider).valueOrNull;
+          final inHive = ref.read(hasActiveWorkoutProvider);
+          if (inMemory == null && !inHive) return '/home';
+          return null;
+        },
         builder: (context, state) => const ActiveWorkoutScreen(),
       ),
       GoRoute(
         path: '/pr-celebration',
+        redirect: (context, state) {
+          if (state.extra == null || state.extra is! Map<String, dynamic>) {
+            return '/home';
+          }
+          return null;
+        },
         builder: (context, state) {
-          final extra = state.extra as Map<String, dynamic>;
+          final extra = state.extra! as Map<String, dynamic>;
           return PRCelebrationScreen(
             result: extra['result'] as PRDetectionResult,
             exerciseNames: extra['exerciseNames'] as Map<String, String>,

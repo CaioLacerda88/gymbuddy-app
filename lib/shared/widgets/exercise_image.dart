@@ -40,7 +40,7 @@ class ExerciseImage extends StatelessWidget {
             ? (width! * MediaQuery.devicePixelRatioOf(context)).round()
             : null,
         placeholder: (context, url) => _loading(theme),
-        errorWidget: (context, url, error) => const SizedBox.shrink(),
+        errorWidget: (context, url, error) => _fallback(theme),
         fadeInDuration: const Duration(milliseconds: 200),
       ),
     );

@@ -14,9 +14,8 @@
  *   - The second workout with a higher weight triggers "NEW PR".
  *   - PR detection runs on workout completion, comparing the best prior set.
  *
- * The Flutter web app must be served at localhost:8080 before running:
- *   flutter build web --web-renderer html
- *   cd build/web && python3 -m http.server 8080
+ * The Flutter web app is served automatically by Playwright's webServer config
+ * during local dev. In CI the FLUTTER_APP_URL env var is set by the workflow.
  */
 
 import { test, expect, type Page } from '@playwright/test';
@@ -25,6 +24,8 @@ import { NAV, PR } from '../helpers/selectors';
 import {
   startEmptyWorkout,
   addExercise,
+  setWeight,
+  setReps,
   completeSet,
   finishWorkout,
 } from '../helpers/workout';
@@ -44,21 +45,11 @@ test.describe('PR detection smoke', () => {
     page,
   }) => {
     await startEmptyWorkout(page);
-
     await addExercise(page, SEED_EXERCISES.benchPress);
 
-    // Set 60 kg × 8.
-    await page.locator('text=0').first().click();
-    const weightInput = page.locator('input').last();
-    await weightInput.clear();
-    await weightInput.fill('60');
-    await page.locator('text=OK').click();
-
-    await page.locator('text=0').first().click();
-    const repsInput = page.locator('input').last();
-    await repsInput.clear();
-    await repsInput.fill('8');
-    await page.locator('text=OK').click();
+    // Set 60 kg × 8 using the dialog helpers.
+    await setWeight(page, '60');
+    await setReps(page, '8');
 
     await completeSet(page, 0);
     await finishWorkout(page);
@@ -83,19 +74,8 @@ test.describe('PR detection smoke', () => {
     // Workout A — 60 kg × 8 (establishes baseline).
     await startEmptyWorkout(page);
     await addExercise(page, SEED_EXERCISES.benchPress);
-
-    await page.locator('text=0').first().click();
-    let input = page.locator('input').last();
-    await input.clear();
-    await input.fill('60');
-    await page.locator('text=OK').click();
-
-    await page.locator('text=0').first().click();
-    input = page.locator('input').last();
-    await input.clear();
-    await input.fill('8');
-    await page.locator('text=OK').click();
-
+    await setWeight(page, '60');
+    await setReps(page, '8');
     await completeSet(page, 0);
     await finishWorkout(page);
 
@@ -115,19 +95,8 @@ test.describe('PR detection smoke', () => {
     // Workout B — 80 kg × 5 (new weight PR).
     await startEmptyWorkout(page);
     await addExercise(page, SEED_EXERCISES.benchPress);
-
-    await page.locator('text=0').first().click();
-    input = page.locator('input').last();
-    await input.clear();
-    await input.fill('80');
-    await page.locator('text=OK').click();
-
-    await page.locator('text=0').first().click();
-    input = page.locator('input').last();
-    await input.clear();
-    await input.fill('5');
-    await page.locator('text=OK').click();
-
+    await setWeight(page, '80');
+    await setReps(page, '5');
     await completeSet(page, 0);
     await finishWorkout(page);
 
@@ -146,22 +115,12 @@ test.describe('PR detection smoke', () => {
 
   test('PR list shows the record after a PR is set', async ({ page }) => {
     // Complete Workout A (baseline) then Workout B (PR).
-    // Workout A.
+
+    // Workout A — 60 kg × 8.
     await startEmptyWorkout(page);
     await addExercise(page, SEED_EXERCISES.benchPress);
-
-    await page.locator('text=0').first().click();
-    let input = page.locator('input').last();
-    await input.clear();
-    await input.fill('60');
-    await page.locator('text=OK').click();
-
-    await page.locator('text=0').first().click();
-    input = page.locator('input').last();
-    await input.clear();
-    await input.fill('8');
-    await page.locator('text=OK').click();
-
+    await setWeight(page, '60');
+    await setReps(page, '8');
     await completeSet(page, 0);
     await finishWorkout(page);
 
@@ -176,19 +135,8 @@ test.describe('PR detection smoke', () => {
     // Workout B — heavier weight.
     await startEmptyWorkout(page);
     await addExercise(page, SEED_EXERCISES.benchPress);
-
-    await page.locator('text=0').first().click();
-    input = page.locator('input').last();
-    await input.clear();
-    await input.fill('80');
-    await page.locator('text=OK').click();
-
-    await page.locator('text=0').first().click();
-    input = page.locator('input').last();
-    await input.clear();
-    await input.fill('5');
-    await page.locator('text=OK').click();
-
+    await setWeight(page, '80');
+    await setReps(page, '5');
     await completeSet(page, 0);
     await finishWorkout(page);
 
@@ -198,7 +146,6 @@ test.describe('PR detection smoke', () => {
     await page.click(PR.continueButton);
 
     // Now navigate to the progress/records section to verify the PR appears.
-    // The PR list is accessible from the home screen or a dedicated tab.
     // The "RECENT RECORDS" section should be visible on the home screen
     // after a PR has been set.
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });

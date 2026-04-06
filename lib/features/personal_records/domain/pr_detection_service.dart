@@ -26,12 +26,16 @@ class PRDetectionService {
   ///
   /// [exercises] — the workout exercises with their sets and Exercise model.
   /// [existingRecords] — current PRs keyed by exerciseId (from batch fetch).
+  /// [totalFinishedWorkouts] — total number of finished workouts for the user.
+  ///   When provided, used for accurate first-workout detection. A value of 1
+  ///   means the just-finished workout is the user's only completed workout.
   ///
   /// Returns [PRDetectionResult] with new records to upsert and first-workout flag.
   PRDetectionResult detectPRs({
     required String userId,
     required List<ActiveWorkoutExercise> exercises,
     required Map<String, List<PersonalRecord>> existingRecords,
+    int? totalFinishedWorkouts,
   }) {
     final newRecords = <PersonalRecord>[];
 
@@ -87,9 +91,18 @@ class PRDetectionService {
       }
     }
 
-    final isFirstWorkout =
-        existingRecords.values.every((list) => list.isEmpty) &&
-        newRecords.isNotEmpty;
+    // A workout is the user's first only if they have exactly 1 finished workout
+    // (the one being completed now). When totalFinishedWorkouts is not provided,
+    // fall back to the legacy heuristic of checking existing records, but this
+    // can produce false positives for veteran users trying new exercises.
+    final bool isFirstWorkout;
+    if (totalFinishedWorkouts != null) {
+      isFirstWorkout = totalFinishedWorkouts <= 1 && newRecords.isNotEmpty;
+    } else {
+      isFirstWorkout =
+          existingRecords.values.every((list) => list.isEmpty) &&
+          newRecords.isNotEmpty;
+    }
 
     return PRDetectionResult(
       newRecords: newRecords,

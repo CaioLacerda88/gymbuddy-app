@@ -19,7 +19,8 @@
  *    exercise to avoid interference.
  *
  * Uses the dedicated `fullPR` test user.
- * The Flutter web app must be served at localhost:8080 before running.
+ * The Flutter web app is served automatically by Playwright's webServer config
+ * during local dev. In CI the FLUTTER_APP_URL env var is set by the workflow.
  */
 
 import { test, expect, type Page } from '@playwright/test';
@@ -28,6 +29,8 @@ import { NAV, PR, WORKOUT } from '../helpers/selectors';
 import {
   startEmptyWorkout,
   addExercise,
+  setWeight,
+  setReps,
   completeSet,
   finishWorkout,
 } from '../helpers/workout';
@@ -48,21 +51,8 @@ async function doWorkout(
 ): Promise<void> {
   await startEmptyWorkout(page);
   await addExercise(page, exerciseName);
-
-  // Open weight dialog (default value "0").
-  await page.locator('text=0').first().click();
-  const wInput = page.locator('input').last();
-  await wInput.clear();
-  await wInput.fill(weight);
-  await page.locator('text=OK').click();
-
-  // Open reps dialog.
-  await page.locator('text=0').first().click();
-  const rInput = page.locator('input').last();
-  await rInput.clear();
-  await rInput.fill(reps);
-  await page.locator('text=OK').click();
-
+  await setWeight(page, weight);
+  await setReps(page, reps);
   await completeSet(page, 0);
   await finishWorkout(page);
 }
@@ -107,19 +97,8 @@ test.describe('Personal records — full suite', () => {
   }) => {
     await startEmptyWorkout(page);
     await addExercise(page, SEED_EXERCISES.benchPress);
-
-    await page.locator('text=0').first().click();
-    let input = page.locator('input').last();
-    await input.clear();
-    await input.fill('60');
-    await page.locator('text=OK').click();
-
-    await page.locator('text=0').first().click();
-    input = page.locator('input').last();
-    await input.clear();
-    await input.fill('8');
-    await page.locator('text=OK').click();
-
+    await setWeight(page, '60');
+    await setReps(page, '8');
     await completeSet(page, 0);
     await finishWorkout(page);
 
@@ -233,31 +212,16 @@ test.describe('Personal records — full suite', () => {
 
     // Exercise 1: Leg Press.
     await addExercise(page, 'Leg Press');
-    await page.locator('text=0').first().click();
-    let input = page.locator('input').last();
-    await input.clear();
-    await input.fill('80');
-    await page.locator('text=OK').click();
-    await page.locator('text=0').first().click();
-    input = page.locator('input').last();
-    await input.clear();
-    await input.fill('8');
-    await page.locator('text=OK').click();
+    await setWeight(page, '80');
+    await setReps(page, '8');
     await completeSet(page, 0);
 
     // Exercise 2: Leg Curl.
     await addExercise(page, 'Leg Curl');
-    // The second exercise set row is now the first uncompleted checkbox.
-    await page.locator('text=0').first().click();
-    input = page.locator('input').last();
-    await input.clear();
-    await input.fill('40');
-    await page.locator('text=OK').click();
-    await page.locator('text=0').first().click();
-    input = page.locator('input').last();
-    await input.clear();
-    await input.fill('10');
-    await page.locator('text=OK').click();
+    // After completing the first exercise set, the first visible "0" is the
+    // weight value for the new (second) exercise set row.
+    await setWeight(page, '40');
+    await setReps(page, '10');
     // Mark the second exercise set (index 1 overall).
     await page.locator(WORKOUT.markSetDone).nth(1).click();
 
@@ -268,29 +232,13 @@ test.describe('Personal records — full suite', () => {
     await startEmptyWorkout(page);
 
     await addExercise(page, 'Leg Press');
-    await page.locator('text=0').first().click();
-    input = page.locator('input').last();
-    await input.clear();
-    await input.fill('100');
-    await page.locator('text=OK').click();
-    await page.locator('text=0').first().click();
-    input = page.locator('input').last();
-    await input.clear();
-    await input.fill('8');
-    await page.locator('text=OK').click();
+    await setWeight(page, '100');
+    await setReps(page, '8');
     await completeSet(page, 0);
 
     await addExercise(page, 'Leg Curl');
-    await page.locator('text=0').first().click();
-    input = page.locator('input').last();
-    await input.clear();
-    await input.fill('50');
-    await page.locator('text=OK').click();
-    await page.locator('text=0').first().click();
-    input = page.locator('input').last();
-    await input.clear();
-    await input.fill('10');
-    await page.locator('text=OK').click();
+    await setWeight(page, '50');
+    await setReps(page, '10');
     await page.locator(WORKOUT.markSetDone).nth(1).click();
 
     await finishWorkout(page);

@@ -42,6 +42,9 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
   Future<void> _submit() async {
     setState(() => _nameError = null);
 
+    // Always validate the form fields to show inline errors.
+    final isFormValid = _formKey.currentState?.validate() ?? false;
+
     if (_selectedMuscleGroup == null || _selectedEquipmentType == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -51,7 +54,7 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
       return;
     }
 
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (!isFormValid) return;
 
     setState(() => _isLoading = true);
 

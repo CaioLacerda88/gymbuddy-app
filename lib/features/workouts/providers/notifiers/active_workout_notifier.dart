@@ -333,6 +333,35 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
     _saveToHive(newState);
   }
 
+  /// Restore a previously deleted set at its original position.
+  ///
+  /// Inserts the [deletedSet] back into the exercise's set list and
+  /// renumbers all sets sequentially. Used for undo-delete functionality.
+  void restoreSet(String workoutExerciseId, ExerciseSet deletedSet) {
+    final current = state.value;
+    if (current == null) return;
+
+    final newState = current.copyWith(
+      exercises: current.exercises.map((e) {
+        if (e.workoutExercise.id != workoutExerciseId) return e;
+
+        final sets = [...e.sets];
+        // Insert at the original position (clamped to list bounds).
+        final insertIndex = (deletedSet.setNumber - 1).clamp(0, sets.length);
+        sets.insert(insertIndex, deletedSet);
+
+        // Renumber all sets sequentially.
+        final renumbered = sets.indexed
+            .map((entry) => entry.$2.copyWith(setNumber: entry.$1 + 1))
+            .toList();
+
+        return e.copyWith(sets: renumbered);
+      }).toList(),
+    );
+    state = AsyncData(newState);
+    _saveToHive(newState);
+  }
+
   /// Copy weight and reps from the previous set into the given set.
   void copyLastSet(String workoutExerciseId, String setId) {
     final current = state.value;
@@ -462,8 +491,8 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
 
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      await _repo.discardWorkout(current.workout.id, userId: _userId);
       await _localStorage.clearActiveWorkout();
+      await _repo.discardWorkout(current.workout.id, userId: _userId);
       return null;
     });
   }
@@ -514,14 +543,30 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
         final existingRecords = await prRepo.getRecordsForExercises(
           exerciseIds,
         );
+
+        // Fetch total finished workout count for accurate first-workout detection.
+        // The current workout is already saved at this point, so count >= 1.
+        final workoutCount = await _repo.getFinishedWorkoutCount(_userId);
+
         prResult = prService.detectPRs(
           userId: _userId,
           exercises: exercises,
           existingRecords: existingRecords,
+          totalFinishedWorkouts: workoutCount,
         );
 
         if (prResult!.hasNewRecords) {
-          await prRepo.upsertRecords(prResult!.newRecords);
+          try {
+            await prRepo.upsertRecords(prResult!.newRecords);
+          } catch (e) {
+            log(
+              'PR record save failed: $e',
+              name: 'ActiveWorkoutNotifier',
+              level: 900,
+            );
+            // prResult is still set — user sees celebration even if save failed.
+            // Records will be re-detected on next workout finish.
+          }
         }
       } catch (e) {
         // PR detection failure should NOT fail the workout save.

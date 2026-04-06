@@ -4,19 +4,24 @@ import 'package:flutter/material.dart';
 
 /// A reusable stepper widget for weight values.
 ///
-/// Supports tap and long-press (repeating every 100ms) on the +/- buttons.
+/// Supports tap and long-press with progressive acceleration on the +/- buttons.
+/// Initial hold delay of 400ms, then repeats at 150ms intervals.
 /// Displays one decimal place when the value is fractional, integer otherwise.
 class WeightStepper extends StatefulWidget {
   const WeightStepper({
     required this.value,
     required this.onChanged,
     this.increment = 2.5,
+    this.unit = 'kg',
     super.key,
   });
 
   final double value;
   final double increment;
   final ValueChanged<double> onChanged;
+
+  /// The weight unit label displayed in the input dialog and semantics.
+  final String unit;
 
   @override
   State<WeightStepper> createState() => _WeightStepperState();
@@ -36,7 +41,13 @@ class _WeightStepperState extends State<WeightStepper> {
 
   void _startRepeating(VoidCallback action) {
     action();
-    _timer = Timer.periodic(const Duration(milliseconds: 100), (_) => action());
+    _timer?.cancel();
+    _timer = Timer(const Duration(milliseconds: 400), () {
+      _timer = Timer.periodic(
+        const Duration(milliseconds: 150),
+        (_) => action(),
+      );
+    });
   }
 
   void _stopRepeating() {
@@ -66,7 +77,7 @@ class _WeightStepperState extends State<WeightStepper> {
           controller: controller,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           autofocus: true,
-          decoration: const InputDecoration(suffixText: 'kg'),
+          decoration: InputDecoration(suffixText: widget.unit),
           onSubmitted: (text) {
             final parsed = double.tryParse(text);
             if (parsed != null && parsed >= 0) {
@@ -111,23 +122,28 @@ class _WeightStepperState extends State<WeightStepper> {
             constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
           ),
         ),
-        GestureDetector(
-          onTap: _showNumberInput,
-          child: SizedBox(
-            width: 72,
-            child: Text(
-              _formatWeight(widget.value),
-              textAlign: TextAlign.center,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                color: theme.colorScheme.primary,
-                shadows: [
-                  Shadow(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                    blurRadius: 8,
-                  ),
-                ],
+        Semantics(
+          label:
+              'Weight value: ${_formatWeight(widget.value)} ${widget.unit}. Tap to enter weight.',
+          button: true,
+          child: GestureDetector(
+            onTap: _showNumberInput,
+            child: SizedBox(
+              width: 72,
+              child: Text(
+                _formatWeight(widget.value),
+                textAlign: TextAlign.center,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: theme.colorScheme.primary,
+                  shadows: [
+                    Shadow(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

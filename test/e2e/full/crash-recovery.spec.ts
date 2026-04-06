@@ -21,13 +21,20 @@
  *    or navigation happens before second tap can register).
  *
  * Uses the dedicated `fullCrash` test user.
- * The Flutter web app must be served at localhost:8080 before running.
+ * The Flutter web app is served automatically by Playwright's webServer config
+ * during local dev. In CI the FLUTTER_APP_URL env var is set by the workflow.
  */
 
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth';
 import { NAV, WORKOUT, PR } from '../helpers/selectors';
-import { startEmptyWorkout, addExercise, completeSet } from '../helpers/workout';
+import {
+  startEmptyWorkout,
+  addExercise,
+  setWeight,
+  setReps,
+  completeSet,
+} from '../helpers/workout';
 import { TEST_USERS } from '../fixtures/test-users';
 import { SEED_EXERCISES } from '../fixtures/test-exercises';
 
@@ -217,19 +224,8 @@ test.describe('Crash and session recovery — full suite', () => {
     // Complete a proper workout so we can verify only one is saved.
     await startEmptyWorkout(page);
     await addExercise(page, SEED_EXERCISES.benchPress);
-
-    await page.locator('text=0').first().click();
-    const wInput = page.locator('input').last();
-    await wInput.clear();
-    await wInput.fill('60');
-    await page.locator('text=OK').click();
-
-    await page.locator('text=0').first().click();
-    const rInput = page.locator('input').last();
-    await rInput.clear();
-    await rInput.fill('8');
-    await page.locator('text=OK').click();
-
+    await setWeight(page, '60');
+    await setReps(page, '8');
     await completeSet(page, 0);
 
     // Open the finish confirmation dialog.
@@ -259,8 +255,8 @@ test.describe('Crash and session recovery — full suite', () => {
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
 
     // The app should be in a clean state — no crash, no duplicate dialogs.
-    // We verify by checking the home screen renders the RECENT section
-    // (at least one workout was saved) and no error states are visible.
+    // We verify by checking the home screen renders correctly and no error
+    // states are visible.
     const hasErrorState = await page
       .locator('text=Error')
       .isVisible({ timeout: 3_000 })

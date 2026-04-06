@@ -9,7 +9,8 @@
  *  5. Routines tab loads without crashing (navigation smoke)
  *
  * Uses the dedicated `fullRoutines` test user.
- * The Flutter web app must be served at localhost:8080 before running.
+ * The Flutter web app is served automatically by Playwright's webServer config
+ * during local dev. In CI the FLUTTER_APP_URL env var is set by the workflow.
  */
 
 import { test, expect } from '@playwright/test';

@@ -2,9 +2,8 @@
  * Auth smoke tests — critical login/logout journey.
  *
  * Uses the dedicated smokeAuth test user created in global-setup.ts.
- * The Flutter web app must be served at localhost:8080 before running:
- *   flutter build web --web-renderer html
- *   cd build/web && python3 -m http.server 8080
+ * The Flutter web app is served automatically by Playwright's webServer config
+ * during local dev. In CI the FLUTTER_APP_URL env var is set by the workflow.
  */
 
 import { test, expect } from '@playwright/test';
@@ -70,6 +69,45 @@ test.describe('Auth smoke', () => {
     // After logout the router redirects to /login.
     await expect(page.locator(AUTH.appTitle)).toBeVisible();
     await expect(page.locator(AUTH.loginButton)).toBeVisible();
+  });
+
+  test('forgot password with valid email shows success feedback', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await waitForAppReady(page);
+
+    // Fill in a valid email address.
+    await page.fill(AUTH.emailInput, TEST_USERS.smokeAuth.email);
+
+    // Click the forgot password button.
+    await page.click(AUTH.forgotPasswordButton);
+
+    // The button should trigger a reset email (Supabase /recover endpoint).
+    // We wait a moment for the async request to complete.
+    // The UI should show either:
+    //   a) A SnackBar "Password reset email sent. Check your inbox."
+    //   b) OR remain on the login screen without an error visible.
+    // We cannot reliably assert the SnackBar (it disappears quickly) but we
+    // can assert the app does NOT show an error and does NOT crash.
+    await page.waitForTimeout(2_000);
+
+    // The login screen itself must still be visible (no unhandled crash).
+    await expect(page.locator(AUTH.appTitle)).toBeVisible({ timeout: 5_000 });
+
+    // No error alert should have appeared.
+    const hasError = await page
+      .locator(AUTH.errorMessage)
+      .isVisible({ timeout: 3_000 })
+      .catch(() => false);
+
+    // Rate-limit (429) is the only acceptable error response here since we
+    // may call this endpoint multiple times in test runs. Any other error
+    // should fail this test.
+    if (hasError) {
+      const errorText = await page.locator(AUTH.errorMessage).textContent();
+      expect(errorText?.toLowerCase()).toContain('rate limit');
+    }
   });
 
   test('toggle to sign-up mode changes button label and subtitle', async ({

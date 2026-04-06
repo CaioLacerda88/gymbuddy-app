@@ -27,13 +27,21 @@ class AppButton extends StatelessWidget {
         : Text(label);
 
     if (icon != null && !isLoading) {
-      return ElevatedButton.icon(
-        onPressed: effectiveOnPressed,
-        icon: Icon(icon),
-        label: child,
+      return Semantics(
+        label: label,
+        button: true,
+        child: ElevatedButton.icon(
+          onPressed: effectiveOnPressed,
+          icon: Icon(icon),
+          label: child,
+        ),
       );
     }
 
-    return ElevatedButton(onPressed: effectiveOnPressed, child: child);
+    return Semantics(
+      label: label,
+      button: true,
+      child: ElevatedButton(onPressed: effectiveOnPressed, child: child),
+    );
   }
 }

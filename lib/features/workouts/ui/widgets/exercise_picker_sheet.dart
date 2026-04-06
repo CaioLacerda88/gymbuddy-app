@@ -2,10 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-
 import '../../../exercises/models/exercise.dart';
 import '../../../exercises/providers/exercise_providers.dart';
+import '../../../exercises/ui/create_exercise_screen.dart';
 
 /// Shows the exercise picker as a modal bottom sheet.
 ///
@@ -171,10 +170,17 @@ class _SheetBodyState extends ConsumerState<_SheetBody> {
                             ),
                             const SizedBox(height: 16),
                             FilledButton.icon(
-                              onPressed: () {
-                                final router = GoRouter.of(context);
-                                Navigator.pop(context);
-                                router.push('/exercises/create');
+                              onPressed: () async {
+                                await Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const CreateExerciseScreen(),
+                                  ),
+                                );
+                                // When user returns, exerciseListProvider has
+                                // already been invalidated by the save action.
+                                // Force rebuild to re-watch the refreshed list.
+                                if (mounted) setState(() {});
                               },
                               icon: const Icon(Icons.add),
                               label: Text(

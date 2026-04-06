@@ -25,6 +25,10 @@ export const TEST_USERS = {
     email: 'e2e-smoke-pr@test.local',
     password: 'TestPassword123!',
   },
+  smokeExercise: {
+    email: 'e2e-smoke-exercise@test.local',
+    password: 'TestPassword123!',
+  },
 
   // -------------------------------------------------------------------------
   // Full suite users (one per spec file)

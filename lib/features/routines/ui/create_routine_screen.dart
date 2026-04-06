@@ -71,22 +71,31 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
         )
         .toList();
 
-    final notifier = ref.read(routineListProvider.notifier);
-    if (_isEditing) {
-      await notifier.updateRoutine(
-        id: widget.routine!.id,
-        name: _nameController.text.trim(),
-        exercises: exercises,
-      );
-    } else {
-      await notifier.createRoutine(
-        name: _nameController.text.trim(),
-        exercises: exercises,
-      );
-    }
+    try {
+      final notifier = ref.read(routineListProvider.notifier);
+      if (_isEditing) {
+        await notifier.updateRoutine(
+          id: widget.routine!.id,
+          name: _nameController.text.trim(),
+          exercises: exercises,
+        );
+      } else {
+        await notifier.createRoutine(
+          name: _nameController.text.trim(),
+          exercises: exercises,
+        );
+      }
 
-    if (!mounted) return;
-    context.pop();
+      if (!mounted) return;
+      context.pop();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to save routine. Please retry.')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   Future<void> _addExercise() async {

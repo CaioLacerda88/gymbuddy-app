@@ -52,8 +52,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final notifier = ref.read(authNotifierProvider.notifier);
 
     if (_isSignUp) {
-      ref.read(needsOnboardingProvider.notifier).state = true;
-      await notifier.signUpWithEmail(email: email, password: password);
+      try {
+        await notifier.signUpWithEmail(email: email, password: password);
+        // Only set onboarding flag after signup succeeds.
+        if (mounted && !ref.read(authNotifierProvider).hasError) {
+          ref.read(needsOnboardingProvider.notifier).state = true;
+        }
+      } catch (_) {
+        // Error is surfaced via authNotifierProvider listener.
+        return;
+      }
       // If signup succeeded and email confirmation is pending, navigate.
       if (mounted && ref.read(signupPendingEmailProvider) != null) {
         context.go('/email-confirmation');
@@ -152,32 +160,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const SizedBox(height: 40),
                   // Inline error message
                   if (_errorMessage != null) ...[
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.error.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: theme.colorScheme.error.withValues(alpha: 0.4),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.error_outline,
-                            color: theme.colorScheme.error,
-                            size: 20,
+                    Semantics(
+                      liveRegion: true,
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.error.withValues(
+                            alpha: 0.15,
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              _errorMessage!,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.error,
-                              ),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: theme.colorScheme.error.withValues(
+                              alpha: 0.4,
                             ),
                           ),
-                        ],
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              color: theme.colorScheme.error,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _errorMessage!,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.error,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),

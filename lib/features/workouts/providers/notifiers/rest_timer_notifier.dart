@@ -8,11 +8,13 @@ class RestTimerState {
     required this.totalSeconds,
     required this.remainingSeconds,
     this.isActive = false,
+    this.exerciseName,
   });
 
   final int totalSeconds;
   final int remainingSeconds;
   final bool isActive;
+  final String? exerciseName;
 
   /// Progress from 0.0 (just started) to 1.0 (complete).
   double get progress =>
@@ -22,11 +24,13 @@ class RestTimerState {
     int? totalSeconds,
     int? remainingSeconds,
     bool? isActive,
+    String? exerciseName,
   }) {
     return RestTimerState(
       totalSeconds: totalSeconds ?? this.totalSeconds,
       remainingSeconds: remainingSeconds ?? this.remainingSeconds,
       isActive: isActive ?? this.isActive,
+      exerciseName: exerciseName ?? this.exerciseName,
     );
   }
 
@@ -36,15 +40,17 @@ class RestTimerState {
       other is RestTimerState &&
           totalSeconds == other.totalSeconds &&
           remainingSeconds == other.remainingSeconds &&
-          isActive == other.isActive;
+          isActive == other.isActive &&
+          exerciseName == other.exerciseName;
 
   @override
-  int get hashCode => Object.hash(totalSeconds, remainingSeconds, isActive);
+  int get hashCode =>
+      Object.hash(totalSeconds, remainingSeconds, isActive, exerciseName);
 
   @override
   String toString() =>
       'RestTimerState(total: $totalSeconds, remaining: $remainingSeconds, '
-      'active: $isActive)';
+      'active: $isActive, exerciseName: $exerciseName)';
 }
 
 /// Manages a countdown rest timer between sets.
@@ -58,13 +64,16 @@ class RestTimerNotifier extends Notifier<RestTimerState?> {
   RestTimerState? build() => null;
 
   /// Start a countdown from [seconds]. No-op if [seconds] is <= 0.
-  void start(int seconds) {
+  ///
+  /// Optionally pass [exerciseName] to display in the rest timer overlay.
+  void start(int seconds, {String? exerciseName}) {
     if (seconds <= 0) return;
     _timer?.cancel();
     state = RestTimerState(
       totalSeconds: seconds,
       remainingSeconds: seconds,
       isActive: true,
+      exerciseName: exerciseName,
     );
     _timer = Timer.periodic(const Duration(seconds: 1), _tick);
   }
