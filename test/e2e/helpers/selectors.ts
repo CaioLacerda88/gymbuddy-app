@@ -124,8 +124,8 @@ export const EXERCISE_DETAIL = {
   deleteButton: 'role=button[name*="Delete exercise"]',
   /** Confirmation dialog title */
   deleteDialogTitle: 'text=Delete Exercise',
-  /** Confirm delete action in dialog */
-  deleteConfirmButton: 'text=Delete',
+  /** Confirm delete action in dialog — exact match to avoid "Delete Exercise" collision */
+  deleteConfirmButton: 'text="Delete"',
   /** Cancel delete action in dialog */
   deleteCancelButton: 'text=Cancel',
   /** Coming-soon placeholder text */
@@ -227,8 +227,8 @@ export const ROUTINE = {
   deleteDialogTitle: 'text=Delete Routine',
   /** "Cancel" button in delete dialog */
   cancelButton: 'text=Cancel',
-  /** "Delete" confirm button in delete dialog */
-  deleteConfirmButton: 'text=Delete',
+  /** "Delete" confirm button in delete dialog — exact match to avoid title collision */
+  deleteConfirmButton: 'text="Delete"',
 } as const;
 
 // ---------------------------------------------------------------------------

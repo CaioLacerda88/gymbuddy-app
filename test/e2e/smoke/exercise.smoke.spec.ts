@@ -69,11 +69,12 @@ test.describe('Exercise smoke', () => {
     await page.click(CREATE_EXERCISE.saveButton);
 
     // The form must show a "Name is required" validation error.
-    // Flutter renders both a visible span and an ARIA announcement element
-    // with the same text — use a specific CSS selector to avoid strict mode.
-    await expect(page.locator('flt-semantics:has-text("Name is required")')).toBeVisible({
-      timeout: 5_000,
-    });
+    // Flutter CanvasKit renders multiple semantics nodes with this text
+    // (visible error + ARIA announcement elements). Use .first() to avoid
+    // strict mode violations.
+    await expect(
+      page.locator('flt-semantics:has-text("Name is required")').first(),
+    ).toBeVisible({ timeout: 5_000 });
 
     // The screen should NOT navigate away — we should still be on create.
     await expect(page.locator(CREATE_EXERCISE.saveButton)).toBeVisible();
@@ -109,13 +110,15 @@ test.describe('Exercise smoke', () => {
     // The list should have at least one exercise (user custom exercises or
     // default seeded exercises, depending on database state).
     // We search for a partial string to trigger the filter.
-    await flutterFill(page,EXERCISE_LIST.searchInput, 'Smoke Test');
+    await flutterFill(page, EXERCISE_LIST.searchInput, 'Bench');
 
     // Wait for the debounce to fire (300 ms default + render time).
-    await page.waitForTimeout(600);
+    await page.waitForTimeout(800);
 
     // Either a matching card appears or the "no results" state is shown.
-    const cards = page.locator('[aria-label^="Exercise:"]');
+    // Use role selector for cards — CanvasKit may render aria-label as child
+    // text rather than an attribute.
+    const cards = page.locator('role=button[name*="Exercise:"]');
     const emptyState = page.locator(EXERCISE_LIST.emptyStateFiltered);
 
     const hasCards = await cards.first().isVisible({ timeout: 5_000 }).catch(() => false);

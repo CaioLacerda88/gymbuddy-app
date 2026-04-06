@@ -70,6 +70,19 @@ export async function addExercise(
   await expect(page.locator(EXERCISE_PICKER.searchInput)).not.toBeVisible({
     timeout: 10_000,
   });
+
+  // The exercise starts with zero sets (ActiveWorkoutNotifier.addExercise
+  // creates with `sets: const []`). Click "Add Set" to create the first set
+  // row so that weight/reps buttons are available for subsequent interactions.
+  await expect(page.locator(WORKOUT.addSetButton)).toBeVisible({
+    timeout: 10_000,
+  });
+  await page.locator(WORKOUT.addSetButton).first().click();
+
+  // Wait for the set row to render — the weight button confirms it.
+  await expect(
+    page.locator('role=button[name*="Weight value"]').first(),
+  ).toBeVisible({ timeout: 10_000 });
 }
 
 /**
