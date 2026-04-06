@@ -33,6 +33,17 @@ final prListProvider = FutureProvider<List<PersonalRecord>>((ref) {
   return repo.getRecordsForUser(user.id);
 });
 
+/// Total count of personal records for the current user.
+///
+/// Uses a server-side `COUNT(*)` query rather than the list length,
+/// so it returns the real total regardless of any pagination.
+final prCountProvider = FutureProvider<int>((ref) {
+  final repo = ref.watch(prRepositoryProvider);
+  final user = ref.watch(authRepositoryProvider).currentUser;
+  if (user == null) return 0;
+  return repo.getRecordCount(user.id);
+});
+
 /// Fetches PRs for a specific exercise (by exercise ID).
 /// Used by exercise detail screen.
 final exercisePRsProvider = FutureProvider.family<List<PersonalRecord>, String>(

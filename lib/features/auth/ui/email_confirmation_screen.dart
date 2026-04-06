@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../shared/widgets/app_button.dart';
+import '../../../shared/widgets/gradient_button.dart';
 import '../providers/notifiers/auth_notifier.dart';
 import '../providers/signup_state_provider.dart';
 import '../utils/auth_error_messages.dart';
@@ -88,20 +88,24 @@ class _EmailConfirmationScreenState
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'We sent a confirmation email to',
+                  email.isNotEmpty
+                      ? 'We sent a confirmation email to'
+                      : 'We sent you a confirmation email',
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  email,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: theme.colorScheme.onSurface,
+                if (email.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    email,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: theme.colorScheme.onSurface,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
-                ),
+                ],
                 const SizedBox(height: 8),
                 Text(
                   'Tap the link in the email to verify your account, then come back and log in.',
@@ -124,7 +128,7 @@ class _EmailConfirmationScreenState
                   ),
                 SizedBox(
                   width: double.infinity,
-                  child: AppButton(
+                  child: GradientButton(
                     label: 'BACK TO LOGIN',
                     onPressed: isLoading ? null : _backToLogin,
                   ),

@@ -6,6 +6,8 @@ import 'package:gymbuddy_app/features/personal_records/domain/pr_detection_servi
 import 'package:gymbuddy_app/features/personal_records/models/personal_record.dart';
 import 'package:gymbuddy_app/features/personal_records/models/record_type.dart';
 import 'package:gymbuddy_app/features/personal_records/ui/pr_celebration_screen.dart';
+import 'package:gymbuddy_app/features/profile/models/profile.dart';
+import 'package:gymbuddy_app/features/profile/providers/profile_providers.dart';
 
 void main() {
   Widget buildTestWidget({
@@ -13,6 +15,7 @@ void main() {
     required Map<String, String> exerciseNames,
   }) {
     return ProviderScope(
+      overrides: [profileProvider.overrideWith(() => _FakeProfileNotifier())],
       child: MaterialApp(
         theme: AppTheme.dark,
         home: PRCelebrationScreen(result: result, exerciseNames: exerciseNames),
@@ -53,7 +56,7 @@ void main() {
           exerciseNames: {'exercise-001': 'Bench Press'},
         ),
       );
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       expect(find.text('First Workout Complete!'), findsOneWidget);
       expect(find.text('These are your starting benchmarks'), findsOneWidget);
@@ -71,7 +74,7 @@ void main() {
           exerciseNames: {'exercise-001': 'Bench Press'},
         ),
       );
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       expect(find.text('NEW PR'), findsOneWidget);
     });
@@ -94,7 +97,7 @@ void main() {
           exerciseNames: {'exercise-001': 'Bench Press'},
         ),
       );
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       expect(find.text('Bench Press'), findsOneWidget);
       expect(find.text('120.0 kg'), findsOneWidget);
@@ -112,9 +115,26 @@ void main() {
           exerciseNames: {'exercise-001': 'Bench Press'},
         ),
       );
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       expect(find.widgetWithText(ElevatedButton, 'Continue'), findsOneWidget);
     });
   });
+}
+
+class _FakeProfileNotifier extends AsyncNotifier<Profile?>
+    implements ProfileNotifier {
+  @override
+  Future<Profile?> build() async {
+    return const Profile(id: 'user-001', weightUnit: 'kg');
+  }
+
+  @override
+  Future<void> saveOnboardingProfile({
+    required String displayName,
+    required String fitnessLevel,
+  }) async {}
+
+  @override
+  Future<void> toggleWeightUnit() async {}
 }

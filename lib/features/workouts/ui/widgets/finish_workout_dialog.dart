@@ -92,7 +92,7 @@ class _FinishWorkoutDialogState extends State<FinishWorkoutDialog> {
           child: const Text('Keep Going'),
         ),
         Semantics(
-          label: 'Confirm finish workout',
+          label: 'Save and finish workout',
           child: FilledButton(
             onPressed: () {
               final notes = _notesController.text.trim();
@@ -100,7 +100,7 @@ class _FinishWorkoutDialogState extends State<FinishWorkoutDialog> {
                 context,
               ).pop(FinishWorkoutResult(notes: notes.isEmpty ? null : notes));
             },
-            child: const Text('Finish Workout'),
+            child: const Text('Save & Finish'),
           ),
         ),
       ],

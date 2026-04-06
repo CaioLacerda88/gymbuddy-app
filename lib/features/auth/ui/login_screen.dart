@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_text_field.dart';
+import '../../../shared/widgets/gradient_button.dart';
 import '../providers/notifiers/auth_notifier.dart';
 import '../providers/onboarding_provider.dart';
 import '../providers/signup_state_provider.dart';
@@ -85,6 +86,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
     _clearError();
+
+    // Show confirmation dialog before sending reset email (QA-006).
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final dialogTheme = Theme.of(ctx);
+        return AlertDialog(
+          backgroundColor: dialogTheme.cardTheme.color,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text('Reset Password'),
+          content: Text('Send a password reset email to $email?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Send Reset Email'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) return;
+
     await ref.read(authNotifierProvider.notifier).resetPassword(email);
     if (mounted && !ref.read(authNotifierProvider).hasError) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -235,7 +265,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ],
                   const SizedBox(height: 24),
-                  AppButton(
+                  GradientButton(
                     label: _isSignUp ? 'SIGN UP' : 'LOG IN',
                     onPressed: isLoading ? null : _submit,
                     isLoading: isLoading,
@@ -273,7 +303,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const SizedBox(height: 16),
                   OutlinedButton.icon(
                     onPressed: isLoading ? null : _signInWithGoogle,
-                    icon: const Icon(Icons.g_mobiledata, size: 24),
+                    icon: SvgPicture.asset(
+                      'assets/icons/google_logo.svg',
+                      width: 20,
+                      height: 20,
+                    ),
                     label: const Text('Continue with Google'),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),

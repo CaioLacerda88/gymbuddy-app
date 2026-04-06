@@ -135,6 +135,41 @@ void main() {
     });
 
     group('interactions', () {
+      testWidgets('tapping overlay background stops timer', (tester) async {
+        const state = RestTimerState(
+          totalSeconds: 60,
+          remainingSeconds: 45,
+          isActive: true,
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            restTimerProvider.overrideWith(() => _FakeRestTimerNotifier(state)),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              theme: AppTheme.dark,
+              home: const Scaffold(body: RestTimerOverlay()),
+            ),
+          ),
+        );
+
+        // Verify the timer is active before tapping.
+        expect(container.read(restTimerProvider), isNotNull);
+
+        // Tap on the background area (top-left corner, away from buttons).
+        await tester.tapAt(const Offset(10, 10));
+        await tester.pump();
+
+        // Timer should be stopped (null state).
+        expect(container.read(restTimerProvider), isNull);
+      });
+
       testWidgets('tapping Skip button sets timer state to null', (
         tester,
       ) async {

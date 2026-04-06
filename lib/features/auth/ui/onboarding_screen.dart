@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../shared/widgets/app_button.dart';
+import '../../../shared/widgets/gradient_button.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../providers/onboarding_provider.dart';
@@ -167,7 +167,7 @@ class _WelcomePage extends StatelessWidget {
           const SizedBox(height: 48),
           SizedBox(
             width: double.infinity,
-            child: AppButton(label: 'GET STARTED', onPressed: onNext),
+            child: GradientButton(label: 'GET STARTED', onPressed: onNext),
           ),
         ],
       ),
@@ -249,7 +249,7 @@ class _ProfileSetupPage extends StatelessWidget {
             }).toList(),
           ),
           const Spacer(),
-          AppButton(label: "LET'S GO", onPressed: onFinish),
+          GradientButton(label: "LET'S GO", onPressed: onFinish),
           const SizedBox(height: 32),
         ],
       ),

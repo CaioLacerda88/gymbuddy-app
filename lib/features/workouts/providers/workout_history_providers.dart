@@ -60,6 +60,17 @@ final workoutHistoryProvider =
       WorkoutHistoryNotifier.new,
     );
 
+/// Total count of finished workouts for the current user.
+///
+/// Uses a server-side `COUNT(*)` query rather than the paginated list length,
+/// so it returns the real total regardless of page size.
+final workoutCountProvider = FutureProvider<int>((ref) {
+  final userId = ref.read(authRepositoryProvider).currentUser?.id;
+  if (userId == null) return 0;
+  final repo = ref.watch(workoutRepositoryProvider);
+  return repo.getFinishedWorkoutCount(userId);
+});
+
 /// Fetch full workout detail for a specific workout.
 final workoutDetailProvider = FutureProvider.family<WorkoutDetail, String>((
   ref,

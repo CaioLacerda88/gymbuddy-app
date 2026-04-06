@@ -86,7 +86,7 @@ void main() {
       },
     );
 
-    testWidgets('shows exercise count badge', (tester) async {
+    testWidgets('shows play icon as launch affordance', (tester) async {
       final routine = _makeRoutine(
         exercises: [
           RoutineExercise(
@@ -108,7 +108,7 @@ void main() {
       );
       await tester.pumpWidget(_buildCard(routine: routine));
 
-      expect(find.text('3'), findsOneWidget);
+      expect(find.byIcon(Icons.play_arrow_rounded), findsOneWidget);
     });
 
     testWidgets('calls onTap when tapped', (tester) async {

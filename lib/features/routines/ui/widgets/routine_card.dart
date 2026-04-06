@@ -70,19 +70,17 @@ class RoutineCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Container(
-                  width: 32,
-                  height: 32,
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: theme.colorScheme.primary.withValues(alpha: 0.15),
                   ),
                   alignment: Alignment.center,
-                  child: Text(
-                    '${routine.exercises.length}',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  child: Icon(
+                    Icons.play_arrow_rounded,
+                    size: 20,
+                    color: theme.colorScheme.primary,
                   ),
                 ),
               ],

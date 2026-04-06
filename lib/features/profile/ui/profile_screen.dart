@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../features/auth/providers/auth_providers.dart';
 import '../../../features/auth/providers/notifiers/auth_notifier.dart';
+import '../../personal_records/providers/pr_providers.dart'
+    show prCountProvider;
+import '../../workouts/providers/workout_history_providers.dart'
+    show workoutCountProvider;
 import '../providers/profile_providers.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -37,6 +42,9 @@ class ProfileScreen extends ConsumerWidget {
               error: (_, _) =>
                   const _IdentityCard(displayName: null, email: ''),
             ),
+            const SizedBox(height: 24),
+            // Stats section
+            const _StatsRow(),
             const SizedBox(height: 32),
             // Weight unit section
             Text('Weight Unit', style: theme.textTheme.titleMedium),
@@ -151,6 +159,101 @@ class _WeightUnitToggle extends ConsumerWidget {
           ref.read(profileProvider.notifier).toggleWeightUnit();
         }
       },
+    );
+  }
+}
+
+class _StatsRow extends ConsumerWidget {
+  const _StatsRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final workoutCountAsync = ref.watch(workoutCountProvider);
+    final prCountAsync = ref.watch(prCountProvider);
+    final profile = ref.watch(profileProvider);
+
+    final workoutCount = workoutCountAsync.valueOrNull ?? 0;
+    final prCount = prCountAsync.valueOrNull ?? 0;
+    final memberSince = profile.valueOrNull?.createdAt;
+
+    return Row(
+      children: [
+        Expanded(
+          child: _StatCard(
+            label: 'Workouts',
+            value: '$workoutCount',
+            icon: Icons.fitness_center,
+            theme: theme,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _StatCard(
+            label: 'PRs',
+            value: '$prCount',
+            icon: Icons.emoji_events,
+            theme: theme,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _StatCard(
+            label: 'Member since',
+            value: memberSince != null
+                ? DateFormat.yMMM().format(memberSince)
+                : '--',
+            icon: Icons.calendar_today,
+            theme: theme,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.theme,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final ThemeData theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      decoration: BoxDecoration(
+        color: theme.cardTheme.color ?? theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 20, color: theme.colorScheme.primary),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 }

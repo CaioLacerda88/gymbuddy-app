@@ -43,140 +43,158 @@ class _RestTimerOverlayState extends ConsumerState<RestTimerOverlay> {
     final seconds = timerState.remainingSeconds % 60;
     final timeText = '$minutes:${seconds.toString().padLeft(2, '0')}';
 
-    return Material(
-      color: Colors.black87,
-      child: SafeArea(
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Semantics(
-                label: 'Rest timer: $timeText remaining',
-                child: SizedBox(
-                  width: 220,
-                  height: 220,
-                  child: Stack(
-                    alignment: Alignment.center,
+    return GestureDetector(
+      // Tap outside the controls to dismiss (UX-U09).
+      onTap: () => ref.read(restTimerProvider.notifier).stop(),
+      child: Material(
+        color: Colors.black87,
+        child: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Semantics(
+                  label: 'Rest timer: $timeText remaining',
+                  child: SizedBox(
+                    width: 220,
+                    height: 220,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Progress ring
+                        SizedBox(
+                          width: 220,
+                          height: 220,
+                          child: CircularProgressIndicator(
+                            value: 1.0 - timerState.progress,
+                            strokeWidth: 8,
+                            backgroundColor: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.15),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              theme.colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                        // Countdown text
+                        Text(
+                          timeText,
+                          style: theme.textTheme.displayLarge?.copyWith(
+                            fontSize: 72,
+                            fontWeight: FontWeight.w900,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  timerState.exerciseName ?? 'Rest',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+                // -30s / Skip / +30s button row
+                // Wrap controls in an opaque GestureDetector to prevent
+                // taps on buttons from bubbling to the outer dismiss handler.
+                GestureDetector(
+                  onTap: () {},
+                  behavior: HitTestBehavior.opaque,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Progress ring
-                      SizedBox(
-                        width: 220,
-                        height: 220,
-                        child: CircularProgressIndicator(
-                          value: 1.0 - timerState.progress,
-                          strokeWidth: 8,
-                          backgroundColor: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.15),
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            theme.colorScheme.primary,
+                      Semantics(
+                        label: 'Subtract 30 seconds',
+                        button: true,
+                        child: SizedBox(
+                          width: 64,
+                          height: 56,
+                          child: TextButton(
+                            onPressed: () => ref
+                                .read(restTimerProvider.notifier)
+                                .adjustTime(-30),
+                            style: TextButton.styleFrom(
+                              foregroundColor: theme.colorScheme.onSurface,
+                              backgroundColor: Colors.white12,
+                              textStyle: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text('-30s'),
                           ),
                         ),
                       ),
-                      // Countdown text
-                      Text(
-                        timeText,
-                        style: theme.textTheme.displayLarge?.copyWith(
-                          fontSize: 72,
-                          fontWeight: FontWeight.w900,
-                          color: theme.colorScheme.primary,
+                      const SizedBox(width: 12),
+                      Semantics(
+                        label: 'Skip rest timer',
+                        button: true,
+                        child: SizedBox(
+                          width: 120,
+                          height: 56,
+                          child: TextButton(
+                            onPressed: () =>
+                                ref.read(restTimerProvider.notifier).skip(),
+                            style: TextButton.styleFrom(
+                              foregroundColor: theme.colorScheme.onSurface,
+                              textStyle: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: BorderSide(
+                                  color: theme.colorScheme.onSurface.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            child: const Text('Skip'),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Semantics(
+                        label: 'Add 30 seconds',
+                        button: true,
+                        child: SizedBox(
+                          width: 64,
+                          height: 56,
+                          child: TextButton(
+                            onPressed: () => ref
+                                .read(restTimerProvider.notifier)
+                                .adjustTime(30),
+                            style: TextButton.styleFrom(
+                              foregroundColor: theme.colorScheme.onSurface,
+                              backgroundColor: Colors.white12,
+                              textStyle: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text('+30s'),
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                timerState.exerciseName ?? 'Rest',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                const SizedBox(height: 24),
+                Text(
+                  'Tap anywhere to dismiss',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                  ),
                 ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-              // -30s / Skip / +30s button row
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Semantics(
-                    label: 'Subtract 30 seconds',
-                    button: true,
-                    child: SizedBox(
-                      width: 64,
-                      height: 56,
-                      child: TextButton(
-                        onPressed: () => ref
-                            .read(restTimerProvider.notifier)
-                            .adjustTime(-30),
-                        style: TextButton.styleFrom(
-                          foregroundColor: theme.colorScheme.onSurface,
-                          backgroundColor: Colors.white12,
-                          textStyle: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: const Text('-30s'),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Semantics(
-                    label: 'Skip rest timer',
-                    button: true,
-                    child: SizedBox(
-                      width: 120,
-                      height: 56,
-                      child: TextButton(
-                        onPressed: () =>
-                            ref.read(restTimerProvider.notifier).skip(),
-                        style: TextButton.styleFrom(
-                          foregroundColor: theme.colorScheme.onSurface,
-                          textStyle: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(
-                              color: theme.colorScheme.onSurface.withValues(
-                                alpha: 0.3,
-                              ),
-                            ),
-                          ),
-                        ),
-                        child: const Text('Skip'),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Semantics(
-                    label: 'Add 30 seconds',
-                    button: true,
-                    child: SizedBox(
-                      width: 64,
-                      height: 56,
-                      child: TextButton(
-                        onPressed: () =>
-                            ref.read(restTimerProvider.notifier).adjustTime(30),
-                        style: TextButton.styleFrom(
-                          foregroundColor: theme.colorScheme.onSurface,
-                          backgroundColor: Colors.white12,
-                          textStyle: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: const Text('+30s'),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
