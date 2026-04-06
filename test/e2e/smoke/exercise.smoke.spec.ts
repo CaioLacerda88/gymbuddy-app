@@ -16,7 +16,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { navigateToTab } from '../helpers/app';
+import { navigateToTab, flutterFill } from '../helpers/app';
 import { login } from '../helpers/auth';
 import {
   EXERCISE_LIST,
@@ -87,7 +87,7 @@ test.describe('Exercise smoke', () => {
     });
 
     // Fill in the exercise name.
-    await page.fill(CREATE_EXERCISE.nameInput, CUSTOM_EXERCISE_NAME);
+    await flutterFill(page,CREATE_EXERCISE.nameInput, CUSTOM_EXERCISE_NAME);
 
     // Select a muscle group (Chest) and equipment (Barbell).
     await page.click('[aria-label="Muscle group: Chest Chest"]');
@@ -106,7 +106,7 @@ test.describe('Exercise smoke', () => {
     // The list should have at least one exercise (user custom exercises or
     // default seeded exercises, depending on database state).
     // We search for a partial string to trigger the filter.
-    await page.fill(EXERCISE_LIST.searchInput, 'Smoke Test');
+    await flutterFill(page,EXERCISE_LIST.searchInput, 'Smoke Test');
 
     // Wait for the debounce to fire (300 ms default + render time).
     await page.waitForTimeout(600);
@@ -134,7 +134,7 @@ test.describe('Exercise smoke', () => {
     await expect(page.locator(CREATE_EXERCISE.nameInput)).toBeVisible({
       timeout: 10_000,
     });
-    await page.fill(CREATE_EXERCISE.nameInput, deleteTargetName);
+    await flutterFill(page,CREATE_EXERCISE.nameInput, deleteTargetName);
     await page.click('[aria-label="Muscle group: Back Back"]');
     await page.click('[aria-label="Equipment type: Dumbbell Dumbbell"]');
     await page.click(CREATE_EXERCISE.saveButton);
@@ -146,7 +146,7 @@ test.describe('Exercise smoke', () => {
 
     // Search for the newly created exercise to ensure it is present before
     // attempting to delete it.
-    await page.fill(EXERCISE_LIST.searchInput, deleteTargetName.substring(0, 10));
+    await flutterFill(page,EXERCISE_LIST.searchInput, deleteTargetName.substring(0, 10));
     await page.waitForTimeout(600);
 
     // Open the detail screen for the exercise.

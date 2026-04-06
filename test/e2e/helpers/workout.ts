@@ -24,6 +24,7 @@
  */
 
 import { Page, expect } from '@playwright/test';
+import { flutterFill } from './app';
 import { WORKOUT, EXERCISE_PICKER } from './selectors';
 
 /**
@@ -56,7 +57,7 @@ export async function addExercise(
     timeout: 10_000,
   });
 
-  await page.fill(EXERCISE_PICKER.searchInput, exerciseName);
+  await flutterFill(page, EXERCISE_PICKER.searchInput, exerciseName);
 
   // Wait for the debounce / filter to apply, then select the exercise.
   const addButton = page.locator(EXERCISE_PICKER.addExerciseButton(exerciseName));

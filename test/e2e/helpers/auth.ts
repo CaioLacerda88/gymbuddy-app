@@ -10,7 +10,7 @@
 
 import { Page, expect } from '@playwright/test';
 import { AUTH, NAV } from './selectors';
-import { waitForAppReady } from './app';
+import { waitForAppReady, flutterFill } from './app';
 
 /**
  * Log in with email and password.
@@ -29,8 +29,8 @@ export async function login(
   // Confirm we are on the login screen.
   await expect(page.locator(AUTH.appTitle)).toBeVisible({ timeout: 10_000 });
 
-  await page.fill(AUTH.emailInput, email);
-  await page.fill(AUTH.passwordInput, password);
+  await flutterFill(page, AUTH.emailInput, email);
+  await flutterFill(page, AUTH.passwordInput, password);
   await page.click(AUTH.loginButton);
 
   // After successful login, the router redirects to /home and the shell nav

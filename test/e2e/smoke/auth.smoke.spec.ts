@@ -7,7 +7,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { waitForAppReady } from '../helpers/app';
+import { waitForAppReady, flutterFill } from '../helpers/app';
 import { login, logout } from '../helpers/auth';
 import { AUTH, NAV } from '../helpers/selectors';
 import { TEST_USERS } from '../fixtures/test-users';
@@ -48,8 +48,8 @@ test.describe('Auth smoke', () => {
     await page.goto('/');
     await waitForAppReady(page);
 
-    await page.fill(AUTH.emailInput, 'test@example.com');
-    await page.fill(AUTH.passwordInput, 'definitely-wrong-password');
+    await flutterFill(page, AUTH.emailInput, 'test@example.com');
+    await flutterFill(page, AUTH.passwordInput, 'definitely-wrong-password');
     await page.click(AUTH.loginButton);
 
     // The LoginScreen renders an inline error container on auth failure.
@@ -78,7 +78,7 @@ test.describe('Auth smoke', () => {
     await waitForAppReady(page);
 
     // Fill in a valid email address.
-    await page.fill(AUTH.emailInput, TEST_USERS.smokeAuth.email);
+    await flutterFill(page, AUTH.emailInput, TEST_USERS.smokeAuth.email);
 
     // Click the forgot password button.
     await page.click(AUTH.forgotPasswordButton);

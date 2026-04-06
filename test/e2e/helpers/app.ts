@@ -130,3 +130,30 @@ export async function navigateToTab(
   // completed. The heading text matches the tab label for most screens.
   await page.waitForSelector(`text=${tabName}`, { timeout: 15_000 });
 }
+
+/**
+ * Fill a Flutter text field via CanvasKit semantics.
+ *
+ * Flutter CanvasKit renders to <canvas> — the flt-semantics elements are
+ * accessibility overlays (divs), not real <input> elements. Playwright's
+ * `page.fill()` only works on native inputs, so we click the semantics
+ * node to focus the Flutter TextField, then type via the keyboard.
+ *
+ * If the field already has text, triple-click to select all before typing
+ * so the new value replaces the old one (mirroring page.fill() behavior).
+ */
+export async function flutterFill(
+  page: Page,
+  selector: string,
+  value: string,
+): Promise<void> {
+  // Focus the Flutter TextField via its semantics element.
+  await page.click(selector);
+  // Select all existing text (triple-click) and replace.
+  await page.keyboard.press('Control+a');
+  if (value === '') {
+    await page.keyboard.press('Backspace');
+  } else {
+    await page.keyboard.type(value);
+  }
+}
