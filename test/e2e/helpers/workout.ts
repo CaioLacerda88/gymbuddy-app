@@ -181,9 +181,8 @@ export async function completeSet(
 export async function finishWorkout(page: Page): Promise<void> {
   await page.click(WORKOUT.finishButton);
 
-  // Confirmation dialog appears — click the dialog action button.
-  // The dialog has a "Keep Going" cancel and a "Finish Workout" confirm.
-  const dialogFinish = page.locator(WORKOUT.finishButton).last();
+  // Confirmation dialog appears — click the "Save & Finish" action button.
+  const dialogFinish = page.locator(WORKOUT.dialogFinishButton);
   await expect(dialogFinish).toBeVisible({ timeout: 5_000 });
   await dialogFinish.click();
 }

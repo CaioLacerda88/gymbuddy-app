@@ -40,6 +40,8 @@ export const AUTH = {
   googleButton: 'text=Continue with Google',
   /** TextButton "Forgot password?" */
   forgotPasswordButton: 'text=Forgot password?',
+  /** "Send Reset Email" button in the forgot password confirmation dialog */
+  sendResetEmailButton: 'text=Send Reset Email',
   /** The "GymBuddy" headline present on the login screen */
   appTitle: 'text=GymBuddy',
   /** "Welcome back" subtitle (sign-in mode) */
@@ -148,8 +150,10 @@ export const CREATE_EXERCISE = {
 export const WORKOUT = {
   /** "Start Empty Workout" button on the Home screen launchpad */
   startEmpty: 'text=Start Empty Workout',
-  /** "Finish Workout" button in the persistent bottom bar and in the dialog */
+  /** "Finish Workout" button in the persistent bottom bar */
   finishButton: 'text=Finish Workout',
+  /** "Save & Finish" button in the finish workout confirmation dialog */
+  dialogFinishButton: 'text=Save & Finish',
   /** "Add Exercise" FAB on the active workout screen */
   addExerciseFab: 'text=Add Exercise',
   /** "Add Set" button within an exercise card */

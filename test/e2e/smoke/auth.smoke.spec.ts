@@ -80,16 +80,15 @@ test.describe('Auth smoke', () => {
     // Fill in a valid email address.
     await flutterFill(page, AUTH.emailInput, TEST_USERS.smokeAuth.email);
 
-    // Click the forgot password button.
+    // Click the forgot password button — opens a confirmation dialog.
     await page.click(AUTH.forgotPasswordButton);
 
-    // The button should trigger a reset email (Supabase /recover endpoint).
-    // We wait a moment for the async request to complete.
-    // The UI should show either:
-    //   a) A SnackBar "Password reset email sent. Check your inbox."
-    //   b) OR remain on the login screen without an error visible.
-    // We cannot reliably assert the SnackBar (it disappears quickly) but we
-    // can assert the app does NOT show an error and does NOT crash.
+    // Confirm the reset in the dialog.
+    const sendReset = page.locator(AUTH.sendResetEmailButton);
+    await expect(sendReset).toBeVisible({ timeout: 5_000 });
+    await sendReset.click();
+
+    // Wait for the async reset request to complete.
     await page.waitForTimeout(2_000);
 
     // The login screen itself must still be visible (no unhandled crash).
