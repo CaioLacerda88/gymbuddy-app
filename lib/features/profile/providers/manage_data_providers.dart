@@ -23,14 +23,19 @@ Future<void> clearWorkoutHistory(WidgetRef ref) async {
 ///
 /// Returns silently if no user is logged in.
 /// Invalidates all relevant providers so caches reflect the deletion.
+///
+/// **Order matters**: personal records must be deleted first because
+/// `personal_records.set_id` has a foreign key reference to `sets`.
+/// Deleting workouts first would cascade-delete sets, violating that FK.
 Future<void> resetAllAccountData(WidgetRef ref) async {
   final userId = ref.read(authRepositoryProvider).currentUser?.id;
   if (userId == null) return;
   final workoutRepo = ref.read(workoutRepositoryProvider);
   final prRepo = ref.read(prRepositoryProvider);
 
-  await workoutRepo.clearHistory(userId);
+  // Delete PRs first to clear set_id FK references before cascade-deleting sets.
   await prRepo.clearAllRecords(userId);
+  await workoutRepo.clearHistory(userId);
 
   ref.invalidate(workoutHistoryProvider);
   ref.invalidate(workoutCountProvider);

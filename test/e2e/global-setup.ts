@@ -32,6 +32,7 @@ const TEST_USERS = [
   'e2e-full-home@test.local',
   'e2e-full-crash@test.local',
   'e2e-full-history@test.local',
+  'e2e-full-manage-data@test.local',
 ];
 
 async function globalSetup(): Promise<void> {

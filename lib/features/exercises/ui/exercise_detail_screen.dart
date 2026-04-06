@@ -68,7 +68,7 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(e.message)));
+        ).showSnackBar(SnackBar(content: Text(e.userMessage)));
       }
     } finally {
       if (mounted) setState(() => _isDeleting = false);

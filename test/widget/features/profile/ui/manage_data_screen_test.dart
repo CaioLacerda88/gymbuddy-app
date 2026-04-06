@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymbuddy_app/core/exceptions/app_exception.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
 import 'package:gymbuddy_app/features/auth/data/auth_repository.dart';
 import 'package:gymbuddy_app/features/auth/providers/auth_providers.dart';
@@ -313,6 +314,102 @@ void main() {
         verify(() => mockWorkoutRepo.clearHistory('user-001')).called(1);
         verify(() => mockPRRepo.clearAllRecords('user-001')).called(1);
         expect(find.text('Account data reset'), findsOneWidget);
+      });
+
+      testWidgets('reset deletes PRs before workouts (FK order)', (
+        tester,
+      ) async {
+        final callOrder = <String>[];
+        final mockWorkoutRepo = MockWorkoutRepository();
+        when(() => mockWorkoutRepo.clearHistory(any())).thenAnswer((_) async {
+          callOrder.add('clearHistory');
+        });
+        final mockPRRepo = MockPRRepository();
+        when(() => mockPRRepo.clearAllRecords(any())).thenAnswer((_) async {
+          callOrder.add('clearAllRecords');
+        });
+
+        await tester.pumpWidget(
+          buildTestWidget(workoutRepo: mockWorkoutRepo, prRepo: mockPRRepo),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        await tester.tap(find.text('Reset All Account Data'));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextField), 'RESET');
+        await tester.pump();
+
+        await tester.tap(find.text('Reset Account'));
+        await tester.pumpAndSettle();
+
+        // PRs must be deleted first to avoid FK violation on set_id.
+        expect(callOrder, ['clearAllRecords', 'clearHistory']);
+      });
+    });
+
+    group('Error states show safe messages', () {
+      testWidgets('delete history error shows safe message, not raw DB error', (
+        tester,
+      ) async {
+        final mockWorkoutRepo = MockWorkoutRepository();
+        when(() => mockWorkoutRepo.clearHistory(any())).thenThrow(
+          const DatabaseException(
+            'update or delete on table "sets" violates foreign key '
+            'constraint "personal_records_set_id_fkey" on table '
+            '"personal_records"',
+            code: '23503',
+          ),
+        );
+
+        await tester.pumpWidget(buildTestWidget(workoutRepo: mockWorkoutRepo));
+        await tester.pump();
+        await tester.pump();
+
+        await tester.tap(find.text('Delete Workout History'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Delete History'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Yes, Delete'));
+        await tester.pumpAndSettle();
+
+        // Should show safe message, not raw DB error.
+        expect(find.textContaining('Something went wrong'), findsOneWidget);
+        // Must NOT show table names.
+        expect(find.textContaining('sets'), findsNothing);
+        expect(find.textContaining('personal_records'), findsNothing);
+        expect(find.textContaining('foreign key'), findsNothing);
+      });
+
+      testWidgets('reset all error shows safe message, not raw DB error', (
+        tester,
+      ) async {
+        final mockPRRepo = MockPRRepository();
+        when(() => mockPRRepo.clearAllRecords(any())).thenThrow(
+          const DatabaseException(
+            'relation "personal_records" does not exist',
+            code: '42P01',
+          ),
+        );
+
+        await tester.pumpWidget(buildTestWidget(prRepo: mockPRRepo));
+        await tester.pump();
+        await tester.pump();
+
+        await tester.tap(find.text('Reset All Account Data'));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextField), 'RESET');
+        await tester.pump();
+
+        await tester.tap(find.text('Reset Account'));
+        await tester.pumpAndSettle();
+
+        // Should show safe message.
+        expect(find.textContaining('Something went wrong'), findsOneWidget);
+        // Must NOT show table names.
+        expect(find.textContaining('personal_records'), findsNothing);
       });
     });
   });

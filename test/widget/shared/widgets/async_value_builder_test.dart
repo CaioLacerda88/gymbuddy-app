@@ -54,7 +54,9 @@ void main() {
       );
 
       expect(find.byIcon(Icons.error_outline), findsOneWidget);
-      expect(find.textContaining('Oops'), findsOneWidget);
+      // Raw error text should NOT be displayed — only the safe generic message.
+      expect(find.textContaining('Oops'), findsNothing);
+      expect(find.textContaining('Something went wrong'), findsOneWidget);
     });
 
     testWidgets('should show custom loading widget when provided', (

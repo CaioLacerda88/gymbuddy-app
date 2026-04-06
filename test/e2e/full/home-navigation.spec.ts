@@ -11,6 +11,10 @@
  *  7. "View All" link navigates to the workout history screen
  *  8. Profile tab shows the user's email and Log Out button
  *  9. Profile weight unit toggle shows kg and lbs options
+ * 10. HOME-STAT-001 — Workouts and Records stat cards are visible
+ * 11. HOME-STAT-002 — Tapping the Workouts stat card navigates to history
+ * 12. HOME-STAT-003 — Tapping the Records stat card navigates to PR list
+ * 13. HOME-STAT-004 — Workouts card count updates after completing a workout
  *
  * Uses the dedicated `fullHome` test user.
  * The Flutter web app is served automatically by Playwright's webServer config
@@ -23,6 +27,7 @@ import { login } from '../helpers/auth';
 import {
   NAV,
   HOME,
+  HOME_STATS,
   WORKOUT,
   PR,
   HISTORY,
@@ -215,5 +220,127 @@ test.describe('Home screen and navigation — full suite', () => {
       timeout: 5_000,
     });
     await expect(page.locator(PROFILE.kgOption)).toBeVisible();
+  });
+
+  // ---------------------------------------------------------------------------
+  // HOME-STAT-001 — Workouts and Records stat cards are visible on the home screen
+  //
+  // _StatCardsRow renders two _StatCard widgets. Each has a Semantics button
+  // whose label includes "tap to view workouts" / "tap to view records" once the
+  // count has loaded from the server.
+  // ---------------------------------------------------------------------------
+  test('HOME-STAT-001: Workouts and Records stat cards are visible on the home screen', async ({
+    page,
+  }) => {
+    // The stat cards are at the top of the home screen, below the date line.
+    // We wait for the data-loaded state (label includes "tap to view").
+    await expect(page.locator(HOME_STATS.workoutsCard)).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.locator(HOME_STATS.recordsCard)).toBeVisible({
+      timeout: 10_000,
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // HOME-STAT-002 — Tapping the Workouts stat card navigates to workout history
+  //
+  // _StatCard for "Workouts" calls context.go('/home/history') on tap.
+  // After navigation the WorkoutHistoryScreen AppBar title "History" must appear.
+  // ---------------------------------------------------------------------------
+  test('HOME-STAT-002: tapping the Workouts stat card navigates to the history screen', async ({
+    page,
+  }) => {
+    // Wait for the card to be in data state (count loaded from server).
+    await expect(page.locator(HOME_STATS.workoutsCard)).toBeVisible({
+      timeout: 15_000,
+    });
+
+    await page.click(HOME_STATS.workoutsCard);
+
+    await expect(page.locator(HISTORY.heading)).toBeVisible({ timeout: 15_000 });
+  });
+
+  // ---------------------------------------------------------------------------
+  // HOME-STAT-003 — Tapping the Records stat card navigates to the PR list
+  //
+  // _StatCard for "Records" calls context.go('/records') on tap.
+  // After navigation the PRListScreen AppBar title "Personal Records" must appear.
+  // ---------------------------------------------------------------------------
+  test('HOME-STAT-003: tapping the Records stat card navigates to the Personal Records screen', async ({
+    page,
+  }) => {
+    await expect(page.locator(HOME_STATS.recordsCard)).toBeVisible({
+      timeout: 15_000,
+    });
+
+    await page.click(HOME_STATS.recordsCard);
+
+    await expect(page.locator('text=Personal Records')).toBeVisible({
+      timeout: 15_000,
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // HOME-STAT-004 — Workouts card count increments after finishing a workout
+  //
+  // Reads the aria-label before and after completing a workout to confirm the
+  // count changed. The Semantics label encodes the count: "$n Workouts, tap…"
+  // so we can extract it from the attribute.
+  // ---------------------------------------------------------------------------
+  test('HOME-STAT-004: Workouts card count increments after completing a workout', async ({
+    page,
+  }) => {
+    // Read the current count from the aria-label before starting a workout.
+    await expect(page.locator(HOME_STATS.workoutsCard)).toBeVisible({
+      timeout: 15_000,
+    });
+
+    const labelBefore = await page
+      .locator(HOME_STATS.workoutsCard)
+      .getAttribute('aria-label');
+
+    // Extract the integer at the start of the label: "3 Workouts, tap to view…"
+    const countBefore = parseInt(
+      (labelBefore ?? '').match(/^(\d+)/)?.[1] ?? '0',
+      10,
+    );
+
+    // Complete a minimal workout.
+    await startEmptyWorkout(page);
+    await addExercise(page, SEED_EXERCISES.benchPress);
+    await setWeight(page, '60');
+    await setReps(page, '5');
+    await completeSet(page, 0);
+    await finishWorkout(page);
+
+    // Dismiss PR celebration if shown.
+    const isCelebration = await page
+      .locator(PR.firstWorkoutHeading)
+      .isVisible({ timeout: 15_000 })
+      .catch(() => false);
+    const isNewPR = await page
+      .locator(PR.newPRHeading)
+      .isVisible({ timeout: isCelebration ? 0 : 3_000 })
+      .catch(() => false);
+
+    if (isCelebration || isNewPR) {
+      await page.click(PR.continueButton);
+    }
+
+    await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
+
+    // After returning to Home the provider is invalidated and the card reloads.
+    // Wait for the card to show the new count (greater than before).
+    await expect(async () => {
+      const labelAfter = await page
+        .locator(HOME_STATS.workoutsCard)
+        .getAttribute('aria-label');
+      const countAfter = parseInt(
+        (labelAfter ?? '').match(/^(\d+)/)?.[1] ?? '0',
+        10,
+      );
+      expect(countAfter).toBeGreaterThan(countBefore);
+    }).toPass({ timeout: 15_000 });
   });
 });
