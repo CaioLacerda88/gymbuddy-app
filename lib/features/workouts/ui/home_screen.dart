@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/workout_formatters.dart';
+import '../../personal_records/providers/pr_providers.dart';
 import '../../routines/ui/widgets/routine_action_sheet.dart';
 import '../../routines/providers/notifiers/routine_list_notifier.dart';
 import '../../routines/ui/start_routine_action.dart';
@@ -40,7 +41,11 @@ class HomeScreen extends ConsumerWidget {
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
+
+            // Stat cards
+            const _StatCardsRow(),
+            const SizedBox(height: 20),
 
             // Routines sections
             routinesAsync.when(
@@ -220,6 +225,104 @@ class _SectionHeader extends StatelessWidget {
       title,
       style: theme.textTheme.labelLarge?.copyWith(
         color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+      ),
+    );
+  }
+}
+
+class _StatCardsRow extends ConsumerWidget {
+  const _StatCardsRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final workoutCount = ref.watch(workoutCountProvider);
+    final prCount = ref.watch(prCountProvider);
+
+    return Row(
+      children: [
+        Expanded(
+          child: _StatCard(
+            count: workoutCount,
+            label: 'Workouts',
+            onTap: () => context.go('/home/history'),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _StatCard(
+            count: prCount,
+            label: 'Records',
+            onTap: () => context.go('/records'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  const _StatCard({
+    required this.count,
+    required this.label,
+    required this.onTap,
+  });
+
+  final AsyncValue<int> count;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final countText = count.when(
+      data: (v) => '$v',
+      loading: () => '--',
+      error: (_, _) => '--',
+    );
+
+    final semanticLabel = count.when(
+      data: (v) => '$v $label, tap to view ${label.toLowerCase()}',
+      loading: () => '$label loading',
+      error: (_, _) => '$label unavailable',
+    );
+
+    return Semantics(
+      label: semanticLabel,
+      button: true,
+      child: Material(
+        color: theme.cardTheme.color ?? theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: SizedBox(
+            height: 72,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    countText,
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  Text(
+                    label,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.55,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -5,7 +5,11 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/exercise_image.dart';
 import '../models/active_workout_state.dart';
+import '../../exercises/models/exercise.dart';
+import '../../personal_records/models/personal_record.dart';
 import '../../personal_records/providers/pr_providers.dart';
+import '../../profile/providers/profile_providers.dart';
+import '../../personal_records/models/record_type.dart';
 import '../providers/workout_providers.dart';
 import '../providers/workout_history_providers.dart';
 import 'widgets/discard_workout_dialog.dart';
@@ -498,6 +502,16 @@ class _ExerciseCard extends ConsumerWidget {
     );
   }
 
+  void _showExerciseDetail(BuildContext context, Exercise exercise) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ExerciseDetailSheet(exercise: exercise),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
@@ -517,28 +531,44 @@ class _ExerciseCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header: image + name + reorder/delete buttons
+            // Header: name + info icon + reorder/delete buttons
             Row(
               children: [
-                if (exercise?.imageStartUrl != null) ...[
-                  ExerciseImage(
-                    imageUrl: exercise!.imageStartUrl,
-                    fallbackIcon: Icons.fitness_center,
-                    width: 40,
-                    height: 40,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  const SizedBox(width: 12),
-                ],
                 Expanded(
                   child: Semantics(
                     label:
-                        'Exercise: ${exercise?.name ?? 'Exercise'}. Long press to swap.',
-                    child: GestureDetector(
+                        'Exercise: ${exercise?.name ?? 'Exercise'}. '
+                        'Tap for details. Long press to swap.',
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: exercise != null
+                          ? () => _showExerciseDetail(context, exercise)
+                          : null,
                       onLongPress: () => _swapExercise(context, ref),
-                      child: Text(
-                        exercise?.name ?? 'Exercise',
-                        style: theme.textTheme.titleMedium,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 48),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  exercise?.name ?? 'Exercise',
+                                  style: theme.textTheme.titleMedium,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Icon(
+                                Icons.info_outline,
+                                size: 14,
+                                color: theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -741,6 +771,287 @@ class _AddExerciseFab extends StatelessWidget {
           label: const Text('Add Exercise'),
         ),
       ),
+    );
+  }
+}
+
+/// Bottom sheet that shows exercise details (name, muscle group, equipment,
+/// images, PRs) without navigating away from the active workout screen.
+class _ExerciseDetailSheet extends ConsumerWidget {
+  const _ExerciseDetailSheet({required this.exercise});
+
+  final Exercise exercise;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final asyncRecords = ref.watch(exercisePRsProvider(exercise.id));
+    final weightUnit =
+        ref.watch(profileProvider).valueOrNull?.weightUnit ?? 'kg';
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.85,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (context, scrollController) => Container(
+        decoration: BoxDecoration(
+          color: theme.scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        child: Column(
+          children: [
+            // Drag handle
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                controller: scrollController,
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                children: [
+                  // Exercise name
+                  Text(exercise.name, style: theme.textTheme.headlineMedium),
+                  const SizedBox(height: 12),
+                  // Muscle group + equipment chips
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _SheetChip(
+                        icon: exercise.muscleGroup.icon,
+                        label: exercise.muscleGroup.displayName,
+                      ),
+                      _SheetChip(
+                        icon: exercise.equipmentType.icon,
+                        label: exercise.equipmentType.displayName,
+                      ),
+                    ],
+                  ),
+                  // Images
+                  if (exercise.imageStartUrl != null ||
+                      exercise.imageEndUrl != null) ...[
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      height: 160,
+                      child: Row(
+                        children: [
+                          if (exercise.imageStartUrl != null)
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  Expanded(
+                                    child: ExerciseImage(
+                                      imageUrl: exercise.imageStartUrl,
+                                      fallbackIcon: exercise.muscleGroup.icon,
+                                      height: 136,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Start',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.5),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          if (exercise.imageStartUrl != null &&
+                              exercise.imageEndUrl != null)
+                            const SizedBox(width: 8),
+                          if (exercise.imageEndUrl != null)
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  Expanded(
+                                    child: ExerciseImage(
+                                      imageUrl: exercise.imageEndUrl,
+                                      fallbackIcon: exercise.muscleGroup.icon,
+                                      height: 136,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'End',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.5),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  // Personal records
+                  _SheetPRSection(
+                    asyncRecords: asyncRecords,
+                    equipmentType: exercise.equipmentType,
+                    weightUnit: weightUnit,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SheetChip extends StatelessWidget {
+  const _SheetChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18, color: theme.colorScheme.onSurface),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SheetPRSection extends StatelessWidget {
+  const _SheetPRSection({
+    required this.asyncRecords,
+    required this.equipmentType,
+    required this.weightUnit,
+  });
+
+  final AsyncValue<List<PersonalRecord>> asyncRecords;
+  final EquipmentType equipmentType;
+  final String weightUnit;
+
+  String _formatValue(RecordType type, double value) {
+    return switch (type) {
+      RecordType.maxWeight => '$value $weightUnit',
+      RecordType.maxReps => '${value.toInt()} reps',
+      RecordType.maxVolume => '$value $weightUnit',
+    };
+  }
+
+  IconData _iconForType(RecordType type) {
+    return switch (type) {
+      RecordType.maxWeight => Icons.fitness_center,
+      RecordType.maxReps => Icons.repeat,
+      RecordType.maxVolume => Icons.bar_chart,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return asyncRecords.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      ),
+      error: (_, _) => _emptyRow(theme),
+      data: (records) {
+        if (records.isEmpty) return _emptyRow(theme);
+
+        // For bodyweight exercises, skip maxWeight and maxVolume.
+        final filtered = equipmentType == EquipmentType.bodyweight
+            ? records.where((r) => r.recordType == RecordType.maxReps).toList()
+            : records;
+
+        if (filtered.isEmpty) return _emptyRow(theme);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Personal Records', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            ...filtered.map(
+              (r) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Icon(
+                      _iconForType(r.recordType),
+                      size: 18,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      r.recordType.displayName,
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    const Spacer(),
+                    Text(
+                      _formatValue(r.recordType, r.value),
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _emptyRow(ThemeData theme) {
+    return Row(
+      children: [
+        Icon(
+          Icons.emoji_events_rounded,
+          size: 20,
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          'No records yet',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+          ),
+        ),
+      ],
     );
   }
 }

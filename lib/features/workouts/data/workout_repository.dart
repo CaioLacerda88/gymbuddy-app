@@ -239,6 +239,20 @@ class WorkoutRepository extends BaseRepository {
     });
   }
 
+  /// Delete all finished, non-active workouts for a user.
+  ///
+  /// Active workouts (in-progress) are never deleted.
+  /// Cascade-deletes workout_exercises and sets via FK constraints.
+  Future<void> clearHistory(String userId) {
+    return mapException(() async {
+      await _workouts
+          .delete()
+          .eq('user_id', userId)
+          .eq('is_active', false)
+          .not('finished_at', 'is', null);
+    });
+  }
+
   /// Parse a workout detail response into structured data.
   static WorkoutDetail parseWorkoutDetail(Map<String, dynamic> data) {
     final workout = Workout.fromJson(data);

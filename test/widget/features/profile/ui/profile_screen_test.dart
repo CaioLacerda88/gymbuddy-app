@@ -165,6 +165,8 @@ void main() {
       await tester.pumpWidget(buildTestWidget(profile: null));
       await tester.pump();
 
+      await tester.ensureVisible(find.text('Log Out'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Log Out'));
       await tester.pumpAndSettle();
 
@@ -184,6 +186,8 @@ void main() {
       );
       await tester.pump();
 
+      await tester.ensureVisible(find.text('Log Out'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Log Out'));
       await tester.pumpAndSettle();
 
@@ -299,6 +303,33 @@ void main() {
       await tester.pump();
 
       expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    });
+
+    testWidgets('shows Manage Data row', (tester) async {
+      const profile = Profile(
+        id: 'user-1',
+        displayName: 'Jane',
+        weightUnit: 'kg',
+      );
+
+      await tester.pumpWidget(buildTestWidget(profile: profile));
+      await tester.pump();
+
+      expect(find.text('DATA MANAGEMENT'), findsOneWidget);
+      expect(find.text('Manage Data'), findsOneWidget);
+    });
+
+    testWidgets('Manage Data row has chevron icon', (tester) async {
+      const profile = Profile(
+        id: 'user-1',
+        displayName: 'Jane',
+        weightUnit: 'kg',
+      );
+
+      await tester.pumpWidget(buildTestWidget(profile: profile));
+      await tester.pump();
+
+      expect(find.byIcon(Icons.chevron_right), findsOneWidget);
     });
   });
 }

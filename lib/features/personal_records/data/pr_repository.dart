@@ -155,6 +155,13 @@ class PRRepository extends BaseRepository {
     });
   }
 
+  /// Delete all personal records for a user.
+  Future<void> clearAllRecords(String userId) {
+    return mapException(() async {
+      await _records.delete().eq('user_id', userId);
+    });
+  }
+
   /// Upsert personal records.
   ///
   /// Uses the unique constraint on (user_id, exercise_id, record_type) to
