@@ -60,7 +60,9 @@ export async function addExercise(
   await flutterFill(page, EXERCISE_PICKER.searchInput, exerciseName);
 
   // Wait for the debounce / filter to apply, then select the exercise.
-  const addButton = page.locator(EXERCISE_PICKER.addExerciseButton(exerciseName));
+  // Flutter CanvasKit renders duplicate semantics nodes for each exercise card,
+  // so we use .first() to avoid strict-mode violations.
+  const addButton = page.locator(EXERCISE_PICKER.addExerciseButton(exerciseName)).first();
   await expect(addButton).toBeVisible({ timeout: 10_000 });
   await addButton.click();
 

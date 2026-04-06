@@ -103,10 +103,13 @@ test.describe('Auth smoke', () => {
 
     // Rate-limit (429) is the only acceptable error response here since we
     // may call this endpoint multiple times in test runs. Any other error
-    // should fail this test.
+    // should fail this test. The aria-live selector may match empty elements
+    // (e.g. SnackBar placeholders), so only assert on non-empty text.
     if (hasError) {
-      const errorText = await page.locator(AUTH.errorMessage).textContent();
-      expect(errorText?.toLowerCase()).toContain('rate limit');
+      const errorText = (await page.locator(AUTH.errorMessage).textContent()) ?? '';
+      if (errorText.trim().length > 0) {
+        expect(errorText.toLowerCase()).toContain('rate limit');
+      }
     }
   });
 

@@ -90,20 +90,20 @@ export const NAV = {
 export const EXERCISE_LIST = {
   /** Page heading — use first() to avoid strict-mode collision with nav tab */
   heading: 'text=Exercises',
-  /** Search field — partial match because Flutter concatenates label + hint */
-  searchInput: '[aria-label*="Search exercises"]',
-  /** "All" muscle group filter — partial match (Flutter concatenates label + text) */
-  allMuscleGroupFilter: '[aria-label*="All muscle group filter"]',
-  /** Muscle group filter buttons — partial match for combined label */
+  /** Search field — role selector matches computed accessible name */
+  searchInput: 'role=textbox[name*="Search exercises"]',
+  /** "All" muscle group filter — role selector matches computed accessible name */
+  allMuscleGroupFilter: 'role=button[name*="All muscle group filter"]',
+  /** Muscle group filter buttons — role selector for computed accessible name */
   muscleGroupFilter: (name: string) =>
-    `[aria-label*="${name} muscle group filter"]`,
-  /** Equipment FilterChip — partial match for combined label */
+    `role=button[name*="${name} muscle group filter"]`,
+  /** Equipment FilterChip — role selector for computed accessible name */
   equipmentFilter: (name: string) =>
-    `[aria-label*="${name} equipment filter"]`,
-  /** Individual exercise card — Semantics label "Exercise: <name>" */
-  exerciseCard: (name: string) => `[aria-label="Exercise: ${name}"]`,
-  /** FAB — Semantics label "Create new exercise" */
-  createFab: '[aria-label="Create new exercise"]',
+    `role=checkbox[name*="${name}"]`,
+  /** Individual exercise card — role selector for computed accessible name */
+  exerciseCard: (name: string) => `role=button[name*="Exercise: ${name}"]`,
+  /** FAB — role selector for computed accessible name */
+  createFab: 'role=button[name*="Create new exercise"]',
   /** Empty state when no filters applied */
   emptyStateNoFilter: 'text=Your exercises will appear here',
   /** Empty state when filters yield no results */
@@ -120,8 +120,8 @@ export const EXERCISE_DETAIL = {
   appBarTitle: 'text=Exercise Details',
   /** "Custom exercise" badge (only on user-created exercises) */
   customBadge: 'text=Custom exercise',
-  /** Delete button — Semantics label "Delete exercise" */
-  deleteButton: '[aria-label="Delete exercise"]',
+  /** Delete button — role selector for computed accessible name */
+  deleteButton: 'role=button[name*="Delete exercise"]',
   /** Confirmation dialog title */
   deleteDialogTitle: 'text=Delete Exercise',
   /** Confirm delete action in dialog */
@@ -137,7 +137,7 @@ export const EXERCISE_DETAIL = {
 // AppTextField label is "Exercise Name", button label is "CREATE EXERCISE"
 // ---------------------------------------------------------------------------
 export const CREATE_EXERCISE = {
-  nameInput: '[aria-label="Exercise Name"]',
+  nameInput: 'role=textbox[name*="Exercise Name"]',
   /** Case-sensitive exact match avoids collision with heading "Create Exercise" */
   saveButton: 'text="CREATE EXERCISE"',
 } as const;
@@ -174,11 +174,11 @@ export const WORKOUT = {
 // Exercise picker — bottom sheet shown when adding exercises to a workout
 // ---------------------------------------------------------------------------
 export const EXERCISE_PICKER = {
-  /** Search field — partial match because Flutter concatenates label + hint */
-  searchInput: '[aria-label*="Search exercises to add"]',
-  /** "Add <name>" tile for a specific exercise */
+  /** Search field — role selector matches computed accessible name */
+  searchInput: 'role=textbox[name*="Search exercises to add"]',
+  /** "Add <name>" tile — role selector for computed accessible name */
   addExerciseButton: (name: string) =>
-    `flt-semantics[aria-label="Add ${name}"]`,
+    `role=button[name*="Add ${name}"]`,
 } as const;
 
 // ---------------------------------------------------------------------------

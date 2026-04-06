@@ -150,8 +150,9 @@ test.describe('Exercise smoke', () => {
     await flutterFill(page,EXERCISE_LIST.searchInput, deleteTargetName.substring(0, 10));
     await page.waitForTimeout(600);
 
-    // Open the detail screen for the exercise.
-    const card = page.locator(EXERCISE_LIST.exerciseCard(deleteTargetName));
+    // Open the detail screen for the exercise. Use first() because Flutter
+    // CanvasKit renders duplicate semantics nodes for each exercise card.
+    const card = page.locator(EXERCISE_LIST.exerciseCard(deleteTargetName)).first();
     await expect(card).toBeVisible({ timeout: 10_000 });
     await card.click();
 
