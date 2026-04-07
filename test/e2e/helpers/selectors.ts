@@ -199,10 +199,6 @@ export const EXERCISE_PICKER = {
 // Home screen
 // ---------------------------------------------------------------------------
 export const HOME = {
-  /** "RECENT" section heading on the home screen — exact match avoids "RECENT RECORDS" collision */
-  recentSection: 'text="RECENT"',
-  /** "View All" link to the full workout history */
-  viewAllHistory: 'text=View All',
   /**
    * Active workout banner in the shell bottom bar — shown when an active
    * workout is in progress on any tab. _ActiveWorkoutBanner (app_router.dart)
