@@ -24,6 +24,13 @@ export default defineConfig({
     headless: true,
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',
+    launchOptions: {
+      // Force Chromium to expose its accessibility tree in headless mode.
+      // Flutter web detects an active accessibility tree and enables its
+      // semantics layer (flt-semantics elements) automatically — without
+      // needing the unreliable placeholder click + Tab workaround.
+      args: ['--force-renderer-accessibility'],
+    },
   },
   // Auto-start the web server for local dev.
   // CI sets FLUTTER_APP_URL and manages its own server — skip here.

@@ -41,10 +41,13 @@ export async function waitForAppReady(page: Page): Promise<void> {
     consoleErrors.push(`[page error] ${String(err)}`);
   });
 
-  // 1. Wait for Flutter to render and show the accessibility placeholder.
+  // 1. Wait for Flutter to render. With --force-renderer-accessibility in the
+  //    Playwright launch args, Chrome exposes its accessibility tree and Flutter
+  //    auto-enables semantics. We wait for either the placeholder OR any
+  //    flt-semantics element (the latter appears when semantics are already on).
   try {
     await page.waitForSelector(
-      'flt-semantics-placeholder[aria-label="Enable accessibility"]',
+      'flt-semantics-placeholder, flt-semantics',
       { timeout: 60_000 },
     );
   } catch (e) {
@@ -56,31 +59,37 @@ export async function waitForAppReady(page: Page): Promise<void> {
     );
   }
 
-  // 2. Enable the full semantics tree. Flutter web activates semantics in
-  //    response to real user interaction. We retry up to 3 times because in
-  //    CI headless Chrome the first attempt can fire before Flutter's engine
-  //    has attached the event handler to the placeholder element.
+  // 2. Ensure the semantics tree is enabled. With --force-renderer-accessibility,
+  //    Flutter usually enables semantics automatically. If not yet active, we
+  //    fall back to clicking the placeholder and pressing Tab. Retry up to 3
+  //    times to handle timing races during engine initialisation.
   for (let attempt = 0; attempt < 3; attempt++) {
-    const placeholder = page.locator(
-      'flt-semantics-placeholder[aria-label="Enable accessibility"]',
-    );
-
-    // Click the placeholder — Flutter listens for pointer events on this element.
-    await placeholder.click({ force: true, timeout: 5_000 }).catch(() => {});
-
-    // Tab key is an additional signal that Flutter uses to enable semantics.
-    await page.keyboard.press('Tab');
-    await page.waitForTimeout(500);
-
-    // Check if semantics elements have appeared (any flt-semantics node).
     const semanticsCount = await page.locator('flt-semantics').count();
     if (semanticsCount > 0) break;
 
-    // If no semantics appeared, wait longer and retry. Flutter's engine may
-    // still be initialising the accessibility layer.
-    if (attempt < 2) {
-      await page.waitForTimeout(1500);
-    }
+    // Fallback: manually trigger semantics via placeholder click + Tab.
+    const placeholder = page.locator(
+      'flt-semantics-placeholder[aria-label="Enable accessibility"]',
+    );
+    await placeholder.click({ force: true, timeout: 5_000 }).catch(() => {});
+    await page.keyboard.press('Tab');
+
+    // Also try dispatching a pointer event via JS as a last resort — the
+    // placeholder may be inside shadow DOM where Playwright's click doesn't
+    // trigger Flutter's event handler.
+    await page.evaluate(() => {
+      const el =
+        document.querySelector('flt-semantics-placeholder') ??
+        document
+          .querySelector('flutter-view')
+          ?.shadowRoot?.querySelector('flt-semantics-placeholder');
+      if (el) {
+        el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+        el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+      }
+    });
+
+    await page.waitForTimeout(attempt < 2 ? 2000 : 500);
   }
 
   // 3. Wait for a known post-splash landmark to confirm the app is ready.
