@@ -68,9 +68,9 @@ void main() {
       expect(we.exercise, isNull);
     });
 
-    test('exercise field is excluded from toJson', () {
+    test('exercise field is included in toJson for Hive persistence', () {
       final we = WorkoutExercise.fromJson(TestWorkoutExerciseFactory.create());
-      expect(we.toJson().containsKey('exercise'), false);
+      expect(we.toJson().containsKey('exercise'), true);
     });
 
     test('toJson round-trip preserves scalar fields', () {

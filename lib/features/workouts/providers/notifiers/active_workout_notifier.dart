@@ -9,13 +9,16 @@ import '../../../auth/providers/auth_providers.dart';
 import '../../../exercises/models/exercise.dart';
 import '../../../personal_records/domain/pr_detection_service.dart';
 import '../../../personal_records/providers/pr_providers.dart';
+import '../../../profile/providers/profile_providers.dart';
 import '../../data/workout_local_storage.dart';
 import '../../data/workout_repository.dart';
 import '../../models/active_workout_state.dart';
 import '../../models/exercise_set.dart';
 import '../../models/routine_start_config.dart';
 import '../../models/set_type.dart';
+import '../../models/weight_unit.dart';
 import '../../models/workout_exercise.dart';
+import '../../utils/set_defaults.dart';
 import '../workout_providers.dart';
 
 const _uuid = Uuid();
@@ -87,6 +90,9 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
       // Fetch last-workout weights for pre-filling sets.
       final exerciseIds = config.exercises.map((e) => e.exerciseId).toList();
       final lastSets = await _repo.getLastWorkoutSets(exerciseIds);
+      final weightUnitStr =
+          ref.read(profileProvider).valueOrNull?.weightUnit ?? 'kg';
+      final weightUnit = WeightUnit.fromString(weightUnitStr);
 
       // Build exercises with pre-filled sets.
       final exercises = <ActiveWorkoutExercise>[];
@@ -104,6 +110,10 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
         );
 
         final previousSets = lastSets[re.exerciseId] ?? [];
+        final equipDefaults = defaultSetValues(
+          re.exercise.equipmentType,
+          weightUnit,
+        );
         final sets = List.generate(re.setCount, (setIndex) {
           // Use the matching previous set, or the last previous set if fewer.
           final prev = previousSets.isNotEmpty
@@ -116,8 +126,8 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
             id: _uuid.v4(),
             workoutExerciseId: workoutExerciseId,
             setNumber: setIndex + 1,
-            weight: prev?.weight ?? 0,
-            reps: re.targetReps ?? prev?.reps ?? 0,
+            weight: prev?.weight ?? equipDefaults.weight,
+            reps: re.targetReps ?? prev?.reps ?? equipDefaults.reps,
             setType: SetType.working,
             isCompleted: false,
             createdAt: DateTime.now().toUtc(),

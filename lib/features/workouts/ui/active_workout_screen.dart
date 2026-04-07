@@ -710,12 +710,8 @@ class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
                     if (prevSet.setType != SetType.warmup) {
                       defaultWeight = prevSet.weight;
                       defaultReps = prevSet.reps;
-                    } else if (lastSetForNewRow != null) {
-                      // Warmup -> working: prefer previous session data
-                      defaultWeight = lastSetForNewRow.weight;
-                      defaultReps = lastSetForNewRow.reps;
                     } else {
-                      // Warmup -> working, no previous session: equipment defaults
+                      // Warmup -> working: use equipment defaults
                       final equipType = exercise?.equipmentType;
                       if (equipType != null) {
                         final defaults = defaultSetValues(

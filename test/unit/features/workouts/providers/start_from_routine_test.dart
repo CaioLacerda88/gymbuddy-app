@@ -10,6 +10,8 @@ import 'package:gymbuddy_app/features/workouts/models/exercise_set.dart';
 import 'package:gymbuddy_app/features/workouts/models/routine_start_config.dart';
 import 'package:gymbuddy_app/features/workouts/models/workout.dart';
 import 'package:gymbuddy_app/features/workouts/providers/workout_providers.dart';
+import 'package:gymbuddy_app/features/profile/models/profile.dart';
+import 'package:gymbuddy_app/features/profile/providers/profile_providers.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
 
@@ -22,6 +24,16 @@ class MockWorkoutLocalStorage extends Mock implements WorkoutLocalStorage {}
 class MockAuthRepository extends Mock implements AuthRepository {}
 
 class FakeActiveWorkoutState extends Fake implements ActiveWorkoutState {}
+
+class _MockProfileNotifier extends AsyncNotifier<Profile?>
+    implements ProfileNotifier {
+  @override
+  Future<Profile?> build() async =>
+      const Profile(id: 'user-test-001', weightUnit: 'kg');
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 User fakeUser({String id = 'user-test-001'}) {
   return User(
@@ -66,6 +78,7 @@ _makeContainer() {
       workoutRepositoryProvider.overrideWithValue(mockRepo),
       workoutLocalStorageProvider.overrideWithValue(mockStorage),
       authRepositoryProvider.overrideWithValue(mockAuth),
+      profileProvider.overrideWith(() => _MockProfileNotifier()),
     ],
   );
   return (
@@ -261,10 +274,10 @@ void main() {
       final state = container.read(activeWorkoutProvider).value!;
       final sets = state.exercises[0].sets;
 
-      // Falls back to 0 weight and targetReps
-      expect(sets[0].weight, 0);
+      // Falls back to equipment-type defaults (barbell: 20kg) and targetReps
+      expect(sets[0].weight, 20.0);
       expect(sets[0].reps, 10);
-      expect(sets[1].weight, 0);
+      expect(sets[1].weight, 20.0);
       expect(sets[1].reps, 10);
       expect(sets[0].isCompleted, false);
     });

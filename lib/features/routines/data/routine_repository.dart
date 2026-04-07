@@ -111,7 +111,6 @@ class RoutineRepository extends BaseRepository {
   /// batch-fetching exercise rows and copying them onto each [RoutineExercise].
   Future<List<Routine>> _resolveExercises(List<Routine> routines) async {
     final exerciseMap = await _fetchExerciseMap(routines);
-    if (exerciseMap.isEmpty) return routines;
 
     return routines.map((routine) {
       final resolved = routine.exercises.map((re) {
