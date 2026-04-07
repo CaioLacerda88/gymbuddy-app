@@ -16,6 +16,7 @@ export default defineConfig({
   testDir: '.',
   timeout: 60_000,
   retries: 1,
+  workers: 2,
   globalSetup: './global-setup.ts',
   globalTeardown: './global-teardown.ts',
   use: {
@@ -42,6 +43,11 @@ export default defineConfig({
     {
       name: 'smoke',
       testMatch: /smoke\/.*\.spec\.ts$/,
+      use: {
+        // Smoke tests should be fast; fail quickly on regressions.
+        actionTimeout: 15_000,
+        navigationTimeout: 30_000,
+      },
     },
     {
       name: 'full',
