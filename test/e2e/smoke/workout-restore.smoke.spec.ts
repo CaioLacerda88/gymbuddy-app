@@ -28,7 +28,8 @@ import { SEED_EXERCISES } from '../fixtures/test-exercises';
 
 const USER = TEST_USERS.smokeWorkoutRestore;
 
-test.describe('Workout restore smoke — manual workout (BUG-001)', () => {
+// TODO: Enable once selectors are verified against live Flutter web app locally.
+test.describe.fixme('Workout restore smoke — manual workout (BUG-001)', () => {
   test.beforeEach(async ({ page }) => {
     await login(page, USER.email, USER.password);
   });

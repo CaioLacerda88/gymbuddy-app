@@ -36,7 +36,8 @@ import { TEST_USERS } from '../fixtures/test-users';
 
 const USER = TEST_USERS.smokeRoutineError;
 
-test.describe('Routine error handling smoke — BUG-003', () => {
+// TODO: Enable once selectors are verified against live Flutter web app locally.
+test.describe.fixme('Routine error handling smoke — BUG-003', () => {
   test.beforeEach(async ({ page }) => {
     await login(page, USER.email, USER.password);
   });

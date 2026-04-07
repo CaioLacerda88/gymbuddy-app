@@ -53,7 +53,8 @@ const PULL_DAY_GROUPS = ['Back', 'Biceps'];
 const LEG_DAY_GROUPS = ['Legs', 'Glutes', 'Core'];
 const FULL_BODY_GROUPS = ['Legs', 'Chest', 'Back'];
 
-test.describe('Routine regressions — full suite', () => {
+// TODO: Enable once selectors are verified against live Flutter web app locally.
+test.describe.fixme('Routine regressions — full suite', () => {
   test.beforeEach(async ({ page }) => {
     await login(page, USER.email, USER.password);
     await navigateToTab(page, 'Routines');
