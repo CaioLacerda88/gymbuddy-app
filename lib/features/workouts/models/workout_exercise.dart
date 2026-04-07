@@ -8,14 +8,14 @@ part 'workout_exercise.g.dart';
 
 @freezed
 class WorkoutExercise with _$WorkoutExercise {
-  @JsonSerializable(fieldRename: FieldRename.snake)
+  @JsonSerializable(fieldRename: FieldRename.snake, explicitToJson: true)
   const factory WorkoutExercise({
     required String id,
     required String workoutId,
     required String exerciseId,
     required int order,
     int? restSeconds,
-    @JsonKey(includeToJson: false) Exercise? exercise,
+    Exercise? exercise,
   }) = _WorkoutExercise;
 
   factory WorkoutExercise.fromJson(Map<String, dynamic> json) =>

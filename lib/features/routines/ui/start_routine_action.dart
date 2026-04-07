@@ -57,7 +57,16 @@ Future<void> startRoutineWorkout(
       )
       .toList();
 
-  if (exercises.isEmpty) return;
+  if (exercises.isEmpty) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not load exercises. Please try again.'),
+        ),
+      );
+    }
+    return;
+  }
 
   final config = RoutineStartConfig(
     routineName: routine.name,

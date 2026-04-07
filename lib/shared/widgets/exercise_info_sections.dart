@@ -17,27 +17,24 @@ class ExerciseDescriptionSection extends StatelessWidget {
     final theme = Theme.of(context);
     final onSurface = theme.colorScheme.onSurface;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 24),
-          Text(
-            'ABOUT',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: onSurface.withValues(alpha: 0.55),
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 24),
+        Text(
+          'ABOUT',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: onSurface.withValues(alpha: 0.55),
           ),
-          const SizedBox(height: 8),
-          Text(
-            description!,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: onSurface.withValues(alpha: 0.8),
-            ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          description!,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: onSurface.withValues(alpha: 0.8),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -58,7 +55,7 @@ class ExerciseFormTipsSection extends StatelessWidget {
     }
 
     final tips = formTips!
-        .split('\n')
+        .split(RegExp(r'\n|\\n'))
         .map((t) => t.trim())
         .where((t) => t.isNotEmpty)
         .toList();
@@ -69,45 +66,42 @@ class ExerciseFormTipsSection extends StatelessWidget {
     final onSurface = theme.colorScheme.onSurface;
     final primary = theme.colorScheme.primary;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 24),
-          Text(
-            'FORM TIPS',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: onSurface.withValues(alpha: 0.55),
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 24),
+        Text(
+          'FORM TIPS',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: onSurface.withValues(alpha: 0.55),
           ),
-          const SizedBox(height: 8),
-          ...List.generate(tips.length, (index) {
-            return Padding(
-              padding: EdgeInsets.only(top: index == 0 ? 0 : 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.check_circle_outline,
-                    size: 16,
-                    color: primary.withValues(alpha: 0.6),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      tips[index],
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: onSurface.withValues(alpha: 0.8),
-                      ),
+        ),
+        const SizedBox(height: 8),
+        ...List.generate(tips.length, (index) {
+          return Padding(
+            padding: EdgeInsets.only(top: index == 0 ? 0 : 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.check_circle_outline,
+                  size: 16,
+                  color: primary.withValues(alpha: 0.6),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    tips[index],
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: onSurface.withValues(alpha: 0.8),
                     ),
                   ),
-                ],
-              ),
-            );
-          }),
-        ],
-      ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
     );
   }
 }
