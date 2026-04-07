@@ -28,8 +28,11 @@ Building a gym training app from scratch where users can log workouts, track per
 | 9 | E2E Testing & CI/CD | DONE | #22–#23 |
 | 9d | Final QA Pass | DONE | #24 |
 | 10 | UX Improvements & Security | DONE | #25–#26 |
+| 11 | Exercise Content, Smart Defaults & Home Simplification | DONE | #27 |
+| 11b | Regression Bug Fixes (6 bugs from PR #27) | DONE | #28 |
+| 11c | CI/QA Pipeline Optimization & E2E Coverage | DONE | #29–#30 |
 
-**Current state:** All 10 implementation steps complete. App is functional on Android with full workout logging, routines, PR tracking, exercise library, and data management. See "QA Status" section for open bugs and "Feature Gaps" for v1.1 backlog.
+**Current state:** All implementation steps complete through Step 11c. App is functional on Android with full workout logging, routines, PR tracking, exercise library, data management, exercise descriptions/form tips, smart set defaults, and enriched home screen. CI pipeline optimized with caching and parallel jobs. E2E regression tests cover all 6 post-PR-27 bugs. See "QA Status" section for open bugs and "Feature Gaps" for v1.1 backlog.
 
 ## Tech Stack
 
@@ -744,6 +747,77 @@ Shipped in PRs #25 and #26. Three UX improvements informed by PO and UI/UX revie
 - Unit: `clearHistory` repo (4), `clearAllRecords` repo (4), `AppException.userMessage` (4), `ErrorMapper` sanitization (6)
 - E2E: `manage-data.spec.ts` (11), `home-navigation.spec.ts` (4), `workout-logging.spec.ts` (3)
 
+### Step 11: Exercise Content, Smart Defaults & Home Simplification (DONE)
+
+> Shipped in PR #27. Three UX improvements informed by PO and UI/UX review, documented in `IMPROVEMENTS.md`.
+
+**11a — Exercise Descriptions & Form Tips (PR #27):**
+- Database migration `00009_exercise_descriptions.sql`: added `description TEXT` and `form_tips TEXT` columns to `exercises`
+- Seed update for all ~60 default exercises with descriptions and newline-separated form tips
+- Exercise detail screen: "ABOUT" section (description) and "FORM TIPS" section (bulleted list, split on `\n`)
+- Active workout bottom sheet: shows description/form tips when available
+- Create exercise screen: optional description and form tips fields (`maxLength: 300/500`)
+- Sections collapse entirely when data is null/empty
+
+**11b — Smart Set Defaults (PR #27):**
+- 4-priority fallback chain for "Add Set" pre-fill: (1) previous session matching position → (2) last set in current session → (3) equipment-type defaults → (4) 0/0
+- `defaultSetValues(EquipmentType, WeightUnit)` pure function: barbell=20kg/45lbs, dumbbell=10kg/20lbs, cable/machine=20kg/45lbs, bodyweight/bands=0, kettlebell=16kg/35lbs
+- Warmup→working transition guard: skips within-session copy across set types
+- 600ms checkbox interaction lock on new set rows (prevents accidental confirmation)
+- Hint line suppressed when pre-filled values match last session exactly
+- 71% action reduction for first-time exercises (14→4 actions for 3 straight sets)
+
+**11c — Home Screen Simplification (PR #27):**
+- Removed RECENT and RECENT RECORDS sections from home screen
+- Enriched stat cards with subtitle: workouts card shows relative date of last workout, records card shows most recent PR exercise name
+- Subtitle: 11sp, `primary.withValues(alpha: 0.7)`, ellipsis overflow
+- Freed vertical space focuses home screen as a routine launchpad
+- Zero new queries — subtitles derived from existing providers
+
+**Tests (PR #27):** Widget tests for form tips rendering, smart defaults priority chain, stat card subtitles. Unit tests for `defaultSetValues`, form tips parsing, equipment-type fallbacks.
+
+### Step 11b: Regression Bug Fixes (DONE)
+
+> Shipped in PR #28. Six regression bugs introduced by PR #27 (Step 11), discovered via systematic regression analysis.
+
+| Bug | Severity | Root Cause | Fix |
+|-----|----------|-----------|-----|
+| BUG-001 | P0 | `WorkoutExercise.exercise` had `@JsonKey(includeToJson: false)` — exercise object dropped from Hive serialization, restored as null, UI showed "Exercise" fallback | Removed `includeToJson: false` from `exercise` field in `WorkoutExercise` model |
+| BUG-002 | P1 | Exercise detail bottom sheet and detail screen didn't render `formTips` field despite migration adding it | Added "FORM TIPS" section to both exercise detail screen and active workout bottom sheet |
+| BUG-003 | P1 | `startFromRoutine` didn't handle unresolved exercises — silently started empty workout | Added `SnackBar` error feedback when exercises fail to resolve, prevented empty workout start |
+| BUG-004 | P2 | `startFromRoutine` used `weight: prev?.weight ?? 0` — first-time exercises got 0kg instead of equipment defaults | Changed fallback to `defaultSetValues(equipmentType, weightUnit)` when no previous session exists |
+| BUG-005 | P2 | `RoutineCard._buildSubtitle()` fell back to "N exercises" when exercise references were null | Fixed exercise resolution in `_resolveExercises` to populate muscle group names in subtitle |
+| BUG-006 | P2 | Home screen simplification removed sections but left provider references causing build errors | Cleaned up removed provider references, kept `recentPRsProvider` for card subtitle |
+
+**Tests (PR #28):**
+- 16 unit tests: `WorkoutExercise` JSON round-trip with real `Exercise` object, `ExerciseSet` nullable fields, `ActiveWorkoutState` serialization, Hive persistence
+- 10 unit tests: `RoutineRepository` mocked-Supabase tests (first-ever for this class) — exercise resolution, partial resolution, empty map handling, error wrapping, JSONB parsing
+- 4 widget tests: snackbar error feedback when exercises fail to resolve on routine start
+
+### Step 11c: CI/QA Pipeline Optimization & E2E Regression Coverage (DONE)
+
+> Shipped in PRs #29 (pipeline) and #30 (E2E selector fixes).
+
+**CI Pipeline Optimization (PR #29):**
+- Split `ci.yml` from single job into 3 parallel jobs: `analyze` → `test` + `build` (run after analyze passes)
+- Added caching: Flutter SDK, pub packages, Playwright browsers, npm dependencies, Flutter web build output
+- `e2e.yml`: shallow clone (`fetch-depth: 1`), Supabase CLI `version: latest` (pinned 2.22.6 broke on newer `config.toml` keys), release build with `--no-tree-shake-icons --no-web-resources-cdn`
+- Removed `--web-renderer` flag (removed in Flutter 3.41.6)
+- Playwright: `workers: 2`, per-project timeouts (`actionTimeout: 15_000`, `navigationTimeout: 30_000` for smoke), line reporter for CI
+
+**E2E Regression Tests (PR #30):**
+- 8 new E2E spec files covering all 6 regression bugs via user-behavior simulation:
+  - `smoke/routine-start.smoke.spec.ts` — BUG-001 (Hive restore name), BUG-003 (routine start positive path), BUG-004 (non-zero weight pre-fill), BUG-005 (muscle group subtitle)
+  - `smoke/workout-restore.smoke.spec.ts` — BUG-001 (manual workout restore, single + multi-exercise)
+  - `smoke/exercise-form-tips.smoke.spec.ts` — BUG-002 (form tips rendering)
+  - `smoke/routine-error.smoke.spec.ts` — BUG-003 (error snackbar on deleted exercises)
+  - `full/exercise-detail-sheet.spec.ts` — BUG-002 (form tips in workout bottom sheet)
+  - `full/routine-regression.spec.ts` — BUG-003/004/005 deep validation
+- `flutterFillByInput` helper for search fields where semantics click doesn't transfer focus
+- Fixed `waitForAppReady` to accept active workout screen selectors (Hive restore after reload)
+- All selectors use `flt-semantics[aria-label*="..."]` pattern (reliable for CanvasKit rendering)
+- New test users: `smokeWorkoutRestore`, `smokeRoutineError`, `fullExDetailSheet`
+
 ---
 
 **Playwright test suite structure:**
@@ -823,6 +897,8 @@ All **Critical** bugs fixed: `save_workout` RPC 404 (QA-001), blank home on bad 
 All blocking **High** bugs fixed: exercise DELETE RLS (QA-003), profile update 400 (QA-004), exercise picker→create flow (PO-012), error handling gaps (PO-006, PO-032), auth logout path (PO-036), weight unit wiring (PO-037), PR persistence (PO-044), stepper repeat rate (UX-I01), finish button guidance (UX-U04), start workout button (QA-008), exercise validation (QA-007), first workout false positive (PO-029), pr-celebration route guard (PO-041).
 
 Semantics/accessibility fixed: login error live region (BUG-001), weight/reps stepper labels (BUG-003/004), workout AppBar labels (BUG-005/006). Layout overflow fixed (responsive steppers with Flexible+FittedBox). Active workout route race (NEW-001). Production exercise seed (NEW-002). Duplicate resume banner (NEW-003). Empty display name validation (PO-005). Discard order-of-operations (PO-019).
+
+**PR-27 regression bugs (all fixed in PR #28):** Exercise name lost on Hive restore (REG-001/P0), form tips not rendered (REG-002/P1), routine start silent failure on unresolved exercises (REG-003/P1), first-time routine zero weight (REG-004/P2), routine card bare exercise count fallback (REG-005/P2), stale provider references after home simplification (REG-006/P2). All 6 covered by E2E regression tests in PR #30.
 
 ### Open — High
 
