@@ -92,38 +92,51 @@ export async function waitForAppReady(page: Page): Promise<void> {
     await page.waitForTimeout(attempt < 2 ? 2000 : 500);
   }
 
-  // 3. Wait for a known post-splash landmark to confirm the app is ready.
-  //    The auth stream has a 10-second timeout fallback, so the splash screen
-  //    will resolve within ~12 seconds even if Supabase is unreachable.
+  // 3. Wait for the router to navigate away from the splash screen.
+  //    With the synchronous auth init, the router resolves immediately:
+  //    no session → /login, active session → /home, new user → /onboarding,
+  //    active workout in Hive → /workout/active.
+  //
+  //    We use URL-based detection because it's reliable regardless of whether
+  //    flt-semantics elements are in light DOM or shadow DOM.
   try {
-    await page.waitForSelector(
-      [
-        '[aria-label="LOG IN"]',
-        '[aria-label="Home"]',
-        '[aria-label="GET STARTED"]',
-        // When the app restores an active workout from Hive (IndexedDB), it
-        // navigates directly to the workout screen — neither Home nor Login
-        // appears. Accept the Discard and Finish buttons as readiness signals.
-        '[aria-label="Discard workout"]',
-        'text=Finish Workout',
-      ].join(', '),
+    await page.waitForURL(
+      /\/(login|home|onboarding|workout|exercises|routines|profile|records)/,
       { timeout: 30_000 },
     );
   } catch (e) {
     // Dump diagnostics: what's actually on screen + any console errors.
+    const currentUrl = page.url();
     const snapshot = await page.evaluate(() => {
-      const els = document.querySelectorAll('flt-semantics');
-      return Array.from(els)
+      // Check both light DOM and shadow DOM for flt-semantics elements.
+      const lightEls = document.querySelectorAll('flt-semantics');
+      const labels = Array.from(lightEls)
         .map((el) => el.getAttribute('aria-label'))
-        .filter(Boolean)
-        .join(', ');
+        .filter(Boolean);
+
+      // Also check inside flutter-view shadow root.
+      const flutterView = document.querySelector('flutter-view');
+      if (flutterView?.shadowRoot) {
+        const shadowEls = flutterView.shadowRoot.querySelectorAll('flt-semantics');
+        labels.push(
+          ...Array.from(shadowEls)
+            .map((el) => el.getAttribute('aria-label'))
+            .filter(Boolean),
+        );
+      }
+
+      return labels.join(', ');
     });
     throw new Error(
-      `App stuck on splash — auth stream may not have emitted. ` +
+      `App stuck on splash — router did not navigate away. ` +
+        `URL: ${currentUrl}. ` +
         `Visible semantics: [${snapshot}]. ` +
         `Console errors: ${JSON.stringify(consoleErrors)}`,
     );
   }
+
+  // 4. Brief pause for the destination screen to populate its semantics tree.
+  await page.waitForTimeout(500);
 }
 
 /**
