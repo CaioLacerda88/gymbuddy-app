@@ -13,23 +13,58 @@ concurrency:
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
           flutter-version: '3.41.6'
+          cache: true
+          cache-key: flutter-${{ runner.os }}-3.41.6
 
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: npm
+          cache-dependency-path: test/e2e/package-lock.json
 
       - uses: supabase/setup-cli@v1
         with:
           version: latest
+
+      # Cache Playwright browser binaries. Key includes the Playwright version
+      # so the cache is invalidated when @playwright/test is upgraded.
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('test/e2e/package-lock.json') }}
+
+      # Cache Flutter pub packages. Key is the pubspec.lock so a lockfile change
+      # triggers a fresh download; otherwise we get a full cache hit.
+      - name: Cache Flutter pub packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            .dart_tool
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+          restore-keys: pub-${{ runner.os }}-
+
+      # Cache the Flutter web build output. Cache key covers all Dart/Flutter
+      # source files so any code change busts it automatically.
+      - name: Cache Flutter web build
+        id: web-build-cache
+        uses: actions/cache@v4
+        with:
+          path: build/web
+          key: web-build-${{ runner.os }}-${{ hashFiles('lib/**', 'pubspec.lock', 'web/**') }}
 
       - name: Start local Supabase
         run: supabase start
@@ -62,7 +97,12 @@ jobs:
         run: dart run build_runner build --delete-conflicting-outputs
 
       - name: Build Flutter web
-        run: flutter build web --no-web-resources-cdn
+        if: steps.web-build-cache.outputs.cache-hit != 'true'
+        run: |
+          flutter build web \
+            --release \
+            --no-tree-shake-icons \
+            --no-web-resources-cdn
 
       - name: Verify .env in build output
         run: |
@@ -72,7 +112,6 @@ jobs:
             grep -q '\.env' build/web/assets/AssetManifest.json && echo ".env found in AssetManifest" || echo ".env NOT in AssetManifest"
           fi
           ls -la build/web/assets/.env 2>/dev/null || echo ".env not at build/web/assets/.env"
-          # Also check the bin format used by newer Flutter
           ls -la build/web/assets/AssetManifest.bin 2>/dev/null || true
 
       - name: Serve Flutter web app
@@ -82,45 +121,29 @@ jobs:
           cd build/web && python3 -m http.server 8080 &
           npx wait-on http://localhost:8080 --timeout 30000
 
-      - name: Install Playwright and dependencies
+      - name: Install Playwright dependencies
         working-directory: test/e2e
-        run: |
-          npm ci
-          npx playwright install --with-deps chromium
+        run: npm ci
 
-      - name: Smoke-test app in headless Chrome
+      - name: Install Playwright browsers
         working-directory: test/e2e
-        run: |
-          # Quick check: load the app, capture JS errors, verify it gets past splash.
-          node -e "
-          const { chromium } = require('playwright-core');
-          (async () => {
-            const browser = await chromium.launch();
-            const page = await browser.newPage();
-            const errors = [];
-            page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
-            page.on('pageerror', e => errors.push(String(e)));
-            await page.goto('http://localhost:8080', { waitUntil: 'networkidle' });
-            await page.waitForTimeout(15000);
-            const title = await page.title();
-            const bodySnippet = await page.evaluate(() => document.body?.innerText?.slice(0,300) ?? '');
-            console.log('Page title:', title);
-            console.log('Body snippet:', bodySnippet);
-            console.log('JS errors:', JSON.stringify(errors, null, 2));
-            await browser.close();
-            if (errors.length > 0) { console.log('WARN: JS errors detected, but continuing'); }
-          })().catch(e => { console.error('Smoke check failed:', e); process.exit(1); });
-          " || true
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright browser system deps (cache hit)
+        working-directory: test/e2e
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
 
       - name: Run Playwright smoke tests (PR)
         if: github.event_name == 'pull_request'
         working-directory: test/e2e
-        run: npx playwright test --project=smoke
+        run: npx playwright test --project=smoke --reporter=line
 
       - name: Run Playwright full test suite (push to main)
         if: github.event_name == 'push'
         working-directory: test/e2e
-        run: npx playwright test
+        run: npx playwright test --reporter=line
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
