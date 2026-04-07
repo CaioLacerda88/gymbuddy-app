@@ -22,15 +22,14 @@
 
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth';
-import { navigateToTab, flutterFill } from '../helpers/app';
+import { navigateToTab, flutterFill, flutterFillByInput } from '../helpers/app';
 import { EXERCISE_LIST, EXERCISE_DETAIL } from '../helpers/selectors';
 import { TEST_USERS } from '../fixtures/test-users';
 import { SEED_EXERCISES } from '../fixtures/test-exercises';
 
 const USER = TEST_USERS.smokeFormTips;
 
-// TODO: Enable once selectors are verified against live Flutter web app locally.
-test.describe.fixme('Exercise form tips smoke', () => {
+test.describe('Exercise form tips smoke', () => {
   test.beforeEach(async ({ page }) => {
     await login(page, USER.email, USER.password);
     await navigateToTab(page, 'Exercises');
@@ -48,7 +47,10 @@ test.describe.fixme('Exercise form tips smoke', () => {
     page,
   }) => {
     // Search for Bench Press to quickly find the exercise.
-    await flutterFill(page, EXERCISE_LIST.searchInput, SEED_EXERCISES.benchPress);
+    // Use flutterFillByInput to target the underlying <input> directly, since
+    // the exercise search field's semantics overlay does not reliably transfer
+    // focus via a semantics click alone.
+    await flutterFillByInput(page, 'Search exercises', SEED_EXERCISES.benchPress);
     await page.waitForTimeout(800);
 
     // Open the exercise detail.
@@ -119,7 +121,7 @@ test.describe.fixme('Exercise form tips smoke', () => {
     });
 
     // Search for and open the custom exercise.
-    await flutterFill(page, EXERCISE_LIST.searchInput, customName.substring(0, 10));
+    await flutterFillByInput(page, 'Search exercises', customName.substring(0, 10));
     await page.waitForTimeout(800);
 
     const card = page.locator(EXERCISE_LIST.exerciseCard(customName)).first();

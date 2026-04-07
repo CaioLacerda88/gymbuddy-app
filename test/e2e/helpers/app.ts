@@ -59,21 +59,14 @@ export async function waitForAppReady(page: Page): Promise<void> {
   // 2. Enable the full semantics tree. Flutter web activates semantics in
   //    response to real user interaction. We dispatch a focused click sequence
   //    on the placeholder element AND press Tab as a fallback.
-  await page.evaluate(() => {
-    const btn = document.querySelector(
-      'flt-semantics-placeholder[aria-label="Enable accessibility"]',
-    ) as HTMLElement | null;
-    if (btn) {
-      btn.focus();
-      btn.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
-      btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-      btn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
-      btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    }
-  });
+  const placeholder = page.locator(
+    'flt-semantics-placeholder[aria-label="Enable accessibility"]',
+  );
+  await placeholder.click({ force: true, timeout: 5_000 }).catch(() => {});
 
   // Tab key is an additional signal that Flutter uses to enable semantics.
   await page.keyboard.press('Tab');
+  await page.waitForTimeout(500);
 
   // 3. Wait for a known post-splash landmark to confirm the app is ready.
   //    The auth stream has a 10-second timeout fallback, so the splash screen
@@ -84,6 +77,11 @@ export async function waitForAppReady(page: Page): Promise<void> {
         '[aria-label="LOG IN"]',
         '[aria-label="Home"]',
         '[aria-label="GET STARTED"]',
+        // When the app restores an active workout from Hive (IndexedDB), it
+        // navigates directly to the workout screen — neither Home nor Login
+        // appears. Accept the Discard and Finish buttons as readiness signals.
+        '[aria-label="Discard workout"]',
+        'text=Finish Workout',
       ].join(', '),
       { timeout: 30_000 },
     );
@@ -166,5 +164,32 @@ export async function flutterFill(
   // Type the value using real key events — the browser routes these to the
   // focused native <input>, which fires real input events that Flutter
   // processes correctly (unlike fill() which uses synthetic events).
+  await page.keyboard.type(value, { delay: 10 });
+}
+
+/**
+ * Fill a Flutter search/filter text field that may not receive focus from a
+ * semantics-node click alone.
+ *
+ * Some Flutter text fields (notably the exercise search bar) have their
+ * underlying HTML <input> element positioned such that clicking the flt-semantics
+ * overlay does not reliably transfer focus to the input. This helper targets the
+ * underlying <input> element directly using an aria-label substring match.
+ *
+ * @param page     - Playwright page.
+ * @param ariaHint - Substring of the <input aria-label> attribute used to find
+ *                   the correct input element (e.g., "Search exercises").
+ * @param value    - Text to type.
+ */
+export async function flutterFillByInput(
+  page: Page,
+  ariaHint: string,
+  value: string,
+): Promise<void> {
+  const inputEl = page.locator(`input[aria-label*="${ariaHint}"]`);
+  await inputEl.waitFor({ state: 'attached', timeout: 5_000 });
+  await inputEl.focus();
+  await page.waitForTimeout(200);
+  await page.keyboard.press('Control+a');
   await page.keyboard.type(value, { delay: 10 });
 }

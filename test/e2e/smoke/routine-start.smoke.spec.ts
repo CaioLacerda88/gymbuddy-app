@@ -33,12 +33,11 @@ const USER = TEST_USERS.smokeRoutineStart;
 // The Push Day starter routine is seeded by seed.sql and always present.
 const PUSH_DAY = 'Push Day';
 
-// "Barbell Bench Press" is a barbell exercise in Push Day.
-// Its equipment default is 20 kg — so a first-time user must see non-zero weight.
-const BENCH_PRESS = 'Barbell Bench Press';
+// Semantics label for the Barbell Bench Press exercise card in the active workout.
+// The _ExerciseCard wraps the name in Semantics with this label pattern.
+const BENCH_PRESS_ARIA = 'flt-semantics[aria-label*="Exercise: Barbell Bench Press. Tap for details"]';
 
-// TODO: Enable once selectors are verified against live Flutter web app locally.
-test.describe.fixme('Routine start smoke', () => {
+test.describe('Routine start smoke', () => {
   test.beforeEach(async ({ page }) => {
     await login(page, USER.email, USER.password);
     await navigateToTab(page, 'Routines');
@@ -70,21 +69,21 @@ test.describe.fixme('Routine start smoke', () => {
     });
 
     // Bench Press must be visible in the exercise card before reload.
-    await expect(page.locator(`text=${BENCH_PRESS}`)).toBeVisible({
+    // Use the Semantics aria-label (set on the tappable exercise name area)
+    // rather than a plain text selector, which can fail for flt-semantics
+    // elements with zero CSS dimensions (text drawn on canvas).
+    await expect(page.locator(BENCH_PRESS_ARIA)).toBeVisible({
       timeout: 10_000,
     });
 
     // Simulate app restore by reloading the page (preserves IndexedDB/Hive).
     await page.reload();
 
-    // Wait for the app to re-initialise and route to home or active workout.
-    await page.waitForFunction(
-      () => {
-        const text = document.body.innerText ?? '';
-        return text.includes('GymBuddy') || text.includes('Home') || text.includes('Finish Workout');
-      },
-      { timeout: 30_000, polling: 500 },
-    );
+    // After a reload, Flutter CanvasKit re-downloads and must re-initialise.
+    // waitForAppReady() re-enables the semantics tree and waits for the auth
+    // stream to resolve — document.body.innerText is empty in CanvasKit because
+    // text is drawn to canvas, so a plain waitForFunction on innerText never fires.
+    await waitForAppReady(page);
 
     // Navigate back to the active workout (via resume banner or direct route).
     const finishVisible = await page
@@ -117,7 +116,7 @@ test.describe.fixme('Routine start smoke', () => {
     // KEY ASSERTION FOR BUG-001:
     // The exercise name must show the real name, NOT the "Exercise" fallback.
     // We assert both: the real name IS visible, and the raw fallback is absent.
-    await expect(page.locator(`text=${BENCH_PRESS}`)).toBeVisible({
+    await expect(page.locator(BENCH_PRESS_ARIA)).toBeVisible({
       timeout: 10_000,
     });
 
@@ -162,12 +161,15 @@ test.describe.fixme('Routine start smoke', () => {
     });
 
     // At least one exercise card must be rendered (Add Set button signals this).
-    await expect(page.locator(WORKOUT.addSetButton)).toBeVisible({
+    // Use .first() to avoid strict mode violations when multiple exercise cards
+    // are rendered (each has its own "Add Set" button).
+    await expect(page.locator(WORKOUT.addSetButton).first()).toBeVisible({
       timeout: 10_000,
     });
 
-    // The exercise name from the seeded routine must be visible in the card.
-    await expect(page.locator(`text=${BENCH_PRESS}`)).toBeVisible({
+    // The exercise name from the seeded routine must be accessible via its
+    // Semantics aria-label in the workout card header.
+    await expect(page.locator(BENCH_PRESS_ARIA)).toBeVisible({
       timeout: 10_000,
     });
 
@@ -204,31 +206,26 @@ test.describe.fixme('Routine start smoke', () => {
       timeout: 20_000,
     });
 
-    // The Bench Press card must be visible.
-    await expect(page.locator(`text=${BENCH_PRESS}`)).toBeVisible({
+    // The Bench Press card must be accessible via its Semantics aria-label.
+    await expect(page.locator(BENCH_PRESS_ARIA)).toBeVisible({
       timeout: 10_000,
     });
 
     // The weight value in the first set row must NOT be "0" for a barbell exercise.
-    // The Semantics label for the weight button is:
-    //   "Weight value: <N> kg. Tap to enter weight."
-    // We verify no weight button shows "0" as the value (i.e. "Weight value: 0 kg").
+    // Flutter Semantics uses label: 'Weight value: <N> kg. Tap to enter weight.'
+    // with button: true. In Flutter web CanvasKit, the accessible name of the
+    // flt-semantics element is exposed via aria-label on the element itself.
+    // However Playwright's role=button[name*="..."] uses computed accessible name,
+    // which correctly matches these buttons regardless of attribute vs text source.
     const zeroWeightButton = page.locator(
-      'flt-semantics[aria-label*="Weight value: 0 kg"]',
+      'role=button[name*="Weight value: 0 kg"]',
     );
     await expect(zeroWeightButton).not.toBeVisible({ timeout: 5_000 });
 
     // Also verify that at least one weight button with a positive value is shown.
     // Barbell default is 20 kg, dumbbell default is 10 kg.
-    const positiveWeightButton = page.locator(
-      'flt-semantics[aria-label*="Weight value:"]',
-    ).filter({ hasNotText: '0 kg' });
-
-    // We can't directly check text content via hasNotText on an aria-label,
-    // so instead assert the "Weight value: 0 kg" element is absent (above)
-    // and that some weight button exists.
     const anyWeightButton = page.locator(
-      'flt-semantics[aria-label*="Weight value:"]',
+      'role=button[name*="Weight value:"]',
     );
     await expect(anyWeightButton.first()).toBeVisible({ timeout: 10_000 });
 
@@ -251,6 +248,11 @@ test.describe.fixme('Routine start smoke', () => {
   // Push Day exercises include Chest, Shoulder, and Triceps exercises —
   // so the subtitle must contain at least one muscle group name, not just
   // a raw count like "6 exercises".
+  //
+  // NOTE: In Flutter CanvasKit, flt-semantics text elements for subtitles may
+  // have zero CSS dimensions (the actual text is drawn on canvas). We therefore
+  // check that the routine card BUTTON's text content contains the muscle group
+  // name rather than relying on `isVisible()` of a text child element.
   // ---------------------------------------------------------------------------
   test('BUG-005: routine card subtitle shows muscle group names, not bare count', async ({
     page,
@@ -259,31 +261,28 @@ test.describe.fixme('Routine start smoke', () => {
       timeout: 10_000,
     });
 
-    // The Push Day card subtitle must contain at least one muscle group name.
-    // Push Day exercises: Bench Press (Chest), Overhead Press (Shoulders), etc.
-    // If exercises resolved correctly, the subtitle includes "Chest" or "Shoulders".
-    const chestSubtitle = page.locator('text=Chest');
-    const shoulderSubtitle = page.locator('text=Shoulders');
-    const tricepsSubtitle = page.locator('text=Triceps');
+    // The Push Day card is a flt-semantics[role="button"] whose text content
+    // includes the subtitle. Check that the subtitle contains a muscle group name.
+    // We filter buttons by text content to find the Push Day card.
+    const pushDayCard = page
+      .locator('flt-semantics[role="button"]')
+      .filter({ hasText: 'Push Day' });
 
-    const hasChest = await chestSubtitle
-      .isVisible({ timeout: 10_000 })
-      .catch(() => false);
-    const hasShoulders = await shoulderSubtitle
-      .isVisible({ timeout: 3_000 })
-      .catch(() => false);
-    const hasTriceps = await tricepsSubtitle
-      .isVisible({ timeout: 3_000 })
-      .catch(() => false);
+    await expect(pushDayCard.first()).toBeVisible({ timeout: 10_000 });
+
+    // The card's text content should include at least one of the expected
+    // muscle group names from Push Day exercises.
+    const cardText = await pushDayCard.first().textContent();
+    const hasChest = cardText?.includes('Chest') ?? false;
+    const hasShoulders = cardText?.includes('Shoulders') ?? false;
+    const hasArms = cardText?.includes('Arms') ?? false;
 
     // At least one muscle group name must appear in the card subtitle.
-    expect(hasChest || hasShoulders || hasTriceps).toBe(true);
+    expect(hasChest || hasShoulders || hasArms).toBe(true);
 
-    // The fallback text "6 exercises" must NOT appear as the Push Day subtitle.
+    // The fallback text "6 exercises" must NOT appear in the Push Day card text.
     // (Push Day has 6 exercises per seed.sql — that number would appear
     // iff exercise resolution failed and BUG-005 is present.)
-    await expect(page.locator('text=6 exercises')).not.toBeVisible({
-      timeout: 3_000,
-    });
+    expect(cardText?.includes('6 exercises')).toBe(false);
   });
 });

@@ -32,8 +32,7 @@ import { SEED_EXERCISES } from '../fixtures/test-exercises';
 
 const USER = TEST_USERS.fullExDetailSheet;
 
-// TODO: Enable once selectors are verified against live Flutter web app locally.
-test.describe.fixme('Exercise detail bottom sheet — full suite', () => {
+test.describe('Exercise detail bottom sheet — full suite', () => {
   test.beforeEach(async ({ page }) => {
     await login(page, USER.email, USER.password);
     await startEmptyWorkout(page);
