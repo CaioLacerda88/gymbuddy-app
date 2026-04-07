@@ -13,28 +13,46 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 /// Exposes the current auth state as a stream.
 /// Used by the router to decide redirects.
 ///
-/// A one-shot 10-second timer prevents the app from hanging on the splash
-/// screen if the Supabase auth stream never emits its initial event (observed
-/// in CI headless Chrome). Once any real event arrives, the timer is cancelled
-/// and all subsequent events flow through normally.
+/// Emits the initial state synchronously from [GoTrueClient.currentSession]
+/// so the app leaves the splash screen immediately without waiting for the
+/// Supabase Realtime WebSocket. The stream subscription handles subsequent
+/// auth state changes (login, logout, token refresh).
+///
+/// A 5-second fallback timer is kept as a safety net in case the synchronous
+/// check races with SDK initialisation (should not happen since
+/// `Supabase.initialize()` is awaited in `main()`).
 final authStateProvider = StreamProvider<AuthState>((ref) {
   final repo = ref.watch(authRepositoryProvider);
   final controller = StreamController<AuthState>();
 
-  var hasEmitted = false;
-  final fallbackTimer = Timer(const Duration(seconds: 10), () {
-    if (!hasEmitted && !controller.isClosed) {
+  // Emit the initial state synchronously from the session cache.
+  // This does NOT depend on Realtime/WebSocket — it reads from local storage
+  // (SharedPreferences on mobile, IndexedDB on web). After
+  // `Supabase.initialize()` completes, currentSession is accurate.
+  final currentSession = repo.currentSession;
+  final initialEvent = currentSession != null
+      ? AuthState(AuthChangeEvent.initialSession, currentSession)
+      : const AuthState(AuthChangeEvent.signedOut, null);
+  controller.add(initialEvent);
+
+  var hasEmittedFromStream = false;
+  final fallbackTimer = Timer(const Duration(seconds: 5), () {
+    if (!hasEmittedFromStream && !controller.isClosed) {
       controller.add(const AuthState(AuthChangeEvent.signedOut, null));
     }
   });
 
   final subscription = repo.onAuthStateChange().listen(
     (event) {
-      hasEmitted = true;
+      hasEmittedFromStream = true;
       fallbackTimer.cancel();
       if (!controller.isClosed) controller.add(event);
     },
     onError: (Object e, StackTrace s) {
+      // If the Realtime stream errors (e.g. WebSocket connection refused),
+      // cancel the fallback timer — we already emitted the initial state
+      // synchronously above, so the app is not stuck.
+      fallbackTimer.cancel();
       if (!controller.isClosed) controller.addError(e, s);
     },
     onDone: () {

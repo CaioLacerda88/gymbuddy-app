@@ -74,10 +74,12 @@ export async function addExercise(
   // The exercise starts with zero sets (ActiveWorkoutNotifier.addExercise
   // creates with `sets: const []`). Click "Add Set" to create the first set
   // row so that weight/reps buttons are available for subsequent interactions.
-  await expect(page.locator(WORKOUT.addSetButton)).toBeVisible({
+  // Use .last() to target the newly added exercise's button (when multiple
+  // exercises are present, each has its own "Add Set" button).
+  await expect(page.locator(WORKOUT.addSetButton).last()).toBeVisible({
     timeout: 10_000,
   });
-  await page.locator(WORKOUT.addSetButton).first().click();
+  await page.locator(WORKOUT.addSetButton).last().click();
 
   // Wait for the set row to render — the weight button confirms it.
   await expect(

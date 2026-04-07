@@ -20,7 +20,7 @@
 
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth';
-import { waitForAppReady, navigateToTab } from '../helpers/app';
+import { waitForAppReady } from '../helpers/app';
 import { NAV, WORKOUT } from '../helpers/selectors';
 import { startEmptyWorkout, addExercise } from '../helpers/workout';
 import { TEST_USERS } from '../fixtures/test-users';
@@ -28,8 +28,7 @@ import { SEED_EXERCISES } from '../fixtures/test-exercises';
 
 const USER = TEST_USERS.smokeWorkoutRestore;
 
-// TODO: Enable once selectors are verified against live Flutter web app locally.
-test.describe.fixme('Workout restore smoke — manual workout (BUG-001)', () => {
+test.describe('Workout restore smoke — manual workout (BUG-001)', () => {
   test.beforeEach(async ({ page }) => {
     await login(page, USER.email, USER.password);
   });
@@ -55,27 +54,21 @@ test.describe.fixme('Workout restore smoke — manual workout (BUG-001)', () => 
     await startEmptyWorkout(page);
     await addExercise(page, SEED_EXERCISES.benchPress);
 
-    // Confirm the exercise is visible before reload.
-    await expect(page.locator(`text=${SEED_EXERCISES.benchPress}`)).toBeVisible({
-      timeout: 10_000,
-    });
+    // Confirm the exercise card is visible before reload via its Semantics aria-label.
+    // Flutter CanvasKit draws text to canvas so text= selectors fail for zero-dimension
+    // flt-semantics elements. The _ExerciseCard Semantics label is unique and reliable.
+    await expect(
+      page.locator(`flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`),
+    ).toBeVisible({ timeout: 10_000 });
 
     // Simulate app restore by reloading (preserves IndexedDB/Hive state).
     await page.reload();
 
-    // Wait for the app to re-initialise. Allow the splash + auth stream to
-    // complete before asserting on content.
-    await page.waitForFunction(
-      () => {
-        const text = document.body.innerText ?? '';
-        return (
-          text.includes('GymBuddy') ||
-          text.includes('Home') ||
-          text.includes('Finish Workout')
-        );
-      },
-      { timeout: 30_000, polling: 500 },
-    );
+    // After a reload, Flutter must re-initialise its semantics tree.
+    // waitForAppReady() enables accessibility and waits for auth to resolve.
+    // document.body.innerText is empty in CanvasKit (text drawn to canvas),
+    // so a plain waitForFunction on innerText would never fire.
+    await waitForAppReady(page);
 
     // If the active workout screen was not re-entered automatically, navigate
     // back via the resume banner.
@@ -116,9 +109,11 @@ test.describe.fixme('Workout restore smoke — manual workout (BUG-001)', () => 
     );
     await expect(fallbackLabel).not.toBeVisible({ timeout: 3_000 });
 
-    // The real exercise name must be visible as the card heading.
+    // The real exercise name must be visible as the card heading via its
+    // Semantics aria-label. text= selectors fail for CanvasKit zero-dimension
+    // flt-semantics elements — the aria-label selector is reliable.
     await expect(
-      page.locator(`text=${SEED_EXERCISES.benchPress}`),
+      page.locator(`flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`),
     ).toBeVisible({ timeout: 10_000 });
 
     // Clean up by discarding.
@@ -144,28 +139,19 @@ test.describe.fixme('Workout restore smoke — manual workout (BUG-001)', () => 
     await addExercise(page, SEED_EXERCISES.benchPress);
     await addExercise(page, SEED_EXERCISES.squat);
 
-    // Both exercise names must appear before reload.
-    await expect(page.locator(`text=${SEED_EXERCISES.benchPress}`)).toBeVisible({
-      timeout: 10_000,
-    });
-    await expect(page.locator(`text=${SEED_EXERCISES.squat}`)).toBeVisible({
-      timeout: 10_000,
-    });
+    // Both exercise cards must be visible before reload via their Semantics aria-labels.
+    await expect(
+      page.locator(`flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`),
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.locator(`flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.squat}. Tap for details"]`),
+    ).toBeVisible({ timeout: 10_000 });
 
     // Reload to simulate restore.
     await page.reload();
 
-    await page.waitForFunction(
-      () => {
-        const text = document.body.innerText ?? '';
-        return (
-          text.includes('GymBuddy') ||
-          text.includes('Home') ||
-          text.includes('Finish Workout')
-        );
-      },
-      { timeout: 30_000, polling: 500 },
-    );
+    // waitForAppReady re-enables semantics after reload and waits for auth.
+    await waitForAppReady(page);
 
     const finishVisible = await page
       .locator(WORKOUT.finishButton)
@@ -201,12 +187,12 @@ test.describe.fixme('Workout restore smoke — manual workout (BUG-001)', () => 
     );
     await expect(fallbackLabel).not.toBeVisible({ timeout: 3_000 });
 
-    // Both real names must still be visible.
+    // Both real names must still be visible via their Semantics aria-labels.
     await expect(
-      page.locator(`text=${SEED_EXERCISES.benchPress}`),
+      page.locator(`flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`),
     ).toBeVisible({ timeout: 10_000 });
     await expect(
-      page.locator(`text=${SEED_EXERCISES.squat}`),
+      page.locator(`flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.squat}. Tap for details"]`),
     ).toBeVisible({ timeout: 10_000 });
 
     // Clean up.

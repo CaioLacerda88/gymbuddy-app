@@ -22,7 +22,7 @@
 
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth';
-import { navigateToTab, flutterFill } from '../helpers/app';
+import { navigateToTab, flutterFill, flutterFillByInput, waitForAppReady } from '../helpers/app';
 import {
   NAV,
   ROUTINE,
@@ -36,8 +36,12 @@ import { TEST_USERS } from '../fixtures/test-users';
 
 const USER = TEST_USERS.smokeRoutineError;
 
-// TODO: Enable once selectors are verified against live Flutter web app locally.
-test.describe.fixme('Routine error handling smoke — BUG-003', () => {
+// TODO: This test is skipped in CI because the multi-step flow (create exercise →
+// create routine → delete exercise → reload → start routine → check snackbar)
+// accumulates DB state across retries, causing the retry to fail with strict-mode
+// violations on ambiguous inputs. Needs local debugging to add cleanup or more
+// specific selectors. The BUG-003 positive path is covered in routine-start.smoke.spec.ts.
+test.describe.skip('Routine error handling smoke — BUG-003', () => {
   test.beforeEach(async ({ page }) => {
     await login(page, USER.email, USER.password);
   });
@@ -80,7 +84,9 @@ test.describe.fixme('Routine error handling smoke — BUG-003', () => {
 
     // Step 2: Create a routine with only this exercise.
     await navigateToTab(page, 'Routines');
-    await page.click(ROUTINE.createButton);
+    // The Create Routine button is the + icon in the AppBar (no accessible label).
+    // It is the first flt-semantics[role="button"] in the DOM on the Routines screen.
+    await page.locator('flt-semantics[role="button"]').first().click();
 
     const nameInput = page.locator(CREATE_ROUTINE.nameInput);
     await expect(nameInput).toBeVisible({ timeout: 10_000 });
@@ -106,11 +112,13 @@ test.describe.fixme('Routine error handling smoke — BUG-003', () => {
     await addBtn.click();
 
     await page.click(CREATE_ROUTINE.saveButton);
-    await expect(page.locator(ROUTINE.heading)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(ROUTINE.starterRoutinesSection)).toBeVisible({ timeout: 15_000 });
 
     // Step 3: Delete the exercise (soft-delete).
     await navigateToTab(page, 'Exercises');
-    await flutterFill(page, EXERCISE_LIST.searchInput, exerciseName.substring(0, 12));
+    // Use flutterFillByInput to target the search input's underlying HTML element
+    // directly — clicking the flt-semantics overlay does not reliably transfer focus.
+    await flutterFillByInput(page, 'Search exercises', exerciseName.substring(0, 12));
     await page.waitForTimeout(800);
 
     const card = page.locator(EXERCISE_LIST.exerciseCard(exerciseName)).first();
@@ -129,7 +137,13 @@ test.describe.fixme('Routine error handling smoke — BUG-003', () => {
       timeout: 15_000,
     });
 
-    // Step 4: Navigate to Routines and tap Start on the custom routine.
+    // Step 4: Reload the page to clear Riverpod's cached state for routineListProvider.
+    // Without a reload, the provider serves stale data where the exercise still
+    // appears non-deleted (Riverpod AsyncNotifier without autoDispose does not
+    // re-fetch on tab navigation). The reload forces a cold re-fetch so that
+    // startRoutineWorkout sees the updated deletedAt timestamp.
+    await page.reload();
+    await waitForAppReady(page);
     await navigateToTab(page, 'Routines');
     await page.waitForTimeout(500);
 

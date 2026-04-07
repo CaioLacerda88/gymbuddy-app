@@ -41,10 +41,13 @@ export async function waitForAppReady(page: Page): Promise<void> {
     consoleErrors.push(`[page error] ${String(err)}`);
   });
 
-  // 1. Wait for Flutter to render and show the accessibility placeholder.
+  // 1. Wait for Flutter to render. With --force-renderer-accessibility in the
+  //    Playwright launch args, Chrome exposes its accessibility tree and Flutter
+  //    auto-enables semantics. We wait for either the placeholder OR any
+  //    flt-semantics element (the latter appears when semantics are already on).
   try {
     await page.waitForSelector(
-      'flt-semantics-placeholder[aria-label="Enable accessibility"]',
+      'flt-semantics-placeholder, flt-semantics',
       { timeout: 60_000 },
     );
   } catch (e) {
@@ -56,52 +59,84 @@ export async function waitForAppReady(page: Page): Promise<void> {
     );
   }
 
-  // 2. Enable the full semantics tree. Flutter web activates semantics in
-  //    response to real user interaction. We dispatch a focused click sequence
-  //    on the placeholder element AND press Tab as a fallback.
-  await page.evaluate(() => {
-    const btn = document.querySelector(
+  // 2. Ensure the semantics tree is enabled. With --force-renderer-accessibility,
+  //    Flutter usually enables semantics automatically. If not yet active, we
+  //    fall back to clicking the placeholder and pressing Tab. Retry up to 3
+  //    times to handle timing races during engine initialisation.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const semanticsCount = await page.locator('flt-semantics').count();
+    if (semanticsCount > 0) break;
+
+    // Fallback: manually trigger semantics via placeholder click + Tab.
+    const placeholder = page.locator(
       'flt-semantics-placeholder[aria-label="Enable accessibility"]',
-    ) as HTMLElement | null;
-    if (btn) {
-      btn.focus();
-      btn.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
-      btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-      btn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
-      btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    }
-  });
+    );
+    await placeholder.click({ force: true, timeout: 5_000 }).catch(() => {});
+    await page.keyboard.press('Tab');
 
-  // Tab key is an additional signal that Flutter uses to enable semantics.
-  await page.keyboard.press('Tab');
+    // Also try dispatching a pointer event via JS as a last resort — the
+    // placeholder may be inside shadow DOM where Playwright's click doesn't
+    // trigger Flutter's event handler.
+    await page.evaluate(() => {
+      const el =
+        document.querySelector('flt-semantics-placeholder') ??
+        document
+          .querySelector('flutter-view')
+          ?.shadowRoot?.querySelector('flt-semantics-placeholder');
+      if (el) {
+        el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+        el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+      }
+    });
 
-  // 3. Wait for a known post-splash landmark to confirm the app is ready.
-  //    The auth stream has a 10-second timeout fallback, so the splash screen
-  //    will resolve within ~12 seconds even if Supabase is unreachable.
+    await page.waitForTimeout(attempt < 2 ? 2000 : 500);
+  }
+
+  // 3. Wait for the router to navigate away from the splash screen.
+  //    With the synchronous auth init, the router resolves immediately:
+  //    no session → /login, active session → /home, new user → /onboarding,
+  //    active workout in Hive → /workout/active.
+  //
+  //    We use URL-based detection because it's reliable regardless of whether
+  //    flt-semantics elements are in light DOM or shadow DOM.
   try {
-    await page.waitForSelector(
-      [
-        '[aria-label="LOG IN"]',
-        '[aria-label="Home"]',
-        '[aria-label="GET STARTED"]',
-      ].join(', '),
+    await page.waitForURL(
+      /\/(login|home|onboarding|workout|exercises|routines|profile|records)/,
       { timeout: 30_000 },
     );
   } catch (e) {
     // Dump diagnostics: what's actually on screen + any console errors.
+    const currentUrl = page.url();
     const snapshot = await page.evaluate(() => {
-      const els = document.querySelectorAll('flt-semantics');
-      return Array.from(els)
+      // Check both light DOM and shadow DOM for flt-semantics elements.
+      const lightEls = document.querySelectorAll('flt-semantics');
+      const labels = Array.from(lightEls)
         .map((el) => el.getAttribute('aria-label'))
-        .filter(Boolean)
-        .join(', ');
+        .filter(Boolean);
+
+      // Also check inside flutter-view shadow root.
+      const flutterView = document.querySelector('flutter-view');
+      if (flutterView?.shadowRoot) {
+        const shadowEls = flutterView.shadowRoot.querySelectorAll('flt-semantics');
+        labels.push(
+          ...Array.from(shadowEls)
+            .map((el) => el.getAttribute('aria-label'))
+            .filter(Boolean),
+        );
+      }
+
+      return labels.join(', ');
     });
     throw new Error(
-      `App stuck on splash — auth stream may not have emitted. ` +
+      `App stuck on splash — router did not navigate away. ` +
+        `URL: ${currentUrl}. ` +
         `Visible semantics: [${snapshot}]. ` +
         `Console errors: ${JSON.stringify(consoleErrors)}`,
     );
   }
+
+  // 4. Brief pause for the destination screen to populate its semantics tree.
+  await page.waitForTimeout(500);
 }
 
 /**
@@ -166,5 +201,32 @@ export async function flutterFill(
   // Type the value using real key events — the browser routes these to the
   // focused native <input>, which fires real input events that Flutter
   // processes correctly (unlike fill() which uses synthetic events).
+  await page.keyboard.type(value, { delay: 10 });
+}
+
+/**
+ * Fill a Flutter search/filter text field that may not receive focus from a
+ * semantics-node click alone.
+ *
+ * Some Flutter text fields (notably the exercise search bar) have their
+ * underlying HTML <input> element positioned such that clicking the flt-semantics
+ * overlay does not reliably transfer focus to the input. This helper targets the
+ * underlying <input> element directly using an aria-label substring match.
+ *
+ * @param page     - Playwright page.
+ * @param ariaHint - Substring of the <input aria-label> attribute used to find
+ *                   the correct input element (e.g., "Search exercises").
+ * @param value    - Text to type.
+ */
+export async function flutterFillByInput(
+  page: Page,
+  ariaHint: string,
+  value: string,
+): Promise<void> {
+  const inputEl = page.locator(`input[aria-label*="${ariaHint}"]`);
+  await inputEl.waitFor({ state: 'attached', timeout: 5_000 });
+  await inputEl.focus();
+  await page.waitForTimeout(200);
+  await page.keyboard.press('Control+a');
   await page.keyboard.type(value, { delay: 10 });
 }

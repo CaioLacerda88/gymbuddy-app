@@ -28,7 +28,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { navigateToTab, flutterFill } from '../helpers/app';
+import { navigateToTab, flutterFill, flutterFillByInput, waitForAppReady } from '../helpers/app';
 import { login } from '../helpers/auth';
 import {
   NAV,
@@ -48,13 +48,14 @@ const STARTER_ROUTINES = ['Push Day', 'Pull Day', 'Leg Day', 'Full Body'];
 
 // Muscle groups known to appear in starter routine subtitles when exercises
 // resolve correctly (per seed.sql exercise list for each routine).
-const PUSH_DAY_GROUPS = ['Chest', 'Shoulders', 'Triceps'];
-const PULL_DAY_GROUPS = ['Back', 'Biceps'];
-const LEG_DAY_GROUPS = ['Legs', 'Glutes', 'Core'];
+// MuscleGroup enum values: chest, back, legs, shoulders, arms, core
+// (display names: Chest, Back, Legs, Shoulders, Arms, Core).
+const PUSH_DAY_GROUPS = ['Chest', 'Shoulders', 'Arms'];
+const PULL_DAY_GROUPS = ['Back', 'Arms'];
+const LEG_DAY_GROUPS = ['Legs', 'Core'];
 const FULL_BODY_GROUPS = ['Legs', 'Chest', 'Back'];
 
-// TODO: Enable once selectors are verified against live Flutter web app locally.
-test.describe.fixme('Routine regressions — full suite', () => {
+test.describe('Routine regressions — full suite', () => {
   test.beforeEach(async ({ page }) => {
     await login(page, USER.email, USER.password);
     await navigateToTab(page, 'Routines');
@@ -69,58 +70,56 @@ test.describe.fixme('Routine regressions — full suite', () => {
   test('BUG-005: Push Day card subtitle contains muscle group names, not bare count', async ({
     page,
   }) => {
-    // At least one of the expected Push Day muscle groups must appear on screen
-    // in the routine list — these come from the card subtitle.
-    let foundGroup = false;
-    for (const group of PUSH_DAY_GROUPS) {
-      const visible = await page
-        .locator(`text=${group}`)
-        .isVisible({ timeout: 5_000 })
-        .catch(() => false);
-      if (visible) {
-        foundGroup = true;
-        break;
-      }
-    }
+    // Flutter CanvasKit draws card subtitle text onto canvas, so flt-semantics
+    // text elements may have zero CSS dimensions. isVisible() returns false even
+    // when the text is rendered visually. Instead we read the text content of the
+    // routine card button (a flt-semantics[role="button"] that wraps all text)
+    // and check that it includes at least one expected muscle group name.
+    const pushDayCard = page
+      .locator('flt-semantics[role="button"]')
+      .filter({ hasText: 'Push Day' });
+    await expect(pushDayCard.first()).toBeVisible({ timeout: 10_000 });
+
+    const cardText = await pushDayCard.first().textContent();
+    const foundGroup = PUSH_DAY_GROUPS.some(g => cardText?.includes(g));
     expect(foundGroup).toBe(true);
 
-    // The fallback "6 exercises" must not be the subtitle for Push Day.
-    await expect(page.locator('text=6 exercises')).not.toBeVisible({
-      timeout: 3_000,
-    });
+    // The fallback "6 exercises" must not be in the Push Day card text.
+    expect(cardText?.includes('6 exercises')).toBe(false);
   });
 
   test('BUG-005: Pull Day card subtitle contains muscle group names', async ({
     page,
   }) => {
-    let foundGroup = false;
-    for (const group of PULL_DAY_GROUPS) {
-      const visible = await page
-        .locator(`text=${group}`)
-        .isVisible({ timeout: 5_000 })
-        .catch(() => false);
-      if (visible) {
-        foundGroup = true;
-        break;
-      }
-    }
+    const pullDayCard = page
+      .locator('flt-semantics[role="button"]')
+      .filter({ hasText: 'Pull Day' });
+    await expect(pullDayCard.first()).toBeVisible({ timeout: 10_000 });
+
+    const cardText = await pullDayCard.first().textContent();
+    const foundGroup = PULL_DAY_GROUPS.some(g => cardText?.includes(g));
     expect(foundGroup).toBe(true);
   });
 
   test('BUG-005: no starter routine card shows a bare exercise-count fallback', async ({
     page,
   }) => {
-    // None of the starter routine cards should show just "N exercises" —
-    // that text is the _buildSubtitle() fallback when re.exercise is null.
-    // We allow that a user-created routine with no exercises might show "0 exercises",
-    // but the seeded starter routines must all have resolved exercise references.
+    // None of the starter routine cards should include just "N exercises" in
+    // their text content. That text is the _buildSubtitle() fallback when
+    // re.exercise is null. Check all four starter routine cards.
+    for (const routineName of STARTER_ROUTINES) {
+      const card = page
+        .locator('flt-semantics[role="button"]')
+        .filter({ hasText: routineName });
+      const isPresent = await card.count().then(c => c > 0);
+      if (!isPresent) continue;
 
-    // The starter routines have 6, 6, 7, and 6 exercises respectively.
-    // If any of them fail to resolve, the subtitle becomes e.g. "6 exercises".
-    for (const count of ['6 exercises', '7 exercises', '5 exercises']) {
-      await expect(page.locator(`text=${count}`)).not.toBeVisible({
-        timeout: 2_000,
-      });
+      const cardText = await card.first().textContent();
+      // The starter routines have 6, 6, 7, and 6 exercises respectively.
+      const hasFallback = ['6 exercises', '7 exercises', '5 exercises'].some(
+        f => cardText?.includes(f),
+      );
+      expect(hasFallback).toBe(false);
     }
   });
 
@@ -162,7 +161,9 @@ test.describe.fixme('Routine regressions — full suite', () => {
 
     // Step 2: Create a routine that uses this exercise.
     await navigateToTab(page, 'Routines');
-    await page.click(ROUTINE.createButton);
+    // The Create Routine button is the + icon in the AppBar (no accessible label).
+    // It is the first flt-semantics[role="button"] in the DOM on the Routines screen.
+    await page.locator('flt-semantics[role="button"]').first().click();
 
     // Fill in the routine name.
     const nameInput = page.locator(CREATE_ROUTINE.nameInput);
@@ -184,7 +185,7 @@ test.describe.fixme('Routine regressions — full suite', () => {
 
     // Save the routine.
     await page.click(CREATE_ROUTINE.saveButton);
-    await expect(page.locator(ROUTINE.heading)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(ROUTINE.starterRoutinesSection)).toBeVisible({ timeout: 15_000 });
 
     // Verify the custom routine appears.
     await expect(page.locator(ROUTINE.routineName(routineName)).first()).toBeVisible({
@@ -193,7 +194,9 @@ test.describe.fixme('Routine regressions — full suite', () => {
 
     // Step 3: Delete the exercise so it becomes soft-deleted (deletedAt is set).
     await navigateToTab(page, 'Exercises');
-    await flutterFill(page, EXERCISE_LIST.searchInput, exerciseName.substring(0, 10));
+    // Use flutterFillByInput to target the underlying HTML input directly —
+    // clicking the flt-semantics overlay does not reliably transfer focus.
+    await flutterFillByInput(page, 'Search exercises', exerciseName.substring(0, 10));
     await page.waitForTimeout(800);
 
     const exerciseCard = page
@@ -214,7 +217,12 @@ test.describe.fixme('Routine regressions — full suite', () => {
       timeout: 15_000,
     });
 
-    // Step 4: Navigate to Routines and try to start the custom routine.
+    // Step 4: Reload the page to clear Riverpod's cached routineListProvider state.
+    // Without a reload, the cached routine data still shows the exercise as non-deleted
+    // (Riverpod AsyncNotifier without autoDispose does not re-fetch on tab navigation).
+    // The reload forces a cold re-fetch so startRoutineWorkout filters the deleted exercise.
+    await page.reload();
+    await waitForAppReady(page);
     await navigateToTab(page, 'Routines');
 
     // The routine may appear in MY ROUTINES section.
@@ -273,15 +281,18 @@ test.describe.fixme('Routine regressions — full suite', () => {
       timeout: 20_000,
     });
 
-    // Barbell Squat must be in the routine.
+    // Barbell Squat must be in the routine (accessible via Semantics aria-label).
+    // Flutter CanvasKit draws text to canvas — text= selectors fail for zero-dimension
+    // flt-semantics elements; the aria-label from Semantics(label: ...) is reliable.
     await expect(
-      page.locator(`text=${SEED_EXERCISES.squat}`),
+      page.locator(`flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.squat}. Tap for details"]`),
     ).toBeVisible({ timeout: 10_000 });
 
     // For barbell exercises, the default weight is 20 kg — not 0 kg.
-    // "Weight value: 0 kg" in the aria-label signals the bug is present.
+    // Use role=button[name*=...] which matches on computed accessible name —
+    // this correctly matches Flutter Semantics(label: ..., button: true) elements.
     const zeroWeightButtons = page.locator(
-      'flt-semantics[aria-label*="Weight value: 0 kg"]',
+      'role=button[name*="Weight value: 0 kg"]',
     );
 
     // Count how many exercise cards are barbell vs bodyweight.
@@ -289,7 +300,7 @@ test.describe.fixme('Routine regressions — full suite', () => {
     // NOT ALL weight buttons show 0 — at least one barbell exercise (Squat or
     // Bench Press) should show a non-zero value.
     const allWeightButtons = page.locator(
-      'flt-semantics[aria-label*="Weight value:"]',
+      'role=button[name*="Weight value:"]',
     );
     await expect(allWeightButtons.first()).toBeVisible({ timeout: 10_000 });
 
@@ -327,16 +338,18 @@ test.describe.fixme('Routine regressions — full suite', () => {
     });
 
     // Lateral Raise is a dumbbell exercise in Push Day.
-    await expect(page.locator('text=Lateral Raise')).toBeVisible({
-      timeout: 10_000,
-    });
+    // Use aria-label selector — text= fails for zero-dimension CanvasKit elements.
+    await expect(
+      page.locator('flt-semantics[aria-label*="Exercise: Lateral Raise. Tap for details"]'),
+    ).toBeVisible({ timeout: 10_000 });
 
     // At least one weight button must show a non-zero value.
+    // Use role=button[name*=...] for computed accessible name matching.
     const allWeightButtons = page.locator(
-      'flt-semantics[aria-label*="Weight value:"]',
+      'role=button[name*="Weight value:"]',
     );
     const zeroWeightButtons = page.locator(
-      'flt-semantics[aria-label*="Weight value: 0 kg"]',
+      'role=button[name*="Weight value: 0 kg"]',
     );
 
     await expect(allWeightButtons.first()).toBeVisible({ timeout: 10_000 });
@@ -370,15 +383,20 @@ test.describe.fixme('Routine regressions — full suite', () => {
       timeout: 20_000,
     });
 
-    // Capture the first exercise name that is visible in the workout.
+    // Capture the first exercise name that is visible in the workout via aria-label.
     // Pull Day includes "Deadlift" and "Barbell Bent-Over Row" per seed.sql.
+    // Use flt-semantics[aria-label*=...] — text= selectors fail for zero-dimension
+    // CanvasKit elements where text is drawn onto canvas.
+    const deadliftAria = `flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.deadlift}. Tap for details"]`;
+    const bentRowAria = 'flt-semantics[aria-label*="Exercise: Barbell Bent-Over Row. Tap for details"]';
+
     const deadliftVisible = await page
-      .locator(`text=${SEED_EXERCISES.deadlift}`)
+      .locator(deadliftAria)
       .isVisible({ timeout: 10_000 })
       .catch(() => false);
 
     const bentRowVisible = await page
-      .locator('text=Barbell Bent-Over Row')
+      .locator(bentRowAria)
       .isVisible({ timeout: 5_000 })
       .catch(() => false);
 
@@ -387,13 +405,9 @@ test.describe.fixme('Routine regressions — full suite', () => {
     // Reload to simulate crash / app restore.
     await page.reload();
 
-    await page.waitForFunction(
-      () => {
-        const text = document.body.innerText ?? '';
-        return text.includes('GymBuddy') || text.includes('Home') || text.includes('Finish Workout');
-      },
-      { timeout: 30_000, polling: 500 },
-    );
+    // waitForAppReady re-enables semantics after reload and waits for auth.
+    // document.body.innerText is empty in CanvasKit (text drawn to canvas).
+    await waitForAppReady(page);
 
     // Return to the active workout screen.
     const finishVisible = await page
@@ -425,14 +439,15 @@ test.describe.fixme('Routine regressions — full suite', () => {
     );
     await expect(fallbackLabel).not.toBeVisible({ timeout: 3_000 });
 
-    // The real exercise name (Deadlift or Bent-Over Row) must still be visible.
+    // The real exercise name (Deadlift or Bent-Over Row) must still be visible
+    // after reload via its Semantics aria-label.
     if (deadliftVisible) {
       await expect(
-        page.locator(`text=${SEED_EXERCISES.deadlift}`),
+        page.locator(deadliftAria),
       ).toBeVisible({ timeout: 10_000 });
     } else {
       await expect(
-        page.locator('text=Barbell Bent-Over Row'),
+        page.locator(bentRowAria),
       ).toBeVisible({ timeout: 10_000 });
     }
 
