@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/workout_formatters.dart';
+import '../../../shared/widgets/section_header.dart';
 import '../../personal_records/providers/pr_providers.dart';
 import '../../routines/ui/widgets/routine_action_sheet.dart';
 import '../../routines/providers/notifiers/routine_list_notifier.dart';
@@ -65,7 +66,7 @@ class HomeScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (userRoutines.isNotEmpty) ...[
-                      const _SectionHeader(title: 'MY ROUTINES'),
+                      const SectionHeader(title: 'MY ROUTINES'),
                       const SizedBox(height: 8),
                       ...userRoutines.map(
                         (r) => Padding(
@@ -82,7 +83,7 @@ class HomeScreen extends ConsumerWidget {
                     ],
                     if (defaultRoutines.isNotEmpty) ...[
                       if (userRoutines.isEmpty) ...[
-                        const _SectionHeader(title: 'STARTER ROUTINES'),
+                        const SectionHeader(title: 'STARTER ROUTINES'),
                         const SizedBox(height: 8),
                         ...defaultRoutines.map(
                           (r) => Padding(
@@ -97,7 +98,7 @@ class HomeScreen extends ConsumerWidget {
                         const _CreateRoutineCta(),
                         const SizedBox(height: 16),
                       ] else ...[
-                        const _SectionHeader(title: 'STARTER ROUTINES'),
+                        const SectionHeader(title: 'STARTER ROUTINES'),
                         const SizedBox(height: 8),
                         ...defaultRoutines.map(
                           (r) => Padding(
@@ -144,6 +145,7 @@ class HomeScreen extends ConsumerWidget {
                         } catch (_) {
                           return; // discard failed — don't start a new workout
                         }
+                        return; // discard succeeded — don't start a new workout
                       } else {
                         return; // dismissed
                       }
@@ -174,23 +176,6 @@ class HomeScreen extends ConsumerWidget {
             const SizedBox(height: 24),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Text(
-      title,
-      style: theme.textTheme.labelLarge?.copyWith(
-        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
       ),
     );
   }
@@ -293,11 +278,17 @@ class _StatCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    countText,
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: theme.colorScheme.primary,
+                  SizedBox(
+                    height: 32,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        countText,
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
                     ),
                   ),
                   Text(

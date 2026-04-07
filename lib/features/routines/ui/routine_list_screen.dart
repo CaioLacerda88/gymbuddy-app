@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../shared/widgets/section_header.dart';
 import 'widgets/routine_action_sheet.dart';
 import '../providers/notifiers/routine_list_notifier.dart';
 import 'start_routine_action.dart';
@@ -54,7 +55,7 @@ class RoutineListScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // My Routines
-                const _SectionHeader(title: 'MY ROUTINES'),
+                const SectionHeader(title: 'MY ROUTINES'),
                 const SizedBox(height: 8),
                 if (userRoutines.isEmpty)
                   Padding(
@@ -85,7 +86,7 @@ class RoutineListScreen extends ConsumerWidget {
 
                 // Starter Routines
                 if (defaultRoutines.isNotEmpty) ...[
-                  const _SectionHeader(title: 'STARTER ROUTINES'),
+                  const SectionHeader(title: 'STARTER ROUTINES'),
                   const SizedBox(height: 8),
                   ...defaultRoutines.map(
                     (r) => Padding(
@@ -101,23 +102,6 @@ class RoutineListScreen extends ConsumerWidget {
             ),
           );
         },
-      ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Text(
-      title,
-      style: theme.textTheme.labelLarge?.copyWith(
-        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
       ),
     );
   }

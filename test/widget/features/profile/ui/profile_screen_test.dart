@@ -331,6 +331,143 @@ void main() {
 
       expect(find.byIcon(Icons.chevron_right), findsOneWidget);
     });
+
+    // PO-039: The display name must show an edit icon and be tappable, opening
+    // an edit dialog when tapped.
+    testWidgets(
+      'PO-039: identity card shows an edit icon next to the display name',
+      (tester) async {
+        const profile = Profile(
+          id: 'user-1',
+          displayName: 'John Doe',
+          weightUnit: 'kg',
+        );
+
+        await tester.pumpWidget(buildTestWidget(profile: profile));
+        await tester.pump();
+
+        // An edit icon must be visible alongside the name.
+        expect(find.byIcon(Icons.edit), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'PO-039: tapping the display name opens the Edit Display Name dialog',
+      (tester) async {
+        const profile = Profile(
+          id: 'user-1',
+          displayName: 'John Doe',
+          weightUnit: 'kg',
+        );
+
+        final mockAuth = MockAuthRepository();
+        when(() => mockAuth.currentUser).thenReturn(null);
+        when(() => mockAuth.signOut()).thenAnswer((_) async {});
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              profileProvider.overrideWith(() => MockProfileNotifier(profile)),
+              authRepositoryProvider.overrideWithValue(mockAuth),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.dark,
+              home: const ProfileScreen(),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        // Tap the display name (wrapped in a GestureDetector).
+        await tester.tap(find.text('John Doe'));
+        await tester.pumpAndSettle();
+
+        // The edit dialog must appear.
+        expect(find.text('Edit Display Name'), findsOneWidget);
+        expect(find.text('Cancel'), findsOneWidget);
+        expect(find.text('Save'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'PO-039: edit dialog is pre-populated with the current display name',
+      (tester) async {
+        const profile = Profile(
+          id: 'user-1',
+          displayName: 'Jane Smith',
+          weightUnit: 'kg',
+        );
+
+        final mockAuth = MockAuthRepository();
+        when(() => mockAuth.currentUser).thenReturn(null);
+        when(() => mockAuth.signOut()).thenAnswer((_) async {});
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              profileProvider.overrideWith(() => MockProfileNotifier(profile)),
+              authRepositoryProvider.overrideWithValue(mockAuth),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.dark,
+              home: const ProfileScreen(),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        await tester.tap(find.text('Jane Smith'));
+        await tester.pumpAndSettle();
+
+        // The TextField inside the dialog must be pre-filled with the name.
+        final textField = tester.widget<TextField>(
+          find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.byType(TextField),
+          ),
+        );
+        expect(textField.controller?.text, 'Jane Smith');
+      },
+    );
+
+    testWidgets(
+      'PO-039: cancelling the edit dialog does not close the profile screen',
+      (tester) async {
+        const profile = Profile(
+          id: 'user-1',
+          displayName: 'John Doe',
+          weightUnit: 'kg',
+        );
+
+        final mockAuth = MockAuthRepository();
+        when(() => mockAuth.currentUser).thenReturn(null);
+        when(() => mockAuth.signOut()).thenAnswer((_) async {});
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              profileProvider.overrideWith(() => MockProfileNotifier(profile)),
+              authRepositoryProvider.overrideWithValue(mockAuth),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.dark,
+              home: const ProfileScreen(),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        await tester.tap(find.text('John Doe'));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Cancel'));
+        await tester.pumpAndSettle();
+
+        // After cancelling, the profile screen should still be visible.
+        expect(find.text('Profile'), findsOneWidget);
+        expect(find.text('John Doe'), findsOneWidget);
+      },
+    );
   });
 }
 

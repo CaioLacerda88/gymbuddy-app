@@ -72,17 +72,29 @@ class _WorkoutHistoryScreenState extends ConsumerState<WorkoutHistoryScreen> {
             return _EmptyHistoryBody(onStartWorkout: () => context.go('/home'));
           }
 
+          final notifier = ref.read(workoutHistoryProvider.notifier);
+          final showLoadingMore = notifier.isLoadingMore || notifier.hasMore;
+
           return RefreshIndicator(
             onRefresh: () =>
                 ref.read(workoutHistoryProvider.notifier).refresh(),
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.only(top: 8, bottom: 88),
-              itemCount: workouts.length,
-              itemBuilder: (context, index) => _WorkoutHistoryCard(
-                workout: workouts[index],
-                onTap: () => context.go('/home/history/${workouts[index].id}'),
-              ),
+              itemCount: workouts.length + (showLoadingMore ? 1 : 0),
+              itemBuilder: (context, index) {
+                if (index >= workouts.length) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                return _WorkoutHistoryCard(
+                  workout: workouts[index],
+                  onTap: () =>
+                      context.go('/home/history/${workouts[index].id}'),
+                );
+              },
             ),
           );
         },

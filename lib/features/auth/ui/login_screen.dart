@@ -35,6 +35,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() {
       _isSignUp = !_isSignUp;
       _errorMessage = null;
+      _passwordController.clear();
     });
   }
 
@@ -121,6 +122,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         SnackBar(
           content: const Text('Password reset email sent. Check your inbox.'),
           backgroundColor: Theme.of(context).colorScheme.primary,
+          duration: const Duration(seconds: 8),
         ),
       );
     }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/radii.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../models/record_type.dart';
 import '../providers/pr_providers.dart';
@@ -133,29 +134,33 @@ class _ExerciseRecordCard extends StatelessWidget {
     final first = records.first;
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(first.exerciseName, style: theme.textTheme.titleLarge),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 8,
-              children: records.map((pr) {
-                return _RecordTile(
-                  icon: _iconForType(pr.record.recordType),
-                  label: pr.record.recordType.displayName,
-                  value: _formatValue(
-                    pr.record.recordType,
-                    pr.record.value,
-                    weightUnit,
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
+      child: InkWell(
+        borderRadius: BorderRadius.circular(kRadiusLg),
+        onTap: () => context.go('/exercises/${first.record.exerciseId}'),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(first.exerciseName, style: theme.textTheme.titleLarge),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                children: records.map((pr) {
+                  return _RecordTile(
+                    icon: _iconForType(pr.record.recordType),
+                    label: pr.record.recordType.displayName,
+                    value: _formatValue(
+                      pr.record.recordType,
+                      pr.record.value,
+                      weightUnit,
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -181,7 +186,7 @@ class _RecordTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: theme.colorScheme.onSurface.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(kRadiusSm),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

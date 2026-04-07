@@ -66,12 +66,28 @@ flutter run -d chrome        # run on Chrome (for Playwright e2e)
 Each PLAN.md step is a sprint increment:
 
 1. **Plan** — Read PLAN.md step. Dispatch `product-owner` + `ui-ux-critic` (if user-facing) for context.
-2. **Implement** — Dispatch `tech-lead` (scaffolding), `flutter-dev`/`supabase-dev` (feature work). Parallel when independent.
-3. **Verify** — Run `dart format .` + `dart analyze --fatal-infos` after each agent.
-4. **Design review** (if UI) — `ui-ux-critic` reviews. Generic → revise.
-5. **Test** — `qa-engineer` writes tests, runs `flutter test`.
-6. **Code review** — `reviewer` checks all files. Fix Critical/Warning findings.
-7. **Ship** — Run CI, commit, push, `gh pr create`, squash merge.
+2. **Write WIP checklist** — Before touching code, write a checklist in `tasks/WIP.md` (see below).
+3. **Implement** — Dispatch `tech-lead` (scaffolding), `flutter-dev`/`supabase-dev` (feature work). Parallel when independent. Check off WIP items as they complete.
+4. **Verify** — Run `dart format .` + `dart analyze --fatal-infos` after each agent.
+5. **Design review** (if UI) — `ui-ux-critic` reviews. Generic → revise.
+6. **Test** — `qa-engineer` writes tests, runs `flutter test`.
+7. **Code review** — `reviewer` checks all files. Fix Critical/Warning findings.
+8. **Ship** — Run CI, commit, push, `gh pr create`, squash merge.
+9. **Close WIP** — Remove completed items from `tasks/WIP.md`. Log results in PLAN.md.
+
+### WIP Tracking (`tasks/WIP.md`)
+
+**Every agent that changes code MUST follow this protocol:**
+
+1. **Before writing code:** Read the relevant definition files (`PLAN.md`, `GAMIFICATION.md`, `PROD-READINESS.md`, etc.), then write a checklist in `tasks/WIP.md` with:
+   - Task name and branch name
+   - Reference to the source definition (e.g., "Per PLAN.md Step 11c", "Per GAMIFICATION.md Phase 1")
+   - Checkable items for each change to make
+   - Files to modify/create
+2. **During implementation:** Check off items as they're completed (`- [x]`)
+3. **After merge:** Remove the completed section from `tasks/WIP.md` and update PLAN.md with results
+
+This keeps the coordinator (main conversation) informed of progress and ensures agents don't drift from specs. If `tasks/WIP.md` doesn't exist, create it.
 
 ### Handoff Protocol
 
@@ -91,6 +107,16 @@ Each PLAN.md step is a sprint increment:
 - Check against PLAN.md requirements for that step
 - Verify tests cover the acceptance criteria
 - Flag real issues only — skip style nitpicks (that's what `make format` and `make analyze` are for)
+
+### Context Hygiene
+
+The main conversation must stay under 60% context usage. When approaching 60%:
+
+1. **Update `tasks/WIP.md`** with current state: what's done, what's in progress, what's next, any decisions or blockers
+2. **Compact** — use `/compact` to free context
+3. After compacting, re-read `tasks/WIP.md` to restore working state
+
+This prevents context rot — losing track of in-flight work after auto-compaction. Agents should also keep context lean: delegate research to sub-agents, avoid reading entire large files when a section suffices.
 
 ### Agent Permissions
 

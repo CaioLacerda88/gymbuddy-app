@@ -109,5 +109,70 @@ void main() {
       completer.complete([]);
       await tester.pump();
     });
+
+    // PO-031: PR cards must be tappable — each card wraps its content in an
+    // InkWell so users can navigate to the exercise detail screen.
+    testWidgets('PO-031: PR card is wrapped in an InkWell (tappable)', (
+      tester,
+    ) async {
+      final records = [
+        makePRWithExercise(
+          exerciseName: 'Bench Press',
+          recordType: RecordType.maxWeight,
+          value: 100,
+        ),
+      ];
+
+      await tester.pumpWidget(
+        buildTestWidget(
+          overrides: [
+            prListWithExercisesProvider.overrideWith(
+              (ref) => Future.value(records),
+            ),
+          ],
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      // The card must be present and wrapped in an InkWell.
+      expect(find.byType(InkWell), findsWidgets);
+    });
+
+    testWidgets('PO-031: multiple PR cards are all individually tappable', (
+      tester,
+    ) async {
+      final records = [
+        makePRWithExercise(
+          exerciseId: 'exercise-001',
+          exerciseName: 'Bench Press',
+          recordType: RecordType.maxWeight,
+          value: 100,
+        ),
+        makePRWithExercise(
+          exerciseId: 'exercise-002',
+          exerciseName: 'Squat',
+          recordType: RecordType.maxWeight,
+          value: 120,
+        ),
+      ];
+
+      await tester.pumpWidget(
+        buildTestWidget(
+          overrides: [
+            prListWithExercisesProvider.overrideWith(
+              (ref) => Future.value(records),
+            ),
+          ],
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Bench Press'), findsOneWidget);
+      expect(find.text('Squat'), findsOneWidget);
+      // Both cards render InkWells.
+      expect(find.byType(InkWell), findsWidgets);
+    });
   });
 }

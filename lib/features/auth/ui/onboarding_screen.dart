@@ -38,6 +38,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     }
   }
 
+  void _previousPage() {
+    if (_currentPage > 0) {
+      _pageController.previousPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
   Future<void> _finishOnboarding() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
@@ -116,6 +125,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       setState(() => _fitnessLevel = level);
                     },
                     onFinish: _finishOnboarding,
+                    onBack: _previousPage,
                   ),
                 ],
               ),
@@ -183,12 +193,14 @@ class _ProfileSetupPage extends StatelessWidget {
     required this.fitnessLevel,
     required this.onFitnessLevelChanged,
     required this.onFinish,
+    required this.onBack,
   });
 
   final TextEditingController nameController;
   final String fitnessLevel;
   final ValueChanged<String> onFitnessLevelChanged;
   final VoidCallback onFinish;
+  final VoidCallback onBack;
 
   static const _fitnessLevels = ['beginner', 'intermediate', 'advanced'];
 
@@ -250,7 +262,15 @@ class _ProfileSetupPage extends StatelessWidget {
           ),
           const Spacer(),
           GradientButton(label: "LET'S GO", onPressed: onFinish),
-          const SizedBox(height: 32),
+          const SizedBox(height: 12),
+          Center(
+            child: TextButton.icon(
+              onPressed: onBack,
+              icon: const Icon(Icons.arrow_back, size: 18),
+              label: const Text('Back'),
+            ),
+          ),
+          const SizedBox(height: 16),
         ],
       ),
     );
