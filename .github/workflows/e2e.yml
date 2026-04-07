@@ -35,7 +35,7 @@ jobs:
 
       - uses: supabase/setup-cli@v1
         with:
-          version: 2.22.6
+          version: latest
 
       # Cache Playwright browser binaries. Key includes the Playwright version
       # so the cache is invalidated when @playwright/test is upgraded.
