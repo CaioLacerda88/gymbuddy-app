@@ -4,7 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/exercise_image.dart';
+import '../../../shared/widgets/exercise_info_sections.dart';
 import '../models/active_workout_state.dart';
+import '../models/weight_unit.dart';
+import '../models/set_type.dart';
+import '../utils/set_defaults.dart';
 import '../../exercises/models/exercise.dart';
 import '../../personal_records/models/personal_record.dart';
 import '../../personal_records/providers/pr_providers.dart';
@@ -429,7 +433,7 @@ class _ExerciseList extends StatelessWidget {
   }
 }
 
-class _ExerciseCard extends ConsumerWidget {
+class _ExerciseCard extends ConsumerStatefulWidget {
   const _ExerciseCard({
     required this.activeExercise,
     required this.reorderMode,
@@ -442,13 +446,21 @@ class _ExerciseCard extends ConsumerWidget {
   final bool isFirst;
   final bool isLast;
 
-  Future<void> _confirmRemove(BuildContext context, WidgetRef ref) async {
+  @override
+  ConsumerState<_ExerciseCard> createState() => _ExerciseCardState();
+}
+
+class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
+  /// IDs of sets that were just added and should receive the isNew flag.
+  final Set<String> _newSetIds = {};
+
+  Future<void> _confirmRemove(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Remove Exercise?'),
         content: Text(
-          'Remove ${activeExercise.workoutExercise.exercise?.name ?? 'this exercise'} '
+          'Remove ${widget.activeExercise.workoutExercise.exercise?.name ?? 'this exercise'} '
           'and all its sets?',
         ),
         actions: [
@@ -469,31 +481,31 @@ class _ExerciseCard extends ConsumerWidget {
     if (confirmed == true) {
       ref
           .read(activeWorkoutProvider.notifier)
-          .removeExercise(activeExercise.workoutExercise.id);
+          .removeExercise(widget.activeExercise.workoutExercise.id);
     }
   }
 
-  Future<void> _swapExercise(BuildContext context, WidgetRef ref) async {
+  Future<void> _swapExercise(BuildContext context) async {
     final exercise = await ExercisePickerSheet.show(context);
     if (exercise != null) {
       ref
           .read(activeWorkoutProvider.notifier)
-          .swapExercise(activeExercise.workoutExercise.id, exercise);
+          .swapExercise(widget.activeExercise.workoutExercise.id, exercise);
     }
   }
 
-  void _onSetCompleted(WidgetRef ref) {
-    final restSeconds = activeExercise.workoutExercise.restSeconds ?? 90;
-    final exerciseName = activeExercise.workoutExercise.exercise?.name;
+  void _onSetCompleted() {
+    final restSeconds = widget.activeExercise.workoutExercise.restSeconds ?? 90;
+    final exerciseName = widget.activeExercise.workoutExercise.exercise?.name;
     ref
         .read(restTimerProvider.notifier)
         .start(restSeconds, exerciseName: exerciseName);
   }
 
-  void _fillRemaining(BuildContext context, WidgetRef ref) {
+  void _fillRemaining(BuildContext context) {
     ref
         .read(activeWorkoutProvider.notifier)
-        .fillRemainingSets(activeExercise.workoutExercise.id);
+        .fillRemainingSets(widget.activeExercise.workoutExercise.id);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Filled remaining sets'),
@@ -513,8 +525,9 @@ class _ExerciseCard extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final activeExercise = widget.activeExercise;
     final exercise = activeExercise.workoutExercise.exercise;
     final weId = activeExercise.workoutExercise.id;
     final exerciseId = activeExercise.workoutExercise.exerciseId;
@@ -523,6 +536,11 @@ class _ExerciseCard extends ConsumerWidget {
     final lastSetsAsync = ref.watch(lastWorkoutSetsProvider(exerciseId));
     final lastSetsMap = lastSetsAsync.valueOrNull ?? {};
     final lastSets = lastSetsMap[exerciseId] ?? [];
+
+    // Get weight unit for equipment-type defaults.
+    final weightUnitStr =
+        ref.watch(profileProvider).valueOrNull?.weightUnit ?? 'kg';
+    final weightUnit = WeightUnit.fromString(weightUnitStr);
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -544,7 +562,7 @@ class _ExerciseCard extends ConsumerWidget {
                       onTap: exercise != null
                           ? () => _showExerciseDetail(context, exercise)
                           : null,
-                      onLongPress: () => _swapExercise(context, ref),
+                      onLongPress: () => _swapExercise(context),
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(minHeight: 48),
                         child: Align(
@@ -573,11 +591,11 @@ class _ExerciseCard extends ConsumerWidget {
                     ),
                   ),
                 ),
-                if (reorderMode) ...[
+                if (widget.reorderMode) ...[
                   Semantics(
                     label: 'Move exercise up',
                     child: IconButton(
-                      onPressed: isFirst
+                      onPressed: widget.isFirst
                           ? null
                           : () => ref
                                 .read(activeWorkoutProvider.notifier)
@@ -593,7 +611,7 @@ class _ExerciseCard extends ConsumerWidget {
                   Semantics(
                     label: 'Move exercise down',
                     child: IconButton(
-                      onPressed: isLast
+                      onPressed: widget.isLast
                           ? null
                           : () => ref
                                 .read(activeWorkoutProvider.notifier)
@@ -610,7 +628,7 @@ class _ExerciseCard extends ConsumerWidget {
                   Semantics(
                     label: 'Swap exercise',
                     child: IconButton(
-                      onPressed: () => _swapExercise(context, ref),
+                      onPressed: () => _swapExercise(context),
                       icon: Icon(
                         Icons.swap_horiz,
                         color: theme.colorScheme.onSurface.withValues(
@@ -623,7 +641,7 @@ class _ExerciseCard extends ConsumerWidget {
                   Semantics(
                     label: 'Remove exercise',
                     child: IconButton(
-                      onPressed: () => _confirmRemove(context, ref),
+                      onPressed: () => _confirmRemove(context),
                       icon: Icon(
                         Icons.delete_outline,
                         color: theme.colorScheme.error.withValues(alpha: 0.7),
@@ -649,12 +667,14 @@ class _ExerciseCard extends ConsumerWidget {
                 final lastSet = index < lastSets.length
                     ? lastSets[index]
                     : null;
+                final isNew = _newSetIds.contains(s.id);
                 return SetRow(
                   key: ValueKey(s.id),
                   set: s,
                   workoutExerciseId: weId,
-                  onCompleted: () => _onSetCompleted(ref),
+                  onCompleted: _onSetCompleted,
                   lastSet: lastSet,
+                  isNew: isNew,
                 );
               }),
             ],
@@ -665,20 +685,88 @@ class _ExerciseCard extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               child: OutlinedButton.icon(
                 onPressed: () {
-                  // Pre-fill from the last session's matching set position.
+                  // Smart defaults priority chain:
+                  // 1. Previous session set at matching position
+                  // 2. Last set in current session (skip warmup->working)
+                  // 3. Equipment-type defaults
+                  // 4. 0/0
                   final newSetIndex = activeExercise.sets.length;
+                  double? defaultWeight;
+                  int? defaultReps;
+
+                  // Priority 1: previous session at matching position
                   final lastSetForNewRow = newSetIndex < lastSets.length
                       ? lastSets[newSetIndex]
                       : null;
+
+                  if (lastSetForNewRow != null) {
+                    defaultWeight = lastSetForNewRow.weight;
+                    defaultReps = lastSetForNewRow.reps;
+                  } else if (activeExercise.sets.isNotEmpty) {
+                    // Priority 2: last set in current session
+                    final prevSet = activeExercise.sets.last;
+                    // Skip if previous set is warmup (new set defaults to
+                    // working, so don't carry warmup weights forward).
+                    if (prevSet.setType != SetType.warmup) {
+                      defaultWeight = prevSet.weight;
+                      defaultReps = prevSet.reps;
+                    } else if (lastSetForNewRow != null) {
+                      // Warmup -> working: prefer previous session data
+                      defaultWeight = lastSetForNewRow.weight;
+                      defaultReps = lastSetForNewRow.reps;
+                    } else {
+                      // Warmup -> working, no previous session: equipment defaults
+                      final equipType = exercise?.equipmentType;
+                      if (equipType != null) {
+                        final defaults = defaultSetValues(
+                          equipType,
+                          weightUnit,
+                        );
+                        defaultWeight = defaults.weight;
+                        defaultReps = defaults.reps;
+                      }
+                    }
+                  } else {
+                    // Priority 3: equipment-type defaults for first-ever set
+                    final equipType = exercise?.equipmentType;
+                    if (equipType != null) {
+                      final defaults = defaultSetValues(equipType, weightUnit);
+                      defaultWeight = defaults.weight;
+                      defaultReps = defaults.reps;
+                    }
+                  }
+
+                  // Record the current set count before adding.
+                  final setCountBefore = activeExercise.sets.length;
                   ref
                       .read(activeWorkoutProvider.notifier)
                       .addSet(
                         weId,
-                        defaultWeight: lastSetForNewRow?.weight,
-                        defaultReps: lastSetForNewRow?.reps,
+                        defaultWeight: defaultWeight,
+                        defaultReps: defaultReps,
                       );
+
+                  // Mark the newly added set as new after state updates.
+                  // The notifier adds the set synchronously, so we can
+                  // read back the updated state to find the new set ID.
+                  final updated = ref.read(activeWorkoutProvider).valueOrNull;
+                  if (updated != null) {
+                    final updatedExercise = updated.exercises
+                        .where((e) => e.workoutExercise.id == weId)
+                        .firstOrNull;
+                    if (updatedExercise != null &&
+                        updatedExercise.sets.length > setCountBefore) {
+                      setState(() {
+                        _newSetIds.add(updatedExercise.sets.last.id);
+                      });
+                      // Clear after the frame so SetRow.initState captures isNew
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        _newSetIds.remove(updatedExercise.sets.last.id);
+                      });
+                    }
+                  }
                 },
-                onLongPress: () => _fillRemaining(context, ref),
+                onLongPress: () => _fillRemaining(context),
                 icon: const Icon(Icons.add, size: 20),
                 label: const Text('Add Set'),
                 style: OutlinedButton.styleFrom(
@@ -694,7 +782,7 @@ class _ExerciseCard extends ConsumerWidget {
                 child: Semantics(
                   label: 'Fill remaining sets with last completed values',
                   child: TextButton(
-                    onPressed: () => _fillRemaining(context, ref),
+                    onPressed: () => _fillRemaining(context),
                     child: Text(
                       'Fill',
                       style: theme.textTheme.bodyMedium?.copyWith(
@@ -896,6 +984,8 @@ class _ExerciseDetailSheet extends ConsumerWidget {
                       ),
                     ),
                   ],
+                  ExerciseDescriptionSection(description: exercise.description),
+                  ExerciseFormTipsSection(formTips: exercise.formTips),
                   const SizedBox(height: 24),
                   // Personal records
                   _SheetPRSection(

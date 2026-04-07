@@ -10,8 +10,6 @@ import '../../routines/ui/widgets/routine_action_sheet.dart';
 import '../../routines/providers/notifiers/routine_list_notifier.dart';
 import '../../routines/ui/start_routine_action.dart';
 import '../../routines/ui/widgets/routine_card.dart';
-import '../../personal_records/ui/widgets/recent_prs_section.dart';
-import '../models/workout.dart';
 import '../providers/workout_history_providers.dart';
 import '../providers/workout_providers.dart';
 import 'widgets/resume_workout_dialog.dart';
@@ -23,7 +21,6 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final routinesAsync = ref.watch(routineListProvider);
-    final historyAsync = ref.watch(workoutHistoryProvider);
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -119,37 +116,6 @@ class HomeScreen extends ConsumerWidget {
               },
             ),
 
-            // Recent workouts
-            historyAsync.when(
-              loading: () => const _RecentWorkoutsSkeleton(),
-              error: (_, _) => const SizedBox.shrink(),
-              data: (workouts) {
-                if (workouts.isEmpty) return const SizedBox.shrink();
-                final recent = workouts.take(3).toList();
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const _SectionHeader(title: 'RECENT'),
-                        TextButton(
-                          onPressed: () => context.go('/home/history'),
-                          child: const Text('View All'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    ...recent.map((w) => _RecentWorkoutRow(workout: w)),
-                    const SizedBox(height: 16),
-                  ],
-                );
-              },
-            ),
-
-            // Recent personal records
-            const RecentPRsSection(),
-
             // Start empty workout
             Center(
               child: SizedBox(
@@ -237,6 +203,25 @@ class _StatCardsRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final workoutCount = ref.watch(workoutCountProvider);
     final prCount = ref.watch(prCountProvider);
+    final historyAsync = ref.watch(workoutHistoryProvider);
+    final recentPRs = ref.watch(recentPRsProvider);
+
+    // Derive workout subtitle from most recent workout date.
+    final workoutSubtitle = historyAsync.whenOrNull(
+      data: (workouts) {
+        if (workouts.isEmpty) return null;
+        final lastDate = workouts.first.finishedAt ?? workouts.first.startedAt;
+        return WorkoutFormatters.formatRelativeDate(lastDate);
+      },
+    );
+
+    // Derive records subtitle from most recent PR exercise name.
+    final recordsSubtitle = recentPRs.whenOrNull(
+      data: (prs) {
+        if (prs.isEmpty) return null;
+        return prs.first.exerciseName;
+      },
+    );
 
     return Row(
       children: [
@@ -244,6 +229,7 @@ class _StatCardsRow extends ConsumerWidget {
           child: _StatCard(
             count: workoutCount,
             label: 'Workouts',
+            subtitle: workoutSubtitle,
             onTap: () => context.go('/home/history'),
           ),
         ),
@@ -252,6 +238,7 @@ class _StatCardsRow extends ConsumerWidget {
           child: _StatCard(
             count: prCount,
             label: 'Records',
+            subtitle: recordsSubtitle,
             onTap: () => context.go('/records'),
           ),
         ),
@@ -265,11 +252,13 @@ class _StatCard extends StatelessWidget {
     required this.count,
     required this.label,
     required this.onTap,
+    this.subtitle,
   });
 
   final AsyncValue<int> count;
   final String label;
   final VoidCallback onTap;
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -295,13 +284,14 @@ class _StatCard extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: onTap,
-          child: SizedBox(
-            height: 72,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 72),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     countText,
@@ -318,6 +308,16 @@ class _StatCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (subtitle != null)
+                    Text(
+                      subtitle!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: theme.colorScheme.primary.withValues(alpha: 0.7),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -370,97 +370,6 @@ class _CreateRoutineCta extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _RecentWorkoutRow extends StatelessWidget {
-  const _RecentWorkoutRow({required this.workout});
-
-  final Workout workout;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final dateText = WorkoutFormatters.formatWorkoutDate(
-      workout.finishedAt ?? workout.startedAt,
-    );
-    final durationText = WorkoutFormatters.formatDuration(
-      workout.durationSeconds,
-    );
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: theme.cardTheme.color ?? theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () => context.go('/home/history/${workout.id}'),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        workout.name,
-                        style: theme.textTheme.titleMedium,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '$dateText  \u00b7  $durationText',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withValues(
-                            alpha: 0.5,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(
-                  Icons.chevron_right,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Shimmer-style skeleton displayed while workout history is loading (PO-008).
-class _RecentWorkoutsSkeleton extends StatelessWidget {
-  const _RecentWorkoutsSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final shimmerColor = theme.colorScheme.onSurface.withValues(alpha: 0.08);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _SectionHeader(title: 'RECENT'),
-        const SizedBox(height: 12),
-        for (int i = 0; i < 3; i++) ...[
-          Container(
-            height: 60,
-            margin: const EdgeInsets.only(bottom: 8),
-            decoration: BoxDecoration(
-              color: shimmerColor,
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        ],
-        const SizedBox(height: 16),
-      ],
     );
   }
 }

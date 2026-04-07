@@ -7,8 +7,8 @@
  *  3. Home tab shows the GymBuddy title and today's date context
  *  4. Home tab shows "Start Empty Workout" button
  *  5. Home tab shows STARTER ROUTINES or MY ROUTINES section
- *  6. After completing a workout, the RECENT section appears
- *  7. "View All" link navigates to the workout history screen
+ *  6. After completing a workout, the Workouts stat card is visible
+ *  7. Tapping Workouts stat card navigates to the history screen
  *  8. Profile tab shows the user's email and Log Out button
  *  9. Profile weight unit toggle shows kg and lbs options
  * 10. HOME-STAT-001 — Workouts and Records stat cards are visible
@@ -26,7 +26,6 @@ import { navigateToTab } from '../helpers/app';
 import { login } from '../helpers/auth';
 import {
   NAV,
-  HOME,
   HOME_STATS,
   WORKOUT,
   PR,
@@ -114,7 +113,7 @@ test.describe('Home screen and navigation — full suite', () => {
     expect(hasStarter || hasMy).toBe(true);
   });
 
-  test('completing a workout makes RECENT section appear on the home screen', async ({
+  test('completing a workout updates the Workouts stat card on the home screen', async ({
     page,
   }) => {
     // Start and finish a minimal workout with one completed set.
@@ -141,44 +140,21 @@ test.describe('Home screen and navigation — full suite', () => {
 
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
 
-    // The RECENT section must appear after at least one finished workout.
-    await expect(page.locator(HOME.recentSection)).toBeVisible({
+    // The Workouts stat card must be visible after completing a workout.
+    await expect(page.locator(HOME_STATS.workoutsCard)).toBeVisible({
       timeout: 10_000,
     });
   });
 
-  test('"View All" link on home screen navigates to the history screen', async ({
+  test('tapping Workouts stat card navigates to the history screen', async ({
     page,
   }) => {
-    // The "View All" link is only shown when there is at least one workout.
-    // Check if it is already visible (from prior test state in this user account).
-    const viewAllVisible = await page
-      .locator(HOME.viewAllHistory)
-      .isVisible({ timeout: 5_000 })
-      .catch(() => false);
-
-    if (!viewAllVisible) {
-      // Complete a workout first to surface the link.
-      await startEmptyWorkout(page);
-      await finishWorkout(page);
-
-      const isCelebration = await page
-        .locator(PR.firstWorkoutHeading)
-        .isVisible({ timeout: 15_000 })
-        .catch(() => false);
-      if (isCelebration) {
-        await page.click(PR.continueButton);
-      }
-
-      await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
-    }
-
-    // "View All" must now be visible.
-    await expect(page.locator(HOME.viewAllHistory)).toBeVisible({
+    // The Workouts stat card should be visible on the home screen.
+    await expect(page.locator(HOME_STATS.workoutsCard)).toBeVisible({
       timeout: 10_000,
     });
 
-    await page.click(HOME.viewAllHistory);
+    await page.click(HOME_STATS.workoutsCard);
 
     // History screen heading must appear.
     await expect(page.locator(HISTORY.heading)).toBeVisible({

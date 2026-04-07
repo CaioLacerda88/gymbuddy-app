@@ -24,7 +24,7 @@
 
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth';
-import { NAV, WORKOUT, PR, HOME, HISTORY } from '../helpers/selectors';
+import { NAV, WORKOUT, PR, HOME_STATS, HISTORY } from '../helpers/selectors';
 import {
   startEmptyWorkout,
   addExercise,
@@ -342,17 +342,15 @@ test.describe('Workout logging — full suite', () => {
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
 
     // Navigate to the history screen to verify the saved value.
-    // The "View All" link appears after at least one workout is saved.
-    const viewAllVisible = await page
-      .locator(HOME.viewAllHistory)
+    // Tap the Workouts stat card, or fall back to direct navigation.
+    const statsVisible = await page
+      .locator(HOME_STATS.workoutsCard)
       .isVisible({ timeout: 5_000 })
       .catch(() => false);
 
-    if (viewAllVisible) {
-      await page.click(HOME.viewAllHistory);
+    if (statsVisible) {
+      await page.click(HOME_STATS.workoutsCard);
     } else {
-      // If RECENT section isn't shown (first workout for this user), navigate
-      // directly to the history route.
       await page.goto('/home/history');
     }
 

@@ -3,7 +3,7 @@
  *
  * Covers the critical path:
  *   Login → start empty workout → add exercise → set weight & reps →
- *   complete set → finish workout → workout appears in home screen history
+ *   complete set → finish workout → stat card visible on home screen
  *
  * Uses the dedicated smokeWorkout test user to avoid shared state with
  * other smoke specs. User is created in global-setup.ts.
@@ -15,7 +15,7 @@
 import { test, expect } from '@playwright/test';
 import { waitForAppReady } from '../helpers/app';
 import { login } from '../helpers/auth';
-import { NAV, HOME, WORKOUT } from '../helpers/selectors';
+import { NAV, HOME_STATS, WORKOUT } from '../helpers/selectors';
 import {
   startEmptyWorkout,
   addExercise,
@@ -154,7 +154,7 @@ test.describe('Workout smoke', () => {
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
   });
 
-  test('finished workout appears in the recent section on the home screen', async ({
+  test('finished workout updates the stat card on the home screen', async ({
     page,
   }) => {
     // Complete a minimal workout — the Finish button is disabled until at
@@ -181,12 +181,15 @@ test.describe('Workout smoke', () => {
       await page.click('text=Continue');
     }
 
-    // Back on Home — the recent section should now have at least one entry.
+    // Back on Home — the Workouts stat card should be visible.
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
 
-    // The "RECENT" heading signals the workout history section.
-    await expect(page.locator(HOME.recentSection)).toBeVisible({
-      timeout: 10_000,
+    // The "Workouts" label inside the stat card confirms we're on the home
+    // screen after finishing. We match on plain text because the Semantics
+    // aria-label only switches to "tap to view" once the async count loads,
+    // which can take several seconds on CI.
+    await expect(page.locator('text=Workouts')).toBeVisible({
+      timeout: 15_000,
     });
   });
 

@@ -74,19 +74,25 @@ class ExerciseRepository extends BaseRepository {
     required MuscleGroup muscleGroup,
     required EquipmentType equipmentType,
     required String userId,
+    String? description,
+    String? formTips,
   }) {
     return mapException(() async {
       try {
-        final data = await _exercises
-            .insert({
-              'name': name,
-              'muscle_group': muscleGroup.name,
-              'equipment_type': equipmentType.name,
-              'is_default': false,
-              'user_id': userId,
-            })
-            .select()
-            .single();
+        final payload = <String, dynamic>{
+          'name': name,
+          'muscle_group': muscleGroup.name,
+          'equipment_type': equipmentType.name,
+          'is_default': false,
+          'user_id': userId,
+        };
+        if (description != null && description.isNotEmpty) {
+          payload['description'] = description;
+        }
+        if (formTips != null && formTips.isNotEmpty) {
+          payload['form_tips'] = formTips;
+        }
+        final data = await _exercises.insert(payload).select().single();
         return Exercise.fromJson(data);
       } on supabase.PostgrestException catch (e) {
         if (e.code == '23505') {

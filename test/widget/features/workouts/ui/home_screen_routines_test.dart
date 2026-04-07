@@ -87,41 +87,42 @@ void main() {
       },
     );
 
-    testWidgets('shows skeleton when history is loading (PO-008)', (
-      tester,
-    ) async {
-      // Use a never-completing notifier that stays in loading state.
-      final notifier = _PendingWorkoutHistoryNotifier();
+    testWidgets(
+      'does not show RECENT section (removed in home simplification)',
+      (tester) async {
+        // Use a never-completing notifier that stays in loading state.
+        final notifier = _PendingWorkoutHistoryNotifier();
 
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            routineListProvider.overrideWith(
-              () => _DefaultOnlyRoutineNotifier(),
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              routineListProvider.overrideWith(
+                () => _DefaultOnlyRoutineNotifier(),
+              ),
+              workoutHistoryProvider.overrideWith(() => notifier),
+              activeWorkoutProvider.overrideWith(
+                () => _NullActiveWorkoutNotifier(),
+              ),
+              recentPRsProvider.overrideWith((ref) => Future.value([])),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.dark,
+              home: const Scaffold(body: HomeScreen()),
             ),
-            workoutHistoryProvider.overrideWith(() => notifier),
-            activeWorkoutProvider.overrideWith(
-              () => _NullActiveWorkoutNotifier(),
-            ),
-            recentPRsProvider.overrideWith((ref) => Future.value([])),
-          ],
-          child: MaterialApp(
-            theme: AppTheme.dark,
-            home: const Scaffold(body: HomeScreen()),
           ),
-        ),
-      );
+        );
 
-      await tester.pump();
-      await tester.pump();
+        await tester.pump();
+        await tester.pump();
 
-      // While loading, the RECENT section header should show from the skeleton.
-      expect(find.text('RECENT'), findsOneWidget);
+        // RECENT section was removed — skeleton should no longer appear.
+        expect(find.text('RECENT'), findsNothing);
 
-      // Complete the future so the test can clean up without pending timers.
-      notifier.complete();
-      await tester.pumpAndSettle();
-    });
+        // Complete the future so the test can clean up without pending timers.
+        notifier.complete();
+        await tester.pumpAndSettle();
+      },
+    );
   });
 }
 

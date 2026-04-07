@@ -62,6 +62,8 @@ class Exercise with _$Exercise {
     required MuscleGroup muscleGroup,
     required EquipmentType equipmentType,
     @JsonKey(defaultValue: false) required bool isDefault,
+    String? description,
+    String? formTips,
     String? imageStartUrl,
     String? imageEndUrl,
     String? userId,

@@ -49,6 +49,23 @@ class WorkoutFormatters {
     return DateFormat('MMM d, y').format(date);
   }
 
+  /// Format a date as a relative human-readable string.
+  ///
+  /// Returns "Today", "Yesterday", "3 days ago", "2w ago", "1mo ago", etc.
+  /// Useful for stat card subtitles and compact date displays.
+  static String formatRelativeDate(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final dateDay = DateTime(date.year, date.month, date.day);
+    final diff = today.difference(dateDay).inDays;
+
+    if (diff == 0) return 'Today';
+    if (diff == 1) return 'Yesterday';
+    if (diff < 7) return '$diff days ago';
+    if (diff < 30) return '${(diff / 7).floor()}w ago';
+    return '${(diff / 30).floor()}mo ago';
+  }
+
   /// Calculate total volume from a list of sets.
   ///
   /// Volume = sum of (weight * reps) for all completed sets.

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/exceptions/app_exception.dart';
 import '../../../shared/widgets/exercise_image.dart';
+import '../../../shared/widgets/exercise_info_sections.dart';
 import '../../personal_records/models/record_type.dart';
 import '../../personal_records/providers/pr_providers.dart';
 import '../../profile/providers/profile_providers.dart';
@@ -168,6 +169,8 @@ class _ExerciseDetailBody extends ConsumerWidget {
               ),
             ),
           ],
+          ExerciseDescriptionSection(description: exercise.description),
+          ExerciseFormTipsSection(formTips: exercise.formTips),
           const SizedBox(height: 24),
           _PRSection(
             exerciseId: exercise.id,
