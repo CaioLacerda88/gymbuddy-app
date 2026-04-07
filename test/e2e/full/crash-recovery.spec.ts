@@ -155,6 +155,16 @@ test.describe('Crash and session recovery — full suite', () => {
       timeout: 10_000,
     });
 
+    // BUG-001 guard: the "Exercise" fallback must NOT appear as the card header.
+    // If WorkoutExercise.exercise was excluded from toJson (the bug), then after
+    // restore exercise is null and the UI falls back to 'Exercise' as the name.
+    // The Semantics label becomes "Exercise: Exercise. Tap for details." — we
+    // assert that pattern is absent to explicitly guard against BUG-001.
+    const fallbackLabel = page.locator(
+      'flt-semantics[aria-label*="Exercise: Exercise. Tap for details"]',
+    );
+    await expect(fallbackLabel).not.toBeVisible({ timeout: 3_000 });
+
     // Clean up.
     await page.locator(WORKOUT.discardButton).click();
     const confirmDiscard = page.locator('text=Discard').last();

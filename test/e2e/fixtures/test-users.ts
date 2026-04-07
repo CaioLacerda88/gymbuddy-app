@@ -29,6 +29,25 @@ export const TEST_USERS = {
     email: 'e2e-smoke-exercise@test.local',
     password: 'TestPassword123!',
   },
+  // Regression smoke users — added to cover BUG-001 through BUG-005.
+  smokeRoutineStart: {
+    email: 'e2e-smoke-routine-start@test.local',
+    password: 'TestPassword123!',
+  },
+  smokeFormTips: {
+    email: 'e2e-smoke-form-tips@test.local',
+    password: 'TestPassword123!',
+  },
+  // BUG-001 manual workout restore path (separate from routine-start path).
+  smokeWorkoutRestore: {
+    email: 'e2e-smoke-workout-restore@test.local',
+    password: 'TestPassword123!',
+  },
+  // BUG-003 negative path smoke (error snackbar when all exercises deleted).
+  smokeRoutineError: {
+    email: 'e2e-smoke-routine-error@test.local',
+    password: 'TestPassword123!',
+  },
 
   // -------------------------------------------------------------------------
   // Full suite users (one per spec file)
@@ -67,6 +86,16 @@ export const TEST_USERS = {
   },
   fullManageData: {
     email: 'e2e-full-manage-data@test.local',
+    password: 'TestPassword123!',
+  },
+  // Regression full suite user — added to cover BUG-003/BUG-004/BUG-005.
+  fullRoutineRegression: {
+    email: 'e2e-full-routine-regression@test.local',
+    password: 'TestPassword123!',
+  },
+  // Exercise detail bottom sheet full spec (BUG-002 in-workout path).
+  fullExDetailSheet: {
+    email: 'e2e-full-ex-detail-sheet@test.local',
     password: 'TestPassword123!',
   },
 } as const;

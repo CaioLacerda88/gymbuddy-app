@@ -23,6 +23,13 @@ const TEST_USERS = [
   'e2e-smoke-workout@test.local',
   'e2e-smoke-pr@test.local',
   'e2e-smoke-exercise@test.local',
+  // Regression smoke users (BUG-001 through BUG-005)
+  'e2e-smoke-routine-start@test.local',
+  'e2e-smoke-form-tips@test.local',
+  // BUG-001 manual workout restore path
+  'e2e-smoke-workout-restore@test.local',
+  // BUG-003 negative path smoke
+  'e2e-smoke-routine-error@test.local',
   // Full suite users (one per spec file)
   'e2e-full-auth@test.local',
   'e2e-full-exercises@test.local',
@@ -33,6 +40,10 @@ const TEST_USERS = [
   'e2e-full-crash@test.local',
   'e2e-full-history@test.local',
   'e2e-full-manage-data@test.local',
+  // Regression full suite user (BUG-003/BUG-004/BUG-005)
+  'e2e-full-routine-regression@test.local',
+  // Exercise detail bottom sheet full spec (BUG-002 in-workout path)
+  'e2e-full-ex-detail-sheet@test.local',
 ];
 
 async function globalSetup(): Promise<void> {
