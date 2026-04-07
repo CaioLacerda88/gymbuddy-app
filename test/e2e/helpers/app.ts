@@ -57,16 +57,31 @@ export async function waitForAppReady(page: Page): Promise<void> {
   }
 
   // 2. Enable the full semantics tree. Flutter web activates semantics in
-  //    response to real user interaction. We dispatch a focused click sequence
-  //    on the placeholder element AND press Tab as a fallback.
-  const placeholder = page.locator(
-    'flt-semantics-placeholder[aria-label="Enable accessibility"]',
-  );
-  await placeholder.click({ force: true, timeout: 5_000 }).catch(() => {});
+  //    response to real user interaction. We retry up to 3 times because in
+  //    CI headless Chrome the first attempt can fire before Flutter's engine
+  //    has attached the event handler to the placeholder element.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const placeholder = page.locator(
+      'flt-semantics-placeholder[aria-label="Enable accessibility"]',
+    );
 
-  // Tab key is an additional signal that Flutter uses to enable semantics.
-  await page.keyboard.press('Tab');
-  await page.waitForTimeout(500);
+    // Click the placeholder — Flutter listens for pointer events on this element.
+    await placeholder.click({ force: true, timeout: 5_000 }).catch(() => {});
+
+    // Tab key is an additional signal that Flutter uses to enable semantics.
+    await page.keyboard.press('Tab');
+    await page.waitForTimeout(500);
+
+    // Check if semantics elements have appeared (any flt-semantics node).
+    const semanticsCount = await page.locator('flt-semantics').count();
+    if (semanticsCount > 0) break;
+
+    // If no semantics appeared, wait longer and retry. Flutter's engine may
+    // still be initialising the accessibility layer.
+    if (attempt < 2) {
+      await page.waitForTimeout(1500);
+    }
+  }
 
   // 3. Wait for a known post-splash landmark to confirm the app is ready.
   //    The auth stream has a 10-second timeout fallback, so the splash screen

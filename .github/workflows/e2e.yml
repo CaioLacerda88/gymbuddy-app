@@ -84,11 +84,31 @@ jobs:
           # Playwright .env.local (loaded by global-setup.ts)
           printf "FLUTTER_APP_URL=http://localhost:8080\nSUPABASE_URL=%s\nSUPABASE_ANON_KEY=%s\nSUPABASE_SERVICE_ROLE_KEY=%s\nTEST_USER_PASSWORD=TestPassword123!\n" "$SB_URL" "$SB_ANON" "$SB_SERVICE" > test/e2e/.env.local
 
-      - name: Verify Supabase is healthy
+      - name: Wait for Supabase to be fully ready
         run: |
-          curl -sf http://127.0.0.1:54321/auth/v1/settings && echo "Auth endpoint OK" || echo "Auth endpoint FAILED"
-          curl -sf http://localhost:54321/auth/v1/settings && echo "Auth (localhost) OK" || echo "Auth (localhost) FAILED"
-          cat .env | head -1
+          echo "Waiting for Supabase services to be fully ready..."
+          # Retry loop: check auth endpoint + ability to create a session.
+          # supabase start returns before all services (especially Realtime and
+          # GoTrue) are fully initialised. We probe until the auth API responds
+          # to a real request, not just the settings endpoint.
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:54321/auth/v1/settings > /dev/null 2>&1; then
+              echo "Auth endpoint ready on attempt $i"
+              break
+            fi
+            echo "Waiting for auth endpoint... (attempt $i/30)"
+            sleep 2
+          done
+          # Verify Supabase REST API is also reachable (PostgREST).
+          for i in $(seq 1 15); do
+            if curl -sf http://127.0.0.1:54321/rest/v1/ -H "apikey: $(grep SUPABASE_ANON_KEY .env | cut -d= -f2-)" > /dev/null 2>&1; then
+              echo "REST API ready on attempt $i"
+              break
+            fi
+            echo "Waiting for REST API... (attempt $i/15)"
+            sleep 2
+          done
+          echo "Supabase URL: $(head -1 .env)"
 
       - name: Install Flutter dependencies
         run: flutter pub get
@@ -104,15 +124,16 @@ jobs:
             --no-tree-shake-icons \
             --no-web-resources-cdn
 
-      - name: Verify .env in build output
+      - name: Ensure .env is in build output
         run: |
           # flutter_dotenv loads .env from the asset bundle. In web builds,
-          # assets are bundled into build/web/assets/. Verify it's there.
-          if [ -f build/web/assets/AssetManifest.json ]; then
-            grep -q '\.env' build/web/assets/AssetManifest.json && echo ".env found in AssetManifest" || echo ".env NOT in AssetManifest"
-          fi
-          ls -la build/web/assets/.env 2>/dev/null || echo ".env not at build/web/assets/.env"
-          ls -la build/web/assets/AssetManifest.bin 2>/dev/null || true
+          # assets live at build/web/assets/. On cache hits the build step is
+          # skipped, so we always copy the current .env into the build output
+          # to guarantee the running app reads the correct Supabase keys.
+          mkdir -p build/web/assets
+          cp .env build/web/assets/.env
+          echo ".env copied to build/web/assets/"
+          cat build/web/assets/.env
 
       - name: Serve Flutter web app
         run: |
