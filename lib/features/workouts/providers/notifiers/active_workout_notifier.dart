@@ -10,7 +10,6 @@ import '../../../exercises/models/exercise.dart';
 import '../../../personal_records/domain/pr_detection_service.dart';
 import '../../../personal_records/providers/pr_providers.dart';
 import '../../../profile/providers/profile_providers.dart';
-import '../../../routines/providers/notifiers/routine_list_notifier.dart';
 import '../../../weekly_plan/providers/weekly_plan_provider.dart';
 import '../../data/workout_local_storage.dart';
 import '../../data/workout_repository.dart';
@@ -144,6 +143,7 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
       final activeState = ActiveWorkoutState(
         workout: workout,
         exercises: exercises,
+        routineId: config.routineId,
       );
       _saveToHive(activeState);
       return activeState;
@@ -591,17 +591,10 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
 
       // Weekly plan: mark matching bucket routine as complete.
       try {
-        final plan = ref.read(weeklyPlanProvider).valueOrNull;
-        if (plan != null && plan.routines.isNotEmpty) {
-          // Build a map of routine ID -> routine name from the user's routines.
-          final routines = ref.read(routineListProvider).valueOrNull ?? [];
-          final nameToId = <String, String>{
-            for (final r in routines) r.name: r.id,
-          };
-
-          // Find a matching routine ID by workout name.
-          final matchedRoutineId = nameToId[current.workout.name];
-          if (matchedRoutineId != null) {
+        final matchedRoutineId = current.routineId;
+        if (matchedRoutineId != null) {
+          final plan = ref.read(weeklyPlanProvider).valueOrNull;
+          if (plan != null && plan.routines.isNotEmpty) {
             final hasBucketMatch = plan.routines.any(
               (r) =>
                   r.routineId == matchedRoutineId &&
