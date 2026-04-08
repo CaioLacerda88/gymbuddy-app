@@ -43,6 +43,9 @@ class _WorkoutHistoryNotifier extends AsyncNotifier<List<Workout>>
   bool get hasMore => false;
 
   @override
+  bool get isLoadingMore => false;
+
+  @override
   Future<void> loadMore() async {}
 
   @override

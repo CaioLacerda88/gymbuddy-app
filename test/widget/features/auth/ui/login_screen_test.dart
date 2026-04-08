@@ -181,5 +181,54 @@ void main() {
         findsOneWidget,
       );
     });
+
+    // PO-004: toggling login→signup must clear the password field so a user
+    // cannot accidentally carry a password from one mode to the other.
+    testWidgets('PO-004: toggling to sign-up mode clears the password field', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildTestWidget());
+
+      // Type a password in login mode.
+      await tester.enterText(find.byType(TextFormField).last, 'mySecret123');
+
+      // Switch to sign-up mode.
+      await tester.tap(find.text("Don't have an account? Sign up"));
+      await tester.pump();
+
+      // The password field must be empty after the toggle.
+      final passwordField = tester.widget<EditableText>(
+        find.descendant(
+          of: find.byType(TextFormField).last,
+          matching: find.byType(EditableText),
+        ),
+      );
+      expect(passwordField.controller.text, isEmpty);
+    });
+
+    testWidgets(
+      'PO-004: toggling back to login mode clears the password field',
+      (tester) async {
+        await tester.pumpWidget(buildTestWidget());
+
+        // Navigate to sign-up mode and enter a password.
+        await tester.tap(find.text("Don't have an account? Sign up"));
+        await tester.pump();
+        await tester.enterText(find.byType(TextFormField).last, 'signupPass');
+
+        // Switch back to login mode.
+        await tester.tap(find.text('Already have an account? Log in'));
+        await tester.pump();
+
+        // The password field must be empty.
+        final passwordField = tester.widget<EditableText>(
+          find.descendant(
+            of: find.byType(TextFormField).last,
+            matching: find.byType(EditableText),
+          ),
+        );
+        expect(passwordField.controller.text, isEmpty);
+      },
+    );
   });
 }

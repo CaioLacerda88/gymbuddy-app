@@ -118,10 +118,9 @@ test.describe('Workout restore smoke — manual workout (BUG-001)', () => {
 
     // Clean up by discarding.
     await page.locator(WORKOUT.discardButton).click();
-    const confirmDiscard = page.locator('text=Discard').last();
-    if (await confirmDiscard.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await confirmDiscard.click();
-    }
+    const confirmDiscard = page.locator(WORKOUT.discardConfirmButton);
+    await expect(confirmDiscard).toBeVisible({ timeout: 5_000 });
+    await confirmDiscard.click();
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
   });
 
@@ -197,10 +196,9 @@ test.describe('Workout restore smoke — manual workout (BUG-001)', () => {
 
     // Clean up.
     await page.locator(WORKOUT.discardButton).click();
-    const confirmDiscard = page.locator('text=Discard').last();
-    if (await confirmDiscard.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await confirmDiscard.click();
-    }
+    const confirmDiscard = page.locator(WORKOUT.discardConfirmButton);
+    await expect(confirmDiscard).toBeVisible({ timeout: 5_000 });
+    await confirmDiscard.click();
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
   });
 });

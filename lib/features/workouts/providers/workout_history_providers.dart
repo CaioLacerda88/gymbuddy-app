@@ -27,6 +27,9 @@ class WorkoutHistoryNotifier extends AsyncNotifier<List<Workout>> {
   /// Whether more pages are available.
   bool get hasMore => _hasMore;
 
+  /// Whether a load-more request is currently in progress.
+  bool get isLoadingMore => _isLoadingMore;
+
   /// Load the next page and append to the current list.
   Future<void> loadMore() async {
     if (_isLoadingMore) return;

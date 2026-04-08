@@ -90,12 +90,9 @@ test.describe('Crash and session recovery — full suite', () => {
     // Clean up by discarding the workout.
     if (workoutScreenVisible) {
       await page.locator(WORKOUT.discardButton).click();
-      const confirmDiscard = page.locator('text=Discard').last();
-      if (
-        await confirmDiscard.isVisible({ timeout: 3_000 }).catch(() => false)
-      ) {
-        await confirmDiscard.click();
-      }
+      const confirmDiscard = page.locator(WORKOUT.discardConfirmButton);
+      await expect(confirmDiscard).toBeVisible({ timeout: 5_000 });
+      await confirmDiscard.click();
     } else {
       // If the resume banner is shown, tap it to get to the workout screen.
       await page.locator('text=Resume').click();
@@ -103,12 +100,9 @@ test.describe('Crash and session recovery — full suite', () => {
         timeout: 15_000,
       });
       await page.locator(WORKOUT.discardButton).click();
-      const confirmDiscard = page.locator('text=Discard').last();
-      if (
-        await confirmDiscard.isVisible({ timeout: 3_000 }).catch(() => false)
-      ) {
-        await confirmDiscard.click();
-      }
+      const confirmDiscard = page.locator(WORKOUT.discardConfirmButton);
+      await expect(confirmDiscard).toBeVisible({ timeout: 5_000 });
+      await confirmDiscard.click();
     }
 
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
@@ -167,12 +161,9 @@ test.describe('Crash and session recovery — full suite', () => {
 
     // Clean up.
     await page.locator(WORKOUT.discardButton).click();
-    const confirmDiscard = page.locator('text=Discard').last();
-    if (
-      await confirmDiscard.isVisible({ timeout: 3_000 }).catch(() => false)
-    ) {
-      await confirmDiscard.click();
-    }
+    const confirmDiscard = page.locator(WORKOUT.discardConfirmButton);
+    await expect(confirmDiscard).toBeVisible({ timeout: 5_000 });
+    await confirmDiscard.click();
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
   });
 
@@ -221,12 +212,9 @@ test.describe('Crash and session recovery — full suite', () => {
       await page.locator(WORKOUT.discardButton).click();
     }
 
-    const confirmDiscard = page.locator('text=Discard').last();
-    if (
-      await confirmDiscard.isVisible({ timeout: 3_000 }).catch(() => false)
-    ) {
-      await confirmDiscard.click();
-    }
+    const confirmDiscard = page.locator(WORKOUT.discardConfirmButton);
+    await expect(confirmDiscard).toBeVisible({ timeout: 5_000 });
+    await confirmDiscard.click();
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
   });
 

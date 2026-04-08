@@ -92,7 +92,12 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                       onCreateExercise: () => context.go('/exercises/create'),
                     );
                   }
-                  return _ExerciseList(exercises: list);
+                  return _ExerciseList(
+                    exercises: list,
+                    onRefresh: () async {
+                      ref.invalidate(filteredExerciseListProvider);
+                    },
+                  );
                 },
               ),
             ),
@@ -287,17 +292,21 @@ class _EquipmentFilter extends StatelessWidget {
 }
 
 class _ExerciseList extends StatelessWidget {
-  const _ExerciseList({required this.exercises});
+  const _ExerciseList({required this.exercises, required this.onRefresh});
 
   final List<Exercise> exercises;
+  final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: exercises.length,
-      itemBuilder: (context, index) =>
-          _ExerciseCard(exercise: exercises[index]),
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        itemCount: exercises.length,
+        itemBuilder: (context, index) =>
+            _ExerciseCard(exercise: exercises[index]),
+      ),
     );
   }
 }

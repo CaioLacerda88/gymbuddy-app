@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/theme/radii.dart';
 import '../../../features/auth/providers/auth_providers.dart';
 import '../../../features/auth/providers/notifiers/auth_notifier.dart';
 import '../../personal_records/providers/pr_providers.dart'
@@ -34,6 +35,8 @@ class ProfileScreen extends ConsumerWidget {
               data: (profile) => _IdentityCard(
                 displayName: profile?.displayName,
                 email: email,
+                onEditName: () =>
+                    _showEditNameDialog(context, ref, profile?.displayName),
               ),
               loading: () => const _IdentityCard(
                 displayName: null,
@@ -67,9 +70,9 @@ class ProfileScreen extends ConsumerWidget {
             const SizedBox(height: 8),
             Material(
               color: theme.cardTheme.color ?? theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(kRadiusMd),
               child: InkWell(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(kRadiusMd),
                 onTap: () => context.go('/profile/manage-data'),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -105,16 +108,66 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
+Future<void> _showEditNameDialog(
+  BuildContext context,
+  WidgetRef ref,
+  String? currentName,
+) async {
+  final controller = TextEditingController(text: currentName ?? '');
+  final newName = await showDialog<String>(
+    context: context,
+    builder: (ctx) {
+      final dialogTheme = Theme.of(ctx);
+      return AlertDialog(
+        backgroundColor: dialogTheme.cardTheme.color,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(kRadiusLg),
+        ),
+        title: const Text('Edit Display Name'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(hintText: 'Enter your name'),
+          onSubmitted: (value) => Navigator.of(ctx).pop(value.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      );
+    },
+  );
+
+  if (newName == null || newName.isEmpty || !context.mounted) return;
+
+  final user = ref.read(authRepositoryProvider).currentUser;
+  if (user == null) return;
+
+  await ref
+      .read(profileRepositoryProvider)
+      .upsertProfile(userId: user.id, displayName: newName);
+  ref.invalidate(profileProvider);
+}
+
 class _IdentityCard extends StatelessWidget {
   const _IdentityCard({
     required this.displayName,
     required this.email,
     this.loading = false,
+    this.onEditName,
   });
 
   final String? displayName;
   final String email;
   final bool loading;
+  final VoidCallback? onEditName;
 
   @override
   Widget build(BuildContext context) {
@@ -149,7 +202,29 @@ class _IdentityCard extends StatelessWidget {
                   : Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(name, style: theme.textTheme.titleLarge),
+                        GestureDetector(
+                          onTap: onEditName,
+                          child: Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  name,
+                                  style: theme.textTheme.titleLarge,
+                                ),
+                              ),
+                              if (onEditName != null) ...[
+                                const SizedBox(width: 8),
+                                Icon(
+                                  Icons.edit,
+                                  size: 16,
+                                  color: theme.colorScheme.onSurface.withValues(
+                                    alpha: 0.4,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
                         if (email.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Text(
@@ -271,7 +346,7 @@ class _StatCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
       decoration: BoxDecoration(
         color: theme.cardTheme.color ?? theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(kRadiusMd),
       ),
       child: Column(
         children: [

@@ -184,6 +184,9 @@ class _EmptyWorkoutHistoryNotifier extends AsyncNotifier<List<Workout>>
   bool get hasMore => false;
 
   @override
+  bool get isLoadingMore => false;
+
+  @override
   Future<void> loadMore() async {}
 
   @override
@@ -204,6 +207,9 @@ class _PendingWorkoutHistoryNotifier extends AsyncNotifier<List<Workout>>
 
   @override
   bool get hasMore => false;
+
+  @override
+  bool get isLoadingMore => false;
 
   @override
   Future<void> loadMore() async {}

@@ -216,14 +216,10 @@ test.describe('Workout smoke', () => {
 
     await page.locator(WORKOUT.discardButton).click();
 
-    // A confirmation dialog may appear — confirm discard.
-    const confirmDiscard = page.locator('text=Discard').last();
-    const dialogVisible = await confirmDiscard
-      .isVisible({ timeout: 3_000 })
-      .catch(() => false);
-    if (dialogVisible) {
-      await confirmDiscard.click();
-    }
+    // A confirmation dialog appears — confirm discard.
+    const confirmDiscard = page.locator(WORKOUT.discardConfirmButton);
+    await expect(confirmDiscard).toBeVisible({ timeout: 5_000 });
+    await confirmDiscard.click();
 
     // Should navigate back to Home.
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });

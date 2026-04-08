@@ -135,5 +135,18 @@ void main() {
       expect(find.text('No exercises match your filters'), findsOneWidget);
       expect(find.text('Clear Filters'), findsOneWidget);
     });
+
+    // PO-016: exercise list must be wrapped in a RefreshIndicator so users can
+    // pull-to-refresh to reload the exercise catalogue.
+    testWidgets('PO-016: exercise list is wrapped in a RefreshIndicator', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        buildTestWidget(exerciseValue: AsyncData(testExercises)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RefreshIndicator), findsOneWidget);
+    });
   });
 }

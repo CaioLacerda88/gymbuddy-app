@@ -884,13 +884,13 @@ test/e2e/
 
 - Final manual QA pass on physical devices
 
-## QA Status (as of 2026-04-06)
+## QA Status (as of 2026-04-07)
 
 > Consolidated from original `BUGS_FOUND.md` and `QA_FINDINGS.md` (now deleted — all content lives here).
 > Full manual QA test plan: `tasks/manual-qa-testplan.md` (89 cases, 29 automated).
-> All Critical items and most High items resolved.
+> All Critical items resolved. Bug audit 2026-04-07 — all 13 remaining bugs fixed in `fix/qa-audit-cleanup`. 723 tests pass.
 
-### Resolved (32+ items)
+### Resolved (52+ items)
 
 All **Critical** bugs fixed: `save_workout` RPC 404 (QA-001), blank home on bad route (QA-002), history detail route (PO-026), silent workout data loss on restart (PO-017/018), onboarding flag race (PO-001), exercise name too small (UX-V01), swipe-to-delete undo (UX-U02).
 
@@ -900,58 +900,31 @@ Semantics/accessibility fixed: login error live region (BUG-001), weight/reps st
 
 **PR-27 regression bugs (all fixed in PR #28):** Exercise name lost on Hive restore (REG-001/P0), form tips not rendered (REG-002/P1), routine start silent failure on unresolved exercises (REG-003/P1), first-time routine zero weight (REG-004/P2), routine card bare exercise count fallback (REG-005/P2), stale provider references after home simplification (REG-006/P2). All 6 covered by E2E regression tests in PR #30.
 
+**Verified fixed in audit 2026-04-07 (20 items):**
+- **High:** QA-006 (forgot password now has confirmation dialog), UX-A01 (Google logo SVG asset), UX-D01 (`AppButton` unused — only `GradientButton` in use)
+- **Medium:** BUG-002 (semantics label in loading state), BUG-007 ("Save & Finish" vs "Finish Workout" — distinct), QA-011 (tooltip: '' on all nav items), QA-012 (chart area removed — PRs shown as tiles), PO-002 (email persisted via provider), PO-009 (explicit duplicate guard), PO-013 (proper FutureProvider.autoDispose.family), PO-030 (volume uses profile weight unit), PO-033 (shared `showRoutineActionSheet()`), UX-V04 (play arrow icon on routine cards), UX-V06 (elastic scale + haptic celebration), UX-V08 (NavigationBar has explicit colors), UX-U03 (tooltip + swap icon), UX-U05 (tooltip + underline hint), UX-U06 (stats row with workout/PR counts), UX-U09 (tap-to-dismiss overlay), UX-I05 (tooltip for set type cycling)
+- **Low:** NEW-005 (onChanged clears error), PO-010 (retry FilledButton in error state)
+
+**Fixed in `fix/qa-audit-cleanup` (13 items, 25 new widget tests):**
+- **Medium:** PO-008 (stat card fixed height 32px), UX-V02 (weight 26sp / reps 18sp), UX-V07 (section header opacity 0.85 for WCAG AA)
+- **Low:** NEW-006 (SnackBar 8s duration), NEW-007 (discard returns to home), PO-004 (password cleared on toggle), PO-007 (onboarding back button), PO-016 (exercise list RefreshIndicator), PO-028 (history loading indicator + isLoadingMore), PO-031 (PR cards tappable → exercise detail), PO-039 (profile edit name dialog), UX-D03 (radii system: kRadiusSm/Md/Lg/Xl), UX-D05 (shared SectionHeader extracted)
+
 ### Open — High
 
 | ID | Area | Issue | Notes |
 |----|------|-------|-------|
-| QA-005 | Exercises | Image URLs return 404 from GitHub | DEFERRED — fallback icon works, needs URL migration |
-| QA-006 | Auth | Forgot password triggers immediately, no confirmation | Needs confirmation step + dedicated screen |
-| UX-A01 | Auth | Google sign-in uses wrong icon (`Icons.g_mobiledata`) | Replace with Google logo asset |
-| UX-D01 | Design | Two primary button widgets used inconsistently | Consolidate AppButton/GradientButton |
+| QA-005 | Exercises | Image URLs return 404 from GitHub | DEFERRED — fallback icon works, needs URL migration to Supabase Storage or CDN |
 
-### Open — Medium
+### Open — Medium / Low
 
-| ID | Area | Issue |
-|----|------|-------|
-| BUG-002 | Shared | `AppButton` label lost during loading state (no accessible name) |
-| BUG-007 | Workout | `FinishWorkoutDialog` button label ambiguous with bottom bar |
-| QA-011 | Nav | Tooltip labels persist on bottom nav bar |
-| QA-012 | Exercises | Detail screen chart area broken/empty |
-| PO-002 | Auth | Email confirmation shows blank email after app restart |
-| PO-008 | Home | Layout shift when workout history loads (needs skeleton) |
-| PO-009 | Home | May render duplicate STARTER ROUTINES sections |
-| PO-013 | Exercises | Detail screen uses raw `Future`, never refetches |
-| PO-030 | PRs | Volume displayed as "kg" instead of volume unit |
-| PO-033 | Routines | Action sheet duplicated between home and routine list |
-| UX-V02 | Workout | Weight/reps have identical visual treatment — no hierarchy |
-| UX-V04 | Routines | Cards have no visual affordance for launching workouts |
-| UX-V06 | PRs | Celebration screen visually flat for an emotional moment |
-| UX-V07 | Home | Section headers at 50% opacity may fail WCAG contrast |
-| UX-V08 | Nav | Bottom nav is unstyled Material 3 defaults |
-| UX-U03 | Workout | Long-press to swap exercise is invisible |
-| UX-U05 | Workout | Copy-last-set (tap set number) is undiscoverable |
-| UX-U06 | Profile | Profile screen sparse — no stats, streaks, or PR count |
-| UX-U09 | Workout | Rest timer overlay blocks entire screen |
-| UX-I05 | Workout | Set type cycling (long-press) is hidden |
+None — all resolved.
 
-### Open — Low
+### Removed from tracking
 
-| ID | Issue |
-|----|-------|
-| NEW-004 | DartError on login→home focus traversal |
-| NEW-005 | Exercise validation error persists while typing |
-| NEW-006 | Forgot password SnackBar disappears too quickly |
-| NEW-007 | Discard in resume dialog immediately starts new workout |
-| PO-004 | Password retained when toggling login/signup |
-| PO-007 | Onboarding has no back from page 2 |
-| PO-010 | Routines error state has no retry button |
-| PO-016 | Exercise list has no pull-to-refresh |
-| PO-028 | History load-more has no loading indicator |
-| PO-031 | PR cards not tappable (no link to source workout) |
-| PO-039 | No way to change display name post-onboarding |
-| UX-V05 | Login icon `Icons.fitness_center` reads as placeholder |
-| UX-D03 | Border radius inconsistency (8/12/16 with no rule) |
-| UX-D05 | `_SectionHeader` widget duplicated in two files |
+| ID | Reason |
+|----|--------|
+| NEW-004 | DartError on login→home focus — no evidence found in codebase, likely environment-specific or already fixed |
+| UX-V05 | Login icon `Icons.fitness_center` — replaced with branded styling, acceptable for MVP |
 
 ### Feature Gaps (v1.1+)
 

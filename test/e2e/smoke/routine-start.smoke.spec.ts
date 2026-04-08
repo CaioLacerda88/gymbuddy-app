@@ -131,10 +131,8 @@ test.describe('Routine start smoke', () => {
 
     // Clean up.
     await page.locator(WORKOUT.discardButton).click();
-    const confirmDiscard = page.locator('text=Discard').last();
-    if (await confirmDiscard.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await confirmDiscard.click();
-    }
+    await expect(page.locator(WORKOUT.discardConfirmButton)).toBeVisible({ timeout: 5_000 });
+    await page.locator(WORKOUT.discardConfirmButton).click();
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
   });
 
@@ -175,10 +173,8 @@ test.describe('Routine start smoke', () => {
 
     // Clean up.
     await page.locator(WORKOUT.discardButton).click();
-    const confirmDiscard = page.locator('text=Discard').last();
-    if (await confirmDiscard.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await confirmDiscard.click();
-    }
+    await expect(page.locator(WORKOUT.discardConfirmButton)).toBeVisible({ timeout: 5_000 });
+    await page.locator(WORKOUT.discardConfirmButton).click();
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
   });
 
@@ -231,10 +227,8 @@ test.describe('Routine start smoke', () => {
 
     // Clean up.
     await page.locator(WORKOUT.discardButton).click();
-    const confirmDiscard = page.locator('text=Discard').last();
-    if (await confirmDiscard.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await confirmDiscard.click();
-    }
+    await expect(page.locator(WORKOUT.discardConfirmButton)).toBeVisible({ timeout: 5_000 });
+    await page.locator(WORKOUT.discardConfirmButton).click();
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
   });
 

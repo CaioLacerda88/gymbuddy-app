@@ -124,6 +124,25 @@ jobs:
       - name: Build web
         run: flutter build web
 
+  ci:
+    name: ci
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [analyze, test, build]
+    steps:
+      - name: Check all jobs passed
+        run: |
+          if [[ "${{ needs.analyze.result }}" != "success" || \
+                "${{ needs.test.result }}" != "success" || \
+                "${{ needs.build.result }}" != "success" ]]; then
+            echo "One or more required jobs failed or were skipped"
+            echo "  analyze: ${{ needs.analyze.result }}"
+            echo "  test:    ${{ needs.test.result }}"
+            echo "  build:   ${{ needs.build.result }}"
+            exit 1
+          fi
+          echo "All required jobs passed"
+
   # Uncomment when test Supabase instance is configured
   # rls-tests:
   #   runs-on: ubuntu-latest

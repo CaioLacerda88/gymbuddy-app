@@ -145,5 +145,58 @@ void main() {
       expect(beginnerChip.selected, isFalse);
       expect(intermediateChip.selected, isTrue);
     });
+
+    // PO-007: page 2 must have a back button that returns the user to page 1.
+    testWidgets('PO-007: profile setup page shows a Back button', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildTestWidget());
+
+      await tester.tap(find.text('GET STARTED'));
+      await tester.pumpAndSettle();
+
+      // The back button is a TextButton.icon with label 'Back'.
+      expect(find.text('Back'), findsOneWidget);
+    });
+
+    testWidgets('PO-007: tapping Back on page 2 returns to the welcome page', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildTestWidget());
+
+      // Go to page 2.
+      await tester.tap(find.text('GET STARTED'));
+      await tester.pumpAndSettle();
+
+      // Confirm we are on page 2.
+      expect(find.text('Set up your profile'), findsOneWidget);
+
+      // Tap Back.
+      await tester.tap(find.text('Back'));
+      await tester.pumpAndSettle();
+
+      // We should be back on page 1.
+      expect(find.text('Track every rep,\nevery time'), findsOneWidget);
+      expect(find.text('GET STARTED'), findsOneWidget);
+    });
+
+    testWidgets(
+      'PO-007: after going back, GET STARTED still navigates to page 2',
+      (tester) async {
+        await tester.pumpWidget(buildTestWidget());
+
+        // Go to page 2, then back to page 1.
+        await tester.tap(find.text('GET STARTED'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Back'));
+        await tester.pumpAndSettle();
+
+        // Navigate forward again — page 2 must appear.
+        await tester.tap(find.text('GET STARTED'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Set up your profile'), findsOneWidget);
+      },
+    );
   });
 }
