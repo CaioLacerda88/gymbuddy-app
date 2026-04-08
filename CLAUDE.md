@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-GymBuddy — a gym training app for logging workouts, tracking personal records, and managing exercises. See `PLAN.md` for full project details: tech stack, database schema, architecture decisions, project structure, and step-by-step implementation plan.
+GymBuddy — a gym training app for logging workouts, tracking personal records, and managing exercises.
+
+**On session start:** Read `PLAN.md` Quick Reference (progress table + current state) and `tasks/WIP.md` (in-flight work). Only read full PLAN.md sections relevant to the current task.
 
 ## Commands
 
@@ -60,17 +62,22 @@ flutter run -d chrome        # run on Chrome (for Playwright e2e)
 
 ### Development Flow
 
-Each PLAN.md step is a sprint increment:
+Each PLAN.md step follows this pipeline. **No step is skippable.**
 
-1. **Plan** — Read PLAN.md step. Dispatch `product-owner` + `ui-ux-critic` (if user-facing) for context.
-2. **Write WIP checklist** — Before touching code, write a checklist in `tasks/WIP.md` (see below).
-3. **Implement** — Dispatch `tech-lead` for all code work (architecture, UI, migrations, bug fixes). Parallel agents when independent. Check off WIP items as they complete.
-4. **Verify** — Run `dart format .` + `dart analyze --fatal-infos` after each agent.
-5. **Design review** (if UI) — `ui-ux-critic` reviews. Generic → revise.
-6. **Test** — `qa-engineer` writes tests, runs `flutter test`.
-7. **Code review** — `reviewer` checks all files. Fix Critical/Warning findings.
-8. **Ship** — Run CI, commit, push, `gh pr create`, squash merge.
-9. **Close WIP** — Remove completed items from `tasks/WIP.md`. Condense the step in PLAN.md (see below).
+1. **Plan** — Read PLAN.md step. Dispatch `product-owner` + `ui-ux-critic` (if user-facing).
+2. **WIP** — Write checklist in `tasks/WIP.md` before any code.
+3. **Implement (TDD)** — `tech-lead` writes code WITH unit/widget tests. Test-first when possible. Run `dart format .` + `dart analyze` after each change.
+4. **Design review** (if UI) — `ui-ux-critic` reviews. Generic → revise.
+5. **QA gate** (before PR) — `qa-engineer`:
+   - Reviews test coverage, flags gaps, adds missing unit/widget cases
+   - Writes/updates E2E regression tests for the feature
+   - Removes or updates stale E2E tests affected by the change
+   - Runs full E2E suite locally — all must pass
+   - Bugs found → back to `tech-lead` → fix → QA re-runs from top
+6. **Open PR** — only after QA gate passes.
+7. **Code review** — `reviewer` flags issues → `tech-lead` fixes → `qa-engineer` re-validates.
+8. **Ship** — QA OK + CI green → squash merge.
+9. **Close WIP** — Remove WIP section, condense step in PLAN.md (see lifecycle below).
 
 ### PLAN.md Lifecycle
 
