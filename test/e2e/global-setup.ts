@@ -30,6 +30,12 @@ const TEST_USERS = [
   'e2e-smoke-workout-restore@test.local',
   // BUG-003 negative path smoke
   'e2e-smoke-routine-error@test.local',
+  // New smoke suite users (weekly plan, onboarding, routine management, etc.)
+  'e2e-smoke-weekly-plan@test.local',
+  'e2e-smoke-onboarding@test.local',
+  'e2e-smoke-routine-mgmt@test.local',
+  'e2e-smoke-weekly-plan-review@test.local',
+  'e2e-smoke-profile-goal@test.local',
   // Full suite users (one per spec file)
   'e2e-full-auth@test.local',
   'e2e-full-exercises@test.local',

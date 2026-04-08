@@ -100,7 +100,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Bench Press'), findsOneWidget);
-      expect(find.text('120.0 kg'), findsOneWidget);
+      expect(find.text('120 kg'), findsOneWidget);
     });
 
     testWidgets('continue button is present', (tester) async {
@@ -133,7 +133,11 @@ class _FakeProfileNotifier extends AsyncNotifier<Profile?>
   Future<void> saveOnboardingProfile({
     required String displayName,
     required String fitnessLevel,
+    int trainingFrequencyPerWeek = 3,
   }) async {}
+
+  @override
+  Future<void> updateTrainingFrequency(int frequency) async {}
 
   @override
   Future<void> toggleWeightUnit() async {}

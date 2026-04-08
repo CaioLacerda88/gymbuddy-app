@@ -27,6 +27,7 @@ class PersonalRecord with _$PersonalRecord {
     required double value,
     required DateTime achievedAt,
     String? setId,
+    int? reps,
   }) = _PersonalRecord;
 
   factory PersonalRecord.fromJson(Map<String, dynamic> json) =>

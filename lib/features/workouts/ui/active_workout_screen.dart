@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/exercise_image.dart';
 import '../../../shared/widgets/exercise_info_sections.dart';
 import '../models/active_workout_state.dart';
+import '../models/exercise_set.dart';
 import '../models/weight_unit.dart';
 import '../models/set_type.dart';
 import '../utils/set_defaults.dart';
@@ -514,6 +515,17 @@ class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
     );
   }
 
+  /// Returns true when there are incomplete sets after the last completed set.
+  /// The fill-remaining action only affects those sets, so the button should
+  /// be hidden when there is nothing to fill.
+  bool _hasFillableSets(List<ExerciseSet> sets) {
+    final lastCompletedNumber = sets
+        .where((s) => s.isCompleted)
+        .fold<int>(0, (max, s) => s.setNumber > max ? s.setNumber : max);
+    if (lastCompletedNumber == 0) return false;
+    return sets.any((s) => !s.isCompleted && s.setNumber > lastCompletedNumber);
+  }
+
   void _showExerciseDetail(BuildContext context, Exercise exercise) {
     showModalBottomSheet<void>(
       context: context,
@@ -700,16 +712,18 @@ class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
                       : null;
 
                   if (lastSetForNewRow != null) {
-                    defaultWeight = lastSetForNewRow.weight;
-                    defaultReps = lastSetForNewRow.reps;
+                    defaultWeight = lastSetForNewRow.weight ?? 0;
+                    defaultReps = lastSetForNewRow.reps ?? 0;
                   } else if (activeExercise.sets.isNotEmpty) {
-                    // Priority 2: last set in current session
+                    // Priority 2: last set in current session (not just
+                    // last completed — always copy from the most recent set
+                    // so weight is never lost).
                     final prevSet = activeExercise.sets.last;
                     // Skip if previous set is warmup (new set defaults to
                     // working, so don't carry warmup weights forward).
                     if (prevSet.setType != SetType.warmup) {
-                      defaultWeight = prevSet.weight;
-                      defaultReps = prevSet.reps;
+                      defaultWeight = prevSet.weight ?? 0;
+                      defaultReps = prevSet.reps ?? 0;
                     } else {
                       // Warmup -> working: use equipment defaults
                       final equipType = exercise?.equipmentType;
@@ -773,14 +787,17 @@ class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
                 ),
               ),
             ),
-            if (activeExercise.sets.any((s) => s.isCompleted))
+            // Show "Fill remaining" only when there are incomplete sets
+            // after the last completed set — otherwise the button does
+            // nothing and confuses users (BUG-3).
+            if (_hasFillableSets(activeExercise.sets))
               Center(
                 child: Semantics(
                   label: 'Fill remaining sets with last completed values',
                   child: TextButton(
                     onPressed: () => _fillRemaining(context),
                     child: Text(
-                      'Fill',
+                      'Fill remaining',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.primary.withValues(alpha: 0.7),
                         fontWeight: FontWeight.w600,

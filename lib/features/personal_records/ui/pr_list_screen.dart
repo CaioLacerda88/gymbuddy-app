@@ -112,12 +112,27 @@ class _ExerciseRecordCard extends StatelessWidget {
   final List<PRWithExercise> records;
   final String weightUnit;
 
-  String _formatValue(RecordType type, double value, String weightUnit) {
+  String _formatValue(
+    RecordType type,
+    double value,
+    String weightUnit, {
+    int? reps,
+  }) {
     return switch (type) {
-      RecordType.maxWeight => '$value $weightUnit',
+      RecordType.maxWeight =>
+        reps != null
+            ? '${_formatWeight(value)} $weightUnit \u00d7 $reps'
+            : '${_formatWeight(value)} $weightUnit',
       RecordType.maxReps => '${value.toInt()} reps',
-      RecordType.maxVolume => '$value $weightUnit',
+      RecordType.maxVolume => '${_formatWeight(value)} $weightUnit',
     };
+  }
+
+  /// Format weight without trailing .0 (e.g. 100.0 → "100", 72.5 → "72.5").
+  String _formatWeight(double value) {
+    return value == value.roundToDouble() && value.truncateToDouble() == value
+        ? value.toInt().toString()
+        : value.toString();
   }
 
   IconData _iconForType(RecordType type) {
@@ -155,6 +170,7 @@ class _ExerciseRecordCard extends StatelessWidget {
                       pr.record.recordType,
                       pr.record.value,
                       weightUnit,
+                      reps: pr.record.reps,
                     ),
                   );
                 }).toList(),

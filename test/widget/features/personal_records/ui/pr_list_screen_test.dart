@@ -87,7 +87,7 @@ void main() {
       await tester.pump();
 
       expect(find.text('Bench Press'), findsOneWidget);
-      expect(find.text('120.0 kg'), findsOneWidget);
+      expect(find.text('120 kg'), findsOneWidget);
       expect(find.text('12 reps'), findsOneWidget);
     });
 

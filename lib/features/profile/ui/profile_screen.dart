@@ -59,6 +59,17 @@ class ProfileScreen extends ConsumerWidget {
               loading: () => const _WeightUnitToggle(weightUnit: 'kg'),
               error: (_, _) => const _WeightUnitToggle(weightUnit: 'kg'),
             ),
+            const SizedBox(height: 24),
+            // Weekly goal section
+            Text('Weekly Goal', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 12),
+            profileAsync.when(
+              data: (profile) => _WeeklyGoalRow(
+                frequency: profile?.trainingFrequencyPerWeek ?? 3,
+              ),
+              loading: () => const _WeeklyGoalRow(frequency: 3),
+              error: (_, _) => const _WeeklyGoalRow(frequency: 3),
+            ),
             const SizedBox(height: 32),
             // Data management section
             Text(
@@ -369,6 +380,104 @@ class _StatCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _WeeklyGoalRow extends ConsumerWidget {
+  const _WeeklyGoalRow({required this.frequency});
+
+  final int frequency;
+
+  static const _frequencyOptions = [2, 3, 4, 5, 6];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    return Material(
+      color: theme.cardTheme.color ?? theme.colorScheme.surface,
+      borderRadius: BorderRadius.circular(kRadiusMd),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(kRadiusMd),
+        onTap: () => _showFrequencySheet(context, ref),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${frequency}x per week',
+                  style: theme.textTheme.titleMedium,
+                ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showFrequencySheet(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Weekly Goal', style: theme.textTheme.titleLarge),
+                const SizedBox(height: 4),
+                Text(
+                  'How many times per week do you want to train?',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 12,
+                  children: _frequencyOptions.map((freq) {
+                    final isSelected = freq == frequency;
+                    return ChoiceChip(
+                      label: Text('${freq}x'),
+                      selected: isSelected,
+                      onSelected: (_) {
+                        ref
+                            .read(profileProvider.notifier)
+                            .updateTrainingFrequency(freq);
+                        Navigator.of(ctx).pop();
+                      },
+                      selectedColor: theme.colorScheme.primary,
+                      labelStyle: TextStyle(
+                        color: isSelected
+                            ? theme.colorScheme.onPrimary
+                            : theme.colorScheme.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      side: BorderSide(
+                        color: isSelected
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurface.withValues(
+                                alpha: 0.3,
+                              ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -55,8 +55,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // Volume should show "lbs" not "kg"
-      expect(find.text('100.0 lbs'), findsOneWidget);
-      expect(find.text('3000.0 lbs'), findsOneWidget);
+      expect(find.text('100 lbs'), findsOneWidget);
+      expect(find.text('3000 lbs'), findsOneWidget);
       expect(find.textContaining('kg'), findsNothing);
     });
 
@@ -110,7 +110,11 @@ class _FakeProfileNotifier extends AsyncNotifier<Profile?>
   Future<void> saveOnboardingProfile({
     required String displayName,
     required String fitnessLevel,
+    int trainingFrequencyPerWeek = 3,
   }) async {}
+
+  @override
+  Future<void> updateTrainingFrequency(int frequency) async {}
 
   @override
   Future<void> toggleWeightUnit() async {}

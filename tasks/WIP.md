@@ -4,66 +4,39 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ---
 
-## QA Audit Bug Fixes — `fix/qa-audit-cleanup`
+## Step 12: Weekly Training Plan + Bug Fixes — `feature/step12-weekly-training-plan`
 
-**Source:** PLAN.md QA Status (audit 2026-04-07)
-**Branch:** `fix/qa-audit-cleanup`
-**Status:** All 13 bugs fixed by tech-lead. QA engineer running tests (background agent).
+**Branch:** `feature/step12-weekly-training-plan` (pushed, PR #32 open)
+**Ref:** PLAN.md Step 12, BUGS.md
+**Migration:** Applied to hosted Supabase (`dgcueqvqfyuedclkxixz.supabase.co`)
+**Tests:** 787 passing (723 original + 64 new)
+**E2E:** 60 total (36 existing + 24 new smoke tests)
+**Commits:** 19 on branch
 
-### Tech-lead work (DONE)
+### Done
+- [x] Step 12 core: models, repo, providers, widgets, screens, migration (11 new files)
+- [x] Step 12 wiring: profile model/repo/providers, onboarding, profile screen, home screen, router, workout notifier
+- [x] BUG-1 (P0): context.push for stat card navigation
+- [x] BUG-4 (P0): null weight guard + PR display as `100 kg × 5` (reps field added to PersonalRecord)
+- [x] BUG-2 (P1): copy weight and reps when adding sets
+- [x] BUG-3 (P2): hide/rename Fill button
+- [x] Review critical fixes: routineId matching, atomic markRoutineComplete, auto-populate wiring, Dismissible key, RLS WITH CHECK, plan screen init
+- [x] Week review stats computed from completed workouts
+- [x] Auto-fill button on plan management screen
+- [x] 64 widget/unit tests
+- [x] Reviewer audit complete (5 critical + 9 warnings addressed)
+- [x] QA regression audit complete (5 new bugs + E2E gap analysis)
+- [x] BUG-R1 (P1): Auto-populate strips completed routines for new week
+- [x] BUG-R2 (P1): Auto-populate moved out of build() via Future.microtask
+- [x] BUG-R3 (P2): Week review uses dynamic weight unit from profile
+- [x] BUG-R4 (P2): Records screen no longer highlights Home tab
+- [x] BUG-R5 (P2): Undo-remove clamps index and renumbers order
+- [x] 6 E2E smoke tests (24 new tests): weekly-plan, onboarding, routine-management, pr-display, weekly-plan-review, profile-weekly-goal
 
-All 13 bugs fixed. 698 tests pass. Files changed:
-- `lib/core/theme/radii.dart` — NEW (border radius constants kRadiusSm/Md/Lg/Xl)
-- `lib/shared/widgets/section_header.dart` — NEW (extracted from home_screen + routine_list)
-- `lib/features/auth/ui/login_screen.dart` — NEW-006 (SnackBar 8s), PO-004 (clear password on toggle)
-- `lib/features/auth/ui/onboarding_screen.dart` — PO-007 (back button page 2)
-- `lib/features/exercises/ui/exercise_list_screen.dart` — PO-016 (RefreshIndicator)
-- `lib/features/personal_records/ui/pr_list_screen.dart` — PO-031 (tappable PR cards → exercise detail)
-- `lib/features/profile/ui/profile_screen.dart` — PO-039 (edit name dialog)
-- `lib/features/routines/ui/routine_list_screen.dart` — UX-D05 (use shared SectionHeader, removed old _SectionHeader)
-- `lib/features/workouts/ui/home_screen.dart` — PO-008 (fixed stat card height), NEW-007 (return after discard), UX-D05
-- `lib/features/workouts/ui/workout_history_screen.dart` — PO-028 (loading indicator)
-- `lib/features/workouts/providers/workout_history_providers.dart` — PO-028 (exposed isLoadingMore)
-- `lib/shared/widgets/weight_stepper.dart` — UX-V02 (26sp)
-- `lib/shared/widgets/reps_stepper.dart` — UX-V02 (18sp)
-- 2 test files updated for isLoadingMore mock
+### Ready to ship
+- [ ] Push to remote, update PR #32
+- [ ] Final review pass (optional)
+- [ ] Merge PR #32
 
-### QA engineer work (DONE)
-
-Widget tests written and passing (25 new tests, 723 total):
-- [x] **PO-004** — `login_screen_test.dart`: 2 tests — toggle to signup/login clears password field
-- [x] **PO-007** — `onboarding_screen_test.dart`: 3 tests — back button present, returns to page 1, can navigate forward again
-- [x] **NEW-007** — `home_screen_discard_test.dart` (new file): 6 tests — dialog actions, non-dismissible, result enum integrity
-- [x] **PO-016** — `exercise_list_screen_test.dart`: 1 test — RefreshIndicator present in exercise list
-- [x] **PO-028** — `workout_history_screen_test.dart` (new file): 7 tests — empty state, cards, loading indicator states, RefreshIndicator
-- [x] **PO-031** — `pr_list_screen_test.dart`: 2 tests — InkWell present on single and multiple PR cards
-- [x] **PO-039** — `profile_screen_test.dart`: 4 tests — edit icon present, dialog opens, pre-populated name, cancel safe
-
-E2E selector impact analysis — no breakage:
-- [x] `SectionHeader` extraction — text unchanged, no e2e impact
-- [x] `RefreshIndicator` on exercise list — selectors target exercise cards/FAB, not the list container
-- [x] Profile edit name dialog — no e2e test taps the display name
-- [x] History loading indicator — no e2e test targets CircularProgressIndicator
-- [x] Onboarding back button — no e2e onboarding spec exists
-
-Verification:
-- [x] `dart format .` — 7 files reformatted
-- [x] `dart analyze --fatal-infos` — no issues
-- [x] `flutter test` — 723 tests pass (up from 698)
-
-### Remaining after QA completes
-
-- [ ] Update PLAN.md QA Status — mark all 13 bugs as resolved
-- [ ] Commit all changes
-- [ ] Push and create PR
-- [ ] Squash merge to main
-- [ ] Remove this section from WIP.md
-
-### Also done this session (non-code)
-
-- Updated PLAN.md QA Status with audit results (20 fixed, 13 remaining → now all fixed)
-- Added WIP tracking protocol to CLAUDE.md
-- Added Context Hygiene guideline to CLAUDE.md
-- Created `tasks/WIP.md` tracking file
-- Fixed statusline config (`~/.claude/statusline.sh`) — correct field names, head -1 for dedup
-- Saved feedback memories: WIP tracking, context hygiene
+### Blockers
+- `.env` currently points at prod Supabase (not committed)

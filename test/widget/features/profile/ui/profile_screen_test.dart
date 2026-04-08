@@ -27,6 +27,9 @@ class MockProfileNotifier extends AsyncNotifier<Profile?>
 
   @override
   Future<void> toggleWeightUnit() async {}
+
+  @override
+  Future<void> updateTrainingFrequency(int frequency) async {}
 }
 
 Widget buildTestWidget({
@@ -329,7 +332,8 @@ void main() {
       await tester.pumpWidget(buildTestWidget(profile: profile));
       await tester.pump();
 
-      expect(find.byIcon(Icons.chevron_right), findsOneWidget);
+      // Both Manage Data and Weekly Goal rows have chevron icons.
+      expect(find.byIcon(Icons.chevron_right), findsNWidgets(2));
     });
 
     // PO-039: The display name must show an edit icon and be tappable, opening
@@ -488,6 +492,9 @@ class _TrackingProfileNotifier extends AsyncNotifier<Profile?>
 
   @override
   Future<void> toggleWeightUnit() async => onToggle();
+
+  @override
+  Future<void> updateTrainingFrequency(int frequency) async {}
 }
 
 class _LoadingProfileNotifier extends AsyncNotifier<Profile?>
@@ -498,6 +505,9 @@ class _LoadingProfileNotifier extends AsyncNotifier<Profile?>
 
   @override
   Future<void> toggleWeightUnit() async {}
+
+  @override
+  Future<void> updateTrainingFrequency(int frequency) async {}
 }
 
 extension _MockAuthRepositoryExt on MockAuthRepository {

@@ -24,6 +24,7 @@ class ProfileNotifier extends AsyncNotifier<Profile?> {
   Future<void> saveOnboardingProfile({
     required String displayName,
     required String fitnessLevel,
+    int trainingFrequencyPerWeek = 3,
   }) async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
@@ -33,8 +34,21 @@ class ProfileNotifier extends AsyncNotifier<Profile?> {
         userId: user.id,
         displayName: displayName,
         fitnessLevel: fitnessLevel,
+        trainingFrequencyPerWeek: trainingFrequencyPerWeek,
       ),
     );
+  }
+
+  Future<void> updateTrainingFrequency(int frequency) async {
+    final current = state.valueOrNull;
+    if (current == null) return;
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    final repo = ref.read(profileRepositoryProvider);
+    state = await AsyncValue.guard(() async {
+      await repo.updateTrainingFrequency(user.id, frequency);
+      return current.copyWith(trainingFrequencyPerWeek: frequency);
+    });
   }
 
   Future<void> toggleWeightUnit() async {

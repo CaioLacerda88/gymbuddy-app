@@ -27,6 +27,10 @@ class ActiveWorkoutState with _$ActiveWorkoutState {
     required Workout workout,
     @JsonKey(defaultValue: <ActiveWorkoutExercise>[])
     required List<ActiveWorkoutExercise> exercises,
+
+    /// The source routine's ID when this workout was started from a routine.
+    /// Used for matching bucket completion in the weekly plan.
+    String? routineId,
   }) = _ActiveWorkoutState;
 
   factory ActiveWorkoutState.fromJson(Map<String, dynamic> json) =>

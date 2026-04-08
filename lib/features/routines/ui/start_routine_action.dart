@@ -71,6 +71,7 @@ Future<void> startRoutineWorkout(
   final config = RoutineStartConfig(
     routineName: routine.name,
     exercises: exercises,
+    routineId: routine.id,
   );
 
   await ref.read(activeWorkoutProvider.notifier).startFromRoutine(config);

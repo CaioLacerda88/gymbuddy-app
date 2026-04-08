@@ -7,6 +7,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/workout_formatters.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../personal_records/providers/pr_providers.dart';
+import '../../weekly_plan/ui/widgets/week_bucket_section.dart';
 import '../../routines/ui/widgets/routine_action_sheet.dart';
 import '../../routines/providers/notifiers/routine_list_notifier.dart';
 import '../../routines/ui/start_routine_action.dart';
@@ -44,6 +45,9 @@ class HomeScreen extends ConsumerWidget {
             // Stat cards
             const _StatCardsRow(),
             const SizedBox(height: 20),
+
+            // Weekly plan section
+            const WeekBucketSection(),
 
             // Routines sections
             routinesAsync.when(
@@ -215,7 +219,7 @@ class _StatCardsRow extends ConsumerWidget {
             count: workoutCount,
             label: 'Workouts',
             subtitle: workoutSubtitle,
-            onTap: () => context.go('/home/history'),
+            onTap: () => context.push('/home/history'),
           ),
         ),
         const SizedBox(width: 8),
@@ -224,7 +228,7 @@ class _StatCardsRow extends ConsumerWidget {
             count: prCount,
             label: 'Records',
             subtitle: recordsSubtitle,
-            onTap: () => context.go('/records'),
+            onTap: () => context.push('/records'),
           ),
         ),
       ],

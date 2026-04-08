@@ -300,6 +300,26 @@ Replace the date subtitle with a status line:
 - Daily reminders tied to streak anxiety
 - Visual degradation when progress slows
 
+### 6.5.1 Week Review Card
+
+A passive, non-intrusive card that appears on the Home screen at the start of a new week (Monday) summarizing the previous week. Shown once, dismissible with swipe or tap.
+
+**Layout:**
+- Card background `#232340`, 16dp padding, `kRadiusMd` border radius
+- Header: `LAST WEEK` in `labelLarge` letterSpacing 1.2 at 0.45 opacity
+- Stats row (horizontal, evenly spaced):
+  - `{n} sessions` — session count in `titleMedium` w700 `#00E676`, label in `bodySmall` 0.55 opacity
+  - `{n} kg lifted` — total volume in `titleMedium` w700 white, label in `bodySmall` 0.55 opacity
+  - `{n} PRs` — PR count in `titleMedium` w700 `#FFD54F` (amber, only if >0), label in `bodySmall` 0.55 opacity
+- **Gamification hook (Phase 2+):** When the Consistency stat is live, append a delta line below stats:
+  - `Consistency {prev} → {new}` with delta in `#00E676` if positive, neutral white if unchanged
+  - `+{n} XP from weekly quests` if quests are active
+- Dismiss: swipe-right or tap X icon (12dp, 0.3 opacity, top-right)
+- Does NOT reappear after dismissal until the following Monday
+- If no workouts were logged last week: card does not appear (no shame for rest weeks)
+
+**Design principle:** The card celebrates what was done, never highlights what was missed. Zero sessions = no card, not "You didn't train last week."
+
 ### 6.6 Quest Cards (Profile Screen)
 
 Card: `#232340`, left accent 4dp in stat color. Padding 16dp horizontal, 12dp vertical.

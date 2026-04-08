@@ -23,6 +23,7 @@ import '../../features/personal_records/ui/pr_celebration_screen.dart';
 import '../../features/personal_records/ui/pr_list_screen.dart';
 import '../../features/workouts/ui/active_workout_screen.dart';
 import '../../features/workouts/ui/home_screen.dart';
+import '../../features/weekly_plan/ui/plan_management_screen.dart';
 import '../../features/workouts/ui/workout_detail_screen.dart';
 import '../../features/routines/models/routine.dart';
 import '../../features/workouts/ui/workout_history_screen.dart';
@@ -170,6 +171,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
+          GoRoute(
+            path: '/plan/week',
+            builder: (context, state) => const PlanManagementScreen(),
+          ),
         ],
       ),
     ],
@@ -191,17 +196,25 @@ class _ShellScaffold extends ConsumerWidget {
 
   final Widget child;
 
+  /// Returns the selected tab index, or -1 for non-tab routes (e.g. /records,
+  /// /plan/week) so the bottom nav does not falsely highlight a tab.
   int _currentIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
+    if (location.startsWith('/home')) return 0;
     if (location.startsWith('/exercises')) return 1;
     if (location.startsWith('/routines')) return 2;
     if (location.startsWith('/profile')) return 3;
-    return 0;
+    return -1;
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activeState = ref.watch(activeWorkoutProvider).valueOrNull;
+    final tabIndex = _currentIndex(context);
+    // When on a non-tab route (e.g. /records, /plan/week), pass index 0 to
+    // satisfy NavigationBar's range requirement but hide the indicator so no
+    // tab appears active.
+    final isOnTab = tabIndex >= 0;
 
     return Scaffold(
       body: child,
@@ -211,11 +224,11 @@ class _ShellScaffold extends ConsumerWidget {
           if (activeState != null) _ActiveWorkoutBanner(state: activeState),
           NavigationBar(
             backgroundColor: Theme.of(context).colorScheme.surface,
-            indicatorColor: Theme.of(
-              context,
-            ).colorScheme.primary.withValues(alpha: 0.15),
+            indicatorColor: isOnTab
+                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
+                : Colors.transparent,
             surfaceTintColor: Colors.transparent,
-            selectedIndex: _currentIndex(context),
+            selectedIndex: isOnTab ? tabIndex : 0,
             onDestinationSelected: (index) {
               final routes = ['/home', '/exercises', '/routines', '/profile'];
               context.go(routes[index]);

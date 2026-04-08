@@ -20,5 +20,9 @@ class RoutineStartConfig with _$RoutineStartConfig {
   const factory RoutineStartConfig({
     required String routineName,
     required List<RoutineStartExercise> exercises,
+
+    /// The source routine's ID, used for bucket-completion matching.
+    /// Null when starting a blank workout (not from a routine).
+    String? routineId,
   }) = _RoutineStartConfig;
 }

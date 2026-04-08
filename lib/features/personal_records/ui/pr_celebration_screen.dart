@@ -68,10 +68,20 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen>
 
   String _formatValue(PersonalRecord record, String weightUnit) {
     return switch (record.recordType) {
-      RecordType.maxWeight => '${record.value} $weightUnit',
+      RecordType.maxWeight =>
+        record.reps != null
+            ? '${_formatWeight(record.value)} $weightUnit \u00d7 ${record.reps}'
+            : '${_formatWeight(record.value)} $weightUnit',
       RecordType.maxReps => '${record.value.toInt()} reps',
-      RecordType.maxVolume => '${record.value} $weightUnit',
+      RecordType.maxVolume => '${_formatWeight(record.value)} $weightUnit',
     };
+  }
+
+  /// Format weight without trailing .0 (e.g. 100.0 -> "100", 72.5 -> "72.5").
+  String _formatWeight(double value) {
+    return value == value.roundToDouble() && value.truncateToDouble() == value
+        ? value.toInt().toString()
+        : value.toString();
   }
 
   IconData _iconForType(RecordType type) {

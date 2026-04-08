@@ -10,6 +10,7 @@ import '../../../exercises/models/exercise.dart';
 import '../../../personal_records/domain/pr_detection_service.dart';
 import '../../../personal_records/providers/pr_providers.dart';
 import '../../../profile/providers/profile_providers.dart';
+import '../../../weekly_plan/providers/weekly_plan_provider.dart';
 import '../../data/workout_local_storage.dart';
 import '../../data/workout_repository.dart';
 import '../../models/active_workout_state.dart';
@@ -142,6 +143,7 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
       final activeState = ActiveWorkoutState(
         workout: workout,
         exercises: exercises,
+        routineId: config.routineId,
       );
       _saveToHive(activeState);
       return activeState;
@@ -582,6 +584,36 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
         // PR detection failure should NOT fail the workout save.
         log(
           'PR detection failed: $e',
+          name: 'ActiveWorkoutNotifier',
+          level: 900,
+        );
+      }
+
+      // Weekly plan: mark matching bucket routine as complete.
+      try {
+        final matchedRoutineId = current.routineId;
+        if (matchedRoutineId != null) {
+          final plan = ref.read(weeklyPlanProvider).valueOrNull;
+          if (plan != null && plan.routines.isNotEmpty) {
+            final hasBucketMatch = plan.routines.any(
+              (r) =>
+                  r.routineId == matchedRoutineId &&
+                  r.completedWorkoutId == null,
+            );
+            if (hasBucketMatch) {
+              await ref
+                  .read(weeklyPlanProvider.notifier)
+                  .markRoutineComplete(
+                    routineId: matchedRoutineId,
+                    workoutId: workout.id,
+                  );
+            }
+          }
+        }
+      } catch (e) {
+        // Weekly plan update failure should NOT fail the workout save.
+        log(
+          'Weekly plan update failed: $e',
           name: 'ActiveWorkoutNotifier',
           level: 900,
         );

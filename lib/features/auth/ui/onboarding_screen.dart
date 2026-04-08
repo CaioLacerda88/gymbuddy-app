@@ -21,6 +21,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   // Page 2: Profile setup state
   final _nameController = TextEditingController();
   String _fitnessLevel = 'beginner';
+  int _trainingFrequency = 3;
 
   @override
   void dispose() {
@@ -63,6 +64,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           .saveOnboardingProfile(
             displayName: name,
             fitnessLevel: _fitnessLevel,
+            trainingFrequencyPerWeek: _trainingFrequency,
           );
       ref.read(needsOnboardingProvider.notifier).state = false;
       if (mounted) context.go('/home');
@@ -123,6 +125,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     fitnessLevel: _fitnessLevel,
                     onFitnessLevelChanged: (level) {
                       setState(() => _fitnessLevel = level);
+                    },
+                    trainingFrequency: _trainingFrequency,
+                    onTrainingFrequencyChanged: (freq) {
+                      setState(() => _trainingFrequency = freq);
                     },
                     onFinish: _finishOnboarding,
                     onBack: _previousPage,
@@ -192,6 +198,8 @@ class _ProfileSetupPage extends StatelessWidget {
     required this.nameController,
     required this.fitnessLevel,
     required this.onFitnessLevelChanged,
+    required this.trainingFrequency,
+    required this.onTrainingFrequencyChanged,
     required this.onFinish,
     required this.onBack,
   });
@@ -199,10 +207,13 @@ class _ProfileSetupPage extends StatelessWidget {
   final TextEditingController nameController;
   final String fitnessLevel;
   final ValueChanged<String> onFitnessLevelChanged;
+  final int trainingFrequency;
+  final ValueChanged<int> onTrainingFrequencyChanged;
   final VoidCallback onFinish;
   final VoidCallback onBack;
 
   static const _fitnessLevels = ['beginner', 'intermediate', 'advanced'];
+  static const _frequencyOptions = [2, 3, 4, 5, 6];
 
   @override
   Widget build(BuildContext context) {
@@ -245,6 +256,42 @@ class _ProfileSetupPage extends StatelessWidget {
                 label: Text(level[0].toUpperCase() + level.substring(1)),
                 selected: isSelected,
                 onSelected: (_) => onFitnessLevelChanged(level),
+                selectedColor: theme.colorScheme.primary,
+                labelStyle: TextStyle(
+                  color: isSelected
+                      ? theme.colorScheme.onPrimary
+                      : theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+                side: BorderSide(
+                  color: isSelected
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'How often do you plan to train?',
+            style: theme.textTheme.titleMedium,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Your weekly goal \u2014 you can change this anytime',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            children: _frequencyOptions.map((freq) {
+              final isSelected = freq == trainingFrequency;
+              return ChoiceChip(
+                label: Text('${freq}x'),
+                selected: isSelected,
+                onSelected: (_) => onTrainingFrequencyChanged(freq),
                 selectedColor: theme.colorScheme.primary,
                 labelStyle: TextStyle(
                   color: isSelected
