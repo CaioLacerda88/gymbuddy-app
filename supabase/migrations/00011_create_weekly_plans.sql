@@ -20,7 +20,8 @@ CREATE TABLE weekly_plans (
 -- RLS: users can only access their own plans.
 ALTER TABLE weekly_plans ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users manage own plans" ON weekly_plans
-  FOR ALL USING (auth.uid() = user_id);
+  FOR ALL USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
 -- Index for efficient lookups by user and week.
 CREATE INDEX idx_weekly_plans_user_week ON weekly_plans (user_id, week_start DESC);
