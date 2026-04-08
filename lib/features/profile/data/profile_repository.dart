@@ -25,6 +25,7 @@ class ProfileRepository extends BaseRepository {
     String? displayName,
     String? fitnessLevel,
     String? weightUnit,
+    int? trainingFrequencyPerWeek,
   }) {
     return mapException(() async {
       final updates = <String, dynamic>{
@@ -35,6 +36,9 @@ class ProfileRepository extends BaseRepository {
         if (fitnessLevel != null) 'fitness_level': fitnessLevel,
         // ignore: use_null_aware_elements
         if (weightUnit != null) 'weight_unit': weightUnit,
+        // ignore: use_null_aware_elements
+        if (trainingFrequencyPerWeek != null)
+          'training_frequency_per_week': trainingFrequencyPerWeek,
       };
       final data = await _client
           .from('profiles')
@@ -42,6 +46,15 @@ class ProfileRepository extends BaseRepository {
           .select()
           .single();
       return Profile.fromJson(data);
+    });
+  }
+
+  Future<void> updateTrainingFrequency(String userId, int frequency) {
+    return mapException(() async {
+      await _client
+          .from('profiles')
+          .update({'training_frequency_per_week': frequency})
+          .eq('id', userId);
     });
   }
 

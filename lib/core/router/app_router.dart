@@ -23,6 +23,7 @@ import '../../features/personal_records/ui/pr_celebration_screen.dart';
 import '../../features/personal_records/ui/pr_list_screen.dart';
 import '../../features/workouts/ui/active_workout_screen.dart';
 import '../../features/workouts/ui/home_screen.dart';
+import '../../features/weekly_plan/ui/plan_management_screen.dart';
 import '../../features/workouts/ui/workout_detail_screen.dart';
 import '../../features/routines/models/routine.dart';
 import '../../features/workouts/ui/workout_history_screen.dart';
@@ -169,6 +170,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => const ManageDataScreen(),
               ),
             ],
+          ),
+          GoRoute(
+            path: '/plan/week',
+            builder: (context, state) => const PlanManagementScreen(),
           ),
         ],
       ),

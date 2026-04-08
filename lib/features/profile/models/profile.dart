@@ -12,6 +12,7 @@ class Profile with _$Profile {
     String? displayName,
     String? fitnessLevel,
     @Default('kg') String weightUnit,
+    @Default(3) int trainingFrequencyPerWeek,
     DateTime? createdAt,
   }) = _Profile;
 

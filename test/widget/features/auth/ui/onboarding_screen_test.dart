@@ -15,9 +15,13 @@ class _FakeProfileNotifier extends ProfileNotifier {
   Future<void> saveOnboardingProfile({
     required String displayName,
     required String fitnessLevel,
+    int trainingFrequencyPerWeek = 3,
   }) async {
     // no-op in tests
   }
+
+  @override
+  Future<void> updateTrainingFrequency(int frequency) async {}
 }
 
 void main() {
