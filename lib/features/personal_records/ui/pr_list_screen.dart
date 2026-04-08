@@ -112,12 +112,17 @@ class _ExerciseRecordCard extends StatelessWidget {
   final List<PRWithExercise> records;
   final String weightUnit;
 
-  // TODO: For maxWeight records, display as "{weight} {unit} x {reps}" once
-  // reps data is available on PersonalRecord (requires adding reps field to
-  // the model and storing it during PR detection).
-  String _formatValue(RecordType type, double value, String weightUnit) {
+  String _formatValue(
+    RecordType type,
+    double value,
+    String weightUnit, {
+    int? reps,
+  }) {
     return switch (type) {
-      RecordType.maxWeight => '${_formatWeight(value)} $weightUnit',
+      RecordType.maxWeight =>
+        reps != null
+            ? '${_formatWeight(value)} $weightUnit \u00d7 $reps'
+            : '${_formatWeight(value)} $weightUnit',
       RecordType.maxReps => '${value.toInt()} reps',
       RecordType.maxVolume => '${_formatWeight(value)} $weightUnit',
     };
@@ -165,6 +170,7 @@ class _ExerciseRecordCard extends StatelessWidget {
                       pr.record.recordType,
                       pr.record.value,
                       weightUnit,
+                      reps: pr.record.reps,
                     ),
                   );
                 }).toList(),

@@ -163,6 +163,9 @@ class PRDetectionService {
         value: bestValue,
         achievedAt: DateTime.now().toUtc(),
         setId: bestSet.id,
+        // For maxWeight PRs, store the reps at which the weight was achieved
+        // so the UI can display "100 kg x 5".
+        reps: type == RecordType.maxWeight ? bestSet.reps : null,
       ),
     );
   }

@@ -66,12 +66,12 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen>
     super.dispose();
   }
 
-  // TODO: For maxWeight records, display as "{weight} {unit} x {reps}" once
-  // reps data is available on PersonalRecord (requires adding reps field to
-  // the model and storing it during PR detection).
   String _formatValue(PersonalRecord record, String weightUnit) {
     return switch (record.recordType) {
-      RecordType.maxWeight => '${_formatWeight(record.value)} $weightUnit',
+      RecordType.maxWeight =>
+        record.reps != null
+            ? '${_formatWeight(record.value)} $weightUnit \u00d7 ${record.reps}'
+            : '${_formatWeight(record.value)} $weightUnit',
       RecordType.maxReps => '${record.value.toInt()} reps',
       RecordType.maxVolume => '${_formatWeight(record.value)} $weightUnit',
     };
