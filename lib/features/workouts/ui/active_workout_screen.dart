@@ -700,16 +700,18 @@ class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
                       : null;
 
                   if (lastSetForNewRow != null) {
-                    defaultWeight = lastSetForNewRow.weight;
-                    defaultReps = lastSetForNewRow.reps;
+                    defaultWeight = lastSetForNewRow.weight ?? 0;
+                    defaultReps = lastSetForNewRow.reps ?? 0;
                   } else if (activeExercise.sets.isNotEmpty) {
-                    // Priority 2: last set in current session
+                    // Priority 2: last set in current session (not just
+                    // last completed — always copy from the most recent set
+                    // so weight is never lost).
                     final prevSet = activeExercise.sets.last;
                     // Skip if previous set is warmup (new set defaults to
                     // working, so don't carry warmup weights forward).
                     if (prevSet.setType != SetType.warmup) {
-                      defaultWeight = prevSet.weight;
-                      defaultReps = prevSet.reps;
+                      defaultWeight = prevSet.weight ?? 0;
+                      defaultReps = prevSet.reps ?? 0;
                     } else {
                       // Warmup -> working: use equipment defaults
                       final equipType = exercise?.equipmentType;
