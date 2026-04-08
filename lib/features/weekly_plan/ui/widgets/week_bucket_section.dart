@@ -7,6 +7,7 @@ import '../../../routines/providers/notifiers/routine_list_notifier.dart';
 import '../../../routines/ui/start_routine_action.dart';
 import '../../data/models/weekly_plan.dart';
 import '../../providers/suggested_next_provider.dart';
+import '../../providers/week_review_stats_provider.dart';
 import '../../providers/weekly_plan_provider.dart';
 import 'routine_chip.dart';
 import 'week_review_section.dart';
@@ -46,13 +47,14 @@ class WeekBucketSection extends ConsumerWidget {
         // Check if week is complete.
         final isComplete = ref.watch(isWeekCompleteProvider);
         if (isComplete) {
-          // TODO: Compute totalVolume and prCount from completed workout
-          // data when those providers become available.
+          final stats = ref.watch(weekReviewStatsProvider).valueOrNull;
           return Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: WeekReviewSection(
               plan: plan,
               routineNames: nameMap,
+              totalVolume: stats?.totalVolume ?? 0,
+              prCount: stats?.prCount ?? 0,
               onNewWeek: () => _startNewWeek(context, ref),
             ),
           );
