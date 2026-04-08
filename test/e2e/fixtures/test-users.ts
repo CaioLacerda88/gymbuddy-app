@@ -48,6 +48,31 @@ export const TEST_USERS = {
     email: 'e2e-smoke-routine-error@test.local',
     password: 'TestPassword123!',
   },
+  // Weekly plan smoke — isolated user for weekly-plan.smoke.spec.ts
+  smokeWeeklyPlan: {
+    email: 'e2e-smoke-weekly-plan@test.local',
+    password: 'TestPassword123!',
+  },
+  // Onboarding smoke — fresh user (no profile row) for onboarding.smoke.spec.ts
+  smokeOnboarding: {
+    email: 'e2e-smoke-onboarding@test.local',
+    password: 'TestPassword123!',
+  },
+  // Routine management smoke — CRUD for routine-management.smoke.spec.ts
+  smokeRoutineManagement: {
+    email: 'e2e-smoke-routine-mgmt@test.local',
+    password: 'TestPassword123!',
+  },
+  // Weekly plan review smoke — week complete state for weekly-plan-review.smoke.spec.ts
+  smokeWeeklyPlanReview: {
+    email: 'e2e-smoke-weekly-plan-review@test.local',
+    password: 'TestPassword123!',
+  },
+  // Profile weekly goal smoke — frequency change for profile-weekly-goal.smoke.spec.ts
+  smokeProfileWeeklyGoal: {
+    email: 'e2e-smoke-profile-goal@test.local',
+    password: 'TestPassword123!',
+  },
 
   // -------------------------------------------------------------------------
   // Full suite users (one per spec file)

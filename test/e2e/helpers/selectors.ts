@@ -352,6 +352,198 @@ export const MANAGE_DATA = {
 } as const;
 
 // ---------------------------------------------------------------------------
+// Weekly plan — WeekBucketSection (Home screen) and PlanManagementScreen
+// ---------------------------------------------------------------------------
+export const WEEKLY_PLAN = {
+  /**
+   * "THIS WEEK" section header on the home screen.
+   * _ActiveBucketSection renders Text('THIS WEEK') as a labelLarge.
+   */
+  thisWeekHeader: 'text=THIS WEEK',
+  /**
+   * "WEEK COMPLETE" header shown in WeekReviewSection when all buckets done.
+   * WeekReviewSection renders isAllComplete ? 'WEEK COMPLETE' : 'THIS WEEK'.
+   */
+  weekCompleteHeader: 'text=WEEK COMPLETE',
+  /**
+   * "Plan your week →" CTA tappable text in _EmptyBucketState.
+   * Rendered when a plan is not set but the user has at least one routine.
+   * The arrow is Unicode RIGHT ARROW (U+2192).
+   */
+  planYourWeekCta: 'text=Plan your week \u2192',
+  /**
+   * AppBar title of PlanManagementScreen.
+   * Scaffold AppBar title: Text("This Week's Plan").
+   */
+  planManagementTitle: "text=This Week's Plan",
+  /**
+   * "Add Routines" FilledButton in the empty state of PlanManagementScreen.
+   * _EmptyState renders FilledButton.icon with label Text('Add Routines').
+   */
+  addRoutinesButton: 'text=Add Routines',
+  /**
+   * "Add Routine" row at the bottom of the ReorderableListView when items exist.
+   * _AddRoutineRow renders Text('Add Routine').
+   */
+  addRoutineRow: 'text=Add Routine',
+  /**
+   * "Add Routines" bottom sheet title in AddRoutinesSheet.
+   * Rendered as titleLarge Text('Add Routines').
+   */
+  addRoutinesSheetTitle: 'text=Add Routines',
+  /**
+   * "ADD 1 ROUTINE" / "ADD N ROUTINES" confirm button in AddRoutinesSheet.
+   * Match on the "ADD" prefix — the count varies.
+   */
+  addConfirmButton: 'flt-semantics[aria-label*="ADD "]',
+  /**
+   * "Clear Week" option in the PopupMenuButton overflow menu.
+   * PopupMenuItem child: Text('Clear Week').
+   */
+  clearWeekOption: 'text=Clear Week',
+  /**
+   * "Clear" confirm button in the _confirmClear AlertDialog.
+   * TextButton child: Text('Clear').
+   */
+  clearConfirmButton: 'text=Clear',
+  /**
+   * "NEW WEEK" GestureDetector text in WeekReviewSection.
+   * Rendered as labelLarge Text('NEW WEEK') when onNewWeek is provided.
+   */
+  newWeekButton: 'text=NEW WEEK',
+  /**
+   * Stats text in WeekReviewSection — contains "sessions" substring.
+   * _buildStatsText always starts with "{n} sessions".
+   */
+  sessionsStatsText: 'text*=sessions',
+} as const;
+
+// ---------------------------------------------------------------------------
+// Onboarding — extended selectors for the 2-page flow
+// ---------------------------------------------------------------------------
+// Note: ONBOARDING already exists above. These are supplemental selectors for
+// the onboarding smoke test that target specific page content.
+// The base ONBOARDING object is already exported; we extend via ONBOARDING_FLOW.
+export const ONBOARDING_FLOW = {
+  /**
+   * Page 1 welcome headline: "Track every rep,\nevery time".
+   * _WelcomePage renders this as displayMedium Text.
+   */
+  welcomeHeadline: 'text=Track every rep',
+  /**
+   * Page 2 headline: "Set up your profile".
+   * _ProfileSetupPage renders this as headlineLarge Text.
+   */
+  profileSetupHeadline: 'text=Set up your profile',
+  /**
+   * Display name AppTextField on page 2.
+   * AppTextField label: 'Display name'.
+   */
+  displayNameInput: '[aria-label="Display name"]',
+  /**
+   * "3x" frequency ChoiceChip — the default selection.
+   */
+  frequency3x: 'text=3x',
+  /**
+   * Back TextButton.icon on page 2.
+   * TextButton label: Text('Back').
+   */
+  backButton: 'text=Back',
+} as const;
+
+// ---------------------------------------------------------------------------
+// Routine management — additional selectors for create/edit/delete flow
+// ---------------------------------------------------------------------------
+export const ROUTINE_MANAGEMENT = {
+  /**
+   * + IconButton in the RoutineListScreen AppBar.
+   * IconButton icon: Icons.add. Flutter exposes this as an icon button with
+   * accessible name derived from the tooltip or semantics label.
+   * We match on the role and the known AppBar position.
+   */
+  createIconButton: 'flt-semantics[aria-label="Add"]',
+  /**
+   * AppBar title on CreateRoutineScreen when creating a new routine.
+   * AppBar title: Text('Create Routine').
+   */
+  createRoutineScreenTitle: 'text=Create Routine',
+  /**
+   * AppBar title on CreateRoutineScreen when editing an existing routine.
+   * AppBar title: Text('Edit Routine').
+   */
+  editRoutineScreenTitle: 'text=Edit Routine',
+} as const;
+
+// ---------------------------------------------------------------------------
+// PR display — Personal Records screen selectors
+// ---------------------------------------------------------------------------
+export const PR_DISPLAY = {
+  /**
+   * AppBar title of PRListScreen.
+   * AppBar title: Text('Personal Records').
+   */
+  screenTitle: 'text=Personal Records',
+  /**
+   * Empty state title when no records exist.
+   * _EmptyState renders headlineMedium Text('No Records Yet').
+   */
+  emptyStateTitle: 'text=No Records Yet',
+  /**
+   * Empty state container — use to check if the screen is in empty state.
+   * Text('Complete a workout to start tracking records').
+   */
+  emptyState: 'text=Complete a workout to start tracking records',
+  /**
+   * "Max Weight" label in _RecordTile.
+   * RecordType.maxWeight.displayName — typically "Max Weight".
+   */
+  maxWeightLabel: 'text=Max Weight',
+  /**
+   * Exercise record card — the Card wrapping each exercise's PR data.
+   * _ExerciseRecordCard renders as an InkWell inside a Card. The tappable
+   * area navigates to /exercises/<id>. We select all flt-semantics with
+   * role=button inside the records screen — use .first() in tests.
+   * This selector targets any button that has text content (exercise name).
+   */
+  exerciseRecordCard: 'flt-semantics[role="button"]',
+  /**
+   * Records stat card on home screen that navigates to /records.
+   * HOME_STATS.recordsCard matches the aria-label pattern.
+   */
+  recordsStatCard: 'flt-semantics[aria-label*="tap to view records"]',
+} as const;
+
+// ---------------------------------------------------------------------------
+// Profile Weekly Goal — selectors for _WeeklyGoalRow and frequency sheet
+// ---------------------------------------------------------------------------
+export const PROFILE_WEEKLY_GOAL = {
+  /**
+   * "Weekly Goal" section label above the _WeeklyGoalRow.
+   * ProfileScreen renders titleMedium Text('Weekly Goal').
+   */
+  sectionLabel: 'text=Weekly Goal',
+  /**
+   * The _WeeklyGoalRow InkWell — matches on the "{n}x per week" text pattern.
+   * We target the container text because there's no Semantics label.
+   */
+  frequencyRow: 'text*=per week',
+  /**
+   * Frequency row with a specific value, e.g. "3x per week".
+   * Returns a selector for the row showing the given frequency number.
+   */
+  frequencyRowWithValue: (freq: number) => `text=${freq}x per week`,
+  /**
+   * "Weekly Goal" title in the frequency selection bottom sheet.
+   * showModalBottomSheet content renders titleLarge Text('Weekly Goal').
+   */
+  sheetTitle: 'text=Weekly Goal',
+  /**
+   * How many times per week description in the sheet.
+   */
+  sheetDescription: 'text=How many times per week do you want to train?',
+} as const;
+
+// ---------------------------------------------------------------------------
 // Home stat cards — _StatCardsRow in HomeScreen
 // ---------------------------------------------------------------------------
 export const HOME_STATS = {
