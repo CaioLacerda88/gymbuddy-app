@@ -162,8 +162,10 @@ export const WORKOUT = {
   markSetDone: 'flt-semantics[aria-label="Mark set as done"]',
   /** Checkbox to mark a set as done — checked state */
   setCompleted: 'flt-semantics[aria-label="Set completed"]',
-  /** "Discard" button in the discard confirmation dialog */
-  discardButton: 'text=Discard',
+  /** Close / discard icon button in the AppBar — Semantics label "Discard workout" */
+  discardButton: 'flt-semantics[aria-label="Discard workout"]',
+  /** "Discard" confirm button inside the DiscardWorkoutDialog */
+  discardConfirmButton: 'role=button[name="Discard"]',
   /** "Keep Going" button in the finish confirmation dialog (cancels finish) */
   keepGoingButton: 'text=Keep Going',
   /** Tappable weight value that opens the weight entry dialog */

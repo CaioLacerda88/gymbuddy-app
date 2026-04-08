@@ -53,12 +53,9 @@ test.describe('Workout logging — full suite', () => {
 
     // Clean up by discarding.
     await page.locator(WORKOUT.discardButton).click();
-    const confirmDiscard = page.locator('text=Discard').last();
-    if (
-      await confirmDiscard.isVisible({ timeout: 3_000 }).catch(() => false)
-    ) {
-      await confirmDiscard.click();
-    }
+    const confirmDiscard = page.locator(WORKOUT.discardConfirmButton);
+    await expect(confirmDiscard).toBeVisible({ timeout: 5_000 });
+    await confirmDiscard.click();
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
   });
 
@@ -86,12 +83,9 @@ test.describe('Workout logging — full suite', () => {
 
     // Discard to clean up.
     await page.locator(WORKOUT.discardButton).click();
-    const confirmDiscard = page.locator('text=Discard').last();
-    if (
-      await confirmDiscard.isVisible({ timeout: 3_000 }).catch(() => false)
-    ) {
-      await confirmDiscard.click();
-    }
+    const confirmDiscard = page.locator(WORKOUT.discardConfirmButton);
+    await expect(confirmDiscard).toBeVisible({ timeout: 5_000 });
+    await confirmDiscard.click();
   });
 
   test('set weight and reps via dialog entry', async ({ page }) => {
@@ -109,12 +103,9 @@ test.describe('Workout logging — full suite', () => {
 
     // Discard.
     await page.locator(WORKOUT.discardButton).click();
-    const confirmDiscard = page.locator('text=Discard').last();
-    if (
-      await confirmDiscard.isVisible({ timeout: 3_000 }).catch(() => false)
-    ) {
-      await confirmDiscard.click();
-    }
+    const confirmDiscard = page.locator(WORKOUT.discardConfirmButton);
+    await expect(confirmDiscard).toBeVisible({ timeout: 5_000 });
+    await confirmDiscard.click();
   });
 
   test('add multiple sets to an exercise', async ({ page }) => {
@@ -140,12 +131,9 @@ test.describe('Workout logging — full suite', () => {
 
     // Discard.
     await page.locator(WORKOUT.discardButton).click();
-    const confirmDiscard = page.locator('text=Discard').last();
-    if (
-      await confirmDiscard.isVisible({ timeout: 3_000 }).catch(() => false)
-    ) {
-      await confirmDiscard.click();
-    }
+    const confirmDiscard = page.locator(WORKOUT.discardConfirmButton);
+    await expect(confirmDiscard).toBeVisible({ timeout: 5_000 });
+    await confirmDiscard.click();
   });
 
   test('complete individual sets via checkbox toggle', async ({ page }) => {
@@ -170,12 +158,9 @@ test.describe('Workout logging — full suite', () => {
 
     // Discard.
     await page.locator(WORKOUT.discardButton).click();
-    const confirmDiscard = page.locator('text=Discard').last();
-    if (
-      await confirmDiscard.isVisible({ timeout: 3_000 }).catch(() => false)
-    ) {
-      await confirmDiscard.click();
-    }
+    const confirmDiscard = page.locator(WORKOUT.discardConfirmButton);
+    await expect(confirmDiscard).toBeVisible({ timeout: 5_000 });
+    await confirmDiscard.click();
   });
 
   test('finish with incomplete sets shows "incomplete sets" warning dialog', async ({
@@ -212,12 +197,9 @@ test.describe('Workout logging — full suite', () => {
 
     // Discard.
     await page.locator(WORKOUT.discardButton).click();
-    const confirmDiscard = page.locator('text=Discard').last();
-    if (
-      await confirmDiscard.isVisible({ timeout: 3_000 }).catch(() => false)
-    ) {
-      await confirmDiscard.click();
-    }
+    const confirmDiscard = page.locator(WORKOUT.discardConfirmButton);
+    await expect(confirmDiscard).toBeVisible({ timeout: 5_000 });
+    await confirmDiscard.click();
   });
 
   test('finish workout with completed sets navigates away from the workout screen', async ({
@@ -278,7 +260,7 @@ test.describe('Workout logging — full suite', () => {
     });
 
     // Confirm discard.
-    await page.locator('text=Discard').last().click();
+    await page.locator(WORKOUT.discardConfirmButton).click();
 
     // Must return to home without saving the workout.
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
@@ -295,12 +277,9 @@ test.describe('Workout logging — full suite', () => {
 
     // Discard to clean up.
     await page.locator(WORKOUT.discardButton).click();
-    const confirmDiscard = page.locator('text=Discard').last();
-    if (
-      await confirmDiscard.isVisible({ timeout: 3_000 }).catch(() => false)
-    ) {
-      await confirmDiscard.click();
-    }
+    const confirmDiscard = page.locator(WORKOUT.discardConfirmButton);
+    await expect(confirmDiscard).toBeVisible({ timeout: 5_000 });
+    await confirmDiscard.click();
   });
 
   // ---------------------------------------------------------------------------
@@ -400,10 +379,9 @@ test.describe('Workout logging — full suite', () => {
     await page.waitForTimeout(500);
 
     await page.locator(WORKOUT.discardButton).click();
-    const confirmDiscard = page.locator('text=Discard').last();
-    if (await confirmDiscard.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await confirmDiscard.click();
-    }
+    const confirmDiscard = page.locator(WORKOUT.discardConfirmButton);
+    await expect(confirmDiscard).toBeVisible({ timeout: 5_000 });
+    await confirmDiscard.click();
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
   });
 
@@ -441,10 +419,9 @@ test.describe('Workout logging — full suite', () => {
 
     // Discard workout.
     await page.locator(WORKOUT.discardButton).click();
-    const confirmDiscard = page.locator('text=Discard').last();
-    if (await confirmDiscard.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await confirmDiscard.click();
-    }
+    const confirmDiscard = page.locator(WORKOUT.discardConfirmButton);
+    await expect(confirmDiscard).toBeVisible({ timeout: 5_000 });
+    await confirmDiscard.click();
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
   });
 
@@ -493,10 +470,9 @@ test.describe('Workout logging — full suite', () => {
 
     // Discard.
     await page.locator(WORKOUT.discardButton).click();
-    const confirmDiscard = page.locator('text=Discard').last();
-    if (await confirmDiscard.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await confirmDiscard.click();
-    }
+    const confirmDiscard = page.locator(WORKOUT.discardConfirmButton);
+    await expect(confirmDiscard).toBeVisible({ timeout: 5_000 });
+    await confirmDiscard.click();
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
   });
 
@@ -547,10 +523,9 @@ test.describe('Workout logging — full suite', () => {
 
     // Discard.
     await page.locator(WORKOUT.discardButton).click();
-    const confirmDiscard = page.locator('text=Discard').last();
-    if (await confirmDiscard.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await confirmDiscard.click();
-    }
+    const confirmDiscard = page.locator(WORKOUT.discardConfirmButton);
+    await expect(confirmDiscard).toBeVisible({ timeout: 5_000 });
+    await confirmDiscard.click();
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
   });
 });

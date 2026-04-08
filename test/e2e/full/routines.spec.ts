@@ -106,12 +106,9 @@ test.describe('Routines — full suite', () => {
     await page.locator(WORKOUT.discardButton).click();
 
     // Confirm the discard dialog.
-    const confirmDiscard = page.locator('text=Discard').last();
-    if (
-      await confirmDiscard.isVisible({ timeout: 5_000 }).catch(() => false)
-    ) {
-      await confirmDiscard.click();
-    }
+    const confirmDiscard = page.locator(WORKOUT.discardConfirmButton);
+    await expect(confirmDiscard).toBeVisible({ timeout: 5_000 });
+    await confirmDiscard.click();
 
     // Must return to home.
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });

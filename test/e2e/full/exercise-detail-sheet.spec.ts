@@ -52,10 +52,9 @@ test.describe('Exercise detail bottom sheet — full suite', () => {
 
     if (finishVisible) {
       await page.locator(WORKOUT.discardButton).click();
-      const confirmDiscard = page.locator('text=Discard').last();
-      if (await confirmDiscard.isVisible({ timeout: 3_000 }).catch(() => false)) {
-        await confirmDiscard.click();
-      }
+      const confirmDiscard = page.locator(WORKOUT.discardConfirmButton);
+      await expect(confirmDiscard).toBeVisible({ timeout: 5_000 });
+      await confirmDiscard.click();
     }
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
   });
