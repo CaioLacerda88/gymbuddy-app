@@ -31,8 +31,9 @@ Building a gym training app from scratch where users can log workouts, track per
 | 11 | Exercise Content, Smart Defaults & Home Simplification | DONE | #27 |
 | 11b | Regression Bug Fixes (6 bugs from PR #27) | DONE | #28 |
 | 11c | CI/QA Pipeline Optimization & E2E Coverage | DONE | #29–#30 |
+| 12 | Weekly Training Plan (Bucket Model) | TODO | — |
 
-**Current state:** All implementation steps complete through Step 11c. App is functional on Android with full workout logging, routines, PR tracking, exercise library, data management, exercise descriptions/form tips, smart set defaults, and enriched home screen. CI pipeline optimized with caching and parallel jobs. E2E regression tests cover all 6 post-PR-27 bugs. See "QA Status" section for open bugs and "Feature Gaps" for v1.1 backlog.
+**Current state:** All implementation steps complete through Step 11c. Step 12 (Weekly Training Plan) is specced and ready for implementation. App is functional on Android with full workout logging, routines, PR tracking, exercise library, data management, exercise descriptions/form tips, smart set defaults, and enriched home screen. CI pipeline optimized with caching and parallel jobs. E2E regression tests cover all 6 post-PR-27 bugs. See "QA Status" section for open bugs and "Feature Gaps" for v1.1 backlog.
 
 ## Tech Stack
 
@@ -883,6 +884,244 @@ test/e2e/
 **`release.yml` workflow:** Triggered by `v*` tags. Build split APKs (arm64, armeabi-v7a, x86_64) → GitHub Release via softprops/action-gh-release. No code signing for MVP. Alpha/beta tags → pre-release.
 
 - Final manual QA pass on physical devices
+
+### Step 12: Weekly Training Plan — Bucket Model
+
+> **Feature overview:** Users plan their training week by placing routines into an ordered "bucket" — a sequenced set of routines to complete, not tied to specific days. The app surfaces "what's next" on the Home screen and tracks weekly completion. Integrates with GAMIFICATION.md streak/quest systems.
+>
+> **Design basis:** PO competitor analysis (Strong, Hevy, JEFIT, Fitbod, Boostcamp, Gymverse), UX design review, user research from Reddit r/fitness and r/weightroom. See GAMIFICATION.md section 6.5 (weekly consistency meter) and 6.5.1 (week review card).
+
+#### 12a: Schema & Backend
+
+**New table: `weekly_plans`**
+
+```sql
+CREATE TABLE weekly_plans (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  week_start DATE NOT NULL,  -- always a Monday (ISO week start)
+  routines JSONB NOT NULL DEFAULT '[]',
+  -- Array of: [{routine_id: UUID, order: int, completed_workout_id: UUID|null, completed_at: timestamptz|null}]
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (user_id, week_start)
+);
+
+-- RLS: users can only access their own plans
+ALTER TABLE weekly_plans ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own plans" ON weekly_plans
+  FOR ALL USING (auth.uid() = user_id);
+```
+
+**Schema notes:**
+- `week_start` is always a Monday — enforced via CHECK constraint or application logic
+- `routines` JSONB stores the ordered bucket: each entry has `routine_id`, `order` (1-based sequence), `completed_workout_id` (null until done), and `completed_at`
+- When a workout finishes for a routine in the bucket, the app updates the matching entry's `completed_workout_id` and `completed_at`
+- No day-of-week assignment — routines are ordered but unscheduled
+
+**Extend `profiles` table:**
+
+```sql
+ALTER TABLE profiles ADD COLUMN training_frequency_per_week INTEGER NOT NULL DEFAULT 3
+  CHECK (training_frequency_per_week BETWEEN 2 AND 6);
+```
+
+This drives the bucket soft cap and the GAMIFICATION.md weekly consistency goal (`{n} of {goal} sessions`).
+
+**Auto-populate logic (Supabase function or client-side):**
+- On Monday (or first app open of the week), if no `weekly_plans` row exists for the current week:
+  - Copy the previous week's `routines` array (reset `completed_workout_id` and `completed_at` to null)
+  - If no previous week exists, leave empty (user fills manually on first setup)
+- Client shows a confirmation: "Same plan this week?" with Edit/Confirm actions
+
+#### 12b: Training Frequency in Onboarding & Profile
+
+**Onboarding (screen 2 — alongside fitness level):**
+- Add "How often do you plan to train?" question
+- 5 chip options: `2x`, `3x`, `4x`, `5x`, `6x` per week (no 7x — no serious program recommends zero rest)
+- Default selected: `3x` (most common, conservative bar beginners can beat)
+- Subtext: "Your weekly goal — you can change this anytime"
+- Stored in `profiles.training_frequency_per_week`
+
+**Profile screen:**
+- Add "Weekly goal" as a tappable row in the settings section
+- Tap opens a bottom sheet with the same 5-chip selector
+- Changes take effect immediately for the current week's bucket soft cap
+
+#### 12c: Home Screen — THIS WEEK Section
+
+**Position:** Between stat cards row and MY ROUTINES section header. No card wrapper — flush section using existing `SectionHeader` pattern.
+
+**Layout:**
+
+```
+THIS WEEK                     2 of 4            [Pull A >]
+  [✓]  [✓]  [ 3  PULL A ]  [ 4  LEGS A ]
+```
+
+**Section header:**
+- Left: `THIS WEEK` in `labelLarge` letterSpacing 1.2, 0.45 opacity
+- Center-right: `{n} of {m}` count — numerator in `#00E676` w700, rest at 0.55 opacity
+- Right: suggested-next pill chip — routine name + `>`, 36dp tall, `#00E676` text on `#232340` with 1dp `#00E676` border. Tap starts that routine. Disappears when no suggestion available or all routines complete
+
+**Routine chips (horizontal scrollable row):**
+- Each chip: 44dp tall, pill-shaped (`kRadiusLg`), with sequence number badge (20dp circle) on leading edge
+- **Done state:** `#00E67620` background, `#00E676` 1dp border, checkmark replaces sequence number. Name in `bodyMedium` w600 `#00E676`. Collapsed width (~44dp, no routine name text) so NEXT chip is visible without scrolling
+- **Next state:** solid `#00E676` background, `Colors.black` text, 52dp tall (taller = primary CTA). Tap starts the routine via `startRoutineWorkout`
+- **Remaining state:** `#232340` background, `#FFFFFF20` border, name at 0.55 opacity, sequence number at 0.55 opacity
+- Scroll: `SingleChildScrollView` horizontal. First 4 chips visible without scroll on 375dp screens
+
+**Sequence logic ("Up Next"):**
+- Follows `order` field — lowest-order uncompleted routine is NEXT
+- If user skips one (completes Legs before Pull), the skipped routine becomes NEXT
+- Advances only on workout completion, never on midnight/day change
+
+**Completion behavior:**
+- Automatic — when a workout matching a bucket routine finishes, the chip transitions to Done (300ms ease-out: scale to 0.85, checkmark fades in)
+- No manual check-off. The plan mirrors reality passively
+- When all complete: header changes to `WEEK COMPLETE` in `#00E676`, pill chip disappears
+
+**Week transition (Monday):**
+- Bucket auto-populates from last week's selection (all reset to uncompleted)
+- A banner appears above the chips: "Same plan this week?" with `Edit` and `Confirm` actions
+- `Edit` opens the plan management screen. `Confirm` dismisses the banner
+- If no previous week: section shows empty state (see below)
+
+**Empty states:**
+- No routines at all: THIS WEEK section hidden entirely. The `_CreateRoutineCta` on Home takes precedence
+- Has routines but no bucket set: section shows `Plan your week →` in `bodyMedium` at 0.55 opacity, tappable to open the add-to-bucket sheet
+- Disengagement (bucket ignored 2+ weeks): section collapses to a single line `Plan your week →`, expandable on tap. No guilt, no alerts
+
+**What the section does NOT show:**
+- No 7-day Mon-Sun bar (that lives on Profile per GAMIFICATION.md 6.5)
+- No rest day indicators (days are never a category in the bucket model)
+- No progress bar (text count `{n} of {m}` is sufficient for denominators 2-6)
+- No calendar dates
+
+#### 12d: Plan Management Screen (`/plan/week`)
+
+**Route:** `/plan/week`, accessible via long-press on THIS WEEK header or via an edit icon
+
+**Layout:**
+- `Scaffold` with AppBar: "This Week's Plan"
+- `SliverList` of routine rows, drag-reorderable (`ReorderableListView`)
+- Each row: sequence number (left), routine name `titleMedium` w700, exercise count `bodySmall` 0.55 opacity, drag handle (right)
+- Completed routines: green tint, checkmark, non-draggable
+- "Auto-fill" button at top: distributes user's most-started routines into the bucket up to their `training_frequency_per_week` cap
+- Soft cap enforcement: when bucket reaches `training_frequency_per_week` count, the add button greys out (visible but disabled) with tooltip "Weekly goal reached — tap to add anyway"
+
+**Add routine interaction:**
+- Tap `+ Add Routine` row at bottom of list
+- `showModalBottomSheet` with `DraggableScrollableSheet` (initialChildSize: 0.5, maxChildSize: 0.9)
+- List of user's routines not already in this week's bucket
+- Multi-select: checkmarks on selection, `ADD {n} ROUTINES` filled button at bottom
+- Routines already in bucket shown with `IN PLAN` label, not selectable
+
+**Remove routine:** Swipe-to-delete on any uncompleted row, with undo SnackBar
+
+**Clear week:** `CLEAR WEEK` action in AppBar overflow menu, confirmation dialog: "Start fresh this week?"
+
+#### 12e: Week Review (End-of-Week Summary)
+
+When all bucket routines are completed OR on first app open after Sunday midnight:
+
+**THIS WEEK section transforms in place:**
+
+```
+WEEK COMPLETE                           [NEW WEEK]
+  4 sessions  ·  18,400 kg  ·  2 PRs
+  [✓ Push A]  [✓ Pull A]  [✓ Legs A]  [✓ Push B]
+```
+
+- Header: `WEEK COMPLETE` in `labelLarge` w700 `#00E676` (replaces `THIS WEEK`)
+- Right: `NEW WEEK` tappable label in `#00E676` — opens add-to-bucket sheet pre-populated with this week's selection
+- Stats row: `{n} sessions · {kg} kg · {n} PRs` in `bodyMedium` at 0.7 opacity. PRs in `#FFD54F` amber only if > 0
+- Completed chips displayed in done state (non-interactive, record only)
+- Incomplete plan (2 of 4 done): remaining chips at 0.3 opacity. No shame text, no "missed" language
+
+**Gamification hooks (Phase 2+, per GAMIFICATION.md 6.5.1):**
+- Consistency stat delta: `Consistency {prev} → {new}` below stats row
+- Quest XP: `+{n} XP from weekly quests` if quests are active
+- These lines are hidden until gamification system is built — the data contract is defined now
+
+**Timing:** The review state appears on first app open after the week closes (Monday) or immediately when the last bucket item is completed (whichever comes first). Not triggered by a calendar alarm.
+
+**No-workout weeks:** If zero workouts logged, the section does not transform — it stays in its collapsed/empty state. No "You didn't train last week" messaging.
+
+#### 12f: Integration Points
+
+**With existing workout flow:**
+- Starting a workout from a bucket chip uses the existing `startRoutineWorkout()` flow — zero changes to the logging loop
+- On workout completion (`save_workout` RPC), the app checks if the completed routine matches a bucket entry and marks it complete
+- Any workout can be started anytime regardless of bucket state — the bucket is a planning aid, not a gatekeeper
+
+**With GAMIFICATION.md:**
+- Weekly consistency meter (section 6.5): `{n} of {goal} sessions` — goal is `profiles.training_frequency_per_week`
+- Weekly streak: completing `training_frequency_per_week` sessions advances the streak counter
+- Weekly quests (Phase 3): "Complete 3 workouts this week" quest data feeds from bucket completion count
+- Week review card (section 6.5.1): stats from completed bucket items
+- XP: no separate "plan adherence" XP. Standard workout XP + quest bonus on completion
+
+**With onboarding:**
+- Screen 2 adds training frequency chips (2x-6x)
+- First bucket setup happens after user creates their first routine — not during onboarding
+
+#### Step 12 — Acceptance Criteria
+
+- [ ] `weekly_plans` table created with RLS
+- [ ] `profiles.training_frequency_per_week` column added
+- [ ] Training frequency captured in onboarding (screen 2) and editable in Profile
+- [ ] THIS WEEK section renders on Home with ordered routine chips
+- [ ] Chips show three states: done (green, collapsed), next (solid green CTA), remaining (ghosted)
+- [ ] Suggested-next pill chip in section header, follows sequence order
+- [ ] Tapping a chip starts the routine workout
+- [ ] Completion is automatic on workout finish — chip transitions to done
+- [ ] Plan management screen with drag-to-reorder, add/remove routines
+- [ ] Soft cap at `training_frequency_per_week` with grey-out on add button
+- [ ] Auto-populate from last week on Monday with confirm/edit banner
+- [ ] Week review: section transforms to WEEK COMPLETE with stats
+- [ ] NEW WEEK action pre-populates from completed week
+- [ ] Disengagement: section collapses after 2 weeks of no bucket interaction
+- [ ] No day-of-week assignment anywhere in the UI
+- [ ] No shaming language — incomplete weeks show neutral states only
+- [ ] Widget tests for chip states, auto-populate, completion flow
+- [ ] E2E test: create bucket → complete routines → verify week review
+
+#### Step 12 — File Plan
+
+```
+lib/
+├── features/
+│   └── weekly_plan/
+│       ├── data/
+│       │   ├── weekly_plan_repository.dart       # CRUD against weekly_plans table
+│       │   └── models/
+│       │       └── weekly_plan.dart              # Freezed model
+│       ├── providers/
+│       │   ├── weekly_plan_provider.dart          # Current week plan state
+│       │   └── suggested_next_provider.dart       # Computed "up next" routine
+│       └── ui/
+│           ├── widgets/
+│           │   ├── week_bucket_section.dart       # THIS WEEK Home section
+│           │   ├── routine_chip.dart              # Done/Next/Remaining chip states
+│           │   └── week_review_section.dart       # WEEK COMPLETE transform
+│           ├── plan_management_screen.dart        # /plan/week — reorder, add, remove
+│           └── add_routines_sheet.dart            # Bottom sheet for adding to bucket
+├── features/auth/ui/onboarding_screen.dart        # MODIFY — add frequency chips on page 2
+├── features/profile/ui/profile_screen.dart        # MODIFY — add "Weekly goal" row
+├── features/workouts/ui/home_screen.dart           # MODIFY — add WeekBucketSection
+└── core/router/app_router.dart                    # MODIFY — add /plan/week route
+
+supabase/migrations/
+└── YYYYMMDD_create_weekly_plans.sql               # New table + profiles column
+
+test/
+├── unit/features/weekly_plan/                     # Repository + provider tests
+├── widget/features/weekly_plan/                   # Chip states, section rendering
+└── e2e/smoke/weekly-plan.smoke.spec.ts            # Bucket creation → completion → review
+```
+
+---
 
 ## QA Status (as of 2026-04-07)
 
