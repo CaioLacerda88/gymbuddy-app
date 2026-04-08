@@ -48,9 +48,15 @@ class PRDetectionService {
       if (workingSets.isEmpty) continue;
 
       final existing = existingRecords[exerciseId] ?? [];
+      // An exercise is bodyweight-only when it uses bodyweight equipment
+      // AND none of the completed sets carry a positive weight value.
+      // Non-bodyweight exercises (barbell, dumbbell, cable, etc.) always
+      // go through the weighted branch even when weight is null — this
+      // prevents accidentally recording only maxReps due to null weight
+      // from upstream bugs (see BUG-4).
       final isBodyweightOnly =
           exercise.equipmentType == EquipmentType.bodyweight &&
-          workingSets.every((s) => (s.weight ?? 0) == 0);
+          workingSets.every((s) => (s.weight ?? 0) <= 0);
 
       if (isBodyweightOnly) {
         _checkRecord(
