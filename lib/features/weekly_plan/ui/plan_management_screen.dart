@@ -26,12 +26,42 @@ class PlanManagementScreen extends ConsumerStatefulWidget {
 }
 
 class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
-  late List<BucketRoutine> _bucketRoutines;
-  bool _initialized = false;
+  List<BucketRoutine> _bucketRoutines = [];
+
+  /// Tracks whether the user has made local edits (reorder, add, remove).
+  /// When true, we no longer sync from the provider to avoid clobbering.
+  bool _dirty = false;
+
+  /// Whether we've received the initial provider data at least once.
+  bool _seeded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Listen for the async plan value to resolve (especially on slow
+    // connections where the first build fires before data arrives).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.listenManual(weeklyPlanProvider, (previous, next) {
+        // Only seed from provider if user hasn't started editing.
+        if (_dirty) return;
+        final plan = next.valueOrNull;
+        if (plan != null && !_seeded) {
+          setState(() {
+            _bucketRoutines = [...plan.routines];
+            _seeded = true;
+          });
+        } else if (!_seeded && plan == null && !next.isLoading) {
+          // Provider resolved to null (no plan) — mark as seeded.
+          _seeded = true;
+        }
+      }, fireImmediately: true);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final planAsync = ref.watch(weeklyPlanProvider);
+    // Watch these providers so the widget rebuilds when data changes.
+    ref.watch(weeklyPlanProvider);
     final routinesAsync = ref.watch(routineListProvider);
     final profile = ref.watch(profileProvider);
 
@@ -39,13 +69,6 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
     final routineMap = <String, Routine>{for (final r in allRoutines) r.id: r};
     final trainingFrequency =
         profile.valueOrNull?.trainingFrequencyPerWeek ?? 3;
-
-    // Initialize bucket routines from plan.
-    if (!_initialized) {
-      final plan = planAsync.valueOrNull;
-      _bucketRoutines = plan != null ? [...plan.routines] : [];
-      _initialized = true;
-    }
 
     final atSoftCap = _bucketRoutines.length >= trainingFrequency;
 
@@ -95,6 +118,7 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
                       return _RoutineRow(
                         key: ValueKey(bucket.routineId),
                         index: index,
+                        routineId: bucket.routineId,
                         sequenceNumber: bucket.order,
                         name: name,
                         exerciseCount: exerciseCount,
@@ -119,6 +143,7 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
     }
 
     setState(() {
+      _dirty = true;
       if (newIndex > oldIndex) newIndex--;
       final item = _bucketRoutines.removeAt(oldIndex);
       _bucketRoutines.insert(newIndex, item);
@@ -136,6 +161,7 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
   void _removeRoutine(int index) {
     final removed = _bucketRoutines[index];
     setState(() {
+      _dirty = true;
       _bucketRoutines.removeAt(index);
       _renumber();
     });
@@ -179,6 +205,7 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
 
     if (selected != null && selected.isNotEmpty) {
       setState(() {
+        _dirty = true;
         for (final routine in selected) {
           _bucketRoutines.add(
             BucketRoutine(
@@ -228,6 +255,7 @@ class _RoutineRow extends StatelessWidget {
   const _RoutineRow({
     required super.key,
     required this.index,
+    required this.routineId,
     required this.sequenceNumber,
     required this.name,
     required this.exerciseCount,
@@ -236,6 +264,7 @@ class _RoutineRow extends StatelessWidget {
   });
 
   final int index;
+  final String routineId;
   final int sequenceNumber;
   final String name;
   final int exerciseCount;
@@ -318,7 +347,7 @@ class _RoutineRow extends StatelessWidget {
     if (isDone || onDismissed == null) return content;
 
     return Dismissible(
-      key: ValueKey('dismiss-$sequenceNumber'),
+      key: ValueKey('dismiss-$routineId'),
       direction: DismissDirection.endToStart,
       onDismissed: (_) => onDismissed?.call(),
       background: Container(

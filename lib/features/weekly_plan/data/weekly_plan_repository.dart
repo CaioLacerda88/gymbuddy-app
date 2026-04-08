@@ -61,19 +61,18 @@ class WeeklyPlanRepository extends BaseRepository {
   }
 
   /// Mark a specific bucket routine as completed.
+  ///
+  /// Accepts the current [routines] from provider state to avoid a redundant
+  /// SELECT before UPDATE (eliminates read-modify-write race condition).
   Future<WeeklyPlan> markRoutineComplete({
     required String planId,
     required String routineId,
     required String workoutId,
+    required List<BucketRoutine> currentRoutines,
   }) {
     return mapException(() async {
-      // Fetch the current plan.
-      final data = await _plans.select().eq('id', planId).single();
-      final plan = WeeklyPlan.fromJson(data);
-
-      // Update the matching routine entry.
       final now = DateTime.now().toUtc();
-      final updatedRoutines = plan.routines.map((r) {
+      final updatedRoutines = currentRoutines.map((r) {
         if (r.routineId == routineId && r.completedWorkoutId == null) {
           return r.copyWith(completedWorkoutId: workoutId, completedAt: now);
         }

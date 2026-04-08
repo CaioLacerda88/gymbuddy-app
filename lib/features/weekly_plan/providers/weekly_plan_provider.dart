@@ -29,7 +29,28 @@ class WeeklyPlanNotifier extends AsyncNotifier<WeeklyPlan?> {
     if (userId == null) return null;
     final repo = ref.watch(weeklyPlanRepositoryProvider);
     final monday = currentWeekMonday();
-    return repo.getPlanForWeek(userId, monday);
+
+    final existing = await repo.getPlanForWeek(userId, monday);
+    if (existing != null) return existing;
+
+    // No plan for this week — try to auto-populate from previous week.
+    final previous = await repo.getPreviousWeekPlan(userId, monday);
+    if (previous == null || previous.routines.isEmpty) return null;
+
+    // Reset completions, keep order and routine IDs.
+    final resetRoutines = previous.routines
+        .map((r) => BucketRoutine(routineId: r.routineId, order: r.order))
+        .toList();
+
+    final plan = await repo.upsertPlan(
+      userId: userId,
+      weekStart: monday,
+      routines: resetRoutines,
+    );
+
+    // Signal the UI to show the "Same plan this week?" confirmation banner.
+    ref.read(weeklyPlanNeedsConfirmationProvider.notifier).state = true;
+    return plan;
   }
 
   /// Create or update the current week's plan with the given routines.
@@ -48,6 +69,9 @@ class WeeklyPlanNotifier extends AsyncNotifier<WeeklyPlan?> {
   }
 
   /// Mark a routine in the bucket as completed by a workout.
+  ///
+  /// Uses the in-memory routines list to build the update payload,
+  /// avoiding a redundant SELECT (single atomic UPDATE).
   Future<void> markRoutineComplete({
     required String routineId,
     required String workoutId,
@@ -67,6 +91,7 @@ class WeeklyPlanNotifier extends AsyncNotifier<WeeklyPlan?> {
         planId: plan.id,
         routineId: routineId,
         workoutId: workoutId,
+        currentRoutines: plan.routines,
       );
     });
   }
