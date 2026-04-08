@@ -47,19 +47,16 @@ flutter run -d chrome        # run on Chrome (for Playwright e2e)
 
 | Agent           | Role                                                         | Writes Code | Model  |
 | --------------- | ------------------------------------------------------------ | ----------- | ------ |
-| `team-lead`     | **Orchestrator** — task breakdown, agent dispatch, handoffs, quality gates, PRs | No          | Opus   |
-| `tech-lead`     | Architecture, core scaffolding, cross-cutting patterns       | Yes         | Opus   |
-| `flutter-dev`   | UI screens, widgets, Riverpod providers, navigation          | Yes         | Opus   |
-| `supabase-dev`  | Database, migrations, RLS, auth, repositories                | Yes         | Sonnet |
+| `tech-lead`     | Architecture, implementation, bug fixes, migrations          | Yes         | Opus   |
+| `qa-engineer`   | Test strategy, unit/widget/e2e tests, Playwright             | Yes         | Sonnet |
 | `devops`        | CI/CD pipelines, GitHub Actions, releases                    | Yes         | Sonnet |
-| `qa-engineer`   | Test strategy, unit/widget/e2e tests, Playwright             | Yes         | Opus   |
-| `product-owner` | Market research, competitor analysis, feature priorities     | Read-only   | Opus   |
 | `reviewer`      | Code review, quality checks                                  | Read-only   | Sonnet |
-| `ui-ux-critic`  | Design critique, anti-generic-AI aesthetics                  | Read-only   | Opus   |
+| `product-owner` | Market research, competitor analysis, feature priorities     | Read-only   | Sonnet |
+| `ui-ux-critic`  | Design critique, anti-generic-AI aesthetics                  | Read-only   | Sonnet |
 
 ### How it works
 
-**The main conversation orchestrates agents directly for most work.** Only dispatch `team-lead` for complex steps requiring 4+ agents with interdependencies. For simpler tasks (1-3 agents), the main conversation dispatches agents directly, runs CI, and manages PRs.
+**The main conversation orchestrates agents directly.** It dispatches specialists, runs CI, and manages PRs. No intermediate orchestrator layer.
 
 ### Development Flow
 
@@ -67,25 +64,42 @@ Each PLAN.md step is a sprint increment:
 
 1. **Plan** — Read PLAN.md step. Dispatch `product-owner` + `ui-ux-critic` (if user-facing) for context.
 2. **Write WIP checklist** — Before touching code, write a checklist in `tasks/WIP.md` (see below).
-3. **Implement** — Dispatch `tech-lead` (scaffolding), `flutter-dev`/`supabase-dev` (feature work). Parallel when independent. Check off WIP items as they complete.
+3. **Implement** — Dispatch `tech-lead` for all code work (architecture, UI, migrations, bug fixes). Parallel agents when independent. Check off WIP items as they complete.
 4. **Verify** — Run `dart format .` + `dart analyze --fatal-infos` after each agent.
 5. **Design review** (if UI) — `ui-ux-critic` reviews. Generic → revise.
 6. **Test** — `qa-engineer` writes tests, runs `flutter test`.
 7. **Code review** — `reviewer` checks all files. Fix Critical/Warning findings.
 8. **Ship** — Run CI, commit, push, `gh pr create`, squash merge.
-9. **Close WIP** — Remove completed items from `tasks/WIP.md`. Log results in PLAN.md.
+9. **Close WIP** — Remove completed items from `tasks/WIP.md`. Condense the step in PLAN.md (see below).
+
+### PLAN.md Lifecycle
+
+PLAN.md is the single source of truth for all project specs. It's structured for **token-efficient reading** — agents read the Quick Reference first, then only their relevant section.
+
+**During development** (step is active):
+- The step has a **full detailed spec** in PLAN.md: acceptance criteria, file plans, schema, UX details
+- Agents read the Quick Reference + their active step section — never the entire file
+- WIP.md tracks real-time progress during implementation
+
+**After merge** (step is done):
+- **Condense** the step to 3-5 bullet points: what was built, key files, test count, notable decisions
+- Move the full spec to git history — it's in the PR/commit, not needed for future agents
+- Update the progress table status to DONE with PR number(s)
+- Remove the WIP.md section for that step
+
+This prevents PLAN.md from growing unbounded. Completed steps are summaries; only active/future steps have full specs.
 
 ### WIP Tracking (`tasks/WIP.md`)
 
 **Every agent that changes code MUST follow this protocol:**
 
-1. **Before writing code:** Read the relevant definition files (`PLAN.md`, `GAMIFICATION.md`, `PROD-READINESS.md`, etc.), then write a checklist in `tasks/WIP.md` with:
+1. **Before writing code:** Read the relevant PLAN.md step section, then write a checklist in `tasks/WIP.md` with:
    - Task name and branch name
-   - Reference to the source definition (e.g., "Per PLAN.md Step 11c", "Per GAMIFICATION.md Phase 1")
+   - Reference to the source definition (e.g., "Per PLAN.md Step 12", "Per PLAN.md Phase 13")
    - Checkable items for each change to make
    - Files to modify/create
 2. **During implementation:** Check off items as they're completed (`- [x]`)
-3. **After merge:** Remove the completed section from `tasks/WIP.md` and update PLAN.md with results
+3. **After merge:** Remove the completed section from `tasks/WIP.md` and condense the PLAN.md step
 
 This keeps the coordinator (main conversation) informed of progress and ensures agents don't drift from specs. If `tasks/WIP.md` doesn't exist, create it.
 

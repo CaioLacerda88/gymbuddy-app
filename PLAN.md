@@ -1,102 +1,71 @@
-# GymBuddy App - Implementation Plan
+# GymBuddy — Master Plan
 
-## Context
+## Quick Reference
 
-Building a gym training app from scratch where users can log workouts, track personal records, and browse/manage exercises. Built with Flutter + Supabase with Riverpod for state management.
+Gym training app for logging workouts, tracking personal records, and managing exercises. Flutter + Supabase + Riverpod. Android-first, iOS deferred. Dark bold theme, gym-floor UX (one-handed, glanceable, sweat-proof).
 
-**Platform strategy:** Android-first development. iOS infrastructure is not available, so Android is the source of truth for all development, testing, and QA. The codebase remains cross-platform (Flutter) — iOS support will be validated when the infrastructure is available. No iOS-specific features or testing until then.
+**Market context:** $12B+ fitness app market, 70% abandoned within 90 days. Core differentiator: RPG gamification tightly coupled to real training data (see Phase 14-15).
 
-**Market context:** Fitness app market is $12B+ (2025) growing at 13.4% CAGR. 70% of fitness apps are abandoned within 90 days — the #1 killer is friction in the core logging loop. GymBuddy must be fast, offline-capable, and opinionated about UX to survive.
+### Progress
 
-**Design for the gym floor:** Users have sweaty hands, are between sets, glancing at their phone for 10 seconds. Every interaction must respect that context.
-
-## Implementation Progress
-
-| Step | Name | Status | PR(s) |
-|------|------|--------|-------|
+| Step/Phase | Name | Status | PR(s) |
+|------------|------|--------|-------|
 | 1 | Project Setup & CI | DONE | #1 |
 | 2 | Database Schema & Seed | DONE | #2 |
-| 3 | Auth & Onboarding | DONE | #3–#5 |
+| 3 | Auth & Onboarding | DONE | #3-#5 |
 | 3b | Auth UX Polish | DONE | #6 |
-| 4 | Exercise Library | DONE | #7–#9 |
-| 4b | Exercise Images | DONE | #10 |
-| 5 | Workout Logging (5a–5d) | DONE | #11–#15 |
-| 5e | UX Polish Sprint | DONE | #16–#18 |
+| 4 | Exercise Library + Images | DONE | #7-#10 |
+| 5 | Workout Logging (5a-5d) | DONE | #11-#15 |
+| 5e | UX Polish Sprint | DONE | #16-#18 |
 | 6 | Routines | DONE | #19 |
 | 7 | Personal Records | DONE | #20 |
 | 8 | Home Polish & PR Integration | DONE | #21 |
-| 9 | E2E Testing & CI/CD | DONE | #22–#23 |
+| 9 | E2E Testing & CI/CD | DONE | #22-#23 |
 | 9d | Final QA Pass | DONE | #24 |
-| 10 | UX Improvements & Security | DONE | #25–#26 |
-| 11 | Exercise Content, Smart Defaults & Home Simplification | DONE | #27 |
-| 11b | Regression Bug Fixes (6 bugs from PR #27) | DONE | #28 |
-| 11c | CI/QA Pipeline Optimization & E2E Coverage | DONE | #29–#30 |
-| 12 | Weekly Training Plan (Bucket Model) | TODO | — |
+| 10 | UX Improvements & Security | DONE | #25-#26 |
+| 11 | Exercise Content, Smart Defaults, Home Simplification | DONE | #27-#30 |
+| 12 | Weekly Training Plan (Bucket Model) | IN PROGRESS | #32 |
+| 13 | Production Readiness (Store Blockers) | TODO | - |
+| 14 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
+| 15 | Gamification Advanced (Quests, Stats Panel) | TODO | - |
+| 16 | Nice-to-Have (v2.0+) | BACKLOG | - |
 
-**Current state:** All implementation steps complete through Step 11c. Step 12 (Weekly Training Plan) is specced and ready for implementation. App is functional on Android with full workout logging, routines, PR tracking, exercise library, data management, exercise descriptions/form tips, smart set defaults, and enriched home screen. CI pipeline optimized with caching and parallel jobs. E2E regression tests cover all 6 post-PR-27 bugs. See "QA Status" section for open bugs and "Feature Gaps" for v1.1 backlog.
+### Section Index
 
-## Tech Stack
+Read only what you need:
 
-- **Frontend:** Flutter (Android-first, iOS later), SDK `^3.11.4`
+| Section | When to read |
+|---------|-------------|
+| Tech Stack & Architecture | Building any code |
+| Completed Steps (1-11) | Need context on what already exists |
+| Step 12: Weekly Training Plan | Implementing Step 12 |
+| Phase 13: Production Readiness | Preparing for Play Store |
+| Phase 14-15: Gamification | Implementing RPG system |
+| QA Status | Doing QA or review |
+| Verification & Testing | Writing tests |
+| UX Design Direction | Building UI |
+
+---
+
+## Tech Stack & Architecture
+
+- **Frontend:** Flutter (Android-first), SDK `^3.11.4`
 - **Backend:** Supabase (Postgres, Auth, Storage)
-- **Auth:** Supabase Auth with Google and email/password — using `AuthFlowType.pkce` (Apple sign-in deferred until iOS infrastructure is available)
-- **State Management:** Riverpod `^2.4.0` (AsyncNotifier pattern — stable, production-tested)
-- **Local Storage:** Hive (active workout cache, offline queue)
-- **UI:** Dark & bold theme with strong accent colors
-- **Code Generation:** Freezed `^2.5.0` + json_serializable via build_runner
+- **Auth:** Supabase Auth — email/password + Google, `AuthFlowType.pkce`
+- **State:** Riverpod `^2.4.0` (AsyncNotifier pattern)
+- **Local:** Hive (active workout cache, offline queue)
+- **Models:** Freezed `^2.5.0` + json_serializable
+- **Theme:** Dark & bold, Material 3
 
-## Database Schema (Supabase / Postgres)
+### Architecture Decisions
 
-### Tables
-
-- **profiles** — `id (FK auth.users)`, `username`, `display_name`, `avatar_url`, `fitness_level` (beginner/intermediate/advanced), `weight_unit` (kg/lbs, default kg), `created_at`
-- **exercises** — `id`, `name`, `muscle_group` (enum: chest, back, legs, shoulders, arms, core), `equipment_type` (enum: barbell, dumbbell, cable, machine, bodyweight, bands, kettlebell), `is_default`, `user_id` (null for defaults), `deleted_at` (soft delete), `created_at`
-- **workouts** — `id`, `user_id`, `name`, `started_at`, `finished_at`, `duration_seconds`, `is_active` (flag for crash recovery), `notes`, `created_at`
-- **workout_exercises** — `id`, `workout_id`, `exercise_id`, `order`, `rest_seconds` (target rest between sets)
-- **sets** — `id`, `workout_exercise_id`, `set_number`, `reps`, `weight` (numeric, supports decimals e.g. 22.5), `rpe` (1-10, rate of perceived exertion), `set_type` (working/warmup/dropset/failure, default working), `notes`, `is_completed`, `created_at`
-- **personal_records** — `id`, `user_id`, `exercise_id`, `record_type` (max_weight, max_reps, max_volume), `value`, `achieved_at`, `set_id`
-- **workout_templates** — `id`, `user_id`, `name`, `is_default` (for starter templates), `exercises` (jsonb array: `[{exercise_id, set_configs: [{target_reps, target_weight, rest_seconds}]}]`), `created_at`
-
-### Indexes
-
-```sql
-CREATE INDEX idx_workouts_user_finished ON workouts(user_id, finished_at DESC);
-CREATE INDEX idx_workout_exercises_workout ON workout_exercises(workout_id);
-CREATE INDEX idx_sets_workout_exercise ON sets(workout_exercise_id);
-CREATE INDEX idx_personal_records_user_exercise ON personal_records(user_id, exercise_id);
-CREATE INDEX idx_exercises_user ON exercises(user_id) WHERE deleted_at IS NULL;
-CREATE INDEX idx_workouts_active ON workouts(user_id) WHERE is_active = true;
-
--- Constraints
-CREATE UNIQUE INDEX idx_exercises_unique_name
-  ON exercises(user_id, LOWER(name), muscle_group, equipment_type)
-  WHERE deleted_at IS NULL;
-ALTER TABLE sets ADD CONSTRAINT unique_set_per_exercise
-  UNIQUE (workout_exercise_id, set_number);
-ALTER TABLE workout_templates ADD CONSTRAINT valid_exercises_json
-  CHECK (jsonb_typeof(exercises) = 'array');
-```
-
-### Row-Level Security
-- All user data scoped by `user_id = auth.uid()`
-- Default exercises (`is_default = true`) readable by all
-- Custom exercises only by creator
-- Soft-deleted exercises hidden from library but visible in historical workouts
-- Default templates (`is_default = true`) readable by all
-
-## Architecture Decisions
-
-- **Repository pattern**: All Supabase access goes through repository classes. No direct `supabase.from()` in providers or UI.
-- **Feature isolation**: Features never import other features' providers. Cross-feature communication goes through Supabase (source of truth).
-- **Provider organization**: Each feature has `providers/{notifiers/, repositories.dart}`. Repositories are singletons, Notifiers are feature-scoped.
-- **Sealed exceptions**: All Supabase errors mapped to `AppException` subtypes in the repository layer. Raw exceptions never reach UI.
-- **Offline sync strategy**: Server is source of truth for reads. Active workouts use optimistic local writes (Hive) with sync-on-save. Conflict resolution: last-write-wins with timestamp comparison.
-- **Hive boxes**: `active_workout` (current session), `offline_queue` (pending syncs), `user_prefs` (local settings).
-- **Deep-linking**: Use `AuthFlowType.pkce` (not fragment-based) to avoid Android token conflicts. Subscribe to `uriLinkStream` before `runApp()`.
-- **Weight units**: Store all weights in user's chosen unit (kg or lbs). `weight_unit` preference in profile. Convert on display if user switches. Weight input supports one decimal place (e.g., 22.5).
-- **Atomic workout save**: Use a Postgres RPC function (`save_workout`) to insert workout + exercises + sets in a single transaction. No partial data on network failure.
-- **Hive schema versioning**: Store a `schemaVersion` int alongside workout data in Hive. On version mismatch, discard stale data and log (don't crash).
-- **Route tree**: Active workout screen sits outside the shell (full-screen). Exercise detail and workout detail are sub-routes inside the shell.
+- **Repository pattern**: All Supabase access through repository classes. No `supabase.from()` in providers/UI.
+- **Feature isolation**: `lib/features/<feature>/{data,models,providers,ui}/`. No cross-feature imports.
+- **Sealed exceptions**: All errors mapped to `AppException` subtypes in repository layer.
+- **Offline strategy**: Server is source of truth. Active workouts use Hive with sync-on-save. Last-write-wins.
+- **Atomic saves**: `save_workout` Postgres RPC — single transaction, no partial data.
+- **Weight units**: Stored in user's chosen unit (kg/lbs). `weight_unit` in profile.
+- **Hive boxes**: `active_workout`, `offline_queue`, `user_prefs`. Schema versioned.
 
 ### Route Tree (GoRouter)
 
@@ -104,1166 +73,446 @@ ALTER TABLE workout_templates ADD CONSTRAINT valid_exercises_json
 /splash, /login, /onboarding, /email-confirmation  (no shell)
 /workout/active                                      (no shell, full-screen)
 ShellRoute:
-  /home
-  /home/history
-  /home/history/:workoutId
-  /exercises
-  /exercises/:id
-  /routines
-  /routines/create
-  /routines/:id/edit
+  /home, /home/history, /home/history/:workoutId
+  /exercises, /exercises/:id
+  /routines, /routines/create, /routines/:id/edit
   /records
-  /profile
-  /profile/manage-data
+  /profile, /profile/manage-data
+  /plan/week
 ```
 
-## Project Structure
+### Database Schema
+
+**Tables:** `profiles`, `exercises`, `workouts`, `workout_exercises`, `sets`, `personal_records`, `workout_templates`, `weekly_plans`
+
+Key columns and relationships — read migration files in `supabase/migrations/` for full DDL.
+
+- **profiles** — `id (FK auth.users)`, `username`, `display_name`, `avatar_url`, `fitness_level`, `weight_unit` (kg/lbs), `training_frequency_per_week` (2-6)
+- **exercises** — `id`, `name`, `muscle_group` (enum), `equipment_type` (enum), `description`, `form_tips`, `image_start_url`, `image_end_url`, `is_default`, `user_id`, `deleted_at` (soft delete)
+- **workouts** — `id`, `user_id`, `name`, `started_at`, `finished_at`, `duration_seconds`, `is_active`, `notes`
+- **workout_exercises** — `id`, `workout_id`, `exercise_id`, `order`, `rest_seconds`
+- **sets** — `id`, `workout_exercise_id`, `set_number`, `reps`, `weight`, `rpe`, `set_type` (working/warmup/dropset/failure), `is_completed`
+- **personal_records** — `id`, `user_id`, `exercise_id`, `record_type` (max_weight/max_reps/max_volume), `value`, `reps`, `achieved_at`, `set_id`
+- **workout_templates** — `id`, `user_id`, `name`, `is_default`, `exercises` (JSONB)
+- **weekly_plans** — `id`, `user_id`, `week_start` (Monday), `routines` (JSONB), `UNIQUE(user_id, week_start)`
+
+**RLS:** All user data scoped by `user_id = auth.uid()`. Default exercises/templates readable by all.
+
+### Project Structure
 
 ```
 lib/
-├── main.dart
-├── app.dart                    # MaterialApp, theme, router
-├── core/
-│   ├── theme/                  # Dark bold theme, colors, typography
-│   ├── router/                 # GoRouter configuration + auth redirect
-│   ├── data/                   # Base repository class
-│   ├── constants/              # App-wide constants
-│   ├── exceptions/             # Sealed AppException types, Supabase error mapping
-│   ├── local_storage/          # Hive service, box initialization
-│   └── utils/                  # Date formatting, weight conversions
-├── features/
-│   ├── auth/
-│   │   ├── data/               # Supabase auth repository
-│   │   ├── providers/          # Auth state providers (AsyncNotifier)
-│   │   └── ui/                 # Login, signup, onboarding screens
-│   ├── exercises/
-│   │   ├── data/               # Exercise repository
-│   │   ├── models/             # Exercise model, MuscleGroup enum, EquipmentType enum
-│   │   ├── providers/          # Exercise list/filter providers
-│   │   └── ui/                 # Exercise list, detail, create screens
-│   ├── workouts/
-│   │   ├── data/               # Workout repository, local workout cache
-│   │   ├── models/             # Workout, WorkoutExercise, ExerciseSet models
-│   │   ├── providers/          # Active workout, history, rest timer providers
-│   │   └── ui/                 # Workout logging, history, rest timer screens
-│   ├── progress/
-│   │   ├── data/               # PR repository
-│   │   ├── models/             # PersonalRecord model
-│   │   ├── providers/          # PR providers
-│   │   └── ui/                 # PR list, notification
-│   └── profile/
-│       ├── data/               # Profile repository
-│       ├── providers/          # Profile providers
-│       └── ui/                 # Profile screen
-└── shared/
-    └── widgets/                # AsyncValueBuilder, error overlay, themed buttons, form inputs
+  main.dart, app.dart
+  core/          theme/, router/, data/, constants/, exceptions/, local_storage/, utils/
+  features/
+    auth/        data/, providers/, ui/
+    exercises/   data/, models/, providers/, ui/
+    workouts/    data/, models/, providers/, ui/
+    personal_records/  data/, models/, domain/, providers/, ui/
+    routines/    data/, models/, providers/, ui/
+    profile/     data/, models/, providers/, ui/
+    weekly_plan/ data/, models/, providers/, ui/
+  shared/widgets/
 
-supabase/
-├── migrations/                 # SQL migrations (00001–00008)
-│   ├── 00001_initial_schema.sql
-│   ├── 00002–00006 (schema additions, indexes, RLS)
-│   ├── 00007_seed_default_exercises.sql
-│   └── 00008_fix_personal_records_set_id_fk.sql  # FK → ON DELETE SET NULL
-└── seed.sql                    # Default exercises + starter routines
-
-test/
-├── unit/                       # Unit tests (repositories, models, business logic)
-├── widget/                     # Widget tests (screens, components)
-├── e2e/                        # Playwright e2e test scripts
-└── fixtures/                   # Test factories (TestWorkoutFactory, etc.)
-
-Makefile                        # gen, gen-watch, analyze, format, test, ci targets
+supabase/migrations/  (00001-00011)
+test/  unit/, widget/, e2e/, fixtures/
 ```
-
-## Implementation Steps
-
-### Step 1: Project Setup, Architecture Foundation & CI (DONE)
-
-**Tech lead builds:**
-- Initialize Flutter project with `flutter create`, pin SDK `^3.11.4`
-- Add dependencies with pinned versions:
-  - Core: `supabase_flutter ^2.5.0`, `flutter_riverpod ^2.4.0`, `go_router ^13.0.0`, `freezed ^2.5.0`, `json_serializable ^6.8.0`
-  - Local storage: `hive ^2.2.0`, `hive_flutter ^1.1.0`
-  - Environment: `flutter_dotenv ^5.1.0`
-  - Utilities: `intl ^0.20.0`
-  - Dev: `build_runner ^2.4.0`, `freezed_annotation`, `json_annotation`, `mocktail ^1.0.0`
-- Environment setup:
-  - Create `.env.example` with placeholders (SUPABASE_URL, SUPABASE_ANON_KEY)
-  - Add `.env` to `.gitignore`
-  - Initialize Supabase with `AuthFlowType.pkce` in `main.dart`, subscribe to `uriLinkStream` before `runApp()`
-- Architecture scaffolding:
-  - `core/data/base_repository.dart` — base class with error mapping, all repos extend this
-  - `core/exceptions/app_exception.dart` — sealed exception hierarchy (AuthException, DatabaseException, NetworkException, ValidationException)
-  - `core/exceptions/error_mapper.dart` — PostgrestException/AuthException → AppException mapping
-  - `core/router/app_router.dart` — GoRouter skeleton with auth redirect (splash → login → home), shell route for bottom nav
-  - `core/local_storage/hive_service.dart` — box names, initialization, adapter registration
-- Shared widgets foundation:
-  - `shared/widgets/async_value_builder.dart` — standard loading/error/data pattern for all screens
-  - `shared/widgets/error_overlay.dart` — consistent error UI with retry button
-  - `shared/widgets/themed_button.dart`, `shared/widgets/form_input.dart` — reusable styled components
-- Configure dark bold theme (ThemeData, ColorScheme) in `core/theme/`
-- `Makefile` with targets: `gen`, `gen-watch`, `analyze`, `format`, `test`, `ci`
-- `analysis_options.yaml` with strict lint rules (exclude `*.g.dart`, `*.freezed.dart`)
-
-**Delegated:**
-- `qa-engineer`: Set up test directory structure, `MockSupabaseClient`, test data factories (`TestUserFactory`, `TestExerciseFactory`, `TestWorkoutFactory`), Riverpod `ProviderContainer` test overrides
-
-**CI/CD pipeline (GitHub Actions):**
-- `ci.yml`: `dart format --set-exit-if-changed .` → `dart analyze --fatal-infos` → `dart run build_runner build` → `flutter test --coverage`
-- Branch protection on `main`: require `ci` status check to pass
-
-**Tests:** Unit tests for base repository error mapping, exception hierarchy
-
-### Step 2: Database Schema, Migrations & Seed Data (DONE)
-- Create Supabase project, obtain URL + anon key, store in `.env`
-- Write initial migration: `supabase/migrations/00001_initial_schema.sql`
-  - All tables, enums, indexes as defined in schema above
-  - Enable RLS on every table
-  - Write RLS policies (user-scoped reads/writes, public read for default exercises and templates)
-- Write seed script: `supabase/seed.sql`
-  - ~60 common exercises across all muscle groups with equipment types
-  - 3-4 starter workout templates (Push/Pull/Legs, Upper/Lower, Full Body) with `is_default = true`
-- Test RLS policies: verify user A cannot read user B's data
-- Document migration workflow in README
-
-**CI evolution:** Add RLS integration test job to `ci.yml` (runs against test Supabase instance)
-
-**Tests:** Integration tests for RLS policies (user isolation, default exercise visibility)
-
-### Step 3: Authentication & Onboarding (DONE)
-- Configure Supabase Auth (enable Google provider, set PKCE redirect URLs; Apple deferred to iOS phase)
-- Build auth repository extending base repository
-- Auth state provider (AsyncNotifier watching `onAuthStateChange` stream)
-- Router redirect: unauthenticated → login, authenticated → home, loading → splash
-- Build screens:
-  - **Splash** — loading state while auth resolves
-  - **Login/Signup** — email + Google sign-in
-  - **Onboarding** (post-signup, 3 screens):
-    1. Welcome + value prop ("Track every rep, every time")
-    2. Profile setup (name, fitness level)
-    3. First workout choice (start with a starter template like "Full Body", start blank, or browse exercises)
-- Create profile on first login (database trigger)
-- Handle auth edge cases: token refresh, expired sessions, revoked social login
-
-### Step 3b: Auth UX Polish & Email Templates (DONE)
-- **Post-signup feedback**: After email signup, show a confirmation screen/state informing the user that a verification email was sent, with instructions to check their inbox and a resend option
-- **Email confirmation flow**: Detect when user returns after confirming email and transition them seamlessly into onboarding
-- **Auth error feedback**: Clear, user-friendly error messages for all auth failures (wrong password, account exists, network error, etc.)
-- **Loading states**: Proper loading indicators during all auth operations (signup, login, Google OAuth)
-- **Custom Supabase email templates**: Replace default Supabase auth emails (confirmation, password reset, magic link) with GymBuddy-branded templates matching the app's identity
-- **General auth UX audit**: ui-ux-critic reviews the entire auth flow end-to-end for usability issues (gym-floor context, one-handed use, glanceability)
-
-**Tests:**
-- Widget: post-signup confirmation screen, email resend, error states
-
-**E2E smoke test:** Playwright test for signup → onboarding → land on home → logout → login
-
-**Tests (Step 3):**
-- Unit: auth repository (signup, login, logout, token refresh, error mapping)
-- Widget: login screen (form validation, button states), onboarding flow (screen transitions)
-
-### Step 4: Exercise Library (DONE)
-
-**Database migration** (new migration file):
-- Add `idx_exercises_unique_name` unique index on `(user_id, LOWER(name), muscle_group, equipment_type) WHERE deleted_at IS NULL`
-- Add `idx_workouts_active` partial index on `workouts(user_id) WHERE is_active = true`
-- Add `set_type` column to `sets` table (default 'working')
-- Add `weight_unit` column to `profiles` table (default 'kg')
-- Add `unique_set_per_exercise` constraint on `sets(workout_exercise_id, set_number)`
-- Add `valid_exercises_json` CHECK constraint on `workout_templates`
-
-**Exercise model & repository:**
-- Exercise model with Freezed (includes MuscleGroup enum, EquipmentType enum)
-- Exercise repository extending base repository (CRUD + filter by muscle group + filter by equipment)
-- Validate exercise name uniqueness (case-insensitive) before insert
-- Exercise detail view shows usage history; PR section renders conditionally (placeholder until Step 7 wires PR provider)
-
-**Exercise list screen:**
-- Muscle group category buttons as primary nav (large touch targets, icon + label, min 64dp tall)
-- Search as secondary fallback (avoid relying on keyboard input during workouts)
-- Equipment type filter
-- Recent exercises surfaced first
-- Empty states with clear CTAs: "No exercises match your filters" with "Clear filters" action
-- Custom exercises empty state: "Your exercises will appear here" with "Create Exercise" button
-- Filter combination zero-results handling
-
-**Exercise picker (shared contract for Step 5):**
-- Extract exercise search/filter logic into repository layer (shared via provider)
-- Step 4 builds the full exercise list screen
-- Step 5 will build an `ExercisePickerSheet` (bottom sheet) calling the same repository methods
-- Repository must support: `searchExercises(query, muscleGroup?, equipmentType?)` and `recentExercises(userId, limit)`
-
-**Add custom exercise screen:**
-- Name, muscle group, equipment type inputs
-- Validation: no duplicate names (case-insensitive per user)
-
-**Soft delete:**
-- Hide from library and search, preserve in historical workouts
-- Warn if template references a soft-deleted exercise
-- Search must NOT return soft-deleted exercises (even by exact name)
-
-**Tests:**
-- Unit: exercise repository (CRUD, filters, soft delete behavior, duplicate name prevention), model serialization
-- Widget: exercise list (filter chips, search, empty state, zero-results state), create exercise form (validation, duplicate name error)
-
-#### Step 4b: Exercise Demonstration Images (DONE)
-
-**Source:** [Free Exercise DB (yuhonas)](https://github.com/yuhonas/free-exercise-db) — Unlicense (public domain), 800+ exercises, static JPGs (start + end position per exercise). $0 cost.
-
-**Data model:**
-- Migration `00003_exercise_images.sql`: Added `image_start_url TEXT` and `image_end_url TEXT` columns to `exercises`
-- Migration `00004_seed_exercise_images.sql`: Seed URLs for 30 default exercises pointing to GitHub-hosted images
-- Supabase Storage bucket `exercise-media` (public read, service-role write) with UPDATE/DELETE RLS policies
-
-**UX decisions:**
-- Exercise list: NO thumbnails (keeps card density, users recognize exercises by name)
-- Exercise detail: Start/end images side-by-side in 160dp row, tap for fullscreen overlay with close button
-- Exercise picker (Step 5): NO thumbnails (speed-critical search-and-tap flow)
-- Error/missing images: collapse section entirely (no broken placeholders)
-
-**Implementation:**
-- `lib/shared/widgets/exercise_image.dart` — Shared `ExerciseImage` widget wrapping `cached_network_image`, with loading indicator, fallback icon, error collapse, and `devicePixelRatio`-aware `memCacheWidth`
-- Exercise detail screen: `_ExerciseImageRow` + `_TappableImage` with fullscreen dialog (AppBar close button + tap-to-dismiss)
-- No images bundled in APK — cached on first load, 30-day disk cache
-
-**Future upgrade path:** Replace static JPGs with animated demos from Exercise Animatic ($499) or WorkoutLabs API if budget allows.
-
-**Tests:** 31 tests covering ExerciseImage widget (null/empty/provided URL, fallback sizing, borderRadius), detail screen (image row, single image, collapse, semantics, fullscreen open/close, loading, error states), and model serialization with image fields.
-
-### Step 5: Workout Logging (DONE)
-> Shipped across 4 PRs (#12–#15) in sub-steps 5a–5d.
-
-Shipped across 4 PRs (#12–#15) in sub-steps 5a–5d.
-
-**Architecture:**
-- Single `ActiveWorkoutNotifier` (AsyncNotifier<ActiveWorkoutState?>) as core state machine
-- Hive persistence via `jsonEncode(state.toJson())` with schemaVersion, fire-and-forget saves
-- Atomic save via `save_workout` Postgres RPC (SECURITY DEFINER, single transaction)
-- `ref.read(authRepositoryProvider).currentUser` for testable auth access (not Supabase singleton)
-
-**Sub-steps delivered:**
-
-**5a — Data layer (PR #11):** Freezed models (Workout, WorkoutExercise, ExerciseSet, ActiveWorkoutState), SetType/WeightUnit enums, WorkoutRepository (saveWorkout, getActiveWorkout, getWorkoutHistory, getWorkoutDetail, getLastWorkoutSets, discardWorkout), WorkoutLocalStorage (Hive), save_workout RPC migration, test factories.
-
-**5b — Active workout screen (PR #12):** ActiveWorkoutNotifier with full lifecycle (start, add/remove exercise, add/update/complete/delete set, resume, discard). WeightStepper/RepsStepper with long-press repeat and 48dp targets. ExercisePickerSheet (DraggableScrollableSheet). Active workout screen with Stack+ModalBarrier loading overlay. Resume/discard dialogs. ElapsedTimer provider. LastWorkoutSets provider (String key with sort+join for stable caching).
-
-**5c — Rest timer & polish (PR #13):** RestTimerNotifier (plain class state, not Freezed) with start/skip/stop. Full-screen overlay with 72sp countdown, circular progress, haptic on complete. Side effects via `ref.listenManual` in initState. Copy last set, fill remaining sets, reorder exercises (up/down buttons), swap exercise. Set type cycling (long-press), RPE popup picker. Swipe-to-delete with undo snackbar. Haptic feedback throughout.
-
-**UX fix (PR #14):** Consolidated set number + type badge into 48dp touch target. RPE expanded to 48dp. Visible swap_horiz icon on exercise cards.
-
-**5d — Finish flow & history (PR #15):** FinishWorkoutDialog with incomplete sets warning and notes. WorkoutHistoryNotifier with pagination (loadMore with race condition guard, refresh via invalidateSelf). Workout history screen with pull-to-refresh and infinite scroll. Workout detail screen (read-only, CustomScrollView). HomeScreen with "Start Workout" button. Active workout banner in bottom nav (56dp, elapsed timer). WorkoutFormatters utility.
-
-**Tests (328 total):** 51 unit tests (active workout notifier, rest timer, formatters), 45 widget tests (set row, steppers, rest timer overlay, finish dialog). Covers state transitions, edge cases, accessibility semantics.
-
-**Deferred:** Offline queue sync worker (Hive queue exists but no background sync), wakelock during rest timer, auth expiry handling during workout, auto-focus next set after timer.
-
-### Step 5e: UX Polish Sprint (Pre-Template Hardening) (DONE)
-
-Added after a joint Product Owner + UI/UX Critic audit of the current app (2026-04-02). The core logging loop and onboarding flow have friction points that must be resolved before Step 6 (Templates) ships — templates amplify any existing UX problems since they become the primary onboarding payoff.
-
-**Audit context:** 12 taps from signup to first logged set (Strong: ~6). Set row numbers at 16sp instead of the 48-64sp hero content specified in UX Design Direction. Set row overflows on 360dp phones. Onboarding page 3 promises features that don't exist. Profile tab is a dead-end placeholder.
-
-#### Critical Fixes (block user testing)
-
-**C1. Remove Start Workout name dialog:**
-- `home_screen.dart` — eliminate `_showStartDialog()` AlertDialog with keyboard
-- Auto-name workouts: "Workout — Mon Apr 2" using date format
-- Allow inline rename via tappable AppBar title in active workout screen (tap → `TextField` overlay, not a dialog)
-- Reduces tap count by 2 and removes a keyboard interaction from the highest-frequency flow
-
-**C2. Redesign set row for glanceability:**
-- `set_row.dart`, `weight_stepper.dart`, `reps_stepper.dart` — weight/reps numbers must be hero content
-- Increase number display to 28-32sp minimum (full 48-64sp won't fit in a row; use the larger sizes for focused input overlays)
-- Add subtle green glow shadow (`Shadow(color: primary.withOpacity(0.3), blurRadius: 8)`) per UX Design Direction
-- Remove RPE column from default set row (hide behind a per-exercise toggle or settings flag) — reclaims ~48dp horizontal space, reduces beginner confusion
-- Target layout at 360dp: set badge (40dp) + weight (expanded) + reps (expanded) + checkbox (48dp) = fits comfortably
-- Add tap-to-type on weight/reps numbers: tap the number → compact numpad overlay (not full keyboard). Eliminates the "15 taps to reach 37.5kg" problem
-
-**C3. Trim onboarding to 2 screens:**
-- `onboarding_screen.dart` — remove page 3 (`_WorkoutChoicePage`) entirely until Step 6 ships templates
-- Page 3 currently offers "Full Body Starter" / "Start Blank" / "Browse Exercises" — all three route identically to `/home`, breaking user trust
-- Keep page 1 (welcome) and page 2 (profile setup: name + fitness level)
-- Re-add page 3 when Step 6 provides real template data to back the choices
-
-**C4. Wire onboarding data to Supabase:**
-- `onboarding_screen.dart` line 43 has `// TODO: Save profile data to Supabase`
-- On page 2 completion: upsert `profiles` row with `display_name` and `fitness_level`
-- This data is currently collected and silently discarded on every signup
-
-**C5. Build minimal Profile screen:**
-- Replace `_TabPlaceholder` in `app_router.dart` with a real screen
-- Display: user's name (from profile), email, fitness level
-- Actions: weight unit toggle (kg/lbs), logout button
-- No avatar, no editing, no settings page — just the essentials so users can log out and see their identity
-
-**C6. Move Finish button to thumb zone:**
-- `active_workout_screen.dart` — move "Finish" from AppBar `actions` (top-right) to a persistent bottom bar or bottom-anchored FAB
-- Top-right corner requires precision tap on tall phones, violates PLAN.md thumb-zone rules
-- Keep discard/close as AppBar leading icon (destructive = harder to reach = correct)
-
-#### Important Fixes (degrades core experience)
-
-**I1. Show previous session data in set rows:**
-- `getLastWorkoutSets` already exists in the data layer and is wired to `lastWorkoutSetsProvider`
-- Display "Last: 80kg × 5" as ghost/hint text below or beside each set row when data exists
-- Pre-fill new set weight/reps from last session values instead of 0/0
-- This is the #1 reason people use workout logging apps — not having to remember their numbers
-
-**I2. Add "Create Exercise" to exercise picker:**
-- `exercise_picker_sheet.dart` — when search returns no results, show "Create [search query]" button
-- Tapping opens the create exercise flow inline (bottom sheet or pushed screen), then auto-selects the new exercise
-- Currently users must leave the active workout entirely to create an exercise
-
-**I3. Make "Add Set" button more prominent:**
-- `active_workout_screen.dart` `_ExerciseCard` — replace `TextButton.icon` with full-width 48dp outlined or filled-tonal button
-- This is the most-used action during a workout (20-50 taps per session) and currently has less visual weight than the exercise name
-
-**I4. Add rest timer adjustment:**
-- `rest_timer_overlay.dart` — add −30s / +30s buttons flanking the countdown
-- Large touch targets (56dp+), positioned in thumb zone (bottom third of overlay)
-- Currently hardcoded to 90 seconds with no way to adjust mid-rest
-
-**I5. Increase active workout banner visibility:**
-- `app_router.dart` `_ActiveWorkoutBanner` — change from 15% opacity green to full primary color background
-- Add subtle pulsing animation (border or glow) per PLAN.md Step 8 spec
-- Currently nearly invisible against the dark nav bar
-
-**I6. Add exercise summary to history cards:**
-- `workout_history_screen.dart` `_WorkoutHistoryCard` — add a single line showing top 3 exercise names (e.g., "Bench Press, Squat, Deadlift +2")
-- Users currently can't distinguish workouts without tapping into each one
-
-#### Nice-to-Have (polish, can ship after Step 6)
-
-- Load condensed font (Barlow Condensed) for numeric displays throughout the app
-- Set type badge: increase from 9sp to 11sp, add first-use tooltip for discoverability
-- Add haptic feedback (`HapticFeedback.selectionClick()`) on weight/reps stepper taps and Add Set
-- Replace `Icons.g_mobiledata` with proper Google logo asset on login screen
-- Add swipe hint animation on first set row (one-time) for swipe-to-delete discoverability
-- Exercise detail AppBar: show exercise name instead of generic "Exercise Details"
-- Add `AutomaticKeepAliveClientMixin` to tab screens to preserve scroll position on tab switch
-- Bottom nav: switch to filled icon variants (`Icons.home_filled`, etc.) per UX Design Direction
-- NavigationBar: set explicit `backgroundColor` and `indicatorColor` matching theme
-- `FinishWorkoutDialog`: don't auto-focus notes `TextField` (avoid keyboard popup at completion moment)
-- `GradientButton` usage: apply gradient to all primary action buttons (currently only on CreateExerciseScreen)
-- Discard workout dialog: make safe action (`Cancel`) a `FilledButton`, destructive (`Discard`) stays `TextButton`
-
-**Tests:**
-- Widget: set row redesign (number sizing, tap-to-type, no RPE by default), home screen (no name dialog, auto-naming), onboarding (2 pages only), profile screen (logout, weight unit), finish button position, rest timer +/-30s buttons
-- Unit: workout auto-naming logic, profile upsert
-
-**Sequencing rationale:** This sprint hardens the foundation before Step 6 adds templates. Templates become the first onboarding payoff (page 3 "Full Body Starter") and the primary "start workout" path. If the core logging loop has friction (tiny numbers, overflow, no previous data), templates amplify it by making that friction the first experience for every new user.
-
-### Step 6: Routines (DONE)
-
-Refined after joint Product Owner + UI/UX Critic + Tech Lead review (2026-04-03). Renamed from "Workout Templates" to **"Routines"** — the term gym-goers already use ("What's your routine?"). "Templates" is developer jargon; "Training Sessions" describes completed events, not reusable structures. Strong, Hevy, and JEFIT all use "Routines" — the market vocabulary is settled.
-
-#### Navigation Change
-
-**Replace History tab with Routines in bottom nav.** History does not need prime real estate — users check it occasionally, not before every session. Routines are needed before every session.
-
-New bottom nav: **Home | Exercises | Routines | Profile**
-
-History moves inside the Home screen as a "Recent Workouts" section with a "View All" link that navigates to the full history screen. The History screen and Workout Detail screen are unchanged — they just get navigated to from Home instead of from the bottom nav.
-
-**Files:** `lib/core/router/app_router.dart` — swap `/history` at index 2 for `/routines`, nest `/history` and `/history/:id` as sub-routes under `/home`.
-
-#### Home Screen Rebuild
-
-The home screen becomes a routine launchpad. Current state (greeting + single button) is replaced with:
-
-**For users with routines:**
-```
-[GymBuddy]                              [today's date]
-
-MY ROUTINES
-[ Push A          chest · shoulders · triceps    ]  72dp card
-[ Pull A          back · biceps                  ]  72dp card
-[ Legs A          quads · hamstrings · calves    ]  72dp card
-
-RECENT
-[ Push A · 3 days ago · 52 min · 18,200kg       ]  compact row
-[ Pull A · 5 days ago · 48 min · 14,800kg       ]  compact row
-
-                              [ Start Empty Workout ]  secondary button
-```
-
-Each routine card is a full-width tap target (72dp min height). Tap → workout starts immediately (no preview screen). Muscle groups shown as subtitle from the routine's exercises. "Start Empty Workout" is secondary, positioned below.
-
-**For new users (no routines):**
-```
-[GymBuddy]
-
-STARTER ROUTINES
-[ Push Day        chest · shoulders · triceps    ]  72dp card
-[ Pull Day        back · biceps                  ]  72dp card
-[ Leg Day         quads · hamstrings · calves    ]  72dp card
-[ Full Body       full body                      ]  72dp card
-
-[ + Create Your First Routine                    ]  primary green card
-
-                              [ Start Empty Workout ]  secondary
-```
-
-Starter routines (already seeded in `supabase/seed.sql` with `is_default = true`) are shown immediately. No blank empty state — new users always see actionable content.
-
-**Providers needed:**
-- Reuse `workoutHistoryProvider` for "Recent Workouts" section (`.take(3)` from existing paginated data)
-- New `routineListProvider` from the routines feature
-
-#### Routines Feature Module
-
-New feature at `lib/features/routines/`:
-
-```
-lib/features/routines/
-  data/
-    routine_repository.dart         # CRUD against workout_templates table
-  models/
-    routine.dart                    # Freezed: Routine, RoutineExercise, RoutineSetConfig
-  providers/
-    routine_providers.dart          # routineRepositoryProvider, routineListProvider
-    notifiers/
-      routine_list_notifier.dart    # AsyncNotifier for routine list
-  ui/
-    routine_list_screen.dart        # Routines tab screen (My Routines + Starters)
-    create_routine_screen.dart      # Create/edit routine
-    widgets/
-      routine_card.dart             # Reusable routine card (72dp, full-width tap)
-```
-
-**Models:**
-
-```dart
-@freezed class Routine {
-  id, userId?, name, isDefault, exercises (List<RoutineExercise>), createdAt
-}
-
-@freezed class RoutineExercise {
-  exerciseId, setConfigs (List<RoutineSetConfig>), exercise? (resolved at query time)
-}
-
-@freezed class RoutineSetConfig {
-  targetReps, targetWeight? (always null — weights come from lastWorkoutSetsProvider), restSeconds?
-}
-```
-
-**Design decision:** Routines do NOT store target weights. Weights are always sourced from the user's last session for that exercise via `lastWorkoutSetsProvider`. The routine only defines structure: exercise order, number of sets, target reps, rest seconds. The `target_weight` field exists in the JSONB schema but is always null — leave the schema as-is for future flexibility.
-
-**Repository:** Standard `BaseRepository` + `mapException` pattern. Two-query approach for exercise name resolution: (1) fetch routines, (2) batch-fetch exercise details by IDs extracted from JSONB. Methods: `getRoutines(userId)`, `getRoutine(id)`, `createRoutine(...)`, `updateRoutine(...)`, `deleteRoutine(id, userId)`.
-
-#### Start-from-Routine Flow
-
-**Tap count goal: 2 taps from app open to first set logged.** Open app (0) → tap routine card (1) → workout pre-filled → tap set checkmark (2).
-
-When user taps a routine card:
-1. Routines UI constructs a `RoutineStartConfig` DTO (defined in `lib/features/workouts/models/`) containing: routine name, list of `({String exerciseId, Exercise exercise, int setCount, int? targetReps, int? restSeconds})`
-2. Calls `ref.read(activeWorkoutProvider.notifier).startFromRoutine(config)`
-3. `startFromRoutine` method on `ActiveWorkoutNotifier`:
-   - Creates active workout shell via `_repo.createActiveWorkout(userId, config.name)`
-   - Fetches last-workout weights via `_repo.getLastWorkoutSets(exerciseIds)`
-   - Pre-creates `ActiveWorkoutExercise` entries with sets pre-filled (set count from routine, weight/reps from last session, rest seconds from routine)
-   - Persists to Hive, navigates to `/workout/active`
-
-**Cross-feature architecture:** `RoutineStartConfig` lives in `lib/features/workouts/models/` so the workouts feature owns its input contract. The routines feature imports only the workout provider and DTO — no internal workout implementation details. This preserves feature isolation per the architecture rules.
-
-#### Routine Creation Flow (MVP)
-
-**Create from scratch** — the only MVP creation path:
-
-1. User taps "+ Create Routine" (on Home or Routines tab)
-2. **Create Routine screen:** Name field (auto-suggest from muscle groups, e.g., "Push Day") + exercise list builder
-3. Exercise list builder reuses `ExercisePickerSheet` (same bottom sheet from active workout). User adds exercises, reorders them.
-4. Per exercise: set count stepper (default 3, range 1-10). No weight fields — weights are per-session.
-5. Optional: rest seconds per exercise (default 90s)
-6. Save → routine appears in list
-
-**The creation screen is a simplified version of the active workout screen** — exercise cards with set count steppers instead of full set rows. No timer, no completion checkboxes. The user is defining structure, not logging.
-
-#### Routine List Screen (Routines Tab)
-
-Two sections:
-- **My Routines** — user-created routines, ordered by most recently used (or created_at)
-- **Starter Routines** — seeded defaults with `is_default = true`
-
-Routine cards: 72dp height, full-width tap to start workout. Show routine name + muscle group summary + exercise count. Long-press for edit/delete menu (no swipe-to-delete — too dangerous on gym floor with sweaty hands).
-
-**Zero-state for My Routines:** "Your routines appear here. Start from a Starter Routine or create your own." with arrow toward starter section.
-
-#### Deleted Exercise Handling (Simplified for MVP)
-
-When a routine is loaded and an exercise has been soft-deleted:
-- Show a banner at the top of the active workout screen: "1 exercise is no longer available"
-- The deleted exercise is omitted from the pre-filled workout
-- User can add a substitute manually via the exercise picker
-
-**Deferred to v1.1:** Exercise substitution suggestions (same muscle group + equipment type).
-
-#### Deferred to v1.1
-
-- "Save as Routine" from workout history detail screen (one-tap creation from past workouts)
-- "Last performed X days ago" on routine cards
-- "Edit for today" mode (modify routine exercises for one session without mutating the saved routine)
-- Exercise substitution suggestions for deleted exercises
-- Routine folders/organization
-- `updated_at` column on `workout_templates` table
-
-**Tests:**
-- Unit: Routine model serialization (JSONB parsing), RoutineRepository CRUD, RoutineStartConfig construction, `startFromRoutine` on ActiveWorkoutNotifier (pre-fills correct exercises/sets/weights)
-- Widget: Routine list screen (my routines + starters, empty state, long-press menu), Create routine screen (add exercises, set count stepper, name field, save), Home screen (routine cards, recent workouts, quick start), Start-from-routine flow (tap card → active workout pre-filled)
-- Navigation: Routines tab in bottom nav, History accessible from Home
-
-### Step 7: Personal Records (DONE)
-
-**PR detection logic:**
-- Wired into `finishWorkout()` from Step 5. Compare each exercise's working sets against existing PRs.
-- Batch-fetch existing PRs: single query with `exercise_id = ANY($ids)` (not one per exercise)
-- Only count sets with `set_type = 'working'` — warmup/dropset/failure sets excluded
-- PRs only detected on finished workouts (discarded workouts don't count)
-- PRs must be strictly greater than previous value (ties are NOT new PRs)
-
-**Record types:**
-- Max weight (heaviest single set)
-- Max reps (most reps at any weight)
-- Max volume (weight x reps for a single set)
-
-**Bodyweight exercise PR logic:**
-- If `equipment_type == bodyweight` AND `weight == 0`: track only `max_reps`
-- If bodyweight exercise has added weight (e.g., weighted pull-ups): track all three PR types
-- PR detail screen should NOT show empty "Max Weight" cards for bodyweight exercises
-
-**First workout handling:**
-- Don't fire individual celebrations for every set. Show one consolidated message: "First workout logged! These are your starting benchmarks."
-
-**Multiple PRs in one workout:**
-- Batch celebrations: one summary screen at workout completion listing all PRs broken
-
-**PR celebration (NOT confetti):**
-- Brief screen flash (green overlay at 30% opacity, 200ms)
-- Number scales up with spring animation
-- Bold banner: "NEW PR" with improvement delta ("+5kg")
-- Heavy haptic feedback
-- Feel like a scoreboard update, not a birthday party
-
-**PR list screen:**
-- All-time records per exercise
-- Empty state: "Complete a workout to start tracking records" with CTA
-
-**Wire into exercise detail (Step 4):** Connect PR provider to exercise detail screen's conditional PR section
-
-**Deferred to v1.1:** PR badges/indicators on workout history and exercise detail screens
-
-**E2E smoke test:** Playwright test for log workout → log heavier workout → verify PR appears in list
-
-**Tests:**
-- Unit: PR detection (max weight, max reps, volume), edge cases (0 weight bodyweight, 0 reps skip, first workout consolidated, 999kg, PR ties not counted, warmup sets excluded), idempotent creation, batch query
-- Widget: PR celebration (flash, banner, haptic), PR list (empty state, bodyweight display), first workout message, multi-PR summary
-
-### Step 8: Home Screen Polish & PR Integration (DONE)
-
-> **Note:** The home screen rebuild, bottom navigation change (Home | Exercises | Routines | Profile), and profile screen were completed in Steps 5e and 6. This step focuses on polish and PR integration that depends on Step 7.
-
-**Resume unfinished workout banner:** MOST prominent element when present — full-width, pulsing border, above routine cards. Tapping resumes from Hive cache.
-
-**Recent PRs section on home screen:** Below "Recent Workouts", show latest PRs (depends on Step 7 PR detection). "View All" links to PR list screen.
-
-**Workout history detail screen:** Full workout detail (exercises, sets, weights, duration, total volume). Extends basic history from Step 5. Show PR badges on sets that were records at time of workout.
-
-**Edge cases:**
-- Empty workouts (started and immediately finished) filtered out or shown muted in recent list
-- Resume banner disappears when workout is finished or discarded from another device
-
-**Deferred to v1.1:** Muscle group coverage insight ("You haven't trained back in 8 days")
-
-**Tests:**
-- Widget: resume banner (prominence, tap to resume, disappears after finish), recent PRs section (empty state, PR cards, view all link), workout history detail (full data, PR badges)
-
-### Step 9: E2E Testing, Release Pipeline & Final QA (DONE)
-
-**Decomposed into 4 sub-steps:**
-
-#### Step 9a: Playwright Infrastructure + Smoke Tests
-- Playwright config, helpers, fixtures, global setup/teardown
-- 3 smoke spec files: auth, workout, PR detection
-- `package.json` with scripts, local dev instructions
-- Validates against local Supabase stack (Docker)
-
-#### Step 9b: Full E2E Test Suite
-- 7 full spec files covering all features + edge cases
-- Extra risk area tests (network failure, double-tap, crash recovery)
-- All tests parallel-safe with unique users
-
-#### Step 9c: CI/CD Pipelines
-- `e2e.yml` — Flutter web build → Playwright (smoke on PRs, full on merge)
-- `release.yml` — `v*` tag → split APKs → GitHub Release
-
-#### Step 9d: Final QA Pass (DONE)
-- Manual testing on physical devices
-- Manual QA checklist verification
-
-### Step 10: UX Improvements — Exercise Detail, Stat Cards, Data Management (DONE)
-
-Shipped in PRs #25 and #26. Three UX improvements informed by PO and UI/UX review.
-
-**10a — Exercise Detail Bottom Sheet in Active Workout (PR #25):**
-- Removed 40x40 `ExerciseImage` thumbnail from exercise cards (wastes space mid-workout)
-- Exercise name tappable → `showModalBottomSheet(isScrollControlled: true)` with `DraggableScrollableSheet(initialChildSize: 0.85)`
-- 14dp `Icons.info_outline` at 35% opacity as tap affordance, 6dp gap from name
-- Bottom sheet shows: exercise name, muscle group chip, equipment chip, start/end images, PRs
-- Uses modal sheet (not GoRouter push) to preserve active workout state
-- Existing `onLongPress` swap preserved
-
-**10b — Stat Cards on Home Screen (PR #25):**
-- `_StatCardsRow` + `_StatCard` widgets: two 72dp tappable cards below header
-- Workouts count → `/home/history`, Records count → `/records`
-- Numbers: `headlineMedium` (24sp w700) primary green, labels: `bodySmall` at 55% opacity
-- `workoutCountProvider` and `prCountProvider` (server-side `COUNT(*)`, not paginated list length)
-- Loading state shows `--`, zero state shows `0`
-- Semantics labels for accessibility
-
-**10c — Manage Data in Profile (PR #25):**
-- "Manage Data" row on Profile screen → `/profile/manage-data` route
-- `ManageDataScreen` with two sections and escalating confirmation severity:
-  - **Delete Workout History**: two-step dialog confirmation, deletes finished workouts only, PRs/routines/exercises survive
-  - **Reset All Account Data**: full-screen type-to-confirm modal ("RESET", case-insensitive), deletes workouts + PRs, routines + custom exercises survive
-- Sequential delete order: PRs first, then workouts (FK-safe)
-- Error handling: `AppException.userMessage` in snackbars (never raw DB errors)
-- Heavy haptic on final confirmations, destructive gradient button
-
-**10d — Security: Error Message Sanitization (PR #26):**
-- Added `userMessage` getter to all `AppException` subtypes (safe, user-facing text)
-- `ErrorMapper` now `debugPrint`s raw Postgres errors, returns generic safe messages to UI
-- `AsyncValueBuilder.safeErrorMessage()` checks for `AppException` and uses `userMessage`
-- E2E regression tests with `assertNoTableNamesVisible()` scanning all visible text
-
-**Database migration:**
-- `00008_fix_personal_records_set_id_fk.sql`: Changed `personal_records.set_id` FK from `ON DELETE RESTRICT` to `ON DELETE SET NULL` — enables cascade-deleting workout sets without FK violation
-
-**Files created:**
-- `lib/features/profile/ui/manage_data_screen.dart` — ManageDataScreen with `_DataManagementTile`, `_ResetAllDialog`
-- `lib/features/profile/providers/manage_data_providers.dart` — `clearWorkoutHistory()`, `resetAllAccountData()`
-- `supabase/migrations/00008_fix_personal_records_set_id_fk.sql`
-
-**Tests (61 new):**
-- Widget: stat cards (6), exercise detail sheet (8), manage data screen (15), profile manage data row
-- Unit: `clearHistory` repo (4), `clearAllRecords` repo (4), `AppException.userMessage` (4), `ErrorMapper` sanitization (6)
-- E2E: `manage-data.spec.ts` (11), `home-navigation.spec.ts` (4), `workout-logging.spec.ts` (3)
-
-### Step 11: Exercise Content, Smart Defaults & Home Simplification (DONE)
-
-> Shipped in PR #27. Three UX improvements informed by PO and UI/UX review, documented in `IMPROVEMENTS.md`.
-
-**11a — Exercise Descriptions & Form Tips (PR #27):**
-- Database migration `00009_exercise_descriptions.sql`: added `description TEXT` and `form_tips TEXT` columns to `exercises`
-- Seed update for all ~60 default exercises with descriptions and newline-separated form tips
-- Exercise detail screen: "ABOUT" section (description) and "FORM TIPS" section (bulleted list, split on `\n`)
-- Active workout bottom sheet: shows description/form tips when available
-- Create exercise screen: optional description and form tips fields (`maxLength: 300/500`)
-- Sections collapse entirely when data is null/empty
-
-**11b — Smart Set Defaults (PR #27):**
-- 4-priority fallback chain for "Add Set" pre-fill: (1) previous session matching position → (2) last set in current session → (3) equipment-type defaults → (4) 0/0
-- `defaultSetValues(EquipmentType, WeightUnit)` pure function: barbell=20kg/45lbs, dumbbell=10kg/20lbs, cable/machine=20kg/45lbs, bodyweight/bands=0, kettlebell=16kg/35lbs
-- Warmup→working transition guard: skips within-session copy across set types
-- 600ms checkbox interaction lock on new set rows (prevents accidental confirmation)
-- Hint line suppressed when pre-filled values match last session exactly
-- 71% action reduction for first-time exercises (14→4 actions for 3 straight sets)
-
-**11c — Home Screen Simplification (PR #27):**
-- Removed RECENT and RECENT RECORDS sections from home screen
-- Enriched stat cards with subtitle: workouts card shows relative date of last workout, records card shows most recent PR exercise name
-- Subtitle: 11sp, `primary.withValues(alpha: 0.7)`, ellipsis overflow
-- Freed vertical space focuses home screen as a routine launchpad
-- Zero new queries — subtitles derived from existing providers
-
-**Tests (PR #27):** Widget tests for form tips rendering, smart defaults priority chain, stat card subtitles. Unit tests for `defaultSetValues`, form tips parsing, equipment-type fallbacks.
-
-### Step 11b: Regression Bug Fixes (DONE)
-
-> Shipped in PR #28. Six regression bugs introduced by PR #27 (Step 11), discovered via systematic regression analysis.
-
-| Bug | Severity | Root Cause | Fix |
-|-----|----------|-----------|-----|
-| BUG-001 | P0 | `WorkoutExercise.exercise` had `@JsonKey(includeToJson: false)` — exercise object dropped from Hive serialization, restored as null, UI showed "Exercise" fallback | Removed `includeToJson: false` from `exercise` field in `WorkoutExercise` model |
-| BUG-002 | P1 | Exercise detail bottom sheet and detail screen didn't render `formTips` field despite migration adding it | Added "FORM TIPS" section to both exercise detail screen and active workout bottom sheet |
-| BUG-003 | P1 | `startFromRoutine` didn't handle unresolved exercises — silently started empty workout | Added `SnackBar` error feedback when exercises fail to resolve, prevented empty workout start |
-| BUG-004 | P2 | `startFromRoutine` used `weight: prev?.weight ?? 0` — first-time exercises got 0kg instead of equipment defaults | Changed fallback to `defaultSetValues(equipmentType, weightUnit)` when no previous session exists |
-| BUG-005 | P2 | `RoutineCard._buildSubtitle()` fell back to "N exercises" when exercise references were null | Fixed exercise resolution in `_resolveExercises` to populate muscle group names in subtitle |
-| BUG-006 | P2 | Home screen simplification removed sections but left provider references causing build errors | Cleaned up removed provider references, kept `recentPRsProvider` for card subtitle |
-
-**Tests (PR #28):**
-- 16 unit tests: `WorkoutExercise` JSON round-trip with real `Exercise` object, `ExerciseSet` nullable fields, `ActiveWorkoutState` serialization, Hive persistence
-- 10 unit tests: `RoutineRepository` mocked-Supabase tests (first-ever for this class) — exercise resolution, partial resolution, empty map handling, error wrapping, JSONB parsing
-- 4 widget tests: snackbar error feedback when exercises fail to resolve on routine start
-
-### Step 11c: CI/QA Pipeline Optimization & E2E Regression Coverage (DONE)
-
-> Shipped in PRs #29 (pipeline) and #30 (E2E selector fixes).
-
-**CI Pipeline Optimization (PR #29):**
-- Split `ci.yml` from single job into 3 parallel jobs: `analyze` → `test` + `build` (run after analyze passes)
-- Added caching: Flutter SDK, pub packages, Playwright browsers, npm dependencies, Flutter web build output
-- `e2e.yml`: shallow clone (`fetch-depth: 1`), Supabase CLI `version: latest` (pinned 2.22.6 broke on newer `config.toml` keys), release build with `--no-tree-shake-icons --no-web-resources-cdn`
-- Removed `--web-renderer` flag (removed in Flutter 3.41.6)
-- Playwright: `workers: 2`, per-project timeouts (`actionTimeout: 15_000`, `navigationTimeout: 30_000` for smoke), line reporter for CI
-
-**E2E Regression Tests (PR #30):**
-- 8 new E2E spec files covering all 6 regression bugs via user-behavior simulation:
-  - `smoke/routine-start.smoke.spec.ts` — BUG-001 (Hive restore name), BUG-003 (routine start positive path), BUG-004 (non-zero weight pre-fill), BUG-005 (muscle group subtitle)
-  - `smoke/workout-restore.smoke.spec.ts` — BUG-001 (manual workout restore, single + multi-exercise)
-  - `smoke/exercise-form-tips.smoke.spec.ts` — BUG-002 (form tips rendering)
-  - `smoke/routine-error.smoke.spec.ts` — BUG-003 (error snackbar on deleted exercises)
-  - `full/exercise-detail-sheet.spec.ts` — BUG-002 (form tips in workout bottom sheet)
-  - `full/routine-regression.spec.ts` — BUG-003/004/005 deep validation
-- `flutterFillByInput` helper for search fields where semantics click doesn't transfer focus
-- Fixed `waitForAppReady` to accept active workout screen selectors (Hive restore after reload)
-- All selectors use `flt-semantics[aria-label*="..."]` pattern (reliable for CanvasKit rendering)
-- New test users: `smokeWorkoutRestore`, `smokeRoutineError`, `fullExDetailSheet`
 
 ---
 
-**Playwright test suite structure:**
-```
-test/e2e/
-├── playwright.config.ts          # baseURL, timeouts, smoke/full projects
-├── global-setup.ts               # Seed test users via Supabase admin API
-├── global-teardown.ts            # Cleanup test users
-├── helpers/
-│   ├── auth.ts                   # loginAs(), signup(), logout()
-│   ├── workout.ts                # startWorkout(), addExercise(), logSet(), finishWorkout()
-│   ├── navigation.ts             # goToTab(), waitForRoute()
-│   └── selectors.ts              # Centralized Semantics label constants
-├── smoke/                        # Fast tests — every PR (<3 min)
-│   ├── auth.smoke.spec.ts
-│   ├── workout.smoke.spec.ts
-│   └── pr.smoke.spec.ts
-├── full/                         # Slower tests — merge to main (<10 min)
-│   ├── auth.full.spec.ts
-│   ├── exercise-library.spec.ts
-│   ├── workout-logging.spec.ts
-│   ├── routines.spec.ts
-│   ├── personal-records.spec.ts
-│   ├── home-navigation.spec.ts
-│   └── crash-recovery.spec.ts
-└── fixtures/
-    ├── test-users.ts             # Test user credentials
-    └── test-exercises.ts         # Known exercise IDs from seed data
-```
+## Completed Steps (1-11)
 
-**Test environment:** Real Supabase test project (not mocked) — e2e tests catch integration bugs, RLS policies, and database triggers that mocks would hide. Test isolation via unique users per test.
+> Condensed summaries. Full specs in git history (PR branches).
 
-**Test data strategy:**
-- `global-setup.ts` creates test users via Supabase Admin API (service role key)
-- Each test uses a unique user (e.g., `e2e-smokeA@test.gymbuddy.local`)
-- Signup flow tests use timestamped emails
-- `global-teardown.ts` cleans up all `e2e-*` users
-- No shared mutable state between tests — parallel-safe
+### Step 1: Project Setup & CI (PR #1)
+- Flutter project scaffold, dependencies pinned, Supabase init with PKCE
+- Core infrastructure: `BaseRepository`, sealed `AppException`, GoRouter skeleton, Hive service
+- Shared widgets: `AsyncValueBuilder`, `ErrorOverlay`, `ThemedButton`, `FormInput`
+- Dark bold theme, Makefile targets, strict `analysis_options.yaml`
+- CI pipeline: format + analyze + build_runner + test
 
-**Smoke tests (every PR, <3 min):**
-1. Auth: signup → onboarding → home → logout → login
-2. Core workout: start → add exercise → log set → finish → verify in history
-3. PR detection: workout A → heavier workout B → PR celebration + PR list
+### Step 2: Database Schema & Seed (PR #2)
+- Initial migration: all tables, enums, indexes, RLS policies
+- Seed: ~60 default exercises, 4 starter templates (Push/Pull/Legs, Upper/Lower, Full Body)
+- RLS integration tests for user isolation
 
-**Full suite (merge to main, <10 min):**
-4. Exercise library: filter, search, create custom, soft delete
-5. Workout logging: multi-exercise, reorder, rest timer, set types
-6. Templates: save as template → start from template → verify pre-filled
-7. Personal records: bodyweight PRs, multiple PRs, first workout handling
-8. Home & navigation: tabs, resume banner, quick start, repeat last workout
-9. Crash recovery: close mid-workout → reopen → resume → sets intact
-10. Auth edge cases: wrong password, existing email, error messages
+### Step 3: Auth & Onboarding (PRs #3-#5)
+- Supabase Auth with Google + email/password, PKCE redirect
+- Auth state provider (AsyncNotifier watching `onAuthStateChange`)
+- Router redirect: unauthenticated -> login, authenticated -> home
+- Screens: Splash, Login/Signup, Onboarding (2 pages: welcome + profile setup)
+- Profile created on first login
 
-**Extra risk areas for e2e:**
-- Network failure during workout finish (simulate with `page.route()`)
-- Double-tap "Finish Workout" idempotency
-- Active workout singleton (second tab blocked)
-- Rest timer state across exercise switches
-- Hive corruption → clear message, not crash
+### Step 3b: Auth UX Polish (PR #6)
+- Post-signup email confirmation screen with resend
+- User-friendly auth error messages, loading states
+- Custom Supabase email templates (GymBuddy-branded)
 
-**`e2e.yml` workflow:** Separate from `ci.yml`. Build Flutter web (HTML renderer) → serve on port 8080 → run Playwright (Chromium headless). Upload playwright-report on failure. Smoke on PRs, full on merge.
+### Step 4: Exercise Library + Images (PRs #7-#10)
+- Exercise model (Freezed), repository with CRUD + filters
+- Exercise list: muscle group category buttons, search, equipment filter, empty states
+- Exercise picker (shared contract for workout flow)
+- Custom exercise creation with duplicate name validation, soft delete
+- Exercise images: `cached_network_image`, start/end positions, fullscreen overlay
+- Images hosted on GitHub (404 issue — see QA-005, deferred to Phase 13)
 
-**`release.yml` workflow:** Triggered by `v*` tags. Build split APKs (arm64, armeabi-v7a, x86_64) → GitHub Release via softprops/action-gh-release. No code signing for MVP. Alpha/beta tags → pre-release.
+### Step 5: Workout Logging (PRs #11-#15)
+- `ActiveWorkoutNotifier` (AsyncNotifier) as core state machine
+- Hive persistence with schema versioning, atomic save via `save_workout` RPC
+- Sub-steps: data layer (5a), active workout screen (5b), rest timer + polish (5c), finish flow + history (5d)
+- WeightStepper/RepsStepper with tap-to-type, long-press repeat, 48dp targets
+- Rest timer: full-screen overlay, countdown, haptic, +/-30s adjustment
+- Finish dialog with incomplete sets warning, workout history with pagination
+- Active workout banner in bottom nav, elapsed timer
+- 328 tests (51 unit, 45 widget)
 
+### Step 5e: UX Polish Sprint (PRs #16-#18)
+- Removed start-workout name dialog (auto-naming), trimmed onboarding to 2 pages
+- Set row redesign: 28-32sp numbers, tap-to-type, RPE hidden by default
+- Wired onboarding data to Supabase, built minimal Profile screen
+- Moved Finish button to thumb zone, added previous session hints, create-exercise in picker
+- Prominent Add Set button, rest timer adjustment, active workout banner polish
+
+### Step 6: Routines (PR #19)
+- Renamed from "Templates" to "Routines" (market vocabulary)
+- Bottom nav: Home | Exercises | Routines | Profile (History moved inside Home)
+- Routine model (Freezed), repository, list/create screens
+- Start-from-routine: 2 taps to first set (tap card -> pre-filled workout)
+- Routines don't store weights — sourced from last session via `lastWorkoutSetsProvider`
+- Home screen rebuild: routine launchpad + recent workouts + start empty workout
+- 72dp routine cards, long-press for edit/delete, starter routines for new users
+
+### Step 7: Personal Records (PR #20)
+- PR detection in `finishWorkout()`: max weight, max reps, max volume
+- Only working sets, strictly greater than previous, first workout consolidated
+- Bodyweight logic: weight=0 tracks max_reps only, added weight tracks all three
+- PR celebration: screen flash, spring animation, heavy haptic (no confetti)
+- PR list screen with empty state
+
+### Step 8: Home Polish & PR Integration (PR #21)
+- Resume unfinished workout banner (most prominent element)
+- Recent PRs section on home, "View All" to PR list
+- Workout history detail with PR badges on record sets
+
+### Step 9: E2E Testing & CI/CD (PRs #22-#24)
+- Playwright infrastructure: config, helpers, fixtures, global setup/teardown
+- Smoke tests (every PR): auth, workout, PR detection
+- Full suite (merge to main): all features + edge cases + crash recovery
+- `e2e.yml` + `release.yml` GitHub Actions workflows
 - Final manual QA pass on physical devices
 
-### Step 12: Weekly Training Plan — Bucket Model
+### Step 10: UX Improvements & Security (PRs #25-#26)
+- Exercise detail bottom sheet in active workout (DraggableScrollableSheet)
+- Stat cards on home (workout count, PR count with subtitles)
+- Manage Data screen: delete history (two-step), reset all (type-to-confirm)
+- Error message sanitization: `AppException.userMessage`, no raw DB errors in UI
+- Migration: `personal_records.set_id` FK changed to `ON DELETE SET NULL`
+- 61 new tests
 
-> **Feature overview:** Users plan their training week by placing routines into an ordered "bucket" — a sequenced set of routines to complete, not tied to specific days. The app surfaces "what's next" on the Home screen and tracks weekly completion. Integrates with GAMIFICATION.md streak/quest systems.
->
-> **Design basis:** PO competitor analysis (Strong, Hevy, JEFIT, Fitbod, Boostcamp, Gymverse), UX design review, user research from Reddit r/fitness and r/weightroom. See GAMIFICATION.md section 6.5 (weekly consistency meter) and 6.5.1 (week review card).
+### Step 11: Content, Smart Defaults, Home Simplification (PRs #27-#30)
+- Exercise descriptions + form tips (migration, seed, UI in detail screen + bottom sheet)
+- Smart set defaults: 4-priority fallback chain (prev session -> last set -> equipment defaults -> 0/0)
+- Home simplification: removed Recent/Recent Records sections, enriched stat card subtitles
+- 11b: 6 regression bug fixes (Hive serialization, form tips, routine start errors, equipment defaults)
+- 11c: CI pipeline split into 3 parallel jobs + caching, 8 new E2E regression specs
+- 787 tests total
+
+---
+
+## Step 12: Weekly Training Plan — Bucket Model
+
+> **Status:** IN PROGRESS (PR #32). Migration applied to hosted Supabase. 5 regression bugs fixed. 6 E2E smoke tests added.
+
+> **Feature overview:** Users plan their training week by placing routines into an ordered "bucket" — sequenced but not tied to specific days. The app surfaces "what's next" on the Home screen and tracks weekly completion.
 
 #### 12a: Schema & Backend
 
-**New table: `weekly_plans`**
+**New table: `weekly_plans`** (migration `00011_create_weekly_plans.sql` — applied)
 
 ```sql
 CREATE TABLE weekly_plans (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  week_start DATE NOT NULL,  -- always a Monday (ISO week start)
+  week_start DATE NOT NULL,  -- always a Monday
   routines JSONB NOT NULL DEFAULT '[]',
-  -- Array of: [{routine_id: UUID, order: int, completed_workout_id: UUID|null, completed_at: timestamptz|null}]
+  -- [{routine_id: UUID, order: int, completed_workout_id: UUID|null, completed_at: timestamptz|null}]
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (user_id, week_start)
 );
-
--- RLS: users can only access their own plans
-ALTER TABLE weekly_plans ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users manage own plans" ON weekly_plans
-  FOR ALL USING (auth.uid() = user_id);
 ```
 
-**Schema notes:**
-- `week_start` is always a Monday — enforced via CHECK constraint or application logic
-- `routines` JSONB stores the ordered bucket: each entry has `routine_id`, `order` (1-based sequence), `completed_workout_id` (null until done), and `completed_at`
-- When a workout finishes for a routine in the bucket, the app updates the matching entry's `completed_workout_id` and `completed_at`
-- No day-of-week assignment — routines are ordered but unscheduled
+**Extend `profiles`:** `training_frequency_per_week INTEGER NOT NULL DEFAULT 3 CHECK (BETWEEN 2 AND 6)`
 
-**Extend `profiles` table:**
-
-```sql
-ALTER TABLE profiles ADD COLUMN training_frequency_per_week INTEGER NOT NULL DEFAULT 3
-  CHECK (training_frequency_per_week BETWEEN 2 AND 6);
-```
-
-This drives the bucket soft cap and the GAMIFICATION.md weekly consistency goal (`{n} of {goal} sessions`).
-
-**Auto-populate logic (Supabase function or client-side):**
-- On Monday (or first app open of the week), if no `weekly_plans` row exists for the current week:
-  - Copy the previous week's `routines` array (reset `completed_workout_id` and `completed_at` to null)
-  - If no previous week exists, leave empty (user fills manually on first setup)
-- Client shows a confirmation: "Same plan this week?" with Edit/Confirm actions
+**Auto-populate:** On first app open of the week, copy previous week's routines (reset completion data). Show "Same plan this week?" banner with Edit/Confirm.
 
 #### 12b: Training Frequency in Onboarding & Profile
 
-**Onboarding (screen 2 — alongside fitness level):**
-- Add "How often do you plan to train?" question
-- 5 chip options: `2x`, `3x`, `4x`, `5x`, `6x` per week (no 7x — no serious program recommends zero rest)
-- Default selected: `3x` (most common, conservative bar beginners can beat)
-- Subtext: "Your weekly goal — you can change this anytime"
-- Stored in `profiles.training_frequency_per_week`
-
-**Profile screen:**
-- Add "Weekly goal" as a tappable row in the settings section
-- Tap opens a bottom sheet with the same 5-chip selector
-- Changes take effect immediately for the current week's bucket soft cap
+- Onboarding page 2: 5 chip options (2x-6x/week), default 3x
+- Profile: "Weekly goal" tappable row -> bottom sheet with same chips
 
 #### 12c: Home Screen — THIS WEEK Section
 
-**Position:** Between stat cards row and MY ROUTINES section header. No card wrapper — flush section using existing `SectionHeader` pattern.
+Between stat cards and MY ROUTINES. Horizontal scrollable routine chips:
+- **Done:** collapsed green chip with checkmark
+- **Next:** solid green, taller (52dp), primary CTA, tap starts routine
+- **Remaining:** ghosted, 0.55 opacity
 
-**Layout:**
+Header: `THIS WEEK` + `{n} of {m}` count + suggested-next pill chip. Completion is automatic on workout finish. No day-of-week assignment, no shaming language.
 
-```
-THIS WEEK                     2 of 4            [Pull A >]
-  [✓]  [✓]  [ 3  PULL A ]  [ 4  LEGS A ]
-```
-
-**Section header:**
-- Left: `THIS WEEK` in `labelLarge` letterSpacing 1.2, 0.45 opacity
-- Center-right: `{n} of {m}` count — numerator in `#00E676` w700, rest at 0.55 opacity
-- Right: suggested-next pill chip — routine name + `>`, 36dp tall, `#00E676` text on `#232340` with 1dp `#00E676` border. Tap starts that routine. Disappears when no suggestion available or all routines complete
-
-**Routine chips (horizontal scrollable row):**
-- Each chip: 44dp tall, pill-shaped (`kRadiusLg`), with sequence number badge (20dp circle) on leading edge
-- **Done state:** `#00E67620` background, `#00E676` 1dp border, checkmark replaces sequence number. Name in `bodyMedium` w600 `#00E676`. Collapsed width (~44dp, no routine name text) so NEXT chip is visible without scrolling
-- **Next state:** solid `#00E676` background, `Colors.black` text, 52dp tall (taller = primary CTA). Tap starts the routine via `startRoutineWorkout`
-- **Remaining state:** `#232340` background, `#FFFFFF20` border, name at 0.55 opacity, sequence number at 0.55 opacity
-- Scroll: `SingleChildScrollView` horizontal. First 4 chips visible without scroll on 375dp screens
-
-**Sequence logic ("Up Next"):**
-- Follows `order` field — lowest-order uncompleted routine is NEXT
-- If user skips one (completes Legs before Pull), the skipped routine becomes NEXT
-- Advances only on workout completion, never on midnight/day change
-
-**Completion behavior:**
-- Automatic — when a workout matching a bucket routine finishes, the chip transitions to Done (300ms ease-out: scale to 0.85, checkmark fades in)
-- No manual check-off. The plan mirrors reality passively
-- When all complete: header changes to `WEEK COMPLETE` in `#00E676`, pill chip disappears
-
-**Week transition (Monday):**
-- Bucket auto-populates from last week's selection (all reset to uncompleted)
-- A banner appears above the chips: "Same plan this week?" with `Edit` and `Confirm` actions
-- `Edit` opens the plan management screen. `Confirm` dismisses the banner
-- If no previous week: section shows empty state (see below)
-
-**Empty states:**
-- No routines at all: THIS WEEK section hidden entirely. The `_CreateRoutineCta` on Home takes precedence
-- Has routines but no bucket set: section shows `Plan your week →` in `bodyMedium` at 0.55 opacity, tappable to open the add-to-bucket sheet
-- Disengagement (bucket ignored 2+ weeks): section collapses to a single line `Plan your week →`, expandable on tap. No guilt, no alerts
-
-**What the section does NOT show:**
-- No 7-day Mon-Sun bar (that lives on Profile per GAMIFICATION.md 6.5)
-- No rest day indicators (days are never a category in the bucket model)
-- No progress bar (text count `{n} of {m}` is sufficient for denominators 2-6)
-- No calendar dates
+**Empty states:** No routines -> section hidden. Has routines but no bucket -> "Plan your week ->" CTA. Disengaged 2+ weeks -> collapses to single line.
 
 #### 12d: Plan Management Screen (`/plan/week`)
 
-**Route:** `/plan/week`, accessible via long-press on THIS WEEK header or via an edit icon
+ReorderableListView of routine rows. Add via DraggableScrollableSheet multi-select. Soft cap at `training_frequency_per_week` (greys out, tooltip, still tappable). Auto-fill button, swipe-to-remove with undo, clear week action.
 
-**Layout:**
-- `Scaffold` with AppBar: "This Week's Plan"
-- `SliverList` of routine rows, drag-reorderable (`ReorderableListView`)
-- Each row: sequence number (left), routine name `titleMedium` w700, exercise count `bodySmall` 0.55 opacity, drag handle (right)
-- Completed routines: green tint, checkmark, non-draggable
-- "Auto-fill" button at top: distributes user's most-started routines into the bucket up to their `training_frequency_per_week` cap
-- Soft cap enforcement: when bucket reaches `training_frequency_per_week` count, the add button greys out (visible but disabled) with tooltip "Weekly goal reached — tap to add anyway"
+#### 12e: Week Review
 
-**Add routine interaction:**
-- Tap `+ Add Routine` row at bottom of list
-- `showModalBottomSheet` with `DraggableScrollableSheet` (initialChildSize: 0.5, maxChildSize: 0.9)
-- List of user's routines not already in this week's bucket
-- Multi-select: checkmarks on selection, `ADD {n} ROUTINES` filled button at bottom
-- Routines already in bucket shown with `IN PLAN` label, not selectable
+When all complete OR new week starts: section transforms to `WEEK COMPLETE` with stats row (`{n} sessions . {kg} . {n} PRs`). `NEW WEEK` action pre-populates from completed week. Incomplete weeks show remaining at 0.3 opacity, no shame text.
 
-**Remove routine:** Swipe-to-delete on any uncompleted row, with undo SnackBar
-
-**Clear week:** `CLEAR WEEK` action in AppBar overflow menu, confirmation dialog: "Start fresh this week?"
-
-#### 12e: Week Review (End-of-Week Summary)
-
-When all bucket routines are completed OR on first app open after Sunday midnight:
-
-**THIS WEEK section transforms in place:**
-
-```
-WEEK COMPLETE                           [NEW WEEK]
-  4 sessions  ·  18,400 kg  ·  2 PRs
-  [✓ Push A]  [✓ Pull A]  [✓ Legs A]  [✓ Push B]
-```
-
-- Header: `WEEK COMPLETE` in `labelLarge` w700 `#00E676` (replaces `THIS WEEK`)
-- Right: `NEW WEEK` tappable label in `#00E676` — opens add-to-bucket sheet pre-populated with this week's selection
-- Stats row: `{n} sessions · {kg} kg · {n} PRs` in `bodyMedium` at 0.7 opacity. PRs in `#FFD54F` amber only if > 0
-- Completed chips displayed in done state (non-interactive, record only)
-- Incomplete plan (2 of 4 done): remaining chips at 0.3 opacity. No shame text, no "missed" language
-
-**Gamification hooks (Phase 2+, per GAMIFICATION.md 6.5.1):**
-- Consistency stat delta: `Consistency {prev} → {new}` below stats row
-- Quest XP: `+{n} XP from weekly quests` if quests are active
-- These lines are hidden until gamification system is built — the data contract is defined now
-
-**Timing:** The review state appears on first app open after the week closes (Monday) or immediately when the last bucket item is completed (whichever comes first). Not triggered by a calendar alarm.
-
-**No-workout weeks:** If zero workouts logged, the section does not transform — it stays in its collapsed/empty state. No "You didn't train last week" messaging.
+**Gamification hooks (Phase 14+):** Consistency stat delta, quest XP — hidden until gamification system is built.
 
 #### 12f: Integration Points
 
-**With existing workout flow:**
-- Starting a workout from a bucket chip uses the existing `startRoutineWorkout()` flow — zero changes to the logging loop
-- On workout completion (`save_workout` RPC), the app checks if the completed routine matches a bucket entry and marks it complete
-- Any workout can be started anytime regardless of bucket state — the bucket is a planning aid, not a gatekeeper
-
-**With GAMIFICATION.md:**
-- Weekly consistency meter (section 6.5): `{n} of {goal} sessions` — goal is `profiles.training_frequency_per_week`
-- Weekly streak: completing `training_frequency_per_week` sessions advances the streak counter
-- Weekly quests (Phase 3): "Complete 3 workouts this week" quest data feeds from bucket completion count
-- Week review card (section 6.5.1): stats from completed bucket items
-- XP: no separate "plan adherence" XP. Standard workout XP + quest bonus on completion
-
-**With onboarding:**
-- Screen 2 adds training frequency chips (2x-6x)
-- First bucket setup happens after user creates their first routine — not during onboarding
+- Starting from bucket uses existing `startRoutineWorkout()` — zero logging changes
+- Workout completion matches `routineId` in bucket and marks complete
+- Bucket is a planning aid, not a gatekeeper — any workout can start anytime
 
 #### Step 12 — Acceptance Criteria
 
-- [ ] `weekly_plans` table created with RLS
-- [ ] `profiles.training_frequency_per_week` column added
-- [ ] Training frequency captured in onboarding (screen 2) and editable in Profile
-- [ ] THIS WEEK section renders on Home with ordered routine chips
-- [ ] Chips show three states: done (green, collapsed), next (solid green CTA), remaining (ghosted)
-- [ ] Suggested-next pill chip in section header, follows sequence order
-- [ ] Tapping a chip starts the routine workout
-- [ ] Completion is automatic on workout finish — chip transitions to done
-- [ ] Plan management screen with drag-to-reorder, add/remove routines
-- [ ] Soft cap at `training_frequency_per_week` with grey-out on add button
-- [ ] Auto-populate from last week on Monday with confirm/edit banner
-- [ ] Week review: section transforms to WEEK COMPLETE with stats
-- [ ] NEW WEEK action pre-populates from completed week
-- [ ] Disengagement: section collapses after 2 weeks of no bucket interaction
-- [ ] No day-of-week assignment anywhere in the UI
-- [ ] No shaming language — incomplete weeks show neutral states only
-- [ ] Widget tests for chip states, auto-populate, completion flow
-- [ ] E2E test: create bucket → complete routines → verify week review
+- [x] `weekly_plans` table with RLS, `profiles.training_frequency_per_week` column
+- [x] Training frequency in onboarding (page 2) and Profile
+- [x] THIS WEEK section with ordered chips (done/next/remaining states)
+- [x] Suggested-next pill chip, auto-completion on workout finish
+- [x] Plan management: drag-to-reorder, add/remove, soft cap, auto-fill
+- [x] Auto-populate from last week with confirm/edit banner
+- [x] Week review: WEEK COMPLETE with stats, NEW WEEK action
+- [x] Widget/unit tests (64 new), E2E smoke tests (6 new, 24 test cases)
+- [x] 5 regression bugs fixed (auto-populate timing, weight unit, nav highlight, undo race)
 
 #### Step 12 — File Plan
 
 ```
-lib/
-├── features/
-│   └── weekly_plan/
-│       ├── data/
-│       │   ├── weekly_plan_repository.dart       # CRUD against weekly_plans table
-│       │   └── models/
-│       │       └── weekly_plan.dart              # Freezed model
-│       ├── providers/
-│       │   ├── weekly_plan_provider.dart          # Current week plan state
-│       │   └── suggested_next_provider.dart       # Computed "up next" routine
-│       └── ui/
-│           ├── widgets/
-│           │   ├── week_bucket_section.dart       # THIS WEEK Home section
-│           │   ├── routine_chip.dart              # Done/Next/Remaining chip states
-│           │   └── week_review_section.dart       # WEEK COMPLETE transform
-│           ├── plan_management_screen.dart        # /plan/week — reorder, add, remove
-│           └── add_routines_sheet.dart            # Bottom sheet for adding to bucket
-├── features/auth/ui/onboarding_screen.dart        # MODIFY — add frequency chips on page 2
-├── features/profile/ui/profile_screen.dart        # MODIFY — add "Weekly goal" row
-├── features/workouts/ui/home_screen.dart           # MODIFY — add WeekBucketSection
-└── core/router/app_router.dart                    # MODIFY — add /plan/week route
+lib/features/weekly_plan/
+  data/  weekly_plan_repository.dart, models/weekly_plan.dart
+  providers/  weekly_plan_provider.dart, suggested_next_provider.dart, week_review_stats_provider.dart
+  ui/  widgets/ (week_bucket_section, routine_chip, week_review_section), plan_management_screen, add_routines_sheet
 
-supabase/migrations/
-└── YYYYMMDD_create_weekly_plans.sql               # New table + profiles column
-
-test/
-├── unit/features/weekly_plan/                     # Repository + provider tests
-├── widget/features/weekly_plan/                   # Chip states, section rendering
-└── e2e/smoke/weekly-plan.smoke.spec.ts            # Bucket creation → completion → review
+Modified: onboarding_screen, profile_screen, home_screen, app_router, active_workout_notifier
+Migration: supabase/migrations/00011_create_weekly_plans.sql
 ```
 
 ---
 
-## QA Status (as of 2026-04-07)
+## Phase 13: Production Readiness
 
-> Consolidated from original `BUGS_FOUND.md` and `QA_FINDINGS.md` (now deleted — all content lives here).
-> Full manual QA test plan: `tasks/manual-qa-testplan.md` (89 cases, 29 automated).
-> All Critical items resolved. Bug audit 2026-04-07 — all 13 remaining bugs fixed in `fix/qa-audit-cleanup`. 723 tests pass.
+> Adapted from PROD-READINESS.md. Everything needed to ship on Google Play.
 
-### Resolved (52+ items)
+### 13a: Store Blockers (must fix before submission)
 
-All **Critical** bugs fixed: `save_workout` RPC 404 (QA-001), blank home on bad route (QA-002), history detail route (PO-026), silent workout data loss on restart (PO-017/018), onboarding flag race (PO-001), exercise name too small (UX-V01), swipe-to-delete undo (UX-U02).
+| ID | Item | Effort | Notes |
+|----|------|--------|-------|
+| B1 | Release signing | 1-2h | `build.gradle.kts` uses debug signing. Create release keystore, wire into Gradle, store password in GitHub Secrets |
+| B2 | Crash reporting | 2-3h | Sentry Flutter SDK. Wire into `AppException` hierarchy. Breadcrumbs for key user actions |
+| B3 | Analytics (basic events) | 3-4h | `signup`, `login`, `first_workout_completed`, `workout_finished`, `routine_started`, `pr_broken`, `app_opened`. Options: PostHog, Amplitude, Mixpanel free tier |
+| B4 | Privacy Policy & ToS | 1 day | Hosted URL required by Play Store. Cover data collected, storage, retention, user rights. Link from Profile + store listing |
+| B5 | Account deletion | 3-4h | Required by Google Play since Dec 2023. Edge Function to delete `auth.users` row. Confirmation -> sign out -> login |
+| B6 | ProGuard/R8 optimization | 2-3h | No minify/shrink today (19.7MB -> ~12-14MB). Need keep rules for Supabase + Hive reflection |
+| B7 | Offline workout save & retry | 1-2 days | Hive queue exists but no sync worker. Detect connectivity failure on `finishWorkout()` -> queue -> retry. `connectivity_plus` package |
 
-All blocking **High** bugs fixed: exercise DELETE RLS (QA-003), profile update 400 (QA-004), exercise picker→create flow (PO-012), error handling gaps (PO-006, PO-032), auth logout path (PO-036), weight unit wiring (PO-037), PR persistence (PO-044), stepper repeat rate (UX-I01), finish button guidance (UX-U04), start workout button (QA-008), exercise validation (QA-007), first workout false positive (PO-029), pr-celebration route guard (PO-041).
+### 13b: Product Gaps (blocks retention, not submission)
 
-Semantics/accessibility fixed: login error live region (BUG-001), weight/reps stepper labels (BUG-003/004), workout AppBar labels (BUG-005/006). Layout overflow fixed (responsive steppers with Flexible+FittedBox). Active workout route race (NEW-001). Production exercise seed (NEW-002). Duplicate resume banner (NEW-003). Empty display name validation (PO-005). Discard order-of-operations (PO-019).
+| ID | Item | Effort | Notes |
+|----|------|--------|-------|
+| P1 | Progress charts per exercise | 2-3 days | **#1 retention driver.** Line chart: weight over time. `fl_chart` or `syncfusion_flutter_charts`. Query sets+workouts by exercise_id |
+| P2 | Exercise library expansion | 1 day | 60 -> 150-200 exercises. Source: Free Exercise DB (800+). New seed migration |
+| P3 | Forgot password flow | 2-3h | Currently triggers reset email immediately. Add confirmation screen |
+| P4 | Exercise images fix (QA-005) | 3-4h | GitHub URLs return 404. Migrate to Supabase Storage or CDN |
+| P5 | 1RM estimation | 2-3h | Epley formula. Display on exercise detail + PR cards |
+| P6 | App branding | 1 day | App label "gymbuddy_app" -> "GymBuddy". Custom launcher icon + splash. Play Store assets |
+| P7 | Volume unit display | 30min | Hardcoded "kg" -> profile weight unit |
 
-**PR-27 regression bugs (all fixed in PR #28):** Exercise name lost on Hive restore (REG-001/P0), form tips not rendered (REG-002/P1), routine start silent failure on unresolved exercises (REG-003/P1), first-time routine zero weight (REG-004/P2), routine card bare exercise count fallback (REG-005/P2), stale provider references after home simplification (REG-006/P2). All 6 covered by E2E regression tests in PR #30.
+### 13c: Warnings (fix before or shortly after launch)
 
-**Verified fixed in audit 2026-04-07 (20 items):**
-- **High:** QA-006 (forgot password now has confirmation dialog), UX-A01 (Google logo SVG asset), UX-D01 (`AppButton` unused — only `GradientButton` in use)
-- **Medium:** BUG-002 (semantics label in loading state), BUG-007 ("Save & Finish" vs "Finish Workout" — distinct), QA-011 (tooltip: '' on all nav items), QA-012 (chart area removed — PRs shown as tiles), PO-002 (email persisted via provider), PO-009 (explicit duplicate guard), PO-013 (proper FutureProvider.autoDispose.family), PO-030 (volume uses profile weight unit), PO-033 (shared `showRoutineActionSheet()`), UX-V04 (play arrow icon on routine cards), UX-V06 (elastic scale + haptic celebration), UX-V08 (NavigationBar has explicit colors), UX-U03 (tooltip + swap icon), UX-U05 (tooltip + underline hint), UX-U06 (stats row with workout/PR counts), UX-U09 (tap-to-dismiss overlay), UX-I05 (tooltip for set type cycling)
-- **Low:** NEW-005 (onChanged clears error), PO-010 (retry FilledButton in error state)
+| ID | Item | Effort |
+|----|------|--------|
+| W1 | OAuth deep link registration | 1-2h |
+| W2 | Wakelock during active workout | 1h |
+| W3 | Input length limits (TextField + server CHECK) | 1-2h |
+| W4 | Push notifications (workout reminders) | 1-2 days |
+| W5 | Data export (CSV/JSON) | 3-4h |
+| W6 | Direct Supabase access in UI (bypass repo pattern) | 30min |
+| W7 | Supabase free tier monitoring (500MB DB, upgrade at 500 DAU) | - |
+| W8 | HomeScreen `SingleChildScrollView` -> `CustomScrollView` | 2-3h |
 
-**Fixed in `fix/qa-audit-cleanup` (13 items, 25 new widget tests):**
-- **Medium:** PO-008 (stat card fixed height 32px), UX-V02 (weight 26sp / reps 18sp), UX-V07 (section header opacity 0.85 for WCAG AA)
-- **Low:** NEW-006 (SnackBar 8s duration), NEW-007 (discard returns to home), PO-004 (password cleared on toggle), PO-007 (onboarding back button), PO-016 (exercise list RefreshIndicator), PO-028 (history loading indicator + isLoadingMore), PO-031 (PR cards tappable → exercise detail), PO-039 (profile edit name dialog), UX-D03 (radii system: kRadiusSm/Md/Lg/Xl), UX-D05 (shared SectionHeader extracted)
+### Suggested Sprint Order
 
-### Open — High
-
-| ID | Area | Issue | Notes |
-|----|------|-------|-------|
-| QA-005 | Exercises | Image URLs return 404 from GitHub | DEFERRED — fallback icon works, needs URL migration to Supabase Storage or CDN |
-
-### Open — Medium / Low
-
-None — all resolved.
-
-### Removed from tracking
-
-| ID | Reason |
-|----|--------|
-| NEW-004 | DartError on login→home focus — no evidence found in codebase, likely environment-specific or already fixed |
-| UX-V05 | Login icon `Icons.fitness_center` — replaced with branded styling, acceptable for MVP |
-
-### Feature Gaps (v1.1+)
-
-| Feature | Current State |
-|---------|--------------|
-| Edit custom exercises | Not implemented |
-| Per-exercise notes in workout | Model exists, no UI |
-| RPE tracking | Widget exists but hidden |
-| Reorder exercises in routine builder | Not implemented (active workout has it) |
-| Edit workout post-hoc | Read-only detail screen |
-| Offline caching (exercises, history) | Only active workout (Hive) |
-| Dark/Light mode toggle | Dark only |
-| PRs in bottom nav | Only via home "View All" |
+**Sprint A (1 week) — Store-ready:** B1, B2, B3, B5, B6, P3, P6, P7, W1, W2, W6
+**Sprint B (1 week) — Retention-ready:** P1, P2, P4, P5, W3
+**Sprint C (1 week) — Resilience + compliance:** B4, B7, W4, W5
 
 ---
 
-## Verification
+## Phase 14: Gamification Foundation
 
-### Automated (CI — every push/PR)
-- `dart format --set-exit-if-changed .` — formatting enforced
-- `dart analyze --fatal-infos` — zero warnings
-- `dart run build_runner build` — code generation up to date
-- `flutter test --coverage` — all tests pass, coverage threshold met
+> Adapted from GAMIFICATION.md. RPG layer tightly coupled to real training data — "your strength IS your character."
 
-### CI Pipeline Evolution
-- **Step 1**: Unit + widget tests
-- **Step 2**: Add RLS integration tests
-- **Step 3+**: Add e2e smoke tests incrementally per feature
-- **Step 9**: Full e2e Playwright suite
+### Design Principles
 
-### Unit Tests (target 80%+ coverage on business logic)
-- Base repository: error mapping, exception hierarchy
-- Repositories: all CRUD operations, error handling, data mapping
-- PR detection: max weight, max reps, volume calculations, idempotent creation
-- PR edge cases: 0 weight (bodyweight), first workout, 0 reps, very large numbers (999kg)
-- Auth providers: login/logout, token refresh, state transitions
-- Active workout: state transitions, Hive persistence, crash recovery, concurrent session prevention
-- Models: serialization/deserialization, equality, edge cases
+- Every game mechanic must be defensible with real training logic
+- Gamification only in post-workout overlay and profile — never interrupts logging
+- No punishment for rest days, no streak anxiety, no confetti
+- Beginners see only XP bar + level for first 30 days
+- Stats normalized to personal best (0-100 scale), not population norms
 
-### Widget Tests
-- Screen states: loading, data, error, empty for all screens
-- User interactions: add set, delete set, reorder exercises
-- Form validation: invalid weight, negative reps, empty fields
-- Conditional UI: PR notification shows only when record is broken
-- Rest timer: countdown, notification trigger
-- Crash recovery dialog: resume vs discard
+### 14a: PR Celebration Overlay (Phase 1)
 
-### Integration Tests
-- RLS enforcement: verify user A cannot access user B's data
-- Workout save → PR calculation chain (no data loss between steps)
-- Default exercises and templates readable by all, custom ones private
-- Soft delete: exercise hidden from library, visible in past workouts and templates warned
+Full-screen overlay (not dialog). Background `#0F0F23` at 0.96 opacity. Dismissible with tap.
+- XP animation: `+N XP` tween from 0 to final over 600ms, color `#FFFFFF60` -> `#00E676`
+- Stat bumps: staggered cascade below XP
+- PR section: amber `#FFD54F` band, `NEW RECORD` label, exercise name + new value
+- Level up: green vignette glow, scale punch animation, `LEVEL UP` label
 
-### E2E Tests (Playwright — incremental)
-- Step 3: Auth flow smoke test (signup → onboarding → home → logout → login)
-- Step 5: Workout logging smoke test (start → add exercise → log set → finish → history)
-- Step 7: PR detection smoke test (workout A → heavier workout B → PR celebration + list)
-- Step 9: Full journey suite (exercise CRUD, templates, crash recovery, home, multi-exercise, edge cases)
+### 14b: XP & Level System (Phase 2)
 
-### E2E Smoke vs Full Split
-- **Smoke (every PR, <3 min):** 3 spec files, ~8-10 test cases — auth, core workout, PR detection
-- **Full (merge to main, <10 min):** 7 additional spec files, ~20 more cases — all features + edge cases
-- **Separation:** `test/e2e/smoke/` and `test/e2e/full/` directories, configured as Playwright projects
-- **Test environment:** Real Supabase test project, unique users per test, global setup/teardown
+**XP formula:** `Base(50) + Volume(floor(kg/500)) + Intensity((rpe-5)*10) + PR(+100/+50) + Quest(+75)`
+**Level curve:** `XP for Level N = 500 * N^1.5` (fast early, meaningful later)
+**Ranks:** Rookie(0) -> Iron(2.5K) -> Bronze(10K) -> Silver(25K) -> Gold(60K) -> Platinum(125K) -> Diamond(250K)
 
-### Conflict & Resilience Tests
-- Network failure mid-workout → local Hive cache preserves data → syncs on reconnect
-- Network failure during finish → error state shown → retry succeeds when network returns
-- App crash during workout → restart → resume dialog → data intact
-- Hive corruption → app logs error and starts fresh, doesn't crash (user sees clear message)
-- Hive schema version mismatch → discard stale data, start fresh
-- Concurrent sessions: user cannot start two active workouts (`is_active` flag + partial index)
-- Token expiration during long workout → transparent refresh; on failure, persist to Hive and show "Session expired" banner
-- Exercise soft delete → hidden from library AND search, visible in past workouts, template warns with substitution option
-- Offline edits conflict → last-write-wins with timestamp comparison
-- Duplicate PR prevention → idempotent creation with exercise_id + record_type constraint
-- Double-tap "Finish Workout" → only one workout saved (idempotent)
-- Atomic workout save → no partial data on network failure (Postgres RPC)
+Computed from existing data — retroactive for existing users. Never decreases, never paywalled.
 
-### Manual QA Checklist
-- Auth on all providers (Google, email)
-- Test on physical Android device + Android emulator
-- Test on Chrome (Flutter web) for Playwright e2e
-- Dark theme renders correctly on all screens
-- Contrast: primary green (#00E676) never used as body text on cards — only for headings (20sp+), icons, buttons
-- Touch targets: minimum 48x48dp interactive, 56x56dp for workout logging primary actions
-- One-handed usability: core actions reachable by thumb (filter chips, exercise picker from bottom)
-- Logging speed: set logged in under 3 taps (pre-filled values + stepper/wheel input)
-- Haptic feedback present: set completion, PR celebration, rest timer end, destructive actions
-- Rest timer: vibration works, screen stays awake, countdown visible at glance
-- Weight input: accepts decimals (22.5), respects unit preference (kg/lbs)
-- Deep-linking: email verification link works on Android
-- Empty states: all screens have clear CTAs when empty (exercises, history, PRs, home)
+### 14c: Weekly Streak (Phase 1)
 
-### UX Design Direction
-- **Typography:** Body text at w500 (sturdy feel). Consider condensed font (Barlow Condensed / Oswald) for numeric displays.
-- **Colors:** Gradient accents for primary actions (#00E676 → #00BFA5), not flat fills. Destructive gradient (#FF5252 → #D32F2F).
-- **Cards:** Subtle 1px top border with primary green at 15% opacity fading to transparent.
-- **Numbers:** Weight/reps/timer at 48-64sp with subtle green glow shadow. These are the hero content.
-- **Border radii:** Mixed — 16px cards, 8px chips, 24px FABs, 0px active workout header (sharp = urgency).
+- Weekly consistency meter: 7 segments (Mon-Sun), trained=green, not-trained=neutral (NOT red)
+- Streak: consecutive weeks meeting training frequency goal. Resets only if entire week missed
+- Comeback bonus (2x XP) instead of shame on miss
+- Lives on Profile screen (character sheet)
+
+### 14d: Profile -> Character Sheet
+
+Same `/profile` URL. Identity block with `LVL N` badge, XP bar (6dp height, `#00E676`), weekly consistency band.
+
+### 14e: Home Screen Integration
+
+One line replacing date subtitle: `[LVL 12] . [14d streak] . [Mon, Apr 7]`
+Daily quest chip (44dp, dismissible) between stat cards and routine list.
+
+---
+
+## Phase 15: Gamification Advanced
+
+### 15a: Weekly Smart Quests (Phase 3)
+
+3 auto-generated per week: one improvement, one exploration, one consistency. Never expire with failure state. Completion gives bonus XP, never access to core features.
+
+New schema: `quests` table (`user_id`, `week`, `type`, `target`, `completed_at`).
+
+### 15b: Training Stats Panel (Phase 4)
+
+Six stats computed from real workout data:
+- Strength (`#FF6B6B`), Endurance (`#40C4FF`), Power (`#FF9F43`), Consistency (`#00E676`), Volume (`#9B8DFF`), Mobility (`#26C6DA`)
+
+Hexagonal radar chart on profile (`CustomPaint`). Animates once on mount. Below chart: 2x3 grid of stat chips.
+
+### Anti-Patterns (Explicitly Banned)
+
+Confetti, streak flames/emoji, badge walls, multiple progress bars on home, level-gated features, push notification streak anxiety, XP in persistent header, animated badges, global leaderboards, punitive daily streaks, class XP multipliers, social infrastructure.
+
+---
+
+## Phase 16: Nice-to-Have (v2.0+)
+
+| Feature | Notes |
+|---------|-------|
+| Character classes | Powerlifter/Athlete/Warrior — cosmetic + stat-weighting only |
+| Light social (opt-in) | Friends list, ranks, monthly challenges. No global feeds |
+| Achievement milestones | Timeline entries, NOT badge collections |
+| Plate calculator | Intermediate lifters think in plates |
+| Body weight tracking | Correlate volume with weight changes |
+| Dark/Light mode toggle | Some users prefer light in bright gyms |
+| WearOS integration | Not critical for launch |
+| Localization (i18n) | English-only for launch |
+| App review prompt | Ask happy users for store review |
+| Seasonal content | Battle passes, dungeon/boss — only if v1.0 research shows demand |
+
+### Monetization Path
+
+**Free forever:** Core logging, routines, exercise library, XP/level, PR tracking, streaks, 3 weekly quests.
+**Pro ($5-8/month):** Training stats panel + charts, expanded quests, class selection, PR history with e1RM, CSV export.
+**Cosmetic (one-time):** Avatar items, rank icons, XP bar themes.
+**Never paywalled:** Historical data, personal records, core progression.
+
+---
+
+## QA Status (as of 2026-04-08)
+
+> Full manual QA plan: `tasks/manual-qa-testplan.md` (89 cases, 29 automated).
+
+**All Critical and High bugs resolved** (52+ items across PRs #24-#32). See git history for full audit trails.
+
+### Open
+
+| ID | Severity | Issue | Notes |
+|----|----------|-------|-------|
+| QA-005 | High | Exercise image URLs return 404 from GitHub | DEFERRED to Phase 13 (P4). Fallback icon works |
+
+### Feature Gaps (v1.1+)
+
+Edit custom exercises, per-exercise notes in workout, RPE tracking (widget exists, hidden), reorder exercises in routine builder, edit workout post-hoc, offline caching beyond active workout, PRs in bottom nav.
+
+---
+
+## Verification & Testing
+
+### CI Pipeline (GitHub Actions)
+
+- `ci.yml`: 3 parallel jobs — `analyze` (format + lint + secret scan), `test` (flutter test --coverage), `build` (APK + web). Gate job `ci` depends on all three.
+- `e2e.yml`: Flutter web build -> Playwright. Smoke on PRs (<3 min), full on merge (<10 min).
+- `release.yml`: `v*` tags -> split APKs -> GitHub Release.
+
+### Test Layers
+
+- **Unit** (`flutter_test` + `mocktail`): Models, repositories, business logic, providers. Target 80%+ on business logic.
+- **Widget** (`flutter_test`): Screen states (loading/data/error/empty), interactions, form validation, conditional UI.
+- **E2E** (Playwright on Flutter web): Critical journeys — auth, workout, PRs, routines, crash recovery. `flt-semantics[aria-label="..."]` selectors.
+
+### E2E Structure
+
+```
+test/e2e/
+  playwright.config.ts, global-setup.ts, global-teardown.ts
+  helpers/  auth.ts, workout.ts, navigation.ts, selectors.ts
+  fixtures/ test-users.ts, test-exercises.ts
+  smoke/    auth, workout, pr, routine-start, workout-restore, exercise-form-tips, routine-error,
+            weekly-plan, onboarding, routine-management, pr-display, weekly-plan-review, profile-weekly-goal
+  full/     auth, exercise-library, workout-logging, routines, personal-records,
+            home-navigation, crash-recovery, routine-regression, exercise-detail-sheet, manage-data
+```
+
+Test users created via Supabase Admin API in `global-setup.ts`. Unique user per test — parallel-safe.
+
+---
+
+## UX Design Direction
+
+- **Typography:** Body at w500. Weight/reps/timer at 28-32sp (hero content). Condensed font for numbers.
+- **Colors:** Gradient accents for primary actions (`#00E676` -> `#00BFA5`). Destructive gradient (`#FF5252` -> `#D32F2F`). PR amber `#FFD54F`.
+- **Cards:** Subtle 1dp top border with primary green at 15% opacity.
 - **Spacing:** Tight within set rows (8dp), generous between exercises (24dp). Not uniform.
-- **Icons:** Filled/bold variants (Material Symbols weight 600+), not thin-line.
+- **Icons:** Filled/bold variants (Material Symbols weight 600+).
+- **Touch targets:** 48dp+ interactive, 56dp+ for workout logging primary actions. One-handed thumb-reachable.
 - **Anti-patterns:** No pastel colors, no thin-line icons, no uniform padding, no generic Material Design.
+
+### Competitive Position
+
+| Feature | Strong | Hevy | GymBuddy |
+|---------|--------|------|----------|
+| Progress charts | Yes | Yes | **No** (Phase 13) |
+| 1RM estimation | Yes | Yes | **No** (Phase 13) |
+| Exercise library | ~350 | ~650 | **~60** (Phase 13) |
+| RPG gamification | No | No | **Planned** (Phase 14-15) |
+| Offline support | Yes | Yes | Partial (Phase 13) |
+| Rest timer | Yes | Yes | Yes |
+| Routines | Yes | Yes | Yes |
+| PR detection | Yes | Yes | Yes |
+| Weekly planning | No | No | Yes (Step 12) |
