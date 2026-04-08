@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../profile/providers/profile_providers.dart';
 import '../../../routines/models/routine.dart';
 import '../../../routines/providers/notifiers/routine_list_notifier.dart';
 import '../../../routines/ui/start_routine_action.dart';
@@ -48,6 +49,8 @@ class WeekBucketSection extends ConsumerWidget {
         final isComplete = ref.watch(isWeekCompleteProvider);
         if (isComplete) {
           final stats = ref.watch(weekReviewStatsProvider).valueOrNull;
+          final weightUnit =
+              ref.watch(profileProvider).valueOrNull?.weightUnit ?? 'kg';
           return Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: WeekReviewSection(
@@ -55,6 +58,7 @@ class WeekBucketSection extends ConsumerWidget {
               routineNames: nameMap,
               totalVolume: stats?.totalVolume ?? 0,
               prCount: stats?.prCount ?? 0,
+              weightUnit: weightUnit,
               onNewWeek: () => _startNewWeek(context, ref),
             ),
           );

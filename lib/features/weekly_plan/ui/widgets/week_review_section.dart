@@ -15,6 +15,7 @@ class WeekReviewSection extends StatelessWidget {
     required this.routineNames,
     this.totalVolume = 0,
     this.prCount = 0,
+    this.weightUnit = 'kg',
     this.onNewWeek,
     super.key,
   });
@@ -29,6 +30,9 @@ class WeekReviewSection extends StatelessWidget {
 
   /// Number of PRs hit this week.
   final int prCount;
+
+  /// User's preferred weight unit ('kg' or 'lbs').
+  final String weightUnit;
 
   /// Called when user taps NEW WEEK.
   final VoidCallback? onNewWeek;
@@ -119,7 +123,7 @@ class WeekReviewSection extends StatelessWidget {
       final volumeStr = totalVolume >= 1000
           ? '${(totalVolume / 1000).toStringAsFixed(1)}k'
           : totalVolume.toStringAsFixed(0);
-      parts.add('$volumeStr kg');
+      parts.add('$volumeStr $weightUnit');
     }
 
     if (prCount > 0) {

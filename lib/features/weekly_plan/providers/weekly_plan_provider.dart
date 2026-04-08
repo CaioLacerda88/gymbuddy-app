@@ -33,9 +33,22 @@ class WeeklyPlanNotifier extends AsyncNotifier<WeeklyPlan?> {
     final existing = await repo.getPlanForWeek(userId, monday);
     if (existing != null) return existing;
 
-    // No plan for this week — try to auto-populate from previous week.
+    // No plan for this week — schedule auto-populate after build completes.
+    // We must not perform write side-effects or modify other providers during
+    // build() (Riverpod anti-pattern that causes "Cannot modify state during
+    // build" errors and infinite rebuilds).
+    Future.microtask(() => _tryAutoPopulate(userId, monday));
+    return null;
+  }
+
+  /// Attempts to auto-populate the current week from the previous week's plan.
+  ///
+  /// Called via microtask after build() to avoid modifying state during build.
+  /// Strips all completion data so the new week starts fresh (BUG-R1).
+  Future<void> _tryAutoPopulate(String userId, DateTime monday) async {
+    final repo = ref.read(weeklyPlanRepositoryProvider);
     final previous = await repo.getPreviousWeekPlan(userId, monday);
-    if (previous == null || previous.routines.isEmpty) return null;
+    if (previous == null || previous.routines.isEmpty) return;
 
     // Reset completions, keep order and routine IDs.
     final resetRoutines = previous.routines
@@ -48,9 +61,10 @@ class WeeklyPlanNotifier extends AsyncNotifier<WeeklyPlan?> {
       routines: resetRoutines,
     );
 
+    state = AsyncData(plan);
+
     // Signal the UI to show the "Same plan this week?" confirmation banner.
     ref.read(weeklyPlanNeedsConfirmationProvider.notifier).state = true;
-    return plan;
   }
 
   /// Create or update the current week's plan with the given routines.

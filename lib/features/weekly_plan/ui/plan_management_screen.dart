@@ -165,6 +165,7 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
 
   void _removeRoutine(int index) {
     final removed = _bucketRoutines[index];
+    final removedIndex = index;
     setState(() {
       _dirty = true;
       _bucketRoutines.removeAt(index);
@@ -182,7 +183,10 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
             label: 'UNDO',
             onPressed: () {
               setState(() {
-                _bucketRoutines.insert(index, removed);
+                // Clamp to current list length in case reorders or other
+                // removals happened between remove and undo.
+                final safeIndex = removedIndex.clamp(0, _bucketRoutines.length);
+                _bucketRoutines.insert(safeIndex, removed);
                 _renumber();
               });
               _savePlan();
