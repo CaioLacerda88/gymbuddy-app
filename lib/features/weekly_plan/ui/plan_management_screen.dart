@@ -6,6 +6,7 @@ import '../../../core/theme/radii.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../../routines/models/routine.dart';
 import '../../routines/providers/notifiers/routine_list_notifier.dart';
+import '../../workouts/providers/workout_history_providers.dart';
 import '../data/models/weekly_plan.dart';
 import '../providers/weekly_plan_provider.dart';
 import 'add_routines_sheet.dart';
@@ -79,8 +80,12 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
           PopupMenuButton<String>(
             onSelected: (value) {
               if (value == 'clear') _confirmClear(context);
+              if (value == 'autofill') {
+                _autoFill(allRoutines, trainingFrequency);
+              }
             },
             itemBuilder: (context) => [
+              const PopupMenuItem(value: 'autofill', child: Text('Auto-fill')),
               const PopupMenuItem(value: 'clear', child: Text('Clear Week')),
             ],
           ),
@@ -217,6 +222,72 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
       });
       _savePlan();
     }
+  }
+
+  /// Auto-fill the bucket with the user's most-started routines.
+  ///
+  /// Ranks routines by how often their name appears in workout history.
+  /// Fills up to [trainingFrequency] slots. If the bucket already has
+  /// routines, shows a confirmation dialog before replacing.
+  Future<void> _autoFill(
+    List<Routine> allRoutines,
+    int trainingFrequency,
+  ) async {
+    if (allRoutines.isEmpty) return;
+
+    // If bucket already has routines, confirm replacement.
+    if (_bucketRoutines.isNotEmpty) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogCtx) => AlertDialog(
+          title: const Text('Replace current plan?'),
+          content: const Text(
+            'Auto-fill will replace your current plan with your most-used routines.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(true),
+              child: const Text('Replace'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+    }
+
+    // Build frequency map from workout history (name -> count).
+    final history = ref.read(workoutHistoryProvider).valueOrNull ?? [];
+    final nameFrequency = <String, int>{};
+    for (final workout in history) {
+      nameFrequency[workout.name] = (nameFrequency[workout.name] ?? 0) + 1;
+    }
+
+    // Sort routines by frequency descending, then by name for stability.
+    final ranked = [...allRoutines]
+      ..sort((a, b) {
+        final freqA = nameFrequency[a.name] ?? 0;
+        final freqB = nameFrequency[b.name] ?? 0;
+        if (freqB != freqA) return freqB.compareTo(freqA);
+        return a.name.compareTo(b.name);
+      });
+
+    // Take the top N routines up to training frequency.
+    final count = trainingFrequency < ranked.length
+        ? trainingFrequency
+        : ranked.length;
+    final selected = ranked.take(count).toList();
+
+    setState(() {
+      _dirty = true;
+      _bucketRoutines = selected.indexed.map((entry) {
+        return BucketRoutine(routineId: entry.$2.id, order: entry.$1 + 1);
+      }).toList();
+    });
+    _savePlan();
   }
 
   Future<void> _confirmClear(BuildContext ctx) async {
