@@ -100,7 +100,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Bench Press'), findsOneWidget);
-      expect(find.text('120.0 kg'), findsOneWidget);
+      expect(find.text('120 kg'), findsOneWidget);
     });
 
     testWidgets('continue button is present', (tester) async {
