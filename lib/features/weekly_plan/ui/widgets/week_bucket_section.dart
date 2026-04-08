@@ -46,6 +46,8 @@ class WeekBucketSection extends ConsumerWidget {
         // Check if week is complete.
         final isComplete = ref.watch(isWeekCompleteProvider);
         if (isComplete) {
+          // TODO: Compute totalVolume and prCount from completed workout
+          // data when those providers become available.
           return Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: WeekReviewSection(
