@@ -1124,8 +1124,10 @@ void main() {
           .sets;
       expect(sets[1].weight, 100.0);
       expect(sets[1].reps, 5);
+      expect(sets[1].isCompleted, isTrue);
       expect(sets[2].weight, 100.0);
       expect(sets[2].reps, 5);
+      expect(sets[2].isCompleted, isTrue);
     });
 
     test('is a no-op when no sets are completed', () async {
@@ -1231,6 +1233,9 @@ void main() {
       expect(result[1].weight, isNot(80.0));
       // Set 2's weight should remain whatever it was before (factory default 60.0)
       expect(result[1].weight, 60.0);
+      // Set 2 must remain incomplete — if the setNumber guard is removed, this
+      // assertion catches the regression.
+      expect(result[1].isCompleted, isFalse);
     });
   });
 

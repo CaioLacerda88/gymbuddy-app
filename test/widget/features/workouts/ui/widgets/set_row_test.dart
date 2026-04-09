@@ -247,7 +247,7 @@ void main() {
             ),
           );
 
-          expect(find.text('Last: 80kg × 8'), findsOneWidget);
+          expect(find.text('Previous: 80kg × 8'), findsOneWidget);
         },
       );
 
@@ -263,7 +263,7 @@ void main() {
           ),
         );
 
-        expect(find.text('Last: 80kg × 8'), findsNothing);
+        expect(find.text('Previous: 80kg × 8'), findsNothing);
       });
 
       testWidgets('hides ghost text when lastSet is null', (tester) async {
@@ -273,7 +273,8 @@ void main() {
           buildTestWidget(SetRow(set: set, workoutExerciseId: 'we-001')),
         );
 
-        // No "Last:" prefix should appear anywhere.
+        // No hint text should appear when lastSet is null.
+        expect(find.textContaining('Previous:'), findsNothing);
         expect(find.textContaining('Last:'), findsNothing);
       });
 
@@ -290,7 +291,7 @@ void main() {
           );
 
           // Whole-number weights should display without a decimal suffix.
-          expect(find.text('Last: 100kg × 5'), findsOneWidget);
+          expect(find.text('Previous: 100kg × 5'), findsOneWidget);
         },
       );
     });
@@ -418,6 +419,8 @@ void main() {
           ),
         );
 
+        // Hint should be fully suppressed — neither old nor new label present.
+        expect(find.textContaining('Previous:'), findsNothing);
         expect(find.textContaining('Last:'), findsNothing);
       });
 
@@ -433,7 +436,7 @@ void main() {
             ),
           );
 
-          expect(find.text('Last: 80kg × 8'), findsOneWidget);
+          expect(find.text('Previous: 80kg × 8'), findsOneWidget);
         },
       );
 
@@ -449,7 +452,7 @@ void main() {
           ),
         );
 
-        expect(find.text('Last: 80kg × 8'), findsOneWidget);
+        expect(find.text('Previous: 80kg × 8'), findsOneWidget);
       });
 
       testWidgets(
@@ -464,7 +467,7 @@ void main() {
             ),
           );
 
-          expect(find.text('Last: 80kg × 8'), findsOneWidget);
+          expect(find.text('Previous: 80kg × 8'), findsOneWidget);
         },
       );
     });

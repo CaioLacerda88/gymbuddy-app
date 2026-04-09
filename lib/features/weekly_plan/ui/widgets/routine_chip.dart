@@ -113,49 +113,56 @@ class RoutineChip extends StatelessWidget {
 
   Widget _buildRemaining(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      height: 44,
-      decoration: BoxDecoration(
-        color: _cardColor,
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.13),
-          width: 1,
-        ),
+    return Material(
+      color: _cardColor,
+      borderRadius: BorderRadius.circular(kRadiusLg),
+      child: InkWell(
         borderRadius: BorderRadius.circular(kRadiusLg),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
+        onTap: onTap,
+        child: Container(
+          height: 44,
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.13),
+              width: 1,
             ),
-            alignment: Alignment.center,
-            child: Text(
-              '$sequenceNumber',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: Colors.white.withValues(alpha: 0.55),
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            borderRadius: BorderRadius.circular(kRadiusLg),
           ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              routineName,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: Colors.white.withValues(alpha: 0.55),
-                fontWeight: FontWeight.w600,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '$sequenceNumber',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.55),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-            ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  routineName,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.55),
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

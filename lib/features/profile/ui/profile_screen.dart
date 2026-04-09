@@ -311,6 +311,7 @@ class _StatsRow extends ConsumerWidget {
             value: '$workoutCount',
             icon: Icons.fitness_center,
             theme: theme,
+            onTap: () => context.go('/home/history'),
           ),
         ),
         const SizedBox(width: 12),
@@ -320,6 +321,7 @@ class _StatsRow extends ConsumerWidget {
             value: '$prCount',
             icon: Icons.emoji_events,
             theme: theme,
+            onTap: () => context.go('/records'),
           ),
         ),
         const SizedBox(width: 12),
@@ -344,21 +346,21 @@ class _StatCard extends StatelessWidget {
     required this.value,
     required this.icon,
     required this.theme,
+    this.onTap,
   });
 
   final String label;
   final String value;
   final IconData icon;
   final ThemeData theme;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final cardColor = theme.cardTheme.color ?? theme.colorScheme.surface;
+
+    final child = Padding(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-      decoration: BoxDecoration(
-        color: theme.cardTheme.color ?? theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(kRadiusMd),
-      ),
       child: Column(
         children: [
           Icon(icon, size: 20, color: theme.colorScheme.primary),
@@ -379,6 +381,24 @@ class _StatCard extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
         ],
+      ),
+    );
+
+    if (onTap == null) {
+      return Material(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(kRadiusMd),
+        child: child,
+      );
+    }
+
+    return Material(
+      color: cardColor,
+      borderRadius: BorderRadius.circular(kRadiusMd),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(kRadiusMd),
+        onTap: onTap,
+        child: child,
       ),
     );
   }

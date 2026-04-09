@@ -461,50 +461,63 @@ class _AddRoutineRow extends StatelessWidget {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
-      child: Tooltip(
-        message: atSoftCap
-            ? 'Weekly goal reached \u2014 tap to add anyway'
-            : '',
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(kRadiusMd),
-            onTap: onTap,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: theme.colorScheme.onSurface.withValues(
-                    alpha: atSoftCap ? 0.1 : 0.2,
-                  ),
-                  width: 1,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(kRadiusMd),
+              onTap: onTap,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
                 ),
-                borderRadius: BorderRadius.circular(kRadiusMd),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.add,
+                decoration: BoxDecoration(
+                  border: Border.all(
                     color: theme.colorScheme.onSurface.withValues(
-                      alpha: atSoftCap ? 0.3 : 0.55,
+                      alpha: atSoftCap ? 0.1 : 0.2,
                     ),
-                    size: 20,
+                    width: 1,
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Add Routine',
-                    style: theme.textTheme.bodyMedium?.copyWith(
+                  borderRadius: BorderRadius.circular(kRadiusMd),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.add,
                       color: theme.colorScheme.onSurface.withValues(
                         alpha: atSoftCap ? 0.3 : 0.55,
                       ),
+                      size: 20,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    Text(
+                      'Add Routine',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: atSoftCap ? 0.3 : 0.55,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
+          if (atSoftCap)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                'Goal reached \u2014 add anyway',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

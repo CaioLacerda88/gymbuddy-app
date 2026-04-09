@@ -152,6 +152,19 @@ class _ActiveBucketSection extends ConsumerWidget {
                   ),
                 ),
               ),
+              // Edit plan link.
+              IconButton(
+                icon: Icon(
+                  Icons.edit_outlined,
+                  size: 18,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+                ),
+                tooltip: 'Edit weekly plan',
+                onPressed: () => context.push('/plan/week'),
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                padding: EdgeInsets.zero,
+                visualDensity: VisualDensity.compact,
+              ),
               // Suggested-next pill chip.
               if (suggestedNext != null) ...[
                 _SuggestedNextPill(
@@ -208,14 +221,14 @@ class _ActiveBucketSection extends ConsumerWidget {
           sequenceNumber: bucket.order,
           routineName: name,
           chipState: chipState,
-          onTap: isNext
-              ? () {
+          onTap: isDone
+              ? null
+              : () {
                   final routine = routineMap[bucket.routineId];
                   if (routine != null) {
                     startRoutineWorkout(context, ref, routine);
                   }
-                }
-              : null,
+                },
         ),
       );
     }).toList();

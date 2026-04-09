@@ -165,35 +165,34 @@ void main() {
       expect(alpha, lessThan(1.0));
     });
 
-    testWidgets(
-      'has no InkWell tap response (ghosted, not tappable by chip itself)',
-      (tester) async {
-        var tapped = false;
+    testWidgets('remaining chip is tappable when onTap is provided', (
+      tester,
+    ) async {
+      var tapped = false;
 
-        await tester.pumpWidget(
-          MaterialApp(
-            theme: AppTheme.dark,
-            home: Scaffold(
-              body: Center(
-                child: RoutineChip(
-                  sequenceNumber: 1,
-                  routineName: 'Leg Day',
-                  chipState: RoutineChipState.remaining,
-                  onTap: () => tapped = true,
-                ),
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: Scaffold(
+            body: Center(
+              child: RoutineChip(
+                sequenceNumber: 1,
+                routineName: 'Leg Day',
+                chipState: RoutineChipState.remaining,
+                onTap: () => tapped = true,
               ),
             ),
           ),
-        );
+        ),
+      );
 
-        // Remaining chip renders as a Container, not InkWell — onTap is ignored.
-        await tester.tap(find.byType(RoutineChip));
-        await tester.pump();
+      // Remaining chips now use InkWell so any uncompleted routine
+      // can be started, not just the suggested-next one.
+      await tester.tap(find.byType(RoutineChip));
+      await tester.pump();
 
-        // The remaining chip does not use InkWell, so onTap should NOT be called.
-        expect(tapped, isFalse);
-      },
-    );
+      expect(tapped, isTrue);
+    });
 
     testWidgets('chip height is 44dp (standard, not CTA height)', (
       tester,
