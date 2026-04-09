@@ -31,7 +31,7 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 12.2c | Plan Management UX Polish | DONE | #38 |
 | 12.3a | P0 Bug Fixes (back nav, home flicker) | DONE | #39 |
 | 12.3b | Copy Fix + Content Expansion (exercises, routines) | DONE | #40 |
-| 12.3c | Standalone Routine → Plan Prompt | TODO | - |
+| 12.3c | Standalone Routine → Plan Prompt | DONE | #41 |
 | 13 | Production Readiness (Store Blockers) | TODO | - |
 | 14 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
 | 15 | Gamification Advanced (Quests, Stats Panel) | TODO | - |
@@ -501,35 +501,12 @@ Tests:
 
 ---
 
-### 12.3c: Standalone Routine → Plan Prompt
+### 12.3c: Standalone Routine → Plan Prompt (DONE — PR #41)
 
-**When a user finishes a workout from a routine not in their weekly plan, prompt them to add it.**
-
-**Behavior:**
-- If `workout.routineId` matches a `BucketRoutine.routineId` in the current plan: auto-mark done silently (already works).
-- If `workout.routineId` does NOT match any bucket routine AND a plan exists: show post-workout prompt — "Push Day isn't in your plan yet. Add it?" with "Add" and "Skip" actions.
-- If no plan exists: show nothing.
-- The prompt appears after the PR celebration screen (if any), before returning to Home.
-
-**Design (per UX):** Compact chip row beneath the workout summary. Single-tap "Add" button. Dismissible. Not a modal — inline in the post-workout flow.
-
-#### 12.3c — Acceptance Criteria
-
-- [ ] Post-workout prompt shown when routine not in plan
-- [ ] Tapping "Add" adds routine to current weekly plan bucket
-- [ ] No prompt when routine is already in plan (auto-marked done)
-- [ ] No prompt when no plan exists
-- [ ] Widget test for prompt visibility logic
-- [ ] `dart format . && dart analyze --fatal-infos && flutter test` passes
-
-#### 12.3c — File Plan
-
-```
-Modified:
-  lib/features/workouts/ui/active_workout_screen.dart  — post-finish prompt logic
-  lib/features/workouts/providers/notifiers/active_workout_notifier.dart  — expose plan-match check
-  lib/features/weekly_plan/providers/weekly_plan_provider.dart  — addRoutineToPlan method
-```
+- **Post-workout prompt**: Bottom sheet "X isn't in your plan yet. Add it?" with Add/Skip. Shown after PR celebration (or directly) when routine not in plan.
+- **`addRoutineToPlan`** method on `WeeklyPlanNotifier` with idempotency guard + error handling.
+- **PR celebration integration**: Prompt data passed via route extras; shown on Continue tap.
+- **885 tests** (13 new). Routine name looked up from provider (immutable) instead of mutable workout name.
 
 ---
 

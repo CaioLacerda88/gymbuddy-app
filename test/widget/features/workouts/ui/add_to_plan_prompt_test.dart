@@ -74,5 +74,22 @@ void main() {
 
       expect(find.text('result:false'), findsOneWidget);
     });
+
+    testWidgets('dragging down to dismiss returns null', (tester) async {
+      await tester.pumpWidget(buildTestWidget(routineName: 'Push Day'));
+      await tester.tap(find.text('Open Prompt'));
+      await tester.pumpAndSettle();
+
+      // Swipe down on the sheet content to dismiss it.
+      await tester.drag(
+        find.text("Push Day isn't in your plan yet. Add it?"),
+        const Offset(0, 400),
+      );
+      await tester.pumpAndSettle();
+
+      // No result snackbar — null was returned, nothing was shown.
+      expect(find.text('result:true'), findsNothing);
+      expect(find.text('result:false'), findsNothing);
+    });
   });
 }
