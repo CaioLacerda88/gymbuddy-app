@@ -95,6 +95,8 @@ class RoutineListScreen extends ConsumerWidget {
                       child: RoutineCard(
                         routine: r,
                         onTap: () => startRoutineWorkout(context, ref, r),
+                        onLongPress: () =>
+                            showRoutineActionSheet(context, ref, r),
                       ),
                     ),
                   ),

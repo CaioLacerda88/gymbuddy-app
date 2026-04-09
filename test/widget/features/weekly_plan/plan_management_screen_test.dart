@@ -157,7 +157,7 @@ Widget _build({
 void main() {
   group('PlanManagementScreen soft-cap inline text', () {
     testWidgets(
-      'shows "X/Y goal reached" text when bucket count >= training frequency',
+      'shows "X/X planned -- ready to go" text when bucket count >= training frequency',
       (tester) async {
         tester.view.physicalSize = const Size(800, 2000);
         tester.view.devicePixelRatio = 1.0;
@@ -182,15 +182,16 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(
-          find.textContaining('2/2 goal reached'),
+          find.textContaining('2/2 planned'),
           findsOneWidget,
-          reason: 'Soft-cap hint should show "2/2 goal reached" at cap',
+          reason:
+              'Soft-cap hint should show "2/2 planned — ready to go" at cap',
         );
       },
     );
 
     testWidgets(
-      'shows "X/Y routines planned" when bucket count < training frequency',
+      'shows "X/Y planned this week" when bucket count < training frequency',
       (tester) async {
         tester.view.physicalSize = const Size(800, 2000);
         tester.view.devicePixelRatio = 1.0;
@@ -210,20 +211,20 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(
-          find.textContaining('goal reached'),
+          find.textContaining('ready to go'),
           findsNothing,
           reason: 'Soft-cap hint should NOT appear when bucket < frequency',
         );
         expect(
-          find.textContaining('1/3 routines planned'),
+          find.textContaining('1/3 planned this week'),
           findsOneWidget,
-          reason: 'Counter should show "1/3 routines planned" below cap',
+          reason: 'Counter should show "1/3 planned this week" below cap',
         );
       },
     );
 
     testWidgets(
-      'shows "X/Y goal reached" text when bucket count exceeds frequency',
+      'shows "X/X planned -- ready to go" text when bucket count exceeds frequency',
       (tester) async {
         tester.view.physicalSize = const Size(800, 2000);
         tester.view.devicePixelRatio = 1.0;
@@ -231,6 +232,7 @@ void main() {
         addTearDown(tester.view.resetDevicePixelRatio);
 
         // Training frequency = 2, bucket has 3 routines => exceeds soft cap.
+        // When at soft cap, uses trainingFrequency/trainingFrequency (not bucketCount).
         final routines = [
           _routine(id: 'r-001', name: 'Push Day'),
           _routine(id: 'r-002', name: 'Pull Day'),
@@ -250,9 +252,10 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(
-          find.textContaining('3/2 goal reached'),
+          find.textContaining('2/2 planned'),
           findsOneWidget,
-          reason: 'Soft-cap hint should show "3/2 goal reached" when over',
+          reason:
+              'Soft-cap hint should show "2/2 planned — ready to go" when over',
         );
       },
     );
@@ -283,7 +286,7 @@ void main() {
 
       // Both "Add Routine" and soft-cap text should be present.
       expect(find.text('Add Routine'), findsOneWidget);
-      expect(find.textContaining('goal reached'), findsOneWidget);
+      expect(find.textContaining('ready to go'), findsOneWidget);
     });
   });
 
@@ -376,7 +379,7 @@ void main() {
 
   group('PlanManagementScreen edge cases', () {
     testWidgets(
-      'trainingFrequency=0 shows "0/0 goal reached" without crashing',
+      'trainingFrequency=0 shows "0/0 planned -- ready to go" without crashing',
       (tester) async {
         tester.view.physicalSize = const Size(800, 2000);
         tester.view.devicePixelRatio = 1.0;
@@ -394,9 +397,9 @@ void main() {
         await tester.pumpAndSettle();
 
         // With frequency=0 and 1 routine in bucket, atSoftCap is true (1 >= 0).
-        // Counter shows "1/0 goal reached" — no crash.
+        // Counter shows "0/0 planned — ready to go" — no crash.
         expect(
-          find.textContaining('goal reached'),
+          find.textContaining('ready to go'),
           findsOneWidget,
           reason:
               'With frequency=0, atSoftCap is always true; no crash expected',

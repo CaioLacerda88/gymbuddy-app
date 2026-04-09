@@ -11,7 +11,8 @@ enum MuscleGroup {
   legs,
   shoulders,
   arms,
-  core;
+  core,
+  cardio;
 
   String get displayName => name[0].toUpperCase() + name.substring(1);
 
@@ -22,6 +23,7 @@ enum MuscleGroup {
     shoulders => Icons.expand,
     arms => Icons.sports_martial_arts,
     core => Icons.circle_outlined,
+    cardio => Icons.directions_run,
   };
 
   static MuscleGroup fromString(String value) =>
