@@ -29,7 +29,7 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 12.2a | Bug Fixes (7 UX bugs) | DONE | #36 |
 | 12.2b | Home Screen Redesign | DONE | #37 |
 | 12.2c | Plan Management UX Polish | DONE | #38 |
-| 12.3a | P0 Bug Fixes (back nav, home flicker) | TODO | - |
+| 12.3a | P0 Bug Fixes (back nav, home flicker) | DONE | #39 |
 | 12.3b | Copy Fix + Content Expansion (exercises, routines) | TODO | - |
 | 12.3c | Standalone Routine → Plan Prompt | TODO | - |
 | 13 | Production Readiness (Store Blockers) | TODO | - |
@@ -482,44 +482,12 @@ Tests:
 
 > Findings from manual exploratory QA on device (2026-04-09). Prioritized by PO, root-caused by QA, design direction from UX.
 
-### 12.3a: P0 Bug Fixes — Back Navigation + Home Screen Flicker
+### 12.3a: P0 Bug Fixes — Back Navigation + Home Screen Flicker (DONE — PR #39)
 
-**Two critical bugs that erode user trust.**
-
-#### Bug 1: Back Navigation Closes App on Active Workout
-
-**Root cause:** `PopScope(canPop: false)` is on `_ActiveWorkoutBody` (child widget at `active_workout_screen.dart:206`), NOT on the top-level `ActiveWorkoutScreen`. During the loading state (`asyncState.isLoading`), the screen returns a bare `Scaffold` with **no PopScope** — so Android back during that frame exits the app. Additionally, `context.go('/workout/active')` replaces the navigation stack (single entry), so there's nothing to pop to.
-
-**Fix:**
-1. Move `PopScope(canPop: false, onPopInvokedWithResult: ...)` to wrap the **entire** `ActiveWorkoutScreen.build()` return value, including loading/error scaffolds.
-2. Audit all `context.go('/workout/active')` call sites — the resume path from `ResumeWorkoutDialog` should use `context.push()` instead, so there's always a back-stack entry.
-
-**Files:**
-- `lib/features/workouts/ui/active_workout_screen.dart` — move PopScope to top level
-- `lib/core/router/app_router.dart` — audit go vs push for workout route
-
-#### Bug 2: Home Screen Elements Disappear on Navigation Return
-
-**Root cause:** `WeekBucketSection` line 32 has `.when(loading: () => SizedBox.shrink())`. When user navigates away and back, `weeklyPlanProvider` may re-enter `AsyncLoading` state. The `.when()` handler blanks the entire THIS WEEK section. Same pattern in `home_screen.dart` where `planAsync.valueOrNull` returns `null` during loading, making `hasActivePlan = false` — which briefly shows the wrong UI state.
-
-**Fix:**
-1. In `WeekBucketSection.build()`: replace `.when(loading: SizedBox.shrink())` with a pattern that retains previous data during reload. Use `AsyncValue.valueOrNull` to show stale data, only show empty for genuinely first load.
-2. In `home_screen.dart`: guard `hasActivePlan` derivation to retain previous value during reload.
-3. Apply the same pattern to all `.when()` handlers on the home screen — never blank a section during a provider reload when cached data exists.
-
-**Files:**
-- `lib/features/weekly_plan/ui/widgets/week_bucket_section.dart` — fix `.when()` loading handler
-- `lib/features/workouts/ui/home_screen.dart` — fix `valueOrNull` during reload
-
-#### 12.3a — Acceptance Criteria
-
-- [ ] Android back button on active workout screen shows discard dialog (never exits app)
-- [ ] PopScope wraps all states including loading
-- [ ] Home screen elements persist when navigating away and returning (no flicker)
-- [ ] Provider reload shows stale data, not blank sections
-- [ ] Widget tests for PopScope on loading state
-- [ ] Widget tests for home screen provider reload (mock loading→data transition)
-- [ ] `dart format . && dart analyze --fatal-infos && flutter test` passes
+- **Bug 1 (back nav):** PopScope moved to top-level `ActiveWorkoutScreen.build()`, covers loading + active states. `_showDiscardDialog` extracted to ConsumerWidget level.
+- **Bug 2 (home flicker):** `WeekBucketSection` shows stale data during provider reload via `hasValue` guard. `hasActivePlan` uses `planAsync.hasValue` to retain state during loading.
+- **6 new widget tests** (858 total). Key files: `active_workout_screen.dart`, `week_bucket_section.dart`, `home_screen.dart`.
+- **Lesson:** `context.go()` → `context.push()` breaks Flutter web reload in GoRouter 13.x. `PopScope(canPop: false)` is sufficient for back button. See `tasks/lessons.md`.
 
 ---
 

@@ -115,15 +115,29 @@ Each PLAN.md step follows this pipeline. **No step is skippable.**
 5. **QA gate** (before PR) — `qa-engineer`:
    - Reviews test coverage, flags gaps, adds missing unit/widget cases
    - **E2E (always):** Verify no selectors/text strings broke; update `selectors.ts` if needed
-   - **E2E (new/changed user flows):** Write/update E2E regression tests for the feature, run full E2E suite locally — all must pass
-   - **E2E (visual-only / no flow change):** Selector impact assessment is sufficient; skip suite run and new E2E tests
+   - **E2E (new/changed user flows):** Write/update E2E regression tests for the feature, run full E2E suite locally — all must pass. **Navigation changes (go↔push, route restructuring) count as flow changes** even if no UI text changed.
+   - **E2E (visual-only / no flow change):** Selector impact assessment is sufficient; skip suite run and new E2E tests. Only applies when zero navigation/routing/provider logic changed.
    - Removes or updates stale E2E tests affected by the change
    - Bugs found → back to `tech-lead` → fix → QA re-runs from top
-6. **Open PR** — only after QA gate passes.
-7. **Code review** — `reviewer` flags issues → `tech-lead` fixes → `qa-engineer` re-validates.
-8. **Ship** — QA OK + CI green → squash merge.
-9. **Apply migrations** — After merge, check if the step added/modified SQL migrations (`supabase/migrations/`). If so, apply them to the hosted Supabase instance with `npx supabase db push` (or link + push). Verify the schema matches what the code expects before moving on. During QA/testing, always confirm that any new migrations have been applied to the environment under test.
-10. **Close WIP** — Remove WIP section, condense step in PLAN.md (see lifecycle below).
+6. **Verify before PR** — Orchestrator runs `superpowers:verification-before-completion` skill: fresh `make ci` (or format + analyze + test), reads full output, confirms 0 failures. No "should pass" — evidence only. Also re-read PLAN.md acceptance criteria and check each item against the diff.
+7. **Open PR** — only after verification gate passes.
+8. **Code review** — `reviewer` flags issues → `tech-lead` fixes → `qa-engineer` re-validates.
+9. **Ship** — QA OK + CI green → squash merge.
+10. **Apply migrations** — After merge, check if the step added/modified SQL migrations (`supabase/migrations/`). If so, apply them to the hosted Supabase instance with `npx supabase db push` (or link + push). Verify the schema matches what the code expects before moving on. During QA/testing, always confirm that any new migrations have been applied to the environment under test.
+11. **Close WIP** — Remove WIP section, condense step in PLAN.md (see lifecycle below).
+
+### Debugging Protocol
+
+When ANY failure occurs during the pipeline (CI red, E2E failure, unexpected behavior, review-found bugs):
+
+1. **Invoke `superpowers:systematic-debugging`** — no guessing, no "quick fixes"
+2. **Phase 1 (Root Cause):** Read the actual error output. Reproduce. Check what changed. Trace data flow backward from the symptom.
+3. **Phase 2 (Pattern):** Find working examples in the codebase. Compare broken vs working.
+4. **Phase 3 (Hypothesis):** Form ONE specific theory ("X causes Y because Z"). Test minimally — one variable at a time.
+5. **Phase 4 (Fix):** Fix root cause, not symptom. Verify with tests.
+6. **If 3+ fix attempts fail:** Stop. Question the architecture. Discuss with user before continuing.
+
+**This applies to the orchestrator, not just agents.** When investigating CI failures, E2E regressions, or review feedback — follow the phases, don't ad-hoc grep around hoping to stumble on the answer.
 
 ### PLAN.md Lifecycle
 

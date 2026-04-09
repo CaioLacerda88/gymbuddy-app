@@ -51,6 +51,9 @@ build/
 *.freezed.dart
 *.mocks.dart
 
+# Windows/MSYS2 crash dumps
+*.stackdump
+
 # Claude
 .claude/
 
