@@ -4,28 +4,23 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ---
 
-## Step 12.3b — Copy Fix + Content Expansion
+## Step 12.3c — Standalone Routine → Plan Prompt
 
 **Status:** In progress — tech-lead implementing
-**Branch:** `feature/step12.3b-content-expansion`
-**Source:** PLAN.md Step 12.3b
+**Branch:** `feature/step12.3c-plan-prompt`
+**Source:** PLAN.md Step 12.3c
 
 ### Checklist
 
-- [ ] Create branch `feature/step12.3b-content-expansion`
-- [ ] **Copy fix**: Change "goal reached" → "planned" variants in `plan_management_screen.dart:527`
-  - Below cap: `"$bucketCount/$trainingFrequency planned this week"`
-  - At/above cap: `"$trainingFrequency/$trainingFrequency planned — ready to go"`
-- [ ] **Dart enum**: Add `cardio` to `MuscleGroup` in `exercise.dart` (with icon + displayName)
-- [ ] **Code gen**: Run `make gen` after enum change (freezed/json_serializable)
-- [ ] **SQL migration** `00013_expand_exercises_and_routines.sql`:
-  - `ALTER TYPE muscle_group ADD VALUE 'cardio'`
-  - INSERT ~37 new exercises (idempotent pattern from 00007)
-  - INSERT 5 new routine templates (Upper/Lower A&B, 5x5 Strength, Full Body Beginner, Arms & Abs)
-- [ ] **Action sheet**: Update `routine_action_sheet.dart` for `isDefault` routines
-  - Default routines: Start + Duplicate and Edit (no Edit/Delete)
-  - User routines: keep current Edit/Delete
-- [ ] **Routine list**: Add `onLongPress` to default routine cards in `routine_list_screen.dart`
-- [ ] `dart format .` — clean
-- [ ] `dart analyze --fatal-infos` — no issues
-- [ ] `flutter test` — all pass
+- [x] Create branch `feature/step12.3c-plan-prompt`
+- [x] **Plan-match check**: `_shouldShowPlanPrompt()` in active workout screen checks routineId, plan existence, not-in-plan
+- [x] **Add-to-plan method**: `addRoutineToPlan(String routineId)` added to `WeeklyPlanNotifier`
+- [x] **Post-workout prompt widget**: `showAddToPlanPrompt()` bottom sheet — "X isn't in your plan yet. Add it?" with Add + Skip
+- [x] **Integrate into finish flow** in `active_workout_screen.dart:_onFinish()`:
+  - Captures `routineId` and `routineName` before `finishWorkout()`
+  - If PRs: passes prompt data to PR celebration screen, shown on Continue tap
+  - If no PRs: shows prompt directly before navigating home
+- [x] **Widget tests**: 7 tests covering prompt widget and PR celebration integration
+- [x] `dart format .` — clean
+- [x] `dart analyze --fatal-infos` — no issues
+- [x] `flutter test` — all 878 pass

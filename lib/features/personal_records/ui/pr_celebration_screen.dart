@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../profile/providers/profile_providers.dart';
+import '../../weekly_plan/providers/weekly_plan_provider.dart';
+import '../../workouts/ui/widgets/add_to_plan_prompt.dart';
 import '../domain/pr_detection_service.dart';
 import '../models/personal_record.dart';
 import '../models/record_type.dart';
@@ -12,15 +14,23 @@ import '../models/record_type.dart';
 ///
 /// First workout: consolidated benchmarks message.
 /// Subsequent PRs: bold "NEW PR" banner with spring-animated values.
+///
+/// Optionally carries plan prompt data ([planPromptRoutineId] and
+/// [planPromptRoutineName]) to show an "Add to plan?" prompt when the user
+/// taps Continue.
 class PRCelebrationScreen extends ConsumerStatefulWidget {
   const PRCelebrationScreen({
     super.key,
     required this.result,
     required this.exerciseNames,
+    this.planPromptRoutineId,
+    this.planPromptRoutineName,
   });
 
   final PRDetectionResult result;
   final Map<String, String> exerciseNames;
+  final String? planPromptRoutineId;
+  final String? planPromptRoutineName;
 
   @override
   ConsumerState<PRCelebrationScreen> createState() =>
@@ -64,6 +74,24 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen>
   void dispose() {
     _scaleController.dispose();
     super.dispose();
+  }
+
+  Future<void> _onContinue() async {
+    final routineId = widget.planPromptRoutineId;
+    final routineName = widget.planPromptRoutineName;
+
+    if (routineId != null && routineName != null) {
+      final shouldAdd = await showAddToPlanPrompt(
+        context,
+        routineName: routineName,
+      );
+      if (!mounted) return;
+      if (shouldAdd == true) {
+        await ref.read(weeklyPlanProvider.notifier).addRoutineToPlan(routineId);
+      }
+      if (!mounted) return;
+    }
+    context.go('/home');
   }
 
   String _formatValue(PersonalRecord record, String weightUnit) {
@@ -115,7 +143,7 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen>
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () => context.go('/home'),
+                      onPressed: _onContinue,
                       child: const Text('Continue'),
                     ),
                   ),
