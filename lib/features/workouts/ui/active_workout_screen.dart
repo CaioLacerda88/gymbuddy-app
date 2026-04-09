@@ -53,7 +53,7 @@ class ActiveWorkoutScreen extends ConsumerWidget {
       return PopScope(
         canPop: false,
         onPopInvokedWithResult: (didPop, _) {
-          if (!didPop && context.mounted) context.pop();
+          if (!didPop && context.mounted) context.go('/home');
         },
         child: const Scaffold(body: Center(child: CircularProgressIndicator())),
       );

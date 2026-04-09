@@ -124,7 +124,7 @@ class HomeScreen extends ConsumerWidget {
       );
       if (!context.mounted) return;
       if (result == ResumeWorkoutResult.resume) {
-        context.push('/workout/active');
+        context.go('/workout/active');
         return;
       }
       if (result == ResumeWorkoutResult.discard) {
@@ -140,7 +140,7 @@ class HomeScreen extends ConsumerWidget {
     }
     await ref.read(activeWorkoutProvider.notifier).startWorkout();
     if (!context.mounted) return;
-    context.push('/workout/active');
+    context.go('/workout/active');
   }
 }
 
