@@ -46,6 +46,21 @@ class RoutineListNotifier extends AsyncNotifier<List<Routine>> {
     ref.invalidateSelf();
   }
 
+  /// Duplicate a routine as a user-owned copy and refresh the list.
+  /// Returns the newly created [Routine] so callers can navigate to edit it.
+  Future<Routine?> duplicateRoutine(Routine source) async {
+    final userId = ref.read(authRepositoryProvider).currentUser?.id;
+    if (userId == null) return null;
+    final repo = ref.read(routineRepositoryProvider);
+    final copy = await repo.createRoutine(
+      userId: userId,
+      name: '${source.name} (Copy)',
+      exercises: source.exercises,
+    );
+    ref.invalidateSelf();
+    return copy;
+  }
+
   /// Delete a routine and refresh the list.
   Future<void> deleteRoutine(String id) async {
     final userId = ref.read(authRepositoryProvider).currentUser?.id;

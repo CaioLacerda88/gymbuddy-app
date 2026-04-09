@@ -524,8 +524,8 @@ class _AddRoutineRow extends StatelessWidget {
             padding: const EdgeInsets.only(top: 6),
             child: Text(
               atSoftCap
-                  ? '$bucketCount/$trainingFrequency goal reached'
-                  : '$bucketCount/$trainingFrequency routines planned',
+                  ? '$trainingFrequency/$trainingFrequency planned — ready to go'
+                  : '$bucketCount/$trainingFrequency planned this week',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
               ),
