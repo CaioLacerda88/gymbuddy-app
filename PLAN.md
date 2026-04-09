@@ -30,7 +30,7 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 12.2b | Home Screen Redesign | DONE | #37 |
 | 12.2c | Plan Management UX Polish | DONE | #38 |
 | 12.3a | P0 Bug Fixes (back nav, home flicker) | DONE | #39 |
-| 12.3b | Copy Fix + Content Expansion (exercises, routines) | TODO | - |
+| 12.3b | Copy Fix + Content Expansion (exercises, routines) | DONE | #40 |
 | 12.3c | Standalone Routine → Plan Prompt | TODO | - |
 | 13 | Production Readiness (Store Blockers) | TODO | - |
 | 14 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
@@ -491,61 +491,13 @@ Tests:
 
 ---
 
-### 12.3b: Copy Fix + Content Expansion
+### 12.3b: Copy Fix + Content Expansion (DONE — PR #40)
 
-**Two changes: fix misleading text + expand exercise/routine library.**
-
-#### Copy Fix: "Goal Reached" → "Planned"
-
-**Problem:** Plan Management shows "3/3 goal reached" when 3 routines are **planned**, not completed. Users think they've finished their weekly goal.
-
-**Fix:** In `_AddRoutineRow` (`plan_management_screen.dart`):
-- Below cap: `"$bucketCount/$trainingFrequency planned this week"`
-- At/above cap: `"$trainingFrequency/$trainingFrequency planned — ready to go"`
-- Real "goal reached" celebration belongs on the Home screen when `completedCount >= trainingFrequency` (Phase 14 gamification hook).
-
-#### Content Expansion: Exercises + Routines
-
-**Target:** ~100 exercises (from ~63), 9 routine templates (from 4).
-
-**Exercises to add (~37 new):** SQL migration, data-only.
-- Chest: Pec Deck, Cable Chest Press, Wide Push-Up
-- Back: Face Pull, Rack Pull, Good Morning, Pendlay Row
-- Legs: Hack Squat, Sumo Deadlift, Walking Lunges, Step-Up, Seated Calf Raise, Leg Abductor, Leg Adductor
-- Shoulders: Upright Row, Machine Shoulder Press, Cable Lateral Raise
-- Arms: Preacher Curl, Incline Dumbbell Curl, Close-Grip Bench Press, Overhead Tricep Extension (Cable), Rope Pushdown
-- Core: Bicycle Crunch, Hanging Leg Raise, Cable Crunch, Pallof Press, Side Plank
-- Cardio (new category): Treadmill, Rowing Machine, Stationary Bike, Jump Rope, Elliptical
-
-**Routine templates to add (5 new):**
-- Upper/Lower A & B (4-day split)
-- 5x5 Strength (3-day: Squat/Bench/Row/OHP/Deadlift)
-- Full Body Beginner (3-day, lighter volume)
-- Arms & Abs Day (isolation day)
-
-**Preset routine behavior:** Read-only. Users can "Duplicate and Edit" to customize. `isDefault = true` routines get a different action sheet (Start + Duplicate, no Edit/Delete).
-
-#### 12.3b — Acceptance Criteria
-
-- [ ] "Goal reached" text replaced with "planned" variants
-- [ ] Migration adds ~37 exercises across all muscle groups + cardio
-- [ ] Migration adds 5 routine templates with correct exercises
-- [ ] Exercise library shows ~100 total exercises
-- [ ] Preset routines show in Routines tab with STARTER ROUTINES label
-- [ ] Preset routine action sheet: Start + Duplicate (no Edit/Delete)
-- [ ] `dart format . && dart analyze --fatal-infos && flutter test` passes
-- [ ] Migration applied to hosted Supabase after merge
-
-#### 12.3b — File Plan
-
-```
-New:
-  supabase/migrations/00013_expand_exercises_and_routines.sql  — exercise + routine seed data
-
-Modified:
-  lib/features/weekly_plan/ui/plan_management_screen.dart  — copy fix
-  lib/features/routines/ui/widgets/routine_action_sheet.dart  — preset vs user action sheet
-```
+- **Copy fix**: "goal reached" → "planned — ready to go" / "planned this week" in `plan_management_screen.dart`
+- **31 new exercises** across 7 muscle groups including new `cardio` category (migration 00013 + 00014). Total ~92 exercises.
+- **5 new routine templates**: Upper/Lower Upper, Upper/Lower Lower, 5×5 Strength, Full Body Beginner, Arms & Abs
+- **Preset action sheet**: Default routines show Start + Duplicate and Edit (no Edit/Delete). `duplicateRoutine()` added to notifier.
+- **871 tests** (13 new). Lesson: PG `ALTER TYPE ADD VALUE` must be in a separate transaction from INSERTs using the new value.
 
 ---
 
