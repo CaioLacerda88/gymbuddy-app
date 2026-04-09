@@ -29,6 +29,9 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 12.2a | Bug Fixes (7 UX bugs) | DONE | #36 |
 | 12.2b | Home Screen Redesign | DONE | #37 |
 | 12.2c | Plan Management UX Polish | DONE | #38 |
+| 12.3a | P0 Bug Fixes (back nav, home flicker) | TODO | - |
+| 12.3b | Copy Fix + Content Expansion (exercises, routines) | TODO | - |
+| 12.3c | Standalone Routine → Plan Prompt | TODO | - |
 | 13 | Production Readiness (Store Blockers) | TODO | - |
 | 14 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
 | 15 | Gamification Advanced (Quests, Stats Panel) | TODO | - |
@@ -44,6 +47,7 @@ Read only what you need:
 | Completed Steps (1-11) | Need context on what already exists |
 | Step 12: Weekly Training Plan | Implementing Step 12 |
 | Step 12.2: Home Redesign + Bug Fixes | Implementing Step 12.2 |
+| Step 12.3: UX Polish & Content Expansion | Implementing Step 12.3 |
 | Phase 13: Production Readiness | Preparing for Play Store |
 | Phase 14-15: Gamification | Implementing RPG system |
 | QA Status | Doing QA or review |
@@ -474,6 +478,155 @@ Tests:
 
 ---
 
+## Step 12.3: UX Polish & Content Expansion
+
+> Findings from manual exploratory QA on device (2026-04-09). Prioritized by PO, root-caused by QA, design direction from UX.
+
+### 12.3a: P0 Bug Fixes — Back Navigation + Home Screen Flicker
+
+**Two critical bugs that erode user trust.**
+
+#### Bug 1: Back Navigation Closes App on Active Workout
+
+**Root cause:** `PopScope(canPop: false)` is on `_ActiveWorkoutBody` (child widget at `active_workout_screen.dart:206`), NOT on the top-level `ActiveWorkoutScreen`. During the loading state (`asyncState.isLoading`), the screen returns a bare `Scaffold` with **no PopScope** — so Android back during that frame exits the app. Additionally, `context.go('/workout/active')` replaces the navigation stack (single entry), so there's nothing to pop to.
+
+**Fix:**
+1. Move `PopScope(canPop: false, onPopInvokedWithResult: ...)` to wrap the **entire** `ActiveWorkoutScreen.build()` return value, including loading/error scaffolds.
+2. Audit all `context.go('/workout/active')` call sites — the resume path from `ResumeWorkoutDialog` should use `context.push()` instead, so there's always a back-stack entry.
+
+**Files:**
+- `lib/features/workouts/ui/active_workout_screen.dart` — move PopScope to top level
+- `lib/core/router/app_router.dart` — audit go vs push for workout route
+
+#### Bug 2: Home Screen Elements Disappear on Navigation Return
+
+**Root cause:** `WeekBucketSection` line 32 has `.when(loading: () => SizedBox.shrink())`. When user navigates away and back, `weeklyPlanProvider` may re-enter `AsyncLoading` state. The `.when()` handler blanks the entire THIS WEEK section. Same pattern in `home_screen.dart` where `planAsync.valueOrNull` returns `null` during loading, making `hasActivePlan = false` — which briefly shows the wrong UI state.
+
+**Fix:**
+1. In `WeekBucketSection.build()`: replace `.when(loading: SizedBox.shrink())` with a pattern that retains previous data during reload. Use `AsyncValue.valueOrNull` to show stale data, only show empty for genuinely first load.
+2. In `home_screen.dart`: guard `hasActivePlan` derivation to retain previous value during reload.
+3. Apply the same pattern to all `.when()` handlers on the home screen — never blank a section during a provider reload when cached data exists.
+
+**Files:**
+- `lib/features/weekly_plan/ui/widgets/week_bucket_section.dart` — fix `.when()` loading handler
+- `lib/features/workouts/ui/home_screen.dart` — fix `valueOrNull` during reload
+
+#### 12.3a — Acceptance Criteria
+
+- [ ] Android back button on active workout screen shows discard dialog (never exits app)
+- [ ] PopScope wraps all states including loading
+- [ ] Home screen elements persist when navigating away and returning (no flicker)
+- [ ] Provider reload shows stale data, not blank sections
+- [ ] Widget tests for PopScope on loading state
+- [ ] Widget tests for home screen provider reload (mock loading→data transition)
+- [ ] `dart format . && dart analyze --fatal-infos && flutter test` passes
+
+---
+
+### 12.3b: Copy Fix + Content Expansion
+
+**Two changes: fix misleading text + expand exercise/routine library.**
+
+#### Copy Fix: "Goal Reached" → "Planned"
+
+**Problem:** Plan Management shows "3/3 goal reached" when 3 routines are **planned**, not completed. Users think they've finished their weekly goal.
+
+**Fix:** In `_AddRoutineRow` (`plan_management_screen.dart`):
+- Below cap: `"$bucketCount/$trainingFrequency planned this week"`
+- At/above cap: `"$trainingFrequency/$trainingFrequency planned — ready to go"`
+- Real "goal reached" celebration belongs on the Home screen when `completedCount >= trainingFrequency` (Phase 14 gamification hook).
+
+#### Content Expansion: Exercises + Routines
+
+**Target:** ~100 exercises (from ~63), 9 routine templates (from 4).
+
+**Exercises to add (~37 new):** SQL migration, data-only.
+- Chest: Pec Deck, Cable Chest Press, Wide Push-Up
+- Back: Face Pull, Rack Pull, Good Morning, Pendlay Row
+- Legs: Hack Squat, Sumo Deadlift, Walking Lunges, Step-Up, Seated Calf Raise, Leg Abductor, Leg Adductor
+- Shoulders: Upright Row, Machine Shoulder Press, Cable Lateral Raise
+- Arms: Preacher Curl, Incline Dumbbell Curl, Close-Grip Bench Press, Overhead Tricep Extension (Cable), Rope Pushdown
+- Core: Bicycle Crunch, Hanging Leg Raise, Cable Crunch, Pallof Press, Side Plank
+- Cardio (new category): Treadmill, Rowing Machine, Stationary Bike, Jump Rope, Elliptical
+
+**Routine templates to add (5 new):**
+- Upper/Lower A & B (4-day split)
+- 5x5 Strength (3-day: Squat/Bench/Row/OHP/Deadlift)
+- Full Body Beginner (3-day, lighter volume)
+- Arms & Abs Day (isolation day)
+
+**Preset routine behavior:** Read-only. Users can "Duplicate and Edit" to customize. `isDefault = true` routines get a different action sheet (Start + Duplicate, no Edit/Delete).
+
+#### 12.3b — Acceptance Criteria
+
+- [ ] "Goal reached" text replaced with "planned" variants
+- [ ] Migration adds ~37 exercises across all muscle groups + cardio
+- [ ] Migration adds 5 routine templates with correct exercises
+- [ ] Exercise library shows ~100 total exercises
+- [ ] Preset routines show in Routines tab with STARTER ROUTINES label
+- [ ] Preset routine action sheet: Start + Duplicate (no Edit/Delete)
+- [ ] `dart format . && dart analyze --fatal-infos && flutter test` passes
+- [ ] Migration applied to hosted Supabase after merge
+
+#### 12.3b — File Plan
+
+```
+New:
+  supabase/migrations/00013_expand_exercises_and_routines.sql  — exercise + routine seed data
+
+Modified:
+  lib/features/weekly_plan/ui/plan_management_screen.dart  — copy fix
+  lib/features/routines/ui/widgets/routine_action_sheet.dart  — preset vs user action sheet
+```
+
+---
+
+### 12.3c: Standalone Routine → Plan Prompt
+
+**When a user finishes a workout from a routine not in their weekly plan, prompt them to add it.**
+
+**Behavior:**
+- If `workout.routineId` matches a `BucketRoutine.routineId` in the current plan: auto-mark done silently (already works).
+- If `workout.routineId` does NOT match any bucket routine AND a plan exists: show post-workout prompt — "Push Day isn't in your plan yet. Add it?" with "Add" and "Skip" actions.
+- If no plan exists: show nothing.
+- The prompt appears after the PR celebration screen (if any), before returning to Home.
+
+**Design (per UX):** Compact chip row beneath the workout summary. Single-tap "Add" button. Dismissible. Not a modal — inline in the post-workout flow.
+
+#### 12.3c — Acceptance Criteria
+
+- [ ] Post-workout prompt shown when routine not in plan
+- [ ] Tapping "Add" adds routine to current weekly plan bucket
+- [ ] No prompt when routine is already in plan (auto-marked done)
+- [ ] No prompt when no plan exists
+- [ ] Widget test for prompt visibility logic
+- [ ] `dart format . && dart analyze --fatal-infos && flutter test` passes
+
+#### 12.3c — File Plan
+
+```
+Modified:
+  lib/features/workouts/ui/active_workout_screen.dart  — post-finish prompt logic
+  lib/features/workouts/providers/notifiers/active_workout_notifier.dart  — expose plan-match check
+  lib/features/weekly_plan/providers/weekly_plan_provider.dart  — addRoutineToPlan method
+```
+
+---
+
+### Stale Workout Timeout (Deferred to Phase 13)
+
+Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent modal: "Your workout from [date] is still open — Resume or Discard?" Already handled partially by `ResumeWorkoutDialog`. Enhancement goes into Phase 13 production readiness.
+
+### Execution Order
+
+| Sub-step | Dependencies | Effort |
+|----------|-------------|--------|
+| 12.3a (P0 bugs) | None | 0.5 session |
+| 12.3b (copy + content) | None (can parallel with 12.3a) | 1 session |
+| 12.3c (plan prompt) | 12.3a (needs stable back nav) | 0.5 session |
+
+---
+
 ## Phase 13: Production Readiness
 
 > Adapted from PROD-READINESS.md. Everything needed to ship on Google Play.
@@ -495,7 +648,7 @@ Tests:
 | ID | Item | Effort | Notes |
 |----|------|--------|-------|
 | P1 | Progress charts per exercise | 2-3 days | **#1 retention driver.** Line chart: weight over time. `fl_chart` or `syncfusion_flutter_charts`. Query sets+workouts by exercise_id |
-| P2 | Exercise library expansion | 1 day | 60 -> 150-200 exercises. Source: Free Exercise DB (800+). New seed migration |
+| P2 | Exercise library expansion | 1 day | Partially addressed in Step 12.3b (~100 exercises). Phase 13 can expand further to 150-200 if needed |
 | P3 | Forgot password flow | 2-3h | Currently triggers reset email immediately. Add confirmation screen |
 | P4 | Exercise images fix (QA-005) | 3-4h | GitHub URLs return 404. Migrate to Supabase Storage or CDN |
 | P5 | 1RM estimation | 2-3h | Epley formula. Display on exercise detail + PR cards |
@@ -508,6 +661,7 @@ Tests:
 |----|------|--------|
 | W1 | OAuth deep link registration | 1-2h |
 | W2 | Wakelock during active workout | 1h |
+| W3 | Stale workout timeout UX | 2-3h | When `startedAt` >6h ago on app open, show prominent modal: "Workout from [date] still open — Resume or Discard?" (deferred from Step 12.3) |
 | W3 | Input length limits (TextField + server CHECK) | 1-2h |
 | W4 | Push notifications (workout reminders) | 1-2 days |
 | W5 | Data export (CSV/JSON) | 3-4h |

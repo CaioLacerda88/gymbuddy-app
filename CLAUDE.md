@@ -122,7 +122,8 @@ Each PLAN.md step follows this pipeline. **No step is skippable.**
 6. **Open PR** — only after QA gate passes.
 7. **Code review** — `reviewer` flags issues → `tech-lead` fixes → `qa-engineer` re-validates.
 8. **Ship** — QA OK + CI green → squash merge.
-9. **Close WIP** — Remove WIP section, condense step in PLAN.md (see lifecycle below).
+9. **Apply migrations** — After merge, check if the step added/modified SQL migrations (`supabase/migrations/`). If so, apply them to the hosted Supabase instance with `npx supabase db push` (or link + push). Verify the schema matches what the code expects before moving on. During QA/testing, always confirm that any new migrations have been applied to the environment under test.
+10. **Close WIP** — Remove WIP section, condense step in PLAN.md (see lifecycle below).
 
 ### PLAN.md Lifecycle
 
