@@ -15,6 +15,7 @@ import '../../personal_records/models/personal_record.dart';
 import '../../personal_records/providers/pr_providers.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../../personal_records/models/record_type.dart';
+import '../../routines/providers/notifiers/routine_list_notifier.dart';
 import '../../weekly_plan/providers/weekly_plan_provider.dart';
 import '../providers/workout_providers.dart';
 import '../providers/workout_history_providers.dart';
@@ -207,8 +208,17 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
     }
 
     // Capture routine context before finishing (state is cleared after).
+    // Look up the immutable routine name from the provider — workout.name
+    // is mutable (user can rename mid-session).
     final routineId = currentState?.routineId;
-    final routineName = currentState?.workout.name;
+    final routineName = routineId != null
+        ? ref
+              .read(routineListProvider)
+              .valueOrNull
+              ?.where((r) => r.id == routineId)
+              .firstOrNull
+              ?.name
+        : null;
 
     final prResult = await notifier.finishWorkout(notes: result.notes);
     if (!mounted) return;

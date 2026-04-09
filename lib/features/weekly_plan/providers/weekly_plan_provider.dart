@@ -149,8 +149,12 @@ class WeeklyPlanNotifier extends AsyncNotifier<WeeklyPlan?> {
       ...plan.routines,
       BucketRoutine(routineId: routineId, order: plan.routines.length + 1),
     ];
-    await upsertPlan(updatedRoutines);
-    return true;
+    try {
+      await upsertPlan(updatedRoutines);
+      return !state.hasError;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Clear the current week's plan.
