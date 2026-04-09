@@ -15,7 +15,7 @@
 
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth';
-import { navigateToTab, waitForAppReady } from '../helpers/app';
+import { navigateToTab } from '../helpers/app';
 import { WEEKLY_PLAN } from '../helpers/selectors';
 import { TEST_USERS } from '../fixtures/test-users';
 
@@ -78,12 +78,9 @@ test.describe('Smoke: Weekly Plan', () => {
       .catch(() => false);
 
     if (thisWeekVisible) {
-      // Long-press on the chip row to open plan management.
-      // WeekBucketSection wraps the chip ScrollView in a GestureDetector with
-      // onLongPress: () => context.push('/plan/week').
-      // For automation we navigate directly via URL instead.
-      await page.goto('/plan/week');
-      await waitForAppReady(page);
+      // Plan already exists — navigate to plan management via hash routing.
+      // page.goto() would reload the Flutter SPA and lose app state.
+      await page.evaluate(() => { window.location.hash = '#/plan/week'; });
     } else {
       // Tap the "Plan your week" CTA.
       await page.locator(WEEKLY_PLAN.planYourWeekCta).click();
