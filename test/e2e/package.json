@@ -11,7 +11,8 @@
     "report": "playwright show-report"
   },
   "devDependencies": {
-    "@playwright/test": "^1.44.0"
+    "@playwright/test": "^1.44.0",
+    "http-server": "^14.1.1"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.43.4",

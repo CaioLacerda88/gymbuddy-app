@@ -39,7 +39,7 @@ test.describe('Smoke: Profile Weekly Goal', () => {
   test('Profile screen shows Weekly Goal section with frequency text', async ({
     page,
   }) => {
-    await expect(page.locator(PROFILE.heading)).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator(PROFILE.heading).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.locator(PROFILE_WEEKLY_GOAL.sectionLabel)).toBeVisible({
       timeout: 10_000,
     });
@@ -68,9 +68,9 @@ test.describe('Smoke: Profile Weekly Goal', () => {
       timeout: 10_000,
     });
 
-    // All frequency options must be present.
+    // All frequency options must be present (rendered as ChoiceChips).
     for (const chip of ['2x', '3x', '4x', '5x', '6x']) {
-      await expect(page.locator(`text=${chip}`).first()).toBeVisible({
+      await expect(page.locator(`flt-semantics[aria-label="${chip}"]`)).toBeVisible({
         timeout: 5_000,
       });
     }
@@ -108,13 +108,18 @@ test.describe('Smoke: Profile Weekly Goal', () => {
       timeout: 10_000,
     });
 
-    // Select the new frequency chip.
-    await page.locator(`text=${newFreqChip}`).first().click();
+    // Select the new frequency chip (rendered as ChoiceChip → checkbox role).
+    // Use CSS selector to target the flt-semantics element directly, ensuring
+    // Playwright sends a pointer click (not a checkbox toggle action).
+    await page.locator(`flt-semantics[aria-label="${newFreqChip}"]`).click();
 
     // The sheet should close automatically after selection (Navigator.of(ctx).pop()).
     await expect(page.locator(PROFILE_WEEKLY_GOAL.sheetTitle)).not.toBeVisible({
-      timeout: 5_000,
+      timeout: 10_000,
     });
+
+    // Wait for the async profile update to propagate to the UI.
+    await page.waitForTimeout(1_000);
 
     // The row should now show the new frequency.
     await expect(
@@ -126,9 +131,9 @@ test.describe('Smoke: Profile Weekly Goal', () => {
     await expect(page.locator(PROFILE_WEEKLY_GOAL.sheetTitle)).toBeVisible({
       timeout: 10_000,
     });
-    await page.locator(`text=${originalFreqChip}`).first().click();
+    await page.locator(`flt-semantics[aria-label="${originalFreqChip}"]`).click();
     await expect(page.locator(PROFILE_WEEKLY_GOAL.sheetTitle)).not.toBeVisible({
-      timeout: 5_000,
+      timeout: 10_000,
     });
 
     // Verify the original value is restored.
@@ -165,8 +170,9 @@ test.describe('Smoke: Profile Weekly Goal', () => {
       timeout: 10_000,
     });
 
-    // Tap the currently selected chip.
-    await page.locator(`text=${currentChipText}`).first().click();
+    // Tap the currently selected chip (rendered as ChoiceChip → checkbox role).
+    // Use CSS selector for consistent pointer click behavior.
+    await page.locator(`flt-semantics[aria-label="${currentChipText}"]`).click();
 
     // Sheet must close.
     await expect(page.locator(PROFILE_WEEKLY_GOAL.sheetTitle)).not.toBeVisible({

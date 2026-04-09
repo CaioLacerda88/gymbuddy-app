@@ -137,9 +137,10 @@ jobs:
 
       - name: Serve Flutter web app
         run: |
-          # python3 http.server serves ALL files including dotfiles (.env).
+          # http-server is multi-threaded and serves ALL files including dotfiles (.env).
           # npx serve -s hides dotfiles, causing dotenv.load() to fail.
-          cd build/web && python3 -m http.server 8080 &
+          # -c-1 disables caching so the latest .env is always served.
+          npx http-server build/web -p 8080 -c-1 --silent &
           npx wait-on http://localhost:8080 --timeout 30000
 
       - name: Install Playwright dependencies

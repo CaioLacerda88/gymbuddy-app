@@ -20,7 +20,7 @@ export default defineConfig({
   globalSetup: './global-setup.ts',
   globalTeardown: './global-teardown.ts',
   use: {
-    baseURL: appUrl ?? `http://localhost:${LOCAL_PORT}`,
+    baseURL: appUrl || `http://localhost:${LOCAL_PORT}`,
     headless: true,
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',
@@ -38,9 +38,10 @@ export default defineConfig({
     ? {}
     : {
         webServer: {
-          // python3 serves all files including dotfiles (.env).
+          // http-server is multi-threaded and serves all files including dotfiles (.env).
           // npx serve -s hides dotfiles, breaking flutter_dotenv.
-          command: `python3 -m http.server ${LOCAL_PORT} --directory ../../build/web`,
+          // -c-1 disables caching so the latest .env is always served.
+          command: `npx http-server ../../build/web -p ${LOCAL_PORT} -c-1 --silent`,
           port: LOCAL_PORT,
           reuseExistingServer: true,
           timeout: 30_000,

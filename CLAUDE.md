@@ -41,6 +41,50 @@ flutter run -d chrome        # run on Chrome (for Playwright e2e)
 - Test factories in `test/fixtures/test_factories.dart`
 - `testWidgets` for widget tests, `test` for unit tests
 
+### E2E Tests (Playwright) — Local Execution
+
+**Prerequisites check (run all before writing tests):**
+```bash
+export PATH="/c/flutter/bin:$PATH"
+
+# 1. Supabase containers must be running (auth, db, rest, storage)
+docker ps --format '{{.Names}} {{.Status}}' | grep supa | grep -v healthy && echo "WARNING: unhealthy containers"
+
+# 2. If containers are down:
+npx supabase start
+
+# 3. Flutter web build must be fresh (from your current branch!)
+git branch --show-current          # verify you're on the right branch
+flutter build web                  # rebuilds build/web/ from current code
+
+# 4. E2E deps installed
+cd test/e2e && npm install && cd ../..
+```
+
+**Running tests:**
+```bash
+cd test/e2e
+
+# Override FLUTTER_APP_URL so Playwright auto-starts python http.server on :4200
+# (.env.local sets FLUTTER_APP_URL=http://localhost:8080 for CI — we override it)
+FLUTTER_APP_URL= npx playwright test --project=smoke --reporter=list
+
+# Run a single test file:
+FLUTTER_APP_URL= npx playwright test --project=smoke smoke/auth.smoke.spec.ts
+
+# Run a specific test by line number:
+FLUTTER_APP_URL= npx playwright test --project=smoke "smoke/auth.smoke.spec.ts:16"
+```
+
+**Key details:**
+- `FLUTTER_APP_URL=` (empty) overrides `.env.local` → Playwright auto-serves `build/web/` via `python -m http.server` on port 4200
+- **Env auto-swap**: Global setup injects local Supabase credentials into `build/web/assets/.env` so the Flutter app connects to the same Supabase instance the tests use. No manual `.env` swap needed.
+- Global setup creates test users via Supabase Admin API → requires local Supabase running
+- Global teardown deletes test users → idempotent, safe to rerun
+- Screenshots on failure: `test/e2e/test-results/`
+- Config: `test/e2e/playwright.config.ts`
+- **CI vs local**: The root `.env` has hosted Supabase (production). `test/e2e/.env.local` has local Supabase. Global setup handles the swap automatically.
+
 ## Development Team (Agent Workflow)
 
 **All implementation is done by specialized agents, not the main conversation.** The main conversation coordinates and delegates.
@@ -117,6 +161,16 @@ This keeps the coordinator (main conversation) informed of progress and ensures 
 - List files the agent must read before starting
 - State what to build, which existing patterns to follow
 - Include `export PATH="/c/flutter/bin:$PATH"` for Flutter/Dart commands
+- Include the progress reporting instruction (see below)
+- **Run code-writing agents in FOREGROUND** so the user sees progress in real-time. Background mode hides the agent's progress lines — only use it for read-only research agents where step-by-step visibility is not needed.
+
+**Agent progress reporting (include in every agent prompt):**
+```
+PROGRESS REPORTING: Before each major step, output a brief status line so the
+orchestrator can track progress. Format: "## [Step N/Total] Description"
+Example: "## [1/4] Reading test files..." → "## [2/4] Fixing selectors.ts..."
+Output these as plain text between tool calls. Keep them to one line.
+```
 
 **When an agent completes work:**
 - Agent summarizes: files created/modified, decisions made, known issues

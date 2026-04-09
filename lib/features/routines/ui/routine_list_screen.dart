@@ -22,6 +22,7 @@ class RoutineListScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
+            tooltip: 'Create routine',
             onPressed: () => context.go('/routines/create'),
           ),
         ],

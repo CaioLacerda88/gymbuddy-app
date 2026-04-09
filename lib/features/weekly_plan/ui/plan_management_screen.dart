@@ -77,17 +77,24 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
       appBar: AppBar(
         title: const Text("This Week's Plan"),
         actions: [
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == 'clear') _confirmClear(context);
-              if (value == 'autofill') {
-                _autoFill(allRoutines, trainingFrequency);
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'autofill', child: Text('Auto-fill')),
-              const PopupMenuItem(value: 'clear', child: Text('Clear Week')),
-            ],
+          Semantics(
+            label: 'More options',
+            child: PopupMenuButton<String>(
+              tooltip: 'More options',
+              onSelected: (value) {
+                if (value == 'clear') _confirmClear(context);
+                if (value == 'autofill') {
+                  _autoFill(allRoutines, trainingFrequency);
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'autofill',
+                  child: Text('Auto-fill'),
+                ),
+                const PopupMenuItem(value: 'clear', child: Text('Clear Week')),
+              ],
+            ),
           ),
         ],
       ),

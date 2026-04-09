@@ -15,7 +15,7 @@
 
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth';
-import { navigateToTab, flutterFill, flutterFillByInput } from '../helpers/app';
+import { navigateToTab, flutterFill, flutterFillByInput, flutterLongPress } from '../helpers/app';
 import { ROUTINE, CREATE_ROUTINE, EXERCISE_PICKER, ROUTINE_MANAGEMENT } from '../helpers/selectors';
 import { TEST_USERS } from '../fixtures/test-users';
 
@@ -43,7 +43,7 @@ test.describe('Smoke: Routine Management', () => {
     page,
   }) => {
     // Tap the + AppBar action to open CreateRoutineScreen.
-    await expect(page.locator(ROUTINE.heading)).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator(ROUTINE.heading).first()).toBeVisible({ timeout: 10_000 });
     await page.locator(ROUTINE_MANAGEMENT.createIconButton).click();
 
     // CreateRoutineScreen: title is "Create Routine".
@@ -63,8 +63,8 @@ test.describe('Smoke: Routine Management', () => {
     });
     await flutterFillByInput(page, 'Search exercises', EXERCISE_NAME);
 
-    // Tap the "Add Barbell Bench Press" tile.
-    const addTile = page.locator(EXERCISE_PICKER.addExerciseButton(EXERCISE_NAME));
+    // Tap the "Add Barbell Bench Press" tile (use .first() in case of duplicates).
+    const addTile = page.locator(EXERCISE_PICKER.addExerciseButton(EXERCISE_NAME)).first();
     await expect(addTile).toBeVisible({ timeout: 10_000 });
     await addTile.click();
 
@@ -114,7 +114,7 @@ test.describe('Smoke: Routine Management', () => {
         timeout: 10_000,
       });
       await flutterFillByInput(page, 'Search exercises', EXERCISE_NAME);
-      await page.locator(EXERCISE_PICKER.addExerciseButton(EXERCISE_NAME)).click();
+      await page.locator(EXERCISE_PICKER.addExerciseButton(EXERCISE_NAME)).first().click();
       await page.locator(CREATE_ROUTINE.saveButton).click();
       await expect(page.locator(ROUTINE.myRoutinesSection)).toBeVisible({
         timeout: 15_000,
@@ -122,7 +122,7 @@ test.describe('Smoke: Routine Management', () => {
     }
 
     // Long-press the routine card to open the action sheet.
-    await page.locator(ROUTINE.routineName(ROUTINE_NAME)).first().click({ delay: 700 });
+    await flutterLongPress(page, ROUTINE.routineName(ROUTINE_NAME));
 
     // Action sheet: tap Edit.
     await expect(page.locator(ROUTINE.editOption)).toBeVisible({ timeout: 10_000 });
@@ -144,8 +144,9 @@ test.describe('Smoke: Routine Management', () => {
       timeout: 15_000,
     });
 
-    // Old name must be gone.
-    await expect(page.locator(ROUTINE.routineName(ROUTINE_NAME))).not.toBeVisible({
+    // Old name must be gone — use exact text match to avoid matching the
+    // edited name "Smoke Test Routine Edited" which contains the old name.
+    await expect(page.getByText(ROUTINE_NAME, { exact: true })).not.toBeVisible({
       timeout: 5_000,
     });
   });
@@ -188,7 +189,7 @@ test.describe('Smoke: Routine Management', () => {
         timeout: 10_000,
       });
       await flutterFillByInput(page, 'Search exercises', EXERCISE_NAME);
-      await page.locator(EXERCISE_PICKER.addExerciseButton(EXERCISE_NAME)).click();
+      await page.locator(EXERCISE_PICKER.addExerciseButton(EXERCISE_NAME)).first().click();
       await page.locator(CREATE_ROUTINE.saveButton).click();
       await expect(page.locator(ROUTINE.myRoutinesSection)).toBeVisible({
         timeout: 15_000,
@@ -198,7 +199,7 @@ test.describe('Smoke: Routine Management', () => {
     const targetName = routineExists ? nameToDelete : ROUTINE_NAME;
 
     // Long-press to open action sheet.
-    await page.locator(ROUTINE.routineName(targetName)).first().click({ delay: 700 });
+    await flutterLongPress(page, ROUTINE.routineName(targetName));
 
     await expect(page.locator(ROUTINE.deleteOption)).toBeVisible({ timeout: 10_000 });
     await page.locator(ROUTINE.deleteOption).click();

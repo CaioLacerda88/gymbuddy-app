@@ -48,8 +48,9 @@ test.describe('Smoke: Onboarding', () => {
     // Navigate directly to onboarding. The guard may redirect authenticated
     // users with a profile to /home, in which case this test asserts the
     // onboarding route is reachable (useful for visual regression).
-    await page.goto('/onboarding');
-    await waitForAppReady(page);
+    // Navigate via hash to avoid a full CanvasKit reload.
+    await page.evaluate(() => { window.location.hash = '#/onboarding'; });
+    await page.waitForTimeout(2_000);
 
     // Either we land on onboarding or are redirected to home.
     const isOnOnboarding = page.url().includes('/onboarding');
@@ -82,8 +83,9 @@ test.describe('Smoke: Onboarding', () => {
   // ---------------------------------------------------------------------------
   test('GET STARTED advances to profile setup page', async ({ page }) => {
     await login(page, USER.email, USER.password);
-    await page.goto('/onboarding');
-    await waitForAppReady(page);
+    // Navigate via hash to avoid a full CanvasKit reload.
+    await page.evaluate(() => { window.location.hash = '#/onboarding'; });
+    await page.waitForTimeout(2_000);
 
     const isOnOnboarding = page.url().includes('/onboarding');
     if (!isOnOnboarding) {
@@ -120,8 +122,9 @@ test.describe('Smoke: Onboarding', () => {
     page,
   }) => {
     await login(page, USER.email, USER.password);
-    await page.goto('/onboarding');
-    await waitForAppReady(page);
+    // Navigate via hash to avoid a full CanvasKit reload.
+    await page.evaluate(() => { window.location.hash = '#/onboarding'; });
+    await page.waitForTimeout(2_000);
 
     const isOnOnboarding = page.url().includes('/onboarding');
     if (!isOnOnboarding) {
@@ -159,8 +162,9 @@ test.describe('Smoke: Onboarding', () => {
     page,
   }) => {
     await login(page, USER.email, USER.password);
-    await page.goto('/onboarding');
-    await waitForAppReady(page);
+    // Navigate via hash to avoid a full CanvasKit reload.
+    await page.evaluate(() => { window.location.hash = '#/onboarding'; });
+    await page.waitForTimeout(2_000);
 
     const isOnOnboarding = page.url().includes('/onboarding');
     if (!isOnOnboarding) {
