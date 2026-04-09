@@ -28,7 +28,7 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 12.1 | E2E Infrastructure: Parallelism, Teardown, Data Seeding | DONE | #35 |
 | 12.2a | Bug Fixes (7 UX bugs) | DONE | #36 |
 | 12.2b | Home Screen Redesign | DONE | #37 |
-| 12.2c | Plan Management UX Polish | TODO | - |
+| 12.2c | Plan Management UX Polish | DONE | #38 |
 | 13 | Production Readiness (Store Blockers) | TODO | - |
 | 14 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
 | 15 | Gamification Advanced (Quests, Stats Panel) | TODO | - |
@@ -464,40 +464,13 @@ Tests:
 
 ---
 
-### 12.2c: Plan Management UX Polish
+### 12.2c: Plan Management UX Polish (DONE — PR #38)
 
-**Smaller improvements to the plan management screen.**
-
-1. **Auto-fill as visible button in empty state** — Currently hidden in AppBar overflow menu. Add as a secondary button in `_EmptyState` widget: "Auto-fill from last week". Keep "Clear Week" in overflow (destructive action).
-
-2. **Inline soft-cap text** — When `_bucketRoutines.length >= trainingFrequency`, show "3/3 goal reached" as always-visible `bodySmall` text below the add button. Replace the invisible `Tooltip`.
-
-3. **SuggestedNextPill** — currently renders as a small pill in the section header. Evaluate elevating to a prominent tappable card at the top of the THIS WEEK section. (This pairs with gamification in Phase 14 — XP rewards for following suggestions.)
-
-#### 12.2c — Acceptance Criteria
-
-- [ ] Auto-fill button visible in empty plan state
-- [ ] Inline "X/Y goal reached" text replaces tooltip
-- [ ] SuggestedNextPill visual weight increased (or deferred to Phase 14 if too coupled)
-- [ ] `make ci` passes
-
-#### 12.2c — File Plan
-
-```
-Modified:
-  lib/features/weekly_plan/ui/plan_management_screen.dart  — auto-fill in empty state, inline soft-cap text
-  lib/features/weekly_plan/ui/widgets/week_bucket_section.dart  — SuggestedNextPill elevation (if not deferred)
-```
-
----
-
-### Execution Order
-
-| Sub-step | Dependencies | Effort |
-|----------|-------------|--------|
-| 12.2a (Bug fixes) | None | 1 session |
-| 12.2b (Home redesign) | 12.2a (stat invalidation must work first) | 1-2 sessions |
-| 12.2c (Plan management UX) | None (can parallel with 12.2b) | 0.5 session |
+- Auto-fill `OutlinedButton` (`Icons.repeat`) in empty plan state + loading guard
+- Inline "X/Y routines planned" / "X/Y goal reached" counter below Add Routine row (alpha 0.55 for WCAG AA)
+- `SuggestedNextCard` replaces pill — full-width 56dp card, green left border, play_arrow icon, "Up next" label
+- `_ConfirmBanner` color constants unified with sibling classes
+- 852 tests (15 new widget tests + 3 edge cases)
 
 ---
 

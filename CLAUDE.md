@@ -114,9 +114,10 @@ Each PLAN.md step follows this pipeline. **No step is skippable.**
 4. **Design review** (if UI) — `ui-ux-critic` reviews. Generic → revise.
 5. **QA gate** (before PR) — `qa-engineer`:
    - Reviews test coverage, flags gaps, adds missing unit/widget cases
-   - Writes/updates E2E regression tests for the feature
+   - **E2E (always):** Verify no selectors/text strings broke; update `selectors.ts` if needed
+   - **E2E (new/changed user flows):** Write/update E2E regression tests for the feature, run full E2E suite locally — all must pass
+   - **E2E (visual-only / no flow change):** Selector impact assessment is sufficient; skip suite run and new E2E tests
    - Removes or updates stale E2E tests affected by the change
-   - Runs full E2E suite locally — all must pass
    - Bugs found → back to `tech-lead` → fix → QA re-runs from top
 6. **Open PR** — only after QA gate passes.
 7. **Code review** — `reviewer` flags issues → `tech-lead` fixes → `qa-engineer` re-validates.
