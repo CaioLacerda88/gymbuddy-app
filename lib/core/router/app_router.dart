@@ -106,6 +106,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           return PRCelebrationScreen(
             result: extra['result'] as PRDetectionResult,
             exerciseNames: extra['exerciseNames'] as Map<String, String>,
+            planPromptRoutineId: extra['planPromptRoutineId'] as String?,
+            planPromptRoutineName: extra['planPromptRoutineName'] as String?,
           );
         },
       ),

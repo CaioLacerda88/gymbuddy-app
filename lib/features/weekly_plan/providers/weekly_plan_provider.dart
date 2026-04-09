@@ -134,6 +134,25 @@ class WeeklyPlanNotifier extends AsyncNotifier<WeeklyPlan?> {
     return plan;
   }
 
+  /// Add a routine to the current week's plan.
+  ///
+  /// Returns `true` if the routine was added, `false` if it was already
+  /// present or no plan exists to add to.
+  Future<bool> addRoutineToPlan(String routineId) async {
+    final plan = state.valueOrNull;
+    if (plan == null) return false;
+
+    // Already in plan — nothing to do.
+    if (plan.routines.any((r) => r.routineId == routineId)) return false;
+
+    final updatedRoutines = [
+      ...plan.routines,
+      BucketRoutine(routineId: routineId, order: plan.routines.length + 1),
+    ];
+    await upsertPlan(updatedRoutines);
+    return true;
+  }
+
   /// Clear the current week's plan.
   Future<void> clearPlan() async {
     final plan = state.valueOrNull;

@@ -15,8 +15,10 @@ import '../../personal_records/models/personal_record.dart';
 import '../../personal_records/providers/pr_providers.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../../personal_records/models/record_type.dart';
+import '../../weekly_plan/providers/weekly_plan_provider.dart';
 import '../providers/workout_providers.dart';
 import '../providers/workout_history_providers.dart';
+import 'widgets/add_to_plan_prompt.dart';
 import 'widgets/discard_workout_dialog.dart';
 import 'widgets/exercise_picker_sheet.dart';
 import 'widgets/finish_workout_dialog.dart';
@@ -204,6 +206,10 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
       }
     }
 
+    // Capture routine context before finishing (state is cleared after).
+    final routineId = currentState?.routineId;
+    final routineName = currentState?.workout.name;
+
     final prResult = await notifier.finishWorkout(notes: result.notes);
     if (!mounted) return;
 
@@ -222,15 +228,53 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
     ref.invalidate(prCountProvider);
     ref.invalidate(recentPRsProvider);
 
+    // Determine if we should prompt to add this routine to the plan.
+    final shouldPrompt = _shouldShowPlanPrompt(routineId);
+
     // Navigate to PR celebration if there are new records, otherwise go home.
     if (prResult != null && prResult.hasNewRecords) {
       context.go(
         '/pr-celebration',
-        extra: {'result': prResult, 'exerciseNames': exerciseNames},
+        extra: {
+          'result': prResult,
+          'exerciseNames': exerciseNames,
+          if (shouldPrompt) 'planPromptRoutineId': routineId,
+          if (shouldPrompt) 'planPromptRoutineName': routineName,
+        },
       );
+    } else if (shouldPrompt) {
+      await _showPlanPromptAndGoHome(routineId!, routineName!);
     } else {
       context.go('/home');
     }
+  }
+
+  /// Whether to show the "Add to plan?" prompt after finishing.
+  ///
+  /// True when: the workout came from a routine, a plan exists for this week,
+  /// and the routine is NOT already in the plan.
+  bool _shouldShowPlanPrompt(String? routineId) {
+    if (routineId == null) return false;
+    final plan = ref.read(weeklyPlanProvider).valueOrNull;
+    if (plan == null) return false;
+    return !plan.routines.any((r) => r.routineId == routineId);
+  }
+
+  /// Shows the add-to-plan prompt, then navigates home.
+  Future<void> _showPlanPromptAndGoHome(
+    String routineId,
+    String routineName,
+  ) async {
+    final shouldAdd = await showAddToPlanPrompt(
+      context,
+      routineName: routineName,
+    );
+    if (!mounted) return;
+    if (shouldAdd == true) {
+      await ref.read(weeklyPlanProvider.notifier).addRoutineToPlan(routineId);
+    }
+    if (!mounted) return;
+    context.go('/home');
   }
 
   Future<void> _onAddExercise() async {
