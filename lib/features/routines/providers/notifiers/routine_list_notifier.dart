@@ -47,18 +47,23 @@ class RoutineListNotifier extends AsyncNotifier<List<Routine>> {
   }
 
   /// Duplicate a routine as a user-owned copy and refresh the list.
-  /// Returns the newly created [Routine] so callers can navigate to edit it.
+  /// Returns the newly created [Routine] so callers can navigate to edit it,
+  /// or `null` if the user is not logged in or the operation fails.
   Future<Routine?> duplicateRoutine(Routine source) async {
     final userId = ref.read(authRepositoryProvider).currentUser?.id;
     if (userId == null) return null;
-    final repo = ref.read(routineRepositoryProvider);
-    final copy = await repo.createRoutine(
-      userId: userId,
-      name: '${source.name} (Copy)',
-      exercises: source.exercises,
-    );
-    ref.invalidateSelf();
-    return copy;
+    try {
+      final repo = ref.read(routineRepositoryProvider);
+      final copy = await repo.createRoutine(
+        userId: userId,
+        name: '${source.name} (Copy)',
+        exercises: source.exercises,
+      );
+      ref.invalidateSelf();
+      return copy;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Delete a routine and refresh the list.
