@@ -17,14 +17,15 @@ enum RoutineChipState {
 /// A pill-shaped chip representing a routine in the weekly bucket.
 ///
 /// Three states per spec:
-/// - [RoutineChipState.done]: collapsed, green checkmark, no name text
-/// - [RoutineChipState.next]: solid green, black text, taller (52dp), tappable CTA
-/// - [RoutineChipState.remaining]: ghosted, sequence number + name at reduced opacity
+/// - [RoutineChipState.done]: 44dp, green checkmark, no name text
+/// - [RoutineChipState.next]: 60dp, solid green, black text, secondary exercise count line
+/// - [RoutineChipState.remaining]: 48dp, ghosted, sequence number + name at reduced opacity
 class RoutineChip extends StatelessWidget {
   const RoutineChip({
     required this.sequenceNumber,
     required this.routineName,
     required this.chipState,
+    this.exerciseCount,
     this.onTap,
     super.key,
   });
@@ -32,6 +33,11 @@ class RoutineChip extends StatelessWidget {
   final int sequenceNumber;
   final String routineName;
   final RoutineChipState chipState;
+
+  /// Number of exercises in the routine. Shown on the `next` chip as a
+  /// secondary line (e.g. "6 exercises").
+  final int? exerciseCount;
+
   final VoidCallback? onTap;
 
   static const _doneColor = Color(0xFF00E676);
@@ -64,6 +70,8 @@ class RoutineChip extends StatelessWidget {
 
   Widget _buildNext(BuildContext context) {
     final theme = Theme.of(context);
+    final hasExerciseCount = exerciseCount != null && exerciseCount! > 0;
+
     return Material(
       color: _doneColor,
       borderRadius: BorderRadius.circular(kRadiusLg),
@@ -71,14 +79,14 @@ class RoutineChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(kRadiusLg),
         onTap: onTap,
         child: Container(
-          height: 52,
+          height: 60,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 20,
-                height: 20,
+                width: 22,
+                height: 22,
                 decoration: const BoxDecoration(
                   color: Colors.black26,
                   shape: BoxShape.circle,
@@ -94,14 +102,28 @@ class RoutineChip extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Flexible(
-                child: Text(
-                  routineName,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.black,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      routineName,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.black,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                    if (hasExerciseCount)
+                      Text(
+                        '$exerciseCount exercises',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: Colors.black54,
+                          fontSize: 11,
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ],
@@ -120,7 +142,7 @@ class RoutineChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(kRadiusLg),
         onTap: onTap,
         child: Container(
-          height: 44,
+          height: 48,
           decoration: BoxDecoration(
             border: Border.all(
               color: Colors.white.withValues(alpha: 0.13),

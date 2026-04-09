@@ -368,11 +368,11 @@ export const WEEKLY_PLAN = {
    */
   weekCompleteHeader: 'text=WEEK COMPLETE',
   /**
-   * "Plan your week →" CTA tappable text in _EmptyBucketState.
+   * "Plan your week" CTA tappable text in _EmptyBucketState.
    * Rendered when a plan is not set but the user has at least one routine.
-   * The arrow is Unicode RIGHT ARROW (U+2192).
+   * _EmptyBucketState renders Text('Plan your week') — no trailing arrow.
    */
-  planYourWeekCta: 'text=Plan your week \u2192',
+  planYourWeekCta: 'text=Plan your week',
   /**
    * AppBar title of PlanManagementScreen.
    * Scaffold AppBar title: Text("This Week's Plan").

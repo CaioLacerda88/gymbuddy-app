@@ -15,7 +15,7 @@
 import { test, expect } from '@playwright/test';
 import { waitForAppReady } from '../helpers/app';
 import { login } from '../helpers/auth';
-import { NAV, HOME_STATS, WORKOUT } from '../helpers/selectors';
+import { NAV, WORKOUT } from '../helpers/selectors';
 import {
   startEmptyWorkout,
   addExercise,
@@ -181,14 +181,14 @@ test.describe('Workout smoke', () => {
       await page.click('text=Continue');
     }
 
-    // Back on Home — the Workouts stat card should be visible.
+    // Back on Home — the contextual stat cells should be visible.
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
 
-    // The "Workouts" label inside the stat card confirms we're on the home
-    // screen after finishing. We match on plain text because the Semantics
-    // aria-label only switches to "tap to view" once the async count loads,
-    // which can take several seconds on CI.
-    await expect(page.locator('text=Workouts')).toBeVisible({
+    // The home screen was redesigned in Step 12.2b: lifetime stat cards
+    // ("Workouts", "Records") were removed in favour of contextual stat cells
+    // ("Last session" + "Week's volume"). Assert the new contextual stat cell
+    // labels are present — this confirms the home screen rendered after save.
+    await expect(page.locator('text=Last session')).toBeVisible({
       timeout: 15_000,
     });
   });

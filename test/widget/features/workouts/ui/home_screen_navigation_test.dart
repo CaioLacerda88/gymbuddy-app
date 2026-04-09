@@ -1,17 +1,7 @@
-/// BUG-1: Stat card taps use context.push (not context.go) so Android back
-/// returns to Home instead of exiting the app.
+/// Navigation tests for the redesigned home screen.
 ///
-/// Strategy: wire the HomeScreen inside a real GoRouter with two routes —
-/// `/home` (shell) and `/records` / `/home/history`. Record which navigation
-/// method was called via a mock observer.  Because GoRouter.push adds a new
-/// entry to the nav stack while GoRouter.go replaces it, we can distinguish
-/// the two by checking whether the navigator stack grew (push) or was reset
-/// (go).
-///
-/// Simpler equivalent: give each destination a distinct builder that records
-/// a flag, then check that tapping the stat card lands on the target screen
-/// AND that the previous screen (HomeScreen) remains reachable via the back
-/// button — only possible if push was used.
+/// Stat cells both navigate to /home/history via push.
+/// "Start Empty Workout" navigates to /workout/active via go.
 library;
 
 import 'package:flutter/material.dart';
@@ -19,20 +9,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
-import 'package:gymbuddy_app/features/personal_records/providers/pr_providers.dart';
+import 'package:gymbuddy_app/features/profile/models/profile.dart';
+import 'package:gymbuddy_app/features/profile/providers/profile_providers.dart';
 import 'package:gymbuddy_app/features/routines/models/routine.dart';
 import 'package:gymbuddy_app/features/routines/providers/notifiers/routine_list_notifier.dart';
+import 'package:gymbuddy_app/features/weekly_plan/data/models/weekly_plan.dart';
+import 'package:gymbuddy_app/features/weekly_plan/providers/weekly_plan_provider.dart';
 import 'package:gymbuddy_app/features/workouts/models/active_workout_state.dart';
 import 'package:gymbuddy_app/features/workouts/models/workout.dart';
 import 'package:gymbuddy_app/features/workouts/providers/notifiers/active_workout_notifier.dart';
 import 'package:gymbuddy_app/features/workouts/providers/workout_history_providers.dart';
 import 'package:gymbuddy_app/features/workouts/providers/workout_providers.dart';
 import 'package:gymbuddy_app/features/workouts/ui/home_screen.dart';
-import 'package:gymbuddy_app/features/weekly_plan/data/models/weekly_plan.dart';
-import 'package:gymbuddy_app/features/weekly_plan/providers/weekly_plan_provider.dart';
 
 // ---------------------------------------------------------------------------
-// Stubs (minimal — we only care about navigation, not content)
+// Stubs
 // ---------------------------------------------------------------------------
 
 class _EmptyRoutineNotifier extends AsyncNotifier<List<Routine>>
@@ -80,34 +71,23 @@ class _NullWeeklyPlanNotifier extends AsyncNotifier<WeeklyPlan?>
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-// ---------------------------------------------------------------------------
-// Navigation observer — detects whether push or go was used.
-//
-// push adds an entry so _pushedRoutes grows.
-// go replaces the stack so _pushedRoutes stays at 0 (route added via replace).
-// ---------------------------------------------------------------------------
-
-class _NavigationRecorder extends NavigatorObserver {
-  final pushedRoutes = <String>[];
+class _ProfileNotifier extends AsyncNotifier<Profile?>
+    implements ProfileNotifier {
+  @override
+  Future<Profile?> build() async =>
+      const Profile(id: 'user-001', displayName: 'Alex', weightUnit: 'kg');
 
   @override
-  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    final name = route.settings.name ?? '';
-    pushedRoutes.add(name);
-  }
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Build a GoRouter that hosts HomeScreen at `/home` and stub screens at
-/// `/records` and `/home/history`. Injects a [NavigatorObserver] so we can
-/// detect whether `push` or `go` was called.
-Widget _buildTestApp(_NavigationRecorder recorder) {
+Widget _buildTestApp() {
   final router = GoRouter(
     initialLocation: '/home',
-    observers: [recorder],
     routes: [
       GoRoute(
         path: '/home',
@@ -121,12 +101,6 @@ Widget _buildTestApp(_NavigationRecorder recorder) {
           ),
         ],
       ),
-      GoRoute(
-        path: '/records',
-        name: 'records',
-        builder: (context, _) =>
-            const Scaffold(body: Center(child: Text('Records Screen'))),
-      ),
     ],
   );
 
@@ -137,9 +111,8 @@ Widget _buildTestApp(_NavigationRecorder recorder) {
       activeWorkoutProvider.overrideWith(() => _NullActiveWorkoutNotifier()),
       weeklyPlanProvider.overrideWith(() => _NullWeeklyPlanNotifier()),
       weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
-      recentPRsProvider.overrideWith((ref) => Future.value([])),
-      workoutCountProvider.overrideWith((ref) => Future.value(0)),
-      prCountProvider.overrideWith((ref) => Future.value(0)),
+      weekVolumeProvider.overrideWith((ref) => Future.value(0)),
+      profileProvider.overrideWith(() => _ProfileNotifier()),
     ],
     child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
   );
@@ -150,60 +123,24 @@ Widget _buildTestApp(_NavigationRecorder recorder) {
 // ---------------------------------------------------------------------------
 
 void main() {
-  group('BUG-1: Home screen stat card navigation uses push not go', () {
+  group('Home screen contextual stat cell navigation', () {
     testWidgets(
-      'tapping Records card navigates to /records via push (not go)',
+      'tapping Last session cell navigates to /home/history via push',
       (tester) async {
         tester.view.physicalSize = const Size(800, 2000);
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
 
-        final recorder = _NavigationRecorder();
-        await tester.pumpWidget(_buildTestApp(recorder));
+        await tester.pumpWidget(_buildTestApp());
         await tester.pump();
         await tester.pump();
 
-        // Tap the Records stat card.
-        await tester.tap(find.text('Records'));
+        // Tap the "Last session" stat cell.
+        await tester.tap(find.text('Last session'));
         await tester.pumpAndSettle();
 
-        // The Records screen should be visible.
-        expect(find.text('Records Screen'), findsOneWidget);
-
-        // push adds an entry to the navigator; go would replace the current
-        // route, removing HomeScreen from the stack.
-        // Verify HomeScreen is still reachable (pop back).
-        final navigatorState = tester.state<NavigatorState>(
-          find.byType(Navigator).last,
-        );
-        expect(
-          navigatorState.canPop(),
-          isTrue,
-          reason:
-              'Records was reached via push — HomeScreen is still below it.',
-        );
-      },
-    );
-
-    testWidgets(
-      'tapping Workouts card navigates to /home/history via push (not go)',
-      (tester) async {
-        tester.view.physicalSize = const Size(800, 2000);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-
-        final recorder = _NavigationRecorder();
-        await tester.pumpWidget(_buildTestApp(recorder));
-        await tester.pump();
-        await tester.pump();
-
-        // Tap the Workouts stat card.
-        await tester.tap(find.text('Workouts'));
-        await tester.pumpAndSettle();
-
-        // The History screen should be visible.
+        // History screen should be visible.
         expect(find.text('History Screen'), findsOneWidget);
 
         // Verify push semantics — HomeScreen is still on the stack.
@@ -219,51 +156,50 @@ void main() {
       },
     );
 
-    testWidgets('back from Records screen returns to HomeScreen (not exit)', (
-      tester,
-    ) async {
+    testWidgets(
+      'tapping Week volume cell navigates to /home/history via push',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(_buildTestApp());
+        await tester.pump();
+        await tester.pump();
+
+        // Tap the "Week's volume" stat cell.
+        await tester.tap(find.text("Week's volume"));
+        await tester.pumpAndSettle();
+
+        // History screen should be visible.
+        expect(find.text('History Screen'), findsOneWidget);
+
+        // Verify push semantics.
+        final navigatorState = tester.state<NavigatorState>(
+          find.byType(Navigator).last,
+        );
+        expect(
+          navigatorState.canPop(),
+          isTrue,
+          reason:
+              'History was reached via push — HomeScreen is still below it.',
+        );
+      },
+    );
+
+    testWidgets('back from History returns to HomeScreen', (tester) async {
       tester.view.physicalSize = const Size(800, 2000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      final recorder = _NavigationRecorder();
-      await tester.pumpWidget(_buildTestApp(recorder));
-      await tester.pump();
-      await tester.pump();
-
-      // Navigate to Records.
-      await tester.tap(find.text('Records'));
-      await tester.pumpAndSettle();
-      expect(find.text('Records Screen'), findsOneWidget);
-
-      // Pop back.
-      final navigator = tester.state<NavigatorState>(
-        find.byType(Navigator).last,
-      );
-      navigator.pop();
-      await tester.pumpAndSettle();
-
-      // HomeScreen must be visible again.
-      expect(find.text('GymBuddy'), findsOneWidget);
-      expect(find.text('Records Screen'), findsNothing);
-    });
-
-    testWidgets('back from History screen returns to HomeScreen (not exit)', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(800, 2000);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      final recorder = _NavigationRecorder();
-      await tester.pumpWidget(_buildTestApp(recorder));
+      await tester.pumpWidget(_buildTestApp());
       await tester.pump();
       await tester.pump();
 
       // Navigate to History.
-      await tester.tap(find.text('Workouts'));
+      await tester.tap(find.text('Last session'));
       await tester.pumpAndSettle();
       expect(find.text('History Screen'), findsOneWidget);
 
@@ -274,8 +210,8 @@ void main() {
       navigator.pop();
       await tester.pumpAndSettle();
 
-      // HomeScreen must be visible again.
-      expect(find.text('GymBuddy'), findsOneWidget);
+      // HomeScreen must be visible again (no "GymBuddy" title — check stat cells).
+      expect(find.text('Last session'), findsOneWidget);
       expect(find.text('History Screen'), findsNothing);
     });
   });

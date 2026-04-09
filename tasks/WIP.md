@@ -4,20 +4,26 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ---
 
-## Step 12.2a: Bug Fixes
-**Branch:** `feature/step12.2a-bug-fixes`
-**Source:** Per PLAN.md Step 12.2a
+## Step 12.2b: Home Screen Redesign
+**Branch:** `feature/step12.2b-home-redesign`
+**Source:** Per PLAN.md Step 12.2b
+
+### Goal
+Transform home from generic dashboard into gym-floor action screen. One-handed, glanceable, answers "what do I do today?" in 2 seconds.
 
 ### Checklist
-- [x] Bug #1: `fillRemainingSets()` — add `isCompleted: true` to copied sets
-- [x] Bug #2: Invalidate `workoutCountProvider`, `prCountProvider`, `recentPRsProvider` after workout save
-- [x] Bug #3: Profile stat cards — wrap Workouts → `/home/history`, PRs → `/records`
-- [x] Bug #4: All uncompleted weekly plan chips tappable (not just "next")
-- [x] Bug #5: Visible "Edit" icon in THIS WEEK section header
-- [x] Bug #6: Investigated — case (b): label ambiguity, not cache bug. Relabeled "Last:" → "Previous:"
-- [x] Bug #7: Replace invisible `Tooltip` with inline "goal reached" text
-- [x] Unit/widget tests for each fix (3 test files updated)
-- [x] `make ci` passes (787/787 tests, 0 format/analyze issues)
-- [x] Code review
-- [x] QA gate (795/795 tests, 0 failures; 1 test assertion strengthened in set_row_test.dart)
+- [ ] Header: date + user display name (remove large "GymBuddy" title)
+- [ ] THIS WEEK hero section above stat cells
+- [ ] Progress counter separated from SuggestedNextPill (different rows)
+- [ ] Chip sizes: next=60dp, remaining=48dp, done=44dp
+- [ ] Next chip shows exercise count as secondary line
+- [ ] Empty plan state: 72dp+ tappable container
+- [ ] Contextual stats replace lifetime stats (last session + week volume)
+- [ ] Week volume: new query/provider (sum of weight*reps this week)
+- [ ] Routines list hidden when active plan exists
+- [ ] Start Empty Workout: FilledButton, visible without scrolling
+- [ ] Unit/widget tests
+- [ ] `make ci` passes
+- [ ] Code review
+- [ ] QA gate
 - [ ] PR opened

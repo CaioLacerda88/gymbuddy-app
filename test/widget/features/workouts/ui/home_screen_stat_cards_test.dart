@@ -1,25 +1,25 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
-import 'package:gymbuddy_app/features/exercises/models/exercise.dart';
-import 'package:gymbuddy_app/features/personal_records/models/personal_record.dart';
-import 'package:gymbuddy_app/features/personal_records/providers/pr_providers.dart';
+import 'package:gymbuddy_app/features/profile/models/profile.dart';
+import 'package:gymbuddy_app/features/profile/providers/profile_providers.dart';
 import 'package:gymbuddy_app/features/routines/models/routine.dart';
 import 'package:gymbuddy_app/features/routines/providers/notifiers/routine_list_notifier.dart';
+import 'package:gymbuddy_app/features/weekly_plan/data/models/weekly_plan.dart';
+import 'package:gymbuddy_app/features/weekly_plan/providers/weekly_plan_provider.dart';
 import 'package:gymbuddy_app/features/workouts/models/active_workout_state.dart';
 import 'package:gymbuddy_app/features/workouts/models/workout.dart';
 import 'package:gymbuddy_app/features/workouts/providers/notifiers/active_workout_notifier.dart';
 import 'package:gymbuddy_app/features/workouts/providers/workout_history_providers.dart';
 import 'package:gymbuddy_app/features/workouts/providers/workout_providers.dart';
 import 'package:gymbuddy_app/features/workouts/ui/home_screen.dart';
+import 'package:gymbuddy_app/features/workouts/ui/widgets/contextual_stat_cell.dart';
 
 import '../../../../fixtures/test_factories.dart';
 
 // ---------------------------------------------------------------------------
-// Test notifier stubs
+// Notifier stubs
 // ---------------------------------------------------------------------------
 
 class _EmptyRoutineNotifier extends AsyncNotifier<List<Routine>>
@@ -61,53 +61,50 @@ class _NullActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?>
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _NullWeeklyPlanNotifier extends AsyncNotifier<WeeklyPlan?>
+    implements WeeklyPlanNotifier {
+  @override
+  Future<WeeklyPlan?> build() async => null;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _ProfileNotifier extends AsyncNotifier<Profile?>
+    implements ProfileNotifier {
+  @override
+  Future<Profile?> build() async =>
+      const Profile(id: 'user-001', displayName: 'Test User', weightUnit: 'kg');
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-PRWithExercise makePRWithExercise({
-  String exerciseName = 'Bench Press',
-  double value = 100.0,
-}) {
-  final record = PersonalRecord.fromJson(
-    TestPersonalRecordFactory.create(value: value),
+Workout makeWorkout({required String finishedAt, String name = 'Push Day'}) {
+  return Workout.fromJson(
+    TestWorkoutFactory.create(finishedAt: finishedAt, name: name),
   );
-  return (
-    record: record,
-    exerciseName: exerciseName,
-    equipmentType: EquipmentType.barbell,
-  );
-}
-
-Workout makeWorkout({required String finishedAt}) {
-  return Workout.fromJson(TestWorkoutFactory.create(finishedAt: finishedAt));
 }
 
 Widget buildTestWidget({
-  int workoutCount = 14,
-  int prCount = 3,
-  bool loadingCounts = false,
-  List<Workout>? historyWorkouts,
-  List<PRWithExercise>? recentPRs,
+  List<Workout> historyWorkouts = const [],
+  double weekVolume = 0,
 }) {
-  final workouts = historyWorkouts ?? [];
-  final prs = recentPRs ?? [];
-
   return ProviderScope(
     overrides: [
       routineListProvider.overrideWith(() => _EmptyRoutineNotifier()),
       workoutHistoryProvider.overrideWith(
-        () => _WorkoutHistoryNotifier(workouts),
+        () => _WorkoutHistoryNotifier(historyWorkouts),
       ),
       activeWorkoutProvider.overrideWith(() => _NullActiveWorkoutNotifier()),
-      recentPRsProvider.overrideWith((ref) => Future.value(prs)),
-      if (loadingCounts) ...[
-        workoutCountProvider.overrideWith((ref) => Completer<int>().future),
-        prCountProvider.overrideWith((ref) => Completer<int>().future),
-      ] else ...[
-        workoutCountProvider.overrideWith((ref) => Future.value(workoutCount)),
-        prCountProvider.overrideWith((ref) => Future.value(prCount)),
-      ],
+      weeklyPlanProvider.overrideWith(() => _NullWeeklyPlanNotifier()),
+      weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
+      weekVolumeProvider.overrideWith((ref) => Future.value(weekVolume)),
+      profileProvider.overrideWith(() => _ProfileNotifier()),
     ],
     child: MaterialApp(
       theme: AppTheme.dark,
@@ -121,225 +118,21 @@ Widget buildTestWidget({
 // ---------------------------------------------------------------------------
 
 void main() {
-  group('HomeScreen stat cards', () {
-    testWidgets('renders workout count', (tester) async {
-      await tester.pumpWidget(buildTestWidget(workoutCount: 14));
-      await tester.pump();
-      await tester.pump();
+  group('HomeScreen contextual stat cells', () {
+    testWidgets('renders two ContextualStatCell widgets', (tester) async {
+      tester.view.physicalSize = const Size(800, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-      expect(find.text('14'), findsOneWidget);
-      expect(find.text('Workouts'), findsWidgets);
-    });
-
-    testWidgets('renders PR count', (tester) async {
-      await tester.pumpWidget(buildTestWidget(prCount: 3));
-      await tester.pump();
-      await tester.pump();
-
-      expect(find.text('3'), findsOneWidget);
-      expect(find.text('Records'), findsOneWidget);
-    });
-
-    testWidgets('shows -- when counts are loading', (tester) async {
-      await tester.pumpWidget(buildTestWidget(loadingCounts: true));
-      await tester.pump();
-      await tester.pump();
-
-      expect(find.text('--'), findsNWidgets(2));
-    });
-
-    testWidgets('shows 0 when user has no workouts or records', (tester) async {
-      await tester.pumpWidget(buildTestWidget(workoutCount: 0, prCount: 0));
-      await tester.pump();
-      await tester.pump();
-
-      expect(find.text('0'), findsNWidgets(2));
-    });
-
-    testWidgets('workout count card has correct semantics', (tester) async {
-      await tester.pumpWidget(buildTestWidget(workoutCount: 14));
-      await tester.pump();
-      await tester.pump();
-
-      final semantics = tester.getSemantics(
-        find
-            .ancestor(
-              of: find.text('Workouts'),
-              matching: find.byType(Semantics),
-            )
-            .first,
-      );
-      expect(semantics.label, contains('Workouts'));
-    });
-
-    testWidgets('cards are in a Row with two Expanded children', (
-      tester,
-    ) async {
       await tester.pumpWidget(buildTestWidget());
       await tester.pump();
       await tester.pump();
 
-      // Find the row that contains the stat cards.
-      final workoutsText = find.text('Workouts');
-      final recordsText = find.text('Records');
-      expect(workoutsText, findsWidgets);
-      expect(recordsText, findsOneWidget);
-    });
-  });
-
-  group('HomeScreen stat card subtitles', () {
-    // The stat card uses a fixed SizedBox(height: 72) with vertical padding
-    // of 10dp on each side, leaving 52dp for the 3-line Column. At Material3
-    // default font sizes the column overflows. We build the card in an
-    // unconstrained wrapper so layout completes without overflow errors, letting
-    // us verify the text content and widget properties independently of the
-    // card's height constraint.
-    Widget buildUnconstrainedWidget({
-      int workoutCount = 5,
-      int prCount = 3,
-      List<Workout>? historyWorkouts,
-      List<PRWithExercise>? recentPRs,
-    }) {
-      final workouts = historyWorkouts ?? [];
-      final prs = recentPRs ?? [];
-
-      return ProviderScope(
-        overrides: [
-          routineListProvider.overrideWith(() => _EmptyRoutineNotifier()),
-          workoutHistoryProvider.overrideWith(
-            () => _WorkoutHistoryNotifier(workouts),
-          ),
-          activeWorkoutProvider.overrideWith(
-            () => _NullActiveWorkoutNotifier(),
-          ),
-          recentPRsProvider.overrideWith((ref) => Future.value(prs)),
-          workoutCountProvider.overrideWith(
-            (ref) => Future.value(workoutCount),
-          ),
-          prCountProvider.overrideWith((ref) => Future.value(prCount)),
-        ],
-        child: MaterialApp(
-          theme: AppTheme.dark,
-          home: const Scaffold(
-            // Use an unconstrained box so the stat card column does not
-            // overflow the fixed 72dp height during tests.
-            body: SingleChildScrollView(child: HomeScreen()),
-          ),
-        ),
-      );
-    }
-
-    testWidgets(
-      'workouts card shows relative date subtitle from most recent workout',
-      (tester) async {
-        tester.view.physicalSize = const Size(800, 2000);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-
-        final yesterday = DateTime.now().subtract(const Duration(days: 1));
-        final workout = makeWorkout(finishedAt: yesterday.toIso8601String());
-
-        await tester.pumpWidget(
-          buildUnconstrainedWidget(workoutCount: 5, historyWorkouts: [workout]),
-        );
-        await tester.pump();
-        await tester.pump();
-
-        expect(find.text('Yesterday'), findsOneWidget);
-      },
-    );
-
-    testWidgets(
-      'workouts card shows "Today" when most recent workout is today',
-      (tester) async {
-        tester.view.physicalSize = const Size(800, 2000);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-
-        final now = DateTime.now();
-        final workout = makeWorkout(finishedAt: now.toIso8601String());
-
-        await tester.pumpWidget(
-          buildUnconstrainedWidget(workoutCount: 1, historyWorkouts: [workout]),
-        );
-        await tester.pump();
-        await tester.pump();
-
-        expect(find.text('Today'), findsOneWidget);
-      },
-    );
-
-    testWidgets(
-      'records card shows PR exercise name subtitle from most recent PR',
-      (tester) async {
-        tester.view.physicalSize = const Size(800, 2000);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-
-        final pr = makePRWithExercise(exerciseName: 'Romanian Deadlift');
-
-        await tester.pumpWidget(
-          buildUnconstrainedWidget(prCount: 1, recentPRs: [pr]),
-        );
-        await tester.pump();
-        await tester.pump();
-
-        expect(find.text('Romanian Deadlift'), findsOneWidget);
-      },
-    );
-
-    testWidgets('workouts card has no subtitle when history is empty', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        buildTestWidget(workoutCount: 0, historyWorkouts: []),
-      );
-      await tester.pump();
-      await tester.pump();
-
-      // Relative date strings should not appear.
-      expect(find.text('Today'), findsNothing);
-      expect(find.text('Yesterday'), findsNothing);
-      expect(find.textContaining('days ago'), findsNothing);
-      expect(find.textContaining('w ago'), findsNothing);
-      expect(find.textContaining('mo ago'), findsNothing);
+      expect(find.byType(ContextualStatCell), findsNWidgets(2));
     });
 
-    testWidgets('records card has no subtitle when recentPRs is empty', (
-      tester,
-    ) async {
-      await tester.pumpWidget(buildTestWidget(prCount: 0, recentPRs: []));
-      await tester.pump();
-      await tester.pump();
-
-      // No exercise name subtitle should appear.
-      expect(find.text('Bench Press'), findsNothing);
-    });
-
-    testWidgets(
-      'records card subtitle shows Bench Press from default PR factory',
-      (tester) async {
-        tester.view.physicalSize = const Size(800, 2000);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-
-        final pr = makePRWithExercise(exerciseName: 'Bench Press');
-
-        await tester.pumpWidget(
-          buildUnconstrainedWidget(prCount: 3, recentPRs: [pr]),
-        );
-        await tester.pump();
-        await tester.pump();
-
-        expect(find.text('Bench Press'), findsOneWidget);
-      },
-    );
-
-    testWidgets('subtitle Text widget has overflow:ellipsis and maxLines:1', (
+    testWidgets('last session shows relative date + workout name', (
       tester,
     ) async {
       tester.view.physicalSize = const Size(800, 2000);
@@ -347,45 +140,124 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      const exerciseName = 'Bench Press';
-      final pr = makePRWithExercise(exerciseName: exerciseName);
-
+      final yesterday = DateTime.now().subtract(const Duration(days: 1));
       await tester.pumpWidget(
-        buildUnconstrainedWidget(prCount: 1, recentPRs: [pr]),
+        buildTestWidget(
+          historyWorkouts: [
+            makeWorkout(
+              finishedAt: yesterday.toIso8601String(),
+              name: 'Chest Day',
+            ),
+          ],
+        ),
       );
       await tester.pump();
       await tester.pump();
 
-      // The subtitle Text widget should have the ellipsis overflow policy.
-      final subtitleText = tester.widget<Text>(find.text(exerciseName));
-      expect(subtitleText.overflow, TextOverflow.ellipsis);
-      expect(subtitleText.maxLines, 1);
+      expect(find.text('Last session'), findsOneWidget);
+      // "Yesterday — Chest Day"
+      expect(find.textContaining('Yesterday'), findsOneWidget);
+      expect(find.textContaining('Chest Day'), findsOneWidget);
     });
-  });
 
-  group('HomeScreen removed sections', () {
-    testWidgets('RECENT section is not rendered', (tester) async {
+    testWidgets('week volume shows formatted value with unit', (tester) async {
+      tester.view.physicalSize = const Size(800, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(buildTestWidget(weekVolume: 8500));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text("Week's volume"), findsOneWidget);
+      expect(find.textContaining('8,500'), findsOneWidget);
+      expect(find.textContaining('this week'), findsOneWidget);
+    });
+
+    testWidgets('shows "No workouts yet" when history is empty', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
       await tester.pumpWidget(buildTestWidget());
       await tester.pump();
       await tester.pump();
 
-      expect(find.text('RECENT'), findsNothing);
+      expect(find.textContaining('No workouts yet'), findsOneWidget);
     });
 
-    testWidgets('RECENT RECORDS section is not rendered', (tester) async {
+    testWidgets('shows "No volume yet" when volume is 0', (tester) async {
+      tester.view.physicalSize = const Size(800, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(buildTestWidget(weekVolume: 0));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.textContaining('No volume yet'), findsOneWidget);
+    });
+
+    testWidgets('last session shows "Today" for same-day workout', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final now = DateTime.now();
+      await tester.pumpWidget(
+        buildTestWidget(
+          historyWorkouts: [makeWorkout(finishedAt: now.toIso8601String())],
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.textContaining('Today'), findsOneWidget);
+    });
+
+    testWidgets('cells are in a Row with two Expanded children', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
       await tester.pumpWidget(buildTestWidget());
       await tester.pump();
       await tester.pump();
 
-      expect(find.text('RECENT RECORDS'), findsNothing);
+      expect(find.text('Last session'), findsOneWidget);
+      expect(find.text("Week's volume"), findsOneWidget);
     });
 
-    testWidgets('"View All" buttons are not rendered', (tester) async {
+    testWidgets('stat cells have correct semantics', (tester) async {
+      tester.view.physicalSize = const Size(800, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
       await tester.pumpWidget(buildTestWidget());
       await tester.pump();
       await tester.pump();
 
-      expect(find.text('View All'), findsNothing);
+      // Find semantics on first stat cell.
+      final lastSessionCell = find
+          .ancestor(
+            of: find.text('Last session'),
+            matching: find.byType(Semantics),
+          )
+          .first;
+      final semantics = tester.getSemantics(lastSessionCell);
+      expect(semantics.label, contains('Last session'));
     });
   });
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/theme/radii.dart';
 import '../../../profile/providers/profile_providers.dart';
 import '../../../routines/models/routine.dart';
 import '../../../routines/providers/notifiers/routine_list_notifier.dart';
@@ -119,7 +120,7 @@ class _ActiveBucketSection extends ConsumerWidget {
             const SizedBox(height: 8),
           ],
 
-          // Section header: THIS WEEK  2 of 4  [Next >]
+          // Section header row: THIS WEEK  [Edit icon]  [Next > pill]
           Row(
             children: [
               Text(
@@ -128,30 +129,7 @@ class _ActiveBucketSection extends ConsumerWidget {
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(
-                        text: '$completedCount',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: _primaryGreen,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      TextSpan(
-                        text: ' of $totalCount',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurface.withValues(
-                            alpha: 0.55,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              const Spacer(),
               // Edit plan link.
               IconButton(
                 icon: Icon(
@@ -180,7 +158,32 @@ class _ActiveBucketSection extends ConsumerWidget {
               ],
             ],
           ),
-          const SizedBox(height: 12),
+
+          // Progress counter below title — not competing with pill.
+          Padding(
+            padding: const EdgeInsets.only(top: 2, bottom: 10),
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: '$completedCount',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: _primaryGreen,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  TextSpan(
+                    text: ' of $totalCount',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.55,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
 
           // Routine chips (horizontal scroll).
           GestureDetector(
@@ -215,16 +218,20 @@ class _ActiveBucketSection extends ConsumerWidget {
           ? RoutineChipState.next
           : RoutineChipState.remaining;
 
+      // For the "next" chip, pass exercise count from routine data.
+      final routine = routineMap[bucket.routineId];
+      final exerciseCount = routine?.exercises.length;
+
       return Padding(
         padding: const EdgeInsets.only(right: 8),
         child: RoutineChip(
           sequenceNumber: bucket.order,
           routineName: name,
           chipState: chipState,
+          exerciseCount: isNext ? exerciseCount : null,
           onTap: isDone
               ? null
               : () {
-                  final routine = routineMap[bucket.routineId];
                   if (routine != null) {
                     startRoutineWorkout(context, ref, routine);
                   }
@@ -297,7 +304,7 @@ class _ConfirmBanner extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: const Color(0xFF232340),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(kRadiusMd),
         border: Border.all(
           color: const Color(0xFF00E676).withValues(alpha: 0.3),
           width: 1,
@@ -321,6 +328,8 @@ class _ConfirmBanner extends StatelessWidget {
   }
 }
 
+/// Empty plan state — full-width bordered container at 72dp min-height
+/// with centered text + icon.
 class _EmptyBucketState extends StatelessWidget {
   const _EmptyBucketState({required this.hasRoutines});
 
@@ -333,14 +342,50 @@ class _EmptyBucketState extends StatelessWidget {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: GestureDetector(
-        onTap: () => context.push('/plan/week'),
-        child: Text(
-          'Plan your week \u2192',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'THIS WEEK',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
+            ),
           ),
-        ),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: () => context.push('/plan/week'),
+            child: Container(
+              width: double.infinity,
+              constraints: const BoxConstraints(minHeight: 72),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(kRadiusMd),
+                border: Border.all(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.calendar_today_outlined,
+                    size: 20,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Plan your week',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.55,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
