@@ -1,10 +1,7 @@
 -- Expand the exercise library with ~32 new exercises and 5 new routine templates.
--- Adds 'cardio' to the muscle_group enum.
+-- Requires migration 00013 (adds 'cardio' enum value) to have already committed.
 
--- Part A: Add cardio enum value
-ALTER TYPE muscle_group ADD VALUE IF NOT EXISTS 'cardio';
-
--- Part B: Insert new exercises (idempotent — skips existing)
+-- Insert new exercises (idempotent — skips existing)
 INSERT INTO exercises (name, muscle_group, equipment_type, is_default, user_id)
 SELECT v.name, v.muscle_group::muscle_group, v.equipment_type::equipment_type, true, NULL
 FROM (VALUES
