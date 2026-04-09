@@ -102,7 +102,10 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
         children: [
           Expanded(
             child: _bucketRoutines.isEmpty
-                ? _EmptyState(onAddRoutines: () => _showAddSheet(allRoutines))
+                ? _EmptyState(
+                    onAddRoutines: () => _showAddSheet(allRoutines),
+                    onAutoFill: () => _autoFill(allRoutines, trainingFrequency),
+                  )
                 : ReorderableListView.builder(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -117,6 +120,8 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
                         return _AddRoutineRow(
                           key: const ValueKey('add-routine'),
                           atSoftCap: atSoftCap,
+                          bucketCount: _bucketRoutines.length,
+                          trainingFrequency: trainingFrequency,
                           onTap: () => _showAddSheet(allRoutines),
                         );
                       }
@@ -172,7 +177,6 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
 
   void _removeRoutine(int index) {
     final removed = _bucketRoutines[index];
-    final removedIndex = index;
     setState(() {
       _dirty = true;
       _bucketRoutines.removeAt(index);
@@ -192,7 +196,7 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
               setState(() {
                 // Clamp to current list length in case reorders or other
                 // removals happened between remove and undo.
-                final safeIndex = removedIndex.clamp(0, _bucketRoutines.length);
+                final safeIndex = index.clamp(0, _bucketRoutines.length);
                 _bucketRoutines.insert(safeIndex, removed);
                 _renumber();
               });
@@ -245,6 +249,11 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
     int trainingFrequency,
   ) async {
     if (allRoutines.isEmpty) return;
+
+    // Don't auto-fill if workout history hasn't loaded yet — frequency
+    // ranking would silently fall back to alphabetical order.
+    final historyState = ref.read(workoutHistoryProvider);
+    if (historyState.isLoading && !historyState.hasValue) return;
 
     // If bucket already has routines, confirm replacement.
     if (_bucketRoutines.isNotEmpty) {
@@ -450,10 +459,14 @@ class _AddRoutineRow extends StatelessWidget {
   const _AddRoutineRow({
     required super.key,
     required this.atSoftCap,
+    required this.bucketCount,
+    required this.trainingFrequency,
     required this.onTap,
   });
 
   final bool atSoftCap;
+  final int bucketCount;
+  final int trainingFrequency;
   final VoidCallback onTap;
 
   @override
@@ -507,16 +520,17 @@ class _AddRoutineRow extends StatelessWidget {
               ),
             ),
           ),
-          if (atSoftCap)
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text(
-                'Goal reached \u2014 add anyway',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
-                ),
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              atSoftCap
+                  ? '$bucketCount/$trainingFrequency goal reached'
+                  : '$bucketCount/$trainingFrequency routines planned',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
               ),
             ),
+          ),
         ],
       ),
     );
@@ -524,9 +538,10 @@ class _AddRoutineRow extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.onAddRoutines});
+  const _EmptyState({required this.onAddRoutines, required this.onAutoFill});
 
   final VoidCallback onAddRoutines;
+  final VoidCallback onAutoFill;
 
   @override
   Widget build(BuildContext context) {
@@ -552,6 +567,12 @@ class _EmptyState extends StatelessWidget {
             onPressed: onAddRoutines,
             icon: const Icon(Icons.add),
             label: const Text('Add Routines'),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: onAutoFill,
+            icon: const Icon(Icons.repeat),
+            label: const Text('Auto-fill'),
           ),
         ],
       ),
