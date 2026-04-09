@@ -527,6 +527,7 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 ## Phase 13: Production Readiness
 
 > Adapted from PROD-READINESS.md. Everything needed to ship on Google Play.
+> Updated 2026-04-09 with PO + UX review findings after Step 12.3 completion.
 
 ### 13a: Store Blockers (must fix before submission)
 
@@ -536,41 +537,60 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 | B2 | Crash reporting | 2-3h | Sentry Flutter SDK. Wire into `AppException` hierarchy. Breadcrumbs for key user actions |
 | B3 | Analytics (basic events) | 3-4h | `signup`, `login`, `first_workout_completed`, `workout_finished`, `routine_started`, `pr_broken`, `app_opened`. Options: PostHog, Amplitude, Mixpanel free tier |
 | B4 | Privacy Policy & ToS | 1 day | Hosted URL required by Play Store. Cover data collected, storage, retention, user rights. Link from Profile + store listing |
-| B5 | Account deletion | 3-4h | Required by Google Play since Dec 2023. Edge Function to delete `auth.users` row. Confirmation -> sign out -> login |
-| B6 | ProGuard/R8 optimization | 2-3h | No minify/shrink today (19.7MB -> ~12-14MB). Need keep rules for Supabase + Hive reflection |
-| B7 | Offline workout save & retry | 1-2 days | Hive queue exists but no sync worker. Detect connectivity failure on `finishWorkout()` -> queue -> retry. `connectivity_plus` package |
+| B5 | Account deletion | 3-4h | **Highest priority.** Required by Google Play (Jan 2026 policy). Edge Function to delete `auth.users` row + all user data. Must be in-app AND via web URL. Confirmation → sign out → login |
+| B6 | ProGuard/R8 optimization | 2-3h | No minify/shrink today (19.7MB → ~12-14MB). Need keep rules for Supabase + Hive reflection |
+| B7 | Offline workout save & retry | 1-2 days | Hive queue exists but no sync worker. Detect connectivity failure on `finishWorkout()` → queue → retry. `connectivity_plus` package |
 
 ### 13b: Product Gaps (blocks retention, not submission)
 
 | ID | Item | Effort | Notes |
 |----|------|--------|-------|
-| P1 | Progress charts per exercise | 2-3 days | **#1 retention driver.** Line chart: weight over time. `fl_chart` or `syncfusion_flutter_charts`. Query sets+workouts by exercise_id |
-| P2 | Exercise library expansion | 1 day | Partially addressed in Step 12.3b (~100 exercises). Phase 13 can expand further to 150-200 if needed |
-| P3 | Forgot password flow | 2-3h | Currently triggers reset email immediately. Add confirmation screen |
-| P4 | Exercise images fix (QA-005) | 3-4h | GitHub URLs return 404. Migrate to Supabase Storage or CDN |
+| P1 | Progress charts per exercise | 2-3 days | **#1 retention driver.** Line chart: weight over time. `fl_chart` or `syncfusion_flutter_charts`. Query sets+workouts by exercise_id. Without this, no "am I getting stronger?" feedback loop. |
+| P2 | Exercise library expansion to 150+ | 1 day | Currently ~92. Users lose confidence when searches return 2-3 results. Priority: compound movements, isolation staples, sport-specific |
+| ~~P3~~ | ~~Forgot password flow~~ | ~~done~~ | ~~Already implemented in `login_screen.dart:92-115`~~ |
+| P4 | Exercise images fix (QA-005) | 3-4h | GitHub URLs return 404. Migrate to Supabase Storage or CDN. Broken images signal abandoned product. |
 | P5 | 1RM estimation | 2-3h | Epley formula. Display on exercise detail + PR cards |
-| P6 | App branding | 1 day | App label "gymbuddy_app" -> "GymBuddy". Custom launcher icon + splash. Play Store assets |
-| P7 | Volume unit display | 30min | Hardcoded "kg" -> profile weight unit |
+| P6 | App branding | 1 day | App label "gymbuddy_app" → "GymBuddy". Custom launcher icon + splash. Play Store assets |
+| P7 | Volume unit display | 30min | Hardcoded "kg" → profile weight unit. Data correctness bug, not cosmetic. |
+| P8 | New-user empty-state CTA | 2-3h | When no workouts logged and no plan: show "Start your first workout" hero + beginner routine recommendation on home screen. Currently drops user at empty state with no guidance. **(PO finding)** |
 
-### 13c: Warnings (fix before or shortly after launch)
+### 13c: UX Polish (pre-launch quality bar)
+
+> From UX review 2026-04-09. Must-fix items affect store screenshots and first impressions.
+
+| ID | Item | Effort | Notes |
+|----|------|--------|-------|
+| UX1 | Routine card: add overflow `...` button | 1-2h | Long-press is sole entry point for Edit/Delete/Start — zero affordance. Fails sweat-proof principle. Add 48dp `...` icon button. |
+| UX2 | PR celebration: pin Continue button | 30min | Scrolls off-screen with 3+ PRs. Move to `bottomNavigationBar` or pinned Column. |
+| UX3 | Plan prompt: full-width stacked buttons | 30min | Current right-aligned Row is unreachable one-handed. Stack vertically: FilledButton("Add") + TextButton("Skip"), both full-width. |
+| UX4 | Hardcoded colors → theme refs | 1-2h | `week_bucket_section.dart`, `plan_management_screen.dart`, `routine_chip.dart`, `week_review_section.dart` use hardcoded `#00E676` and `#232340`. Replace with `colorScheme.primary` / `cardTheme.color`. |
+| UX5 | Demote "Start Empty Workout" when plan exists | 30min | When user has active plan with suggested next, demote to `OutlinedButton`. Elevate `_SuggestedNextCard` as primary CTA. |
+| UX6 | Surface Auto-fill in plan management | 30min | Add visible "Auto-fill" `TextButton` below list header. Keep Clear in overflow (destructive). |
+| UX7 | Exercise picker: filter chip counts | 1h | Add result counts: "Chest (14)". Improves picker efficiency. |
+| UX8 | Routine card subtitle: exercise count over muscle list | 30min | "6 exercises · ~45 min" instead of overflowing "Chest · Back · Legs · Shoulders · Arms". |
+
+### 13d: Warnings (fix before or shortly after launch)
 
 | ID | Item | Effort |
 |----|------|--------|
 | W1 | OAuth deep link registration | 1-2h |
 | W2 | Wakelock during active workout | 1h |
 | W3 | Stale workout timeout UX | 2-3h | When `startedAt` >6h ago on app open, show prominent modal: "Workout from [date] still open — Resume or Discard?" (deferred from Step 12.3) |
-| W3 | Input length limits (TextField + server CHECK) | 1-2h |
+| W3b | Input length limits (TextField + server CHECK) | 1-2h |
 | W4 | Push notifications (workout reminders) | 1-2 days |
 | W5 | Data export (CSV/JSON) | 3-4h |
 | W6 | Direct Supabase access in UI (bypass repo pattern) | 30min |
 | W7 | Supabase free tier monitoring (500MB DB, upgrade at 500 DAU) | - |
-| W8 | HomeScreen `SingleChildScrollView` -> `CustomScrollView` | 2-3h |
+| W8 | HomeScreen `SingleChildScrollView` → `CustomScrollView` | 2-3h |
 
 ### Suggested Sprint Order
 
-**Sprint A (1 week) — Store-ready:** B1, B2, B3, B5, B6, P3, P6, P7, W1, W2, W6
-**Sprint B (1 week) — Retention-ready:** P1, P2, P4, P5, W3
-**Sprint C (1 week) — Resilience + compliance:** B4, B7, W4, W5
+**Sprint A (1 week) — Store-ready:** B1, B4, B5, P6, P7, B2, B3, W1, W2
+**Sprint B (1 week) — Retention + polish:** P1, P2, P4, P8, UX1-UX8
+**Sprint C (1 week) — Resilience:** B6, B7, W3, W3b, W6, W8
+**Deferred to v1.1:** P5 (1RM), W4 (push notifications), W5 (CSV export)
+
+> **PO strategic note:** Consider shipping Phase 14a (XP overlay + level badge) alongside launch for competitive differentiation vs Strong/Hevy. Without it, GymBuddy is a feature-subset of established competitors.
 
 ---
 
