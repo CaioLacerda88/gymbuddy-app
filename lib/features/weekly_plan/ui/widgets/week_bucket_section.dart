@@ -120,7 +120,7 @@ class _ActiveBucketSection extends ConsumerWidget {
             const SizedBox(height: 8),
           ],
 
-          // Section header row: THIS WEEK  [Edit icon]  [Next > pill]
+          // Section header row: THIS WEEK + edit icon.
           Row(
             children: [
               Text(
@@ -143,23 +143,10 @@ class _ActiveBucketSection extends ConsumerWidget {
                 padding: EdgeInsets.zero,
                 visualDensity: VisualDensity.compact,
               ),
-              // Suggested-next pill chip.
-              if (suggestedNext != null) ...[
-                _SuggestedNextPill(
-                  routineName:
-                      nameMap[suggestedNext.routineId] ?? 'Next workout',
-                  onTap: () {
-                    final routine = routineMap[suggestedNext.routineId];
-                    if (routine != null) {
-                      startRoutineWorkout(context, ref, routine);
-                    }
-                  },
-                ),
-              ],
             ],
           ),
 
-          // Progress counter below title — not competing with pill.
+          // Progress counter below title.
           Padding(
             padding: const EdgeInsets.only(top: 2, bottom: 10),
             child: Text.rich(
@@ -184,6 +171,21 @@ class _ActiveBucketSection extends ConsumerWidget {
               ),
             ),
           ),
+
+          // Suggested-next card (between counter and chips).
+          if (suggestedNext != null) ...[
+            const SizedBox(height: 8),
+            _SuggestedNextCard(
+              routineName: nameMap[suggestedNext.routineId] ?? 'Next workout',
+              onTap: () {
+                final routine = routineMap[suggestedNext.routineId];
+                if (routine != null) {
+                  startRoutineWorkout(context, ref, routine);
+                }
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
 
           // Routine chips (horizontal scroll).
           GestureDetector(
@@ -242,8 +244,8 @@ class _ActiveBucketSection extends ConsumerWidget {
   }
 }
 
-class _SuggestedNextPill extends StatelessWidget {
-  const _SuggestedNextPill({required this.routineName, required this.onTap});
+class _SuggestedNextCard extends StatelessWidget {
+  const _SuggestedNextCard({required this.routineName, required this.onTap});
 
   final String routineName;
   final VoidCallback onTap;
@@ -256,33 +258,48 @@ class _SuggestedNextPill extends StatelessWidget {
     final theme = Theme.of(context);
     return Material(
       color: _cardColor,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(kRadiusMd),
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(kRadiusMd),
         onTap: onTap,
         child: Container(
-          height: 36,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          height: 56,
           decoration: BoxDecoration(
-            border: Border.all(color: _primaryGreen, width: 1),
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(kRadiusMd),
+            border: const Border(
+              left: BorderSide(color: _primaryGreen, width: 4),
+            ),
           ),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              Flexible(
-                child: Text(
-                  routineName,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: _primaryGreen,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
+              const Icon(Icons.play_arrow, color: _primaryGreen, size: 24),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Up next',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.55,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      routineName,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: _primaryGreen,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 4),
-              const Icon(Icons.chevron_right, color: _primaryGreen, size: 16),
             ],
           ),
         ),
@@ -297,16 +314,19 @@ class _ConfirmBanner extends StatelessWidget {
   final VoidCallback onConfirm;
   final VoidCallback onEdit;
 
+  static const _primaryGreen = Color(0xFF00E676);
+  static const _cardColor = Color(0xFF232340);
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF232340),
+        color: _cardColor,
         borderRadius: BorderRadius.circular(kRadiusMd),
         border: Border.all(
-          color: const Color(0xFF00E676).withValues(alpha: 0.3),
+          color: _primaryGreen.withValues(alpha: 0.3),
           width: 1,
         ),
       ),

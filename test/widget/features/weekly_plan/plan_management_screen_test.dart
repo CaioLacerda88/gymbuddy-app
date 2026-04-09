@@ -1,8 +1,9 @@
-/// Widget tests for PlanManagementScreen — BUG-7 soft-cap inline text.
+/// Widget tests for PlanManagementScreen.
 ///
-/// Verifies that "Goal reached -- add anyway" text appears when the number
-/// of bucket routines meets or exceeds the training frequency (atSoftCap),
-/// and is absent when below the soft cap.
+/// Covers:
+/// - Soft-cap inline text with X/Y counter (Change 2)
+/// - Auto-fill button in empty state (Change 1)
+/// - "routines planned" counter when below soft cap (Change 2)
 library;
 
 import 'package:flutter/material.dart';
@@ -32,7 +33,14 @@ class _WeeklyPlanStub extends AsyncNotifier<WeeklyPlan?>
   Future<WeeklyPlan?> build() async => plan;
 
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  Future<void> upsertPlan(List<BucketRoutine> routines) async {}
+
+  @override
+  Future<void> clearPlan() async {}
+
+  @override
+  // ignore: must_call_super
+  dynamic noSuchMethod(Invocation invocation) {}
 }
 
 class _RoutineListStub extends AsyncNotifier<List<Routine>>
@@ -44,7 +52,8 @@ class _RoutineListStub extends AsyncNotifier<List<Routine>>
   Future<List<Routine>> build() async => routines;
 
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  // ignore: must_call_super
+  dynamic noSuchMethod(Invocation invocation) {}
 }
 
 class _ProfileStub extends AsyncNotifier<Profile?> implements ProfileNotifier {
@@ -60,7 +69,8 @@ class _ProfileStub extends AsyncNotifier<Profile?> implements ProfileNotifier {
   );
 
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  // ignore: must_call_super
+  dynamic noSuchMethod(Invocation invocation) {}
 }
 
 class _EmptyHistoryNotifier extends AsyncNotifier<List<Workout>>
@@ -128,7 +138,14 @@ Widget _build({
     ],
     child: MaterialApp(
       theme: AppTheme.dark,
-      home: const PlanManagementScreen(),
+      // Wrap in Consumer to eagerly initialise workoutHistoryProvider so
+      // the auto-fill loading guard doesn't block on first access.
+      home: Consumer(
+        builder: (context, ref, _) {
+          ref.watch(workoutHistoryProvider);
+          return const PlanManagementScreen();
+        },
+      ),
     ),
   );
 }
@@ -138,9 +155,9 @@ Widget _build({
 // ---------------------------------------------------------------------------
 
 void main() {
-  group('BUG-7: PlanManagementScreen soft-cap inline text', () {
+  group('PlanManagementScreen soft-cap inline text', () {
     testWidgets(
-      'shows "Goal reached" text when bucket count >= training frequency',
+      'shows "X/Y goal reached" text when bucket count >= training frequency',
       (tester) async {
         tester.view.physicalSize = const Size(800, 2000);
         tester.view.devicePixelRatio = 1.0;
@@ -162,19 +179,18 @@ void main() {
         await tester.pumpWidget(
           _build(plan: plan, routines: routines, trainingFrequency: 2),
         );
-        // Allow the plan provider to resolve and seed the stateful widget.
         await tester.pumpAndSettle();
 
         expect(
-          find.textContaining('Goal reached'),
+          find.textContaining('2/2 goal reached'),
           findsOneWidget,
-          reason: 'Soft-cap hint should appear when bucket >= frequency',
+          reason: 'Soft-cap hint should show "2/2 goal reached" at cap',
         );
       },
     );
 
     testWidgets(
-      'does NOT show "Goal reached" text when bucket count < training frequency',
+      'shows "X/Y routines planned" when bucket count < training frequency',
       (tester) async {
         tester.view.physicalSize = const Size(800, 2000);
         tester.view.devicePixelRatio = 1.0;
@@ -194,15 +210,20 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(
-          find.textContaining('Goal reached'),
+          find.textContaining('goal reached'),
           findsNothing,
           reason: 'Soft-cap hint should NOT appear when bucket < frequency',
+        );
+        expect(
+          find.textContaining('1/3 routines planned'),
+          findsOneWidget,
+          reason: 'Counter should show "1/3 routines planned" below cap',
         );
       },
     );
 
     testWidgets(
-      'shows "Goal reached" text when bucket count exceeds frequency',
+      'shows "X/Y goal reached" text when bucket count exceeds frequency',
       (tester) async {
         tester.view.physicalSize = const Size(800, 2000);
         tester.view.devicePixelRatio = 1.0;
@@ -229,9 +250,9 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(
-          find.textContaining('Goal reached'),
+          find.textContaining('3/2 goal reached'),
           findsOneWidget,
-          reason: 'Soft-cap hint should appear when bucket > frequency',
+          reason: 'Soft-cap hint should show "3/2 goal reached" when over',
         );
       },
     );
@@ -262,7 +283,151 @@ void main() {
 
       // Both "Add Routine" and soft-cap text should be present.
       expect(find.text('Add Routine'), findsOneWidget);
-      expect(find.textContaining('Goal reached'), findsOneWidget);
+      expect(find.textContaining('goal reached'), findsOneWidget);
     });
+  });
+
+  group('PlanManagementScreen empty state', () {
+    testWidgets('shows Auto-fill button in empty state', (tester) async {
+      tester.view.physicalSize = const Size(800, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      // No plan => empty state.
+      final routines = [_routine(id: 'r-001', name: 'Push Day')];
+
+      await tester.pumpWidget(
+        _build(plan: null, routines: routines, trainingFrequency: 3),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Auto-fill'),
+        findsOneWidget,
+        reason: 'Empty state should show the auto-fill button',
+      );
+      expect(find.byIcon(Icons.repeat), findsOneWidget);
+    });
+
+    testWidgets(
+      'shows both Add Routines and Auto-fill buttons in empty state',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final routines = [_routine(id: 'r-001', name: 'Push Day')];
+
+        await tester.pumpWidget(
+          _build(plan: null, routines: routines, trainingFrequency: 3),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Add Routines'), findsOneWidget);
+        expect(find.text('Auto-fill'), findsOneWidget);
+      },
+    );
+
+    testWidgets('Auto-fill button is an OutlinedButton', (tester) async {
+      tester.view.physicalSize = const Size(800, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final routines = [_routine(id: 'r-001', name: 'Push Day')];
+
+      await tester.pumpWidget(
+        _build(plan: null, routines: routines, trainingFrequency: 3),
+      );
+      await tester.pumpAndSettle();
+
+      // The auto-fill button should be an OutlinedButton (not FilledButton).
+      final outlinedButtons = find.byType(OutlinedButton);
+      expect(outlinedButtons, findsOneWidget);
+    });
+
+    testWidgets('tapping Auto-fill button triggers the auto-fill action', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final routines = [_routine(id: 'r-001', name: 'Push Day')];
+
+      await tester.pumpWidget(
+        _build(plan: null, routines: routines, trainingFrequency: 3),
+      );
+      await tester.pumpAndSettle();
+
+      // Tapping should not throw; the auto-fill method handles the logic.
+      await tester.tap(find.text('Auto-fill'));
+      await tester.pumpAndSettle();
+
+      // After auto-fill with 1 routine and freq=3, we expect 1 routine in the
+      // bucket — the empty state should be gone and the routine should appear.
+      expect(find.text('Push Day'), findsOneWidget);
+      expect(find.text('No routines planned this week'), findsNothing);
+    });
+  });
+
+  group('PlanManagementScreen edge cases', () {
+    testWidgets(
+      'trainingFrequency=0 shows "0/0 goal reached" without crashing',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        // Profile with trainingFrequencyPerWeek = 0 is a degenerate edge case.
+        // The _AddRoutineRow counter must not crash (no division by zero).
+        final routines = [_routine(id: 'r-001', name: 'Push Day')];
+        final plan = _plan(routines: [_bucket(routineId: 'r-001', order: 1)]);
+
+        await tester.pumpWidget(
+          _build(plan: plan, routines: routines, trainingFrequency: 0),
+        );
+        await tester.pumpAndSettle();
+
+        // With frequency=0 and 1 routine in bucket, atSoftCap is true (1 >= 0).
+        // Counter shows "1/0 goal reached" — no crash.
+        expect(
+          find.textContaining('goal reached'),
+          findsOneWidget,
+          reason:
+              'With frequency=0, atSoftCap is always true; no crash expected',
+        );
+      },
+    );
+
+    testWidgets(
+      'auto-fill with trainingFrequency=0 produces empty plan without crashing',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        // With frequency=0, _autoFill takes 0 routines => empty plan.
+        final routines = [_routine(id: 'r-001', name: 'Push Day')];
+
+        await tester.pumpWidget(
+          _build(plan: null, routines: routines, trainingFrequency: 0),
+        );
+        await tester.pumpAndSettle();
+
+        // Tap Auto-fill — should not throw even though count=0.
+        await tester.tap(find.text('Auto-fill'));
+        await tester.pumpAndSettle();
+
+        // Empty plan result: empty state stays since no routines were added.
+        // Auto-fill with freq=0 selects 0 routines, leaving the bucket empty.
+        expect(find.text('No routines planned this week'), findsOneWidget);
+      },
+    );
   });
 }

@@ -1,7 +1,7 @@
 /// Widget tests for WeekBucketSection.
 ///
 /// Covers: header text, completion counter, routine chip rendering,
-/// empty state CTA, and the auto-populated confirmation banner.
+/// empty state CTA, confirmation banner, and suggested-next card.
 library;
 
 import 'dart:async';
@@ -258,9 +258,7 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      // Both routine names must appear somewhere in the chip row.
-      // The next chip also shows the name in the suggested-next pill, so
-      // allow one or more occurrences.
+      // Both routine names must appear somewhere in the chip row and/or card.
       expect(find.textContaining('Push Day'), findsWidgets);
       expect(find.textContaining('Pull Day'), findsOneWidget);
     });
@@ -371,6 +369,197 @@ void main() {
         // All complete → WeekReviewSection shows instead, section header gone.
         // This verifies the week-complete transform triggers correctly.
         expect(find.text('THIS WEEK'), findsNothing);
+      },
+    );
+  });
+
+  group('WeekBucketSection — suggested-next card', () {
+    testWidgets('shows "Up next" card when there is an uncompleted routine', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        _build(
+          plan: _plan(
+            routines: [
+              _bucket(routineId: 'r-001', order: 1),
+              _bucket(routineId: 'r-002', order: 2),
+            ],
+          ),
+          routines: [
+            _routine(id: 'r-001', name: 'Push Day'),
+            _routine(id: 'r-002', name: 'Pull Day'),
+          ],
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      // The card should show "Up next" label text.
+      expect(find.text('Up next'), findsOneWidget);
+    });
+
+    testWidgets('suggested-next card shows the routine name', (tester) async {
+      tester.view.physicalSize = const Size(800, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        _build(
+          plan: _plan(routines: [_bucket(routineId: 'r-001', order: 1)]),
+          routines: [_routine(id: 'r-001', name: 'Chest & Shoulders')],
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      // Card should display the routine name.
+      expect(find.text('Chest & Shoulders'), findsWidgets);
+      expect(find.text('Up next'), findsOneWidget);
+    });
+
+    testWidgets('suggested-next card has play_arrow icon', (tester) async {
+      tester.view.physicalSize = const Size(800, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        _build(
+          plan: _plan(routines: [_bucket(routineId: 'r-001', order: 1)]),
+          routines: [_routine(id: 'r-001', name: 'Push Day')],
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byIcon(Icons.play_arrow), findsOneWidget);
+    });
+
+    testWidgets('suggested-next card is NOT shown when all routines are done', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        _build(
+          plan: _plan(
+            routines: [
+              _bucket(routineId: 'r-001', order: 1, completedWorkoutId: 'wk-1'),
+            ],
+          ),
+          routines: [_routine(id: 'r-001', name: 'Push Day')],
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      // All routines complete → week review mode, no "Up next".
+      expect(find.text('Up next'), findsNothing);
+    });
+
+    testWidgets('suggested-next card shows second routine when first is done', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        _build(
+          plan: _plan(
+            routines: [
+              _bucket(
+                routineId: 'r-001',
+                order: 1,
+                completedWorkoutId: 'wk-done',
+              ),
+              _bucket(routineId: 'r-002', order: 2),
+            ],
+          ),
+          routines: [
+            _routine(id: 'r-001', name: 'Push Day'),
+            _routine(id: 'r-002', name: 'Pull Day'),
+          ],
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      // "Up next" should show Pull Day (second routine).
+      expect(find.text('Up next'), findsOneWidget);
+      // Pull Day should appear in both the card subtitle and in the chip row.
+      expect(find.textContaining('Pull Day'), findsWidgets);
+    });
+
+    testWidgets('suggested-next card is tappable (InkWell wraps it)', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        _build(
+          plan: _plan(routines: [_bucket(routineId: 'r-001', order: 1)]),
+          routines: [_routine(id: 'r-001', name: 'Push Day')],
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      // Verify the card is tappable by finding an InkWell ancestor of "Up next".
+      final upNextText = find.text('Up next');
+      expect(upNextText, findsOneWidget);
+
+      // Tapping the card should not throw (the actual navigation is handled
+      // by GoRouter which is not available in this test context, so we just
+      // verify no exception is thrown).
+      final inkWells = find.ancestor(
+        of: upNextText,
+        matching: find.byType(InkWell),
+      );
+      expect(
+        inkWells,
+        findsWidgets,
+        reason: 'The "Up next" card should be wrapped in an InkWell',
+      );
+    });
+
+    testWidgets(
+      'suggested-next card shows "Next workout" fallback when routine id is unknown',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        // The bucket references 'r-unknown' but the routines list has no entry
+        // for that id. The card should fall back to 'Next workout'.
+        await tester.pumpWidget(
+          _build(
+            plan: _plan(routines: [_bucket(routineId: 'r-unknown', order: 1)]),
+            // Provide a different routine id so nameMap misses 'r-unknown'.
+            routines: [_routine(id: 'r-other', name: 'Pull Day')],
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        // "Up next" label should appear.
+        expect(find.text('Up next'), findsOneWidget);
+        // Routine name falls back to the default.
+        expect(find.text('Next workout'), findsOneWidget);
       },
     );
   });

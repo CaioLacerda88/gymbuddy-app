@@ -24,8 +24,11 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 9d | Final QA Pass | DONE | #24 |
 | 10 | UX Improvements & Security | DONE | #25-#26 |
 | 11 | Exercise Content, Smart Defaults, Home Simplification | DONE | #27-#30 |
-| 12 | Weekly Training Plan (Bucket Model) | IN PROGRESS | #32 |
-| 12.1 | E2E Infrastructure: Parallelism, Teardown, Data Seeding | TODO | - |
+| 12 | Weekly Training Plan (Bucket Model) | DONE | #32 |
+| 12.1 | E2E Infrastructure: Parallelism, Teardown, Data Seeding | DONE | #35 |
+| 12.2a | Bug Fixes (7 UX bugs) | DONE | #36 |
+| 12.2b | Home Screen Redesign | DONE | #37 |
+| 12.2c | Plan Management UX Polish | TODO | - |
 | 13 | Production Readiness (Store Blockers) | TODO | - |
 | 14 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
 | 15 | Gamification Advanced (Quests, Stats Panel) | TODO | - |
@@ -40,6 +43,7 @@ Read only what you need:
 | Tech Stack & Architecture | Building any code |
 | Completed Steps (1-11) | Need context on what already exists |
 | Step 12: Weekly Training Plan | Implementing Step 12 |
+| Step 12.2: Home Redesign + Bug Fixes | Implementing Step 12.2 |
 | Phase 13: Production Readiness | Preparing for Play Store |
 | Phase 14-15: Gamification | Implementing RPG system |
 | QA Status | Doing QA or review |
@@ -305,88 +309,195 @@ Migration: supabase/migrations/00011_create_weekly_plans.sql
 
 ---
 
-## Step 12.1: E2E Infrastructure — Parallelism, Teardown, Data Seeding
+## Step 12.1: E2E Infrastructure — Parallelism, Teardown, Data Seeding (DONE — PR #35)
 
-> **Status:** TODO. Unblocks faster CI and eliminates 13 test skips.
+- Replaced Python `http.server` with `http-server` npm package (concurrent). `workers: 2` in config + CI.
+- Global teardown cascades FK deletes (sets → workout_exercises → workouts → PRs → plans → profiles → auth user). All 24 test users delete cleanly.
+- Seeded workout+PR data for `smokePR`, completed weekly plan for `smokeWeeklyPlanReview`, profile for `smokeExercise`.
+- Rewrote `exercise-library.smoke.spec.ts` to standard infra (removed hardcoded `test.skip`, uses `smokeExercise` user).
+- Added Dart semantics labels (`tooltip: 'Create routine'`, `Semantics(label: 'More options')`) for Playwright selectors.
+- **Result:** 58 passed, 2 skipped (expected), 0 failures, 6.1 min runtime. Key files: `global-setup.ts`, `global-teardown.ts`, `playwright.config.ts`, `selectors.ts`, `e2e.yml`.
 
-#### Problem
+---
 
-1. **Single-threaded server forces `workers: 1`** — Python's `http.server` is blocking. Two Playwright browsers loading the 5MB `main.dart.js` simultaneously causes one to timeout ("Flutter app failed to render"). Suite takes 10min instead of ~5min.
-2. **Teardown deletes users from ephemeral DB** — CI spins up `supabase start` and the runner destroys it after. Locally, global-setup is idempotent. The teardown is unnecessary overhead that fails on FK constraints (3 users per run).
-3. **13 tests skip due to missing seed data** — 5 need seeded workouts/weekly plans, 7 are a legacy file with hardcoded `test.skip(true)`, 1 needs a completed PR.
+## Step 12.2: Home Redesign + Weekly Plan UX + Bug Fixes
 
-#### 12.1a: Concurrent Static File Server
+> **Status:** TODO. Addresses 7 user-reported issues: 4 bugs, 2 UX gaps, 1 home screen redesign.
+> Split into 3 sub-steps for manageable PRs.
 
-Replace `python -m http.server` (single-threaded, blocking) with a concurrent alternative in both `playwright.config.ts` and `e2e.yml`.
+### Context & Agent Analysis
 
-Options (pick one):
-- `npx http-server` (npm `http-server` package) — concurrent, serves dotfiles, zero config
-- `npx serve --no-request-logging` with dotfile config — already in devDeps but hides dotfiles by default
-- Python `ThreadingHTTPServer` — one-liner, no extra deps
+**PO verdict:** Home screen should be action-first (weekly plan hero), not dashboard-first (stat cards). Routines list is redundant with weekly plan. Frequency limit should stay soft (goal, not gate) — matches Fitbod/Strong/Hevy. Enforced routine ordering is a retention-killer; bucket model's value is flexibility.
 
-Set `workers: 2` in `playwright.config.ts` (or remove to use Playwright default = CPU/2).
+**UI/UX verdict:** Chip system is the strongest design element — keep and strengthen. Remove routines list from home entirely. Replace lifetime stats with contextual stats (last session, week volume). Empty plan state is invisible. "Start Empty Workout" should be FilledButton, not OutlinedButton. Don't add gradients, progress bars, or muscle group tags to chips.
 
-**Acceptance:** Full smoke suite passes with `workers >= 2`. Suite runtime drops from ~10min to ~5min.
+---
 
-#### 12.1b: Fix Global Teardown FK Cascade
+### 12.2a: Bug Fixes (6 issues)
 
-Fix `global-teardown.ts` to cascade-delete user data before calling `auth.admin.deleteUser()`. Currently 3 users fail to delete every run due to FK constraints.
+**Bug #1: "Fill Remaining" doesn't check off sets**
+- **Root cause:** `fillRemainingSets()` in `active_workout_notifier.dart:408-444` copies weight/reps but doesn't set `isCompleted: true`
+- **Fix:** Add `isCompleted: true` to the `copyWith` call for filled sets
+- **File:** `lib/features/workouts/providers/notifiers/active_workout_notifier.dart`
+- **Test:** Update existing test in `test/unit/features/workouts/providers/active_workout_notifier_test.dart:1096-1234` to expect completion
 
-Before deleting each user, delete dependent rows in order:
-```
-workout_sets → workout_exercises → workouts → personal_records
-weekly_plans → routines (user-created) → exercises (user-created) → profiles → auth user
-```
+**Bug #2: Stat card counts not updating after workout**
+- **Root cause:** After workout completion (`active_workout_screen.dart:173-175`), only `workoutHistoryProvider` and `prListProvider` are invalidated — `workoutCountProvider`, `prCountProvider`, and `recentPRsProvider` are NOT invalidated
+- **Fix:** Add `ref.invalidate(workoutCountProvider)`, `ref.invalidate(prCountProvider)`, `ref.invalidate(recentPRsProvider)` after workout save
+- **Files:** `lib/features/workouts/ui/active_workout_screen.dart`
 
-Use the service-role Supabase client (already available) to DELETE from each table WHERE user_id = ?.
+**Bug #3: Profile page stat cards not navigable**
+- **Root cause:** `_StatCard` in `profile_screen.dart:341-385` is a plain `Container` with no `onTap`/`GestureDetector`
+- **Fix:** Wrap Workouts card → `/home/history`, PRs card → `/records`. Member Since stays informational.
+- **File:** `lib/features/profile/ui/profile_screen.dart`
 
-**Acceptance:** All test users deleted cleanly. No "Failed to delete user" warnings.
+**Bug #4: Weekly plan enforces fixed routine order**
+- **Root cause:** `week_bucket_section.dart` sets `onTap: null` for non-"next" chips. Only the `suggestedNextProvider` result is tappable.
+- **Fix:** Make ALL uncompleted chips tappable (launch that routine). Keep "suggested next" as a visual recommendation (green highlight) not a gate.
+- **File:** `lib/features/weekly_plan/ui/widgets/week_bucket_section.dart`
 
-#### 12.1c: Seed Test Data in Global Setup
+**Bug #5: No visible way to edit weekly plan mid-week**
+- **Root cause:** Edit access is hidden behind long-press gesture on chip row (`GestureDetector(onLongPress: ...)`). Most users will never discover it.
+- **Fix:** Add visible "Edit" icon/link in the THIS WEEK section header row. Keep long-press as secondary gesture.
+- **File:** `lib/features/weekly_plan/ui/widgets/week_bucket_section.dart`
 
-Add data seeding to `global-setup.ts` for users that need pre-existing state:
+**Bug #6: "Last:" shows wrong weight after changing weight mid-workout**
+- **Root cause:** `lastWorkoutSetsProvider` is a cached FutureProvider. The `lastSet` passed to `SetRow` is not reactive to current-session changes. When user changes weight on a set, "Last:" still shows stale previous-workout data.
+- **Investigate further:** "Last:" is *supposed* to show the previous workout's values. Verify whether the bug is: (a) stale cache from a prior session, or (b) user expects "Last:" to reflect current-session sets. If (a), fix cache invalidation. If (b), relabel to "Previous:" and document behavior.
+- **Files:** `lib/features/workouts/ui/active_workout_screen.dart:548`, `lib/features/workouts/ui/widgets/set_row.dart:170`
 
-**`smokePR` user** — seed a completed workout + personal record:
-- Profile row, workout with finished_at, workout_exercise + set (weight + reps), personal_records row
+**Bug #7: Weekly frequency setting has no visible effect**
+- **Root cause:** `trainingFrequencyPerWeek` is a soft cap only — dims the "Add Routine" button + shows tooltip. But `Tooltip` requires long-press on mobile (invisible to most users).
+- **Fix (keep as soft cap per PO recommendation):** Replace invisible `Tooltip` with always-visible inline text "Goal reached — add anyway" in `bodySmall` muted style when `atSoftCap == true`. Do NOT hard-block.
+- **File:** `lib/features/weekly_plan/ui/plan_management_screen.dart`
 
-**`smokeWeeklyPlanReview` user** — seed a completed weekly plan:
-- Profile row, weekly_plan with routines JSONB containing completed_workout_id entries, matching workout rows
+#### 12.2a — Acceptance Criteria
 
-Use Supabase service-role client (already available in global-setup) to INSERT directly.
+- [ ] Fill Remaining marks sets as completed (checkbox checked)
+- [ ] Home stat cards update immediately after workout completion
+- [ ] Profile Workouts card → workout history, PRs card → records screen
+- [ ] All uncompleted weekly plan chips are tappable (not just "next")
+- [ ] Visible "Edit" affordance in THIS WEEK section header
+- [ ] "Last:" behavior verified and fixed or clarified
+- [ ] Frequency soft-cap shows inline text instead of tooltip
+- [ ] Existing tests updated, new unit tests for each fix
+- [ ] `make ci` passes
 
-**Acceptance:** `pr-display` test 3 and `weekly-plan-review` tests 2-5 no longer skip (5 skips → 0).
-
-#### 12.1d: Fix exercise-library.smoke.spec.ts
-
-Rewrite to use standard test infrastructure:
-- Remove hardcoded `test.skip(true)` at top
-- Use dedicated `smokeExercise` user (already exists in test-users.ts and global-setup)
-- Exercises are seeded by `seed.sql` (run by `supabase start`) — no manual seeding needed
-- Ensure profile row exists for this user (add to global-setup profileUsers list)
-
-**Acceptance:** 7 tests run and pass instead of being skipped. Total skips: 13 → 0.
-
-#### Step 12.1 — Acceptance Criteria
-
-- [ ] Concurrent file server replaces `python -m http.server` in config + CI
-- [ ] `workers >= 2` in playwright.config.ts, suite passes reliably
-- [ ] Global teardown removed (config + file)
-- [ ] Test data seeded for smokePR and smokeWeeklyPlanReview users
-- [ ] exercise-library.smoke.spec.ts rewritten, 7 tests passing
-- [ ] Suite runtime ≤ 6 min with 0 skips, 0 failures
-- [ ] CI e2e.yml updated to match local changes
-
-#### Step 12.1 — File Plan
+#### 12.2a — File Plan
 
 ```
 Modified:
-  test/e2e/playwright.config.ts         — concurrent server command, workers >= 2
-  test/e2e/global-setup.ts              — add data seeding for smokePR + smokeWeeklyPlanReview + smokeExercise profile
-  test/e2e/global-teardown.ts           — FK cascade delete before auth user deletion
-  test/e2e/smoke/exercise-library.smoke.spec.ts — rewrite to use standard infra
-  test/e2e/package.json                 — add http-server dep (if chosen)
-  .github/workflows/e2e.yml            — replace python3 server with concurrent alternative
+  lib/features/workouts/providers/notifiers/active_workout_notifier.dart  — fillRemainingSets adds isCompleted: true
+  lib/features/workouts/ui/active_workout_screen.dart                     — invalidate count/PR providers after save
+  lib/features/profile/ui/profile_screen.dart                             — add navigation to stat cards
+  lib/features/weekly_plan/ui/widgets/week_bucket_section.dart            — all chips tappable + edit icon in header
+  lib/features/weekly_plan/ui/plan_management_screen.dart                 — inline soft-cap text
+  lib/features/workouts/ui/widgets/set_row.dart                           — verify/fix Last: display
+
+Tests:
+  test/unit/features/workouts/providers/active_workout_notifier_test.dart  — update fillRemaining test
+  test/widget/ (new)                                                       — stat card navigation, chip tappability
 ```
+
+---
+
+### 12.2b: Home Screen Redesign
+
+**Goal:** Transform home from a generic dashboard into a gym-floor action screen. One-handed, glanceable, answers "what do I do today?" in 2 seconds.
+
+#### Layout (top to bottom)
+
+1. **Header** — Date ("WED, APR 9") + user display name. Remove large "GymBuddy" title (wasted prime real estate — user knows what app they opened).
+
+2. **THIS WEEK section (hero)** — Full visual weight, always above the fold.
+   - Section title "THIS WEEK" with progress counter ("2 of 4") as secondary metadata BELOW title (not competing with SuggestedNextPill in same Row).
+   - Chip row: increase `next` chip to 60dp (add exercise count as secondary line: "Push Day / 6 exercises"), `remaining` to 48dp, `done` stays 44dp.
+   - "Edit" icon visible in section header.
+   - Empty state: full-width bordered container at 72dp min-height with centered text + icon. Not a dim line of text.
+
+3. **Contextual stat cells** — 2 horizontal cells replacing current stat cards:
+   - **Last session:** "3 days ago — Push Day" (tap → workout history)
+   - **This week's volume:** "12,400 kg this week" (tap → history filtered to week)
+   - NOT lifetime workout count or PR count (those live on Profile).
+
+4. **Start Empty Workout** — `FilledButton` (not `OutlinedButton`), full-width, always visible without scrolling.
+
+5. **Routines list** — REMOVE entirely when user has an active weekly plan. Keep "Create Your First Routine" CTA only for `userRoutines.isEmpty && defaultRoutines.isEmpty` (onboarding state).
+
+#### What NOT to do
+- No gradient overlays on chips/cards
+- No progress bars inside stat cards
+- No muscle group tags on chips (belongs in routine detail)
+- No animated confetti beyond existing WeekReviewSection
+- No streak counter until Phase 14 (broken streaks demoralize)
+
+#### 12.2b — Acceptance Criteria
+
+- [ ] Home shows date + name header (no large app title)
+- [ ] THIS WEEK is the hero section, above stat cells
+- [ ] Progress counter separated from SuggestedNextPill (different rows)
+- [ ] Chip sizes: next=60dp, remaining=48dp, done=44dp
+- [ ] Next chip shows exercise count as secondary line
+- [ ] Empty plan state is a 72dp+ tappable container
+- [ ] Contextual stats replace lifetime stats (last session + week volume)
+- [ ] Week volume requires new query/RPC (sum of weight*reps this week)
+- [ ] Routines list hidden when active plan exists
+- [ ] Start Empty Workout is FilledButton, visible without scrolling
+- [ ] `make ci` passes, E2E smoke tests updated if selectors changed
+
+#### 12.2b — File Plan
+
+```
+Modified:
+  lib/features/workouts/ui/home_screen.dart                    — restructure layout, remove routines list, new stat cells
+  lib/features/weekly_plan/ui/widgets/week_bucket_section.dart  — header layout, empty state redesign, progress counter placement
+  lib/features/weekly_plan/ui/widgets/routine_chip.dart         — chip size increases, exercise count on next chip
+  lib/features/workouts/providers/workout_history_providers.dart — new provider: weekVolumeProvider (sum weight*reps this week)
+
+New:
+  lib/features/workouts/ui/widgets/contextual_stat_cell.dart    — reusable stat cell widget (last session, week volume)
+
+Tests:
+  test/widget/features/workouts/ui/home_screen_test.dart        — verify new layout, conditional routines list
+  test/e2e/smoke/ (update selectors if needed)
+```
+
+---
+
+### 12.2c: Plan Management UX Polish
+
+**Smaller improvements to the plan management screen.**
+
+1. **Auto-fill as visible button in empty state** — Currently hidden in AppBar overflow menu. Add as a secondary button in `_EmptyState` widget: "Auto-fill from last week". Keep "Clear Week" in overflow (destructive action).
+
+2. **Inline soft-cap text** — When `_bucketRoutines.length >= trainingFrequency`, show "3/3 goal reached" as always-visible `bodySmall` text below the add button. Replace the invisible `Tooltip`.
+
+3. **SuggestedNextPill** — currently renders as a small pill in the section header. Evaluate elevating to a prominent tappable card at the top of the THIS WEEK section. (This pairs with gamification in Phase 14 — XP rewards for following suggestions.)
+
+#### 12.2c — Acceptance Criteria
+
+- [ ] Auto-fill button visible in empty plan state
+- [ ] Inline "X/Y goal reached" text replaces tooltip
+- [ ] SuggestedNextPill visual weight increased (or deferred to Phase 14 if too coupled)
+- [ ] `make ci` passes
+
+#### 12.2c — File Plan
+
+```
+Modified:
+  lib/features/weekly_plan/ui/plan_management_screen.dart  — auto-fill in empty state, inline soft-cap text
+  lib/features/weekly_plan/ui/widgets/week_bucket_section.dart  — SuggestedNextPill elevation (if not deferred)
+```
+
+---
+
+### Execution Order
+
+| Sub-step | Dependencies | Effort |
+|----------|-------------|--------|
+| 12.2a (Bug fixes) | None | 1 session |
+| 12.2b (Home redesign) | 12.2a (stat invalidation must work first) | 1-2 sessions |
+| 12.2c (Plan management UX) | None (can parallel with 12.2b) | 0.5 session |
 
 ---
 
