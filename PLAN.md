@@ -25,6 +25,7 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 10 | UX Improvements & Security | DONE | #25-#26 |
 | 11 | Exercise Content, Smart Defaults, Home Simplification | DONE | #27-#30 |
 | 12 | Weekly Training Plan (Bucket Model) | IN PROGRESS | #32 |
+| 12.1 | E2E Infrastructure: Parallelism, Teardown, Data Seeding | TODO | - |
 | 13 | Production Readiness (Store Blockers) | TODO | - |
 | 14 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
 | 15 | Gamification Advanced (Quests, Stats Panel) | TODO | - |
@@ -300,6 +301,91 @@ lib/features/weekly_plan/
 
 Modified: onboarding_screen, profile_screen, home_screen, app_router, active_workout_notifier
 Migration: supabase/migrations/00011_create_weekly_plans.sql
+```
+
+---
+
+## Step 12.1: E2E Infrastructure — Parallelism, Teardown, Data Seeding
+
+> **Status:** TODO. Unblocks faster CI and eliminates 13 test skips.
+
+#### Problem
+
+1. **Single-threaded server forces `workers: 1`** — Python's `http.server` is blocking. Two Playwright browsers loading the 5MB `main.dart.js` simultaneously causes one to timeout ("Flutter app failed to render"). Suite takes 10min instead of ~5min.
+2. **Teardown deletes users from ephemeral DB** — CI spins up `supabase start` and the runner destroys it after. Locally, global-setup is idempotent. The teardown is unnecessary overhead that fails on FK constraints (3 users per run).
+3. **13 tests skip due to missing seed data** — 5 need seeded workouts/weekly plans, 7 are a legacy file with hardcoded `test.skip(true)`, 1 needs a completed PR.
+
+#### 12.1a: Concurrent Static File Server
+
+Replace `python -m http.server` (single-threaded, blocking) with a concurrent alternative in both `playwright.config.ts` and `e2e.yml`.
+
+Options (pick one):
+- `npx http-server` (npm `http-server` package) — concurrent, serves dotfiles, zero config
+- `npx serve --no-request-logging` with dotfile config — already in devDeps but hides dotfiles by default
+- Python `ThreadingHTTPServer` — one-liner, no extra deps
+
+Set `workers: 2` in `playwright.config.ts` (or remove to use Playwright default = CPU/2).
+
+**Acceptance:** Full smoke suite passes with `workers >= 2`. Suite runtime drops from ~10min to ~5min.
+
+#### 12.1b: Fix Global Teardown FK Cascade
+
+Fix `global-teardown.ts` to cascade-delete user data before calling `auth.admin.deleteUser()`. Currently 3 users fail to delete every run due to FK constraints.
+
+Before deleting each user, delete dependent rows in order:
+```
+workout_sets → workout_exercises → workouts → personal_records
+weekly_plans → routines (user-created) → exercises (user-created) → profiles → auth user
+```
+
+Use the service-role Supabase client (already available) to DELETE from each table WHERE user_id = ?.
+
+**Acceptance:** All test users deleted cleanly. No "Failed to delete user" warnings.
+
+#### 12.1c: Seed Test Data in Global Setup
+
+Add data seeding to `global-setup.ts` for users that need pre-existing state:
+
+**`smokePR` user** — seed a completed workout + personal record:
+- Profile row, workout with finished_at, workout_exercise + set (weight + reps), personal_records row
+
+**`smokeWeeklyPlanReview` user** — seed a completed weekly plan:
+- Profile row, weekly_plan with routines JSONB containing completed_workout_id entries, matching workout rows
+
+Use Supabase service-role client (already available in global-setup) to INSERT directly.
+
+**Acceptance:** `pr-display` test 3 and `weekly-plan-review` tests 2-5 no longer skip (5 skips → 0).
+
+#### 12.1d: Fix exercise-library.smoke.spec.ts
+
+Rewrite to use standard test infrastructure:
+- Remove hardcoded `test.skip(true)` at top
+- Use dedicated `smokeExercise` user (already exists in test-users.ts and global-setup)
+- Exercises are seeded by `seed.sql` (run by `supabase start`) — no manual seeding needed
+- Ensure profile row exists for this user (add to global-setup profileUsers list)
+
+**Acceptance:** 7 tests run and pass instead of being skipped. Total skips: 13 → 0.
+
+#### Step 12.1 — Acceptance Criteria
+
+- [ ] Concurrent file server replaces `python -m http.server` in config + CI
+- [ ] `workers >= 2` in playwright.config.ts, suite passes reliably
+- [ ] Global teardown removed (config + file)
+- [ ] Test data seeded for smokePR and smokeWeeklyPlanReview users
+- [ ] exercise-library.smoke.spec.ts rewritten, 7 tests passing
+- [ ] Suite runtime ≤ 6 min with 0 skips, 0 failures
+- [ ] CI e2e.yml updated to match local changes
+
+#### Step 12.1 — File Plan
+
+```
+Modified:
+  test/e2e/playwright.config.ts         — concurrent server command, workers >= 2
+  test/e2e/global-setup.ts              — add data seeding for smokePR + smokeWeeklyPlanReview + smokeExercise profile
+  test/e2e/global-teardown.ts           — FK cascade delete before auth user deletion
+  test/e2e/smoke/exercise-library.smoke.spec.ts — rewrite to use standard infra
+  test/e2e/package.json                 — add http-server dep (if chosen)
+  .github/workflows/e2e.yml            — replace python3 server with concurrent alternative
 ```
 
 ---

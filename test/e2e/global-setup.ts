@@ -11,8 +11,9 @@
  * is swallowed and setup continues so reruns are idempotent.
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+import fs from 'fs';
 import path from 'path';
 
 dotenv.config({ path: path.join(__dirname, '.env.local') });
@@ -52,10 +53,320 @@ const TEST_USERS = [
   'e2e-full-ex-detail-sheet@test.local',
 ];
 
+/**
+ * Look up a user ID by email from the Supabase auth admin API.
+ * Returns null if not found.
+ */
+async function getUserId(
+  supabase: SupabaseClient,
+  email: string,
+): Promise<string | null> {
+  const { data: listData } = await supabase.auth.admin.listUsers();
+  const user = listData?.users?.find((u) => u.email === email);
+  return user?.id ?? null;
+}
+
+/**
+ * Seed workout data for the smokePR user so PR display tests find records.
+ *
+ * Inserts: workout -> workout_exercise -> set -> personal_record
+ * Uses "Barbell Bench Press" (seeded by seed.sql).
+ *
+ * Idempotent: checks if a workout named 'E2E Seed Workout' already exists.
+ */
+async function seedPRData(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<void> {
+  // Check if seed workout already exists
+  const { data: existing } = await supabase
+    .from('workouts')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('name', 'E2E Seed Workout')
+    .maybeSingle();
+
+  if (existing) {
+    console.log('[global-setup] PR seed data already exists, skipping.');
+    return;
+  }
+
+  // Find "Barbell Bench Press" exercise (limit 1 in case seed.sql ran multiple times)
+  const { data: exercises, error: exError } = await supabase
+    .from('exercises')
+    .select('id')
+    .eq('name', 'Barbell Bench Press')
+    .eq('is_default', true)
+    .limit(1);
+  const exercise = exercises?.[0] ?? null;
+
+  if (exError || !exercise) {
+    console.log(
+      `[global-setup] Warning: could not find Barbell Bench Press exercise: ${exError?.message}`,
+    );
+    return;
+  }
+
+  const now = new Date();
+  const startedAt = new Date(now.getTime() - 60 * 60 * 1000); // 1h ago
+  const finishedAt = new Date(now.getTime() - 30 * 60 * 1000); // 30min ago
+
+  // Insert completed workout
+  const { data: workout, error: wError } = await supabase
+    .from('workouts')
+    .insert({
+      user_id: userId,
+      name: 'E2E Seed Workout',
+      started_at: startedAt.toISOString(),
+      finished_at: finishedAt.toISOString(),
+      duration_seconds: 1800,
+    })
+    .select('id')
+    .single();
+
+  if (wError || !workout) {
+    console.log(
+      `[global-setup] Warning: could not insert seed workout: ${wError?.message}`,
+    );
+    return;
+  }
+
+  // Insert workout_exercise
+  const { data: wx, error: wxError } = await supabase
+    .from('workout_exercises')
+    .insert({
+      workout_id: workout.id,
+      exercise_id: exercise.id,
+      order: 0,
+    })
+    .select('id')
+    .single();
+
+  if (wxError || !wx) {
+    console.log(
+      `[global-setup] Warning: could not insert seed workout_exercise: ${wxError?.message}`,
+    );
+    return;
+  }
+
+  // Insert set
+  const { data: set, error: setError } = await supabase
+    .from('sets')
+    .insert({
+      workout_exercise_id: wx.id,
+      set_number: 1,
+      reps: 5,
+      weight: 100,
+      set_type: 'working',
+      is_completed: true,
+    })
+    .select('id')
+    .single();
+
+  if (setError || !set) {
+    console.log(
+      `[global-setup] Warning: could not insert seed set: ${setError?.message}`,
+    );
+    return;
+  }
+
+  // Insert personal_record
+  const { error: prError } = await supabase.from('personal_records').insert({
+    user_id: userId,
+    exercise_id: exercise.id,
+    record_type: 'max_weight',
+    value: 100,
+    reps: 5,
+    achieved_at: finishedAt.toISOString(),
+    set_id: set.id,
+  });
+
+  if (prError) {
+    console.log(
+      `[global-setup] Warning: could not insert seed personal_record: ${prError.message}`,
+    );
+    return;
+  }
+
+  console.log(`[global-setup] Seeded PR data for smokePR user (workout: ${workout.id})`);
+}
+
+/**
+ * Seed a completed weekly plan for the smokeWeeklyPlanReview user.
+ *
+ * Inserts: profile (frequency 1), workout, weekly_plan with completed routine.
+ * Uses the "Push Day" starter template (seeded by seed.sql).
+ *
+ * Idempotent: checks if a weekly_plan for this week already exists.
+ */
+async function seedWeeklyPlanReviewData(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<void> {
+  // Calculate this Monday (ISO week start)
+  const now = new Date();
+  const dayOfWeek = now.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const thisMonday = new Date(now);
+  thisMonday.setUTCDate(now.getUTCDate() + mondayOffset);
+  thisMonday.setUTCHours(0, 0, 0, 0);
+  const weekStart = thisMonday.toISOString().split('T')[0]; // YYYY-MM-DD
+
+  // Check if weekly plan already exists for this week
+  const { data: existingPlan } = await supabase
+    .from('weekly_plans')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('week_start', weekStart)
+    .maybeSingle();
+
+  if (existingPlan) {
+    console.log('[global-setup] Weekly plan review seed data already exists, skipping.');
+    return;
+  }
+
+  // Upsert profile with training_frequency_per_week: 2 (minimum valid value, low enough that 1 routine = done)
+  // Note: the CHECK constraint is BETWEEN 2 AND 6, so minimum is 2.
+  // However, for "WEEK COMPLETE" we need completed_count >= frequency.
+  // We'll set frequency to 2 and insert 2 completed workouts to satisfy it.
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .upsert(
+      {
+        id: userId,
+        display_name: 'Weekly Plan Reviewer',
+        fitness_level: 'intermediate',
+        training_frequency_per_week: 2,
+      },
+      { onConflict: 'id' },
+    );
+
+  if (profileError) {
+    console.log(
+      `[global-setup] Warning: could not upsert profile for weekly plan review: ${profileError.message}`,
+    );
+    return;
+  }
+
+  // Find "Push Day" workout template (limit 1 in case seed.sql ran multiple times)
+  const { data: templates, error: templateError } = await supabase
+    .from('workout_templates')
+    .select('id')
+    .eq('name', 'Push Day')
+    .eq('is_default', true)
+    .limit(1);
+  const pushDay = templates?.[0] ?? null;
+
+  if (templateError || !pushDay) {
+    console.log(
+      `[global-setup] Warning: could not find Push Day template: ${templateError?.message}`,
+    );
+    return;
+  }
+
+  // Insert 2 completed workouts (to match frequency of 2)
+  const startedAt1 = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+  const finishedAt1 = new Date(now.getTime() - 90 * 60 * 1000);
+  const startedAt2 = new Date(now.getTime() - 60 * 60 * 1000);
+  const finishedAt2 = new Date(now.getTime() - 30 * 60 * 1000);
+
+  const { data: workout1, error: w1Error } = await supabase
+    .from('workouts')
+    .insert({
+      user_id: userId,
+      name: 'Push Day',
+      started_at: startedAt1.toISOString(),
+      finished_at: finishedAt1.toISOString(),
+      duration_seconds: 1800,
+    })
+    .select('id')
+    .single();
+
+  if (w1Error || !workout1) {
+    console.log(
+      `[global-setup] Warning: could not insert seed workout 1: ${w1Error?.message}`,
+    );
+    return;
+  }
+
+  const { data: workout2, error: w2Error } = await supabase
+    .from('workouts')
+    .insert({
+      user_id: userId,
+      name: 'Push Day',
+      started_at: startedAt2.toISOString(),
+      finished_at: finishedAt2.toISOString(),
+      duration_seconds: 1800,
+    })
+    .select('id')
+    .single();
+
+  if (w2Error || !workout2) {
+    console.log(
+      `[global-setup] Warning: could not insert seed workout 2: ${w2Error?.message}`,
+    );
+    return;
+  }
+
+  // Insert weekly_plan with 2 completed routines
+  const routines = [
+    {
+      routine_id: pushDay.id,
+      order: 0,
+      completed_workout_id: workout1.id,
+      completed_at: finishedAt1.toISOString(),
+    },
+    {
+      routine_id: pushDay.id,
+      order: 1,
+      completed_workout_id: workout2.id,
+      completed_at: finishedAt2.toISOString(),
+    },
+  ];
+
+  const { error: planError } = await supabase.from('weekly_plans').insert({
+    user_id: userId,
+    week_start: weekStart,
+    routines: routines,
+  });
+
+  if (planError) {
+    console.log(
+      `[global-setup] Warning: could not insert seed weekly_plan: ${planError.message}`,
+    );
+    return;
+  }
+
+  console.log(
+    `[global-setup] Seeded completed weekly plan for smokeWeeklyPlanReview (week: ${weekStart})`,
+  );
+}
+
 async function globalSetup(): Promise<void> {
   const supabaseUrl = process.env['SUPABASE_URL'];
+  const supabaseAnonKey = process.env['SUPABASE_ANON_KEY'];
   const serviceRoleKey = process.env['SUPABASE_SERVICE_ROLE_KEY'];
   const password = process.env['TEST_USER_PASSWORD'];
+
+  // ── Inject local Supabase credentials into the Flutter web build ──────
+  // flutter_dotenv loads build/web/assets/.env at runtime. The production
+  // build bundles the hosted Supabase URL, but E2E tests run against the
+  // local Supabase instance. We overwrite the .env in the build directory
+  // so the app connects to the same Supabase the tests use.
+  if (supabaseUrl && supabaseAnonKey) {
+    const envContent = `SUPABASE_URL=${supabaseUrl}\nSUPABASE_ANON_KEY=${supabaseAnonKey}\n`;
+    const buildWebDir = path.join(__dirname, '..', '..', 'build', 'web');
+    const envPaths = [
+      path.join(buildWebDir, 'assets', '.env'),
+      path.join(buildWebDir, '.env'),
+    ];
+    for (const envPath of envPaths) {
+      if (fs.existsSync(path.dirname(envPath))) {
+        fs.writeFileSync(envPath, envContent);
+        console.log(`[global-setup] Injected local .env into ${envPath}`);
+      }
+    }
+  }
 
   if (!supabaseUrl || !serviceRoleKey || !password) {
     throw new Error(
@@ -100,6 +411,78 @@ async function globalSetup(): Promise<void> {
     console.log(
       `[global-setup] Created user: ${email} (id: ${data.user?.id})`,
     );
+  }
+
+  // ── Ensure profile rows exist for tests that need them ────────────────
+  // Some tests (e.g., profile-weekly-goal) require an existing profile row
+  // in the `profiles` table. Users created via auth.admin.createUser do NOT
+  // automatically get a profile row — that happens during onboarding.
+  // We upsert minimal profile rows for users that need them.
+  const profileUsers = [
+    'e2e-smoke-profile-goal@test.local',
+    'e2e-smoke-exercise@test.local',
+  ];
+
+  // Delete profile rows for users that need to test onboarding (fresh state).
+  const onboardingUsers = ['e2e-smoke-onboarding@test.local'];
+  for (const email of onboardingUsers) {
+    const obUserId = await getUserId(supabase, email);
+    if (obUserId) {
+      await supabase.from('profiles').delete().eq('id', obUserId);
+      console.log(`[global-setup] Deleted profile row for ${email} (onboarding)`);
+    }
+  }
+
+  for (const email of profileUsers) {
+    const userId = await getUserId(supabase, email);
+    if (!userId) continue;
+
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert(
+        {
+          id: userId,
+          display_name: 'Gym User',
+          fitness_level: 'intermediate',
+        },
+        { onConflict: 'id' },
+      );
+
+    if (profileError) {
+      console.log(
+        `[global-setup] Warning: could not upsert profile for ${email}: ${profileError.message}`,
+      );
+    } else {
+      console.log(`[global-setup] Ensured profile row for ${email}`);
+    }
+  }
+
+  // ── Seed test data for specific users ─────────────────────────────────
+
+  // Seed PR data for smokePR user
+  const prUserId = await getUserId(supabase, 'e2e-smoke-pr@test.local');
+  if (prUserId) {
+    // Ensure profile exists (required for FK constraints in some tables)
+    await supabase
+      .from('profiles')
+      .upsert(
+        {
+          id: prUserId,
+          display_name: 'PR Test User',
+          fitness_level: 'intermediate',
+        },
+        { onConflict: 'id' },
+      );
+    await seedPRData(supabase, prUserId);
+  }
+
+  // Seed completed weekly plan for smokeWeeklyPlanReview user
+  const weeklyPlanUserId = await getUserId(
+    supabase,
+    'e2e-smoke-weekly-plan-review@test.local',
+  );
+  if (weeklyPlanUserId) {
+    await seedWeeklyPlanReviewData(supabase, weeklyPlanUserId);
   }
 
   console.log('[global-setup] Done.');

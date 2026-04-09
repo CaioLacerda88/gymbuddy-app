@@ -229,7 +229,7 @@ export const PR = {
 // Routines list — RoutinesScreen
 // ---------------------------------------------------------------------------
 export const ROUTINE = {
-  /** Page heading */
+  /** Page heading — use .first() to avoid strict-mode collision with nav tab */
   heading: 'text=Routines',
   /** "MY ROUTINES" section header */
   myRoutinesSection: 'text=MY ROUTINES',
@@ -255,8 +255,10 @@ export const ROUTINE = {
 // Create/Edit routine — CreateRoutineScreen
 // ---------------------------------------------------------------------------
 export const CREATE_ROUTINE = {
-  /** Name text field — hintText "Routine name" */
-  nameInput: 'input',
+  /** Name text field — hintText "Routine name". Target the flt-semantics
+   *  text-field element directly via its data attribute to avoid the raw
+   *  HTML input proxy that gets intercepted by the semantics overlay. */
+  nameInput: 'input[data-semantics-role="text-field"]',
   /** "Add Exercise" button */
   addExerciseButton: 'text=Add Exercise',
   /** "Save" button */
@@ -285,7 +287,7 @@ export const HISTORY = {
 // Profile screen — ProfileScreen
 // ---------------------------------------------------------------------------
 export const PROFILE = {
-  /** Page heading */
+  /** Page heading — use .first() to avoid strict-mode collision with nav tab */
   heading: 'text=Profile',
   /** Primary "Log Out" button */
   logOutButton: 'text=Log Out',
@@ -395,17 +397,25 @@ export const WEEKLY_PLAN = {
    * "ADD 1 ROUTINE" / "ADD N ROUTINES" confirm button in AddRoutinesSheet.
    * Match on the "ADD" prefix — the count varies.
    */
-  addConfirmButton: 'flt-semantics[aria-label*="ADD "]',
+  addConfirmButton: 'role=button[name*="ADD "]',
+  /**
+   * PopupMenuButton overflow icon (three dots) in the AppBar.
+   * Wrapped in Semantics(label: 'More options') — renders as role="group"
+   * with aria-label="More options". The child button has no aria-label itself.
+   */
+  overflowMenuButton: 'flt-semantics[aria-label="More options"]',
   /**
    * "Clear Week" option in the PopupMenuButton overflow menu.
-   * PopupMenuItem child: Text('Clear Week').
+   * PopupMenuItem renders as role="menuitem" with aria-label="Clear Week".
+   * The textContent is empty (Flutter CanvasKit), so `text=` won't match.
    */
-  clearWeekOption: 'text=Clear Week',
+  clearWeekOption: 'role=menuitem[name="Clear Week"]',
   /**
    * "Clear" confirm button in the _confirmClear AlertDialog.
-   * TextButton child: Text('Clear').
+   * TextButton child: Text('Clear'). Use role=button to avoid matching the
+   * "Clear Week" span from the popup menu (text= does substring matching).
    */
-  clearConfirmButton: 'text=Clear',
+  clearConfirmButton: 'role=button[name="Clear"]',
   /**
    * "NEW WEEK" GestureDetector text in WeekReviewSection.
    * Rendered as labelLarge Text('NEW WEEK') when onNewWeek is provided.
@@ -415,7 +425,7 @@ export const WEEKLY_PLAN = {
    * Stats text in WeekReviewSection — contains "sessions" substring.
    * _buildStatsText always starts with "{n} sessions".
    */
-  sessionsStatsText: 'text*=sessions',
+  sessionsStatsText: 'text=/sessions/',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -428,22 +438,38 @@ export const ONBOARDING_FLOW = {
   /**
    * Page 1 welcome headline: "Track every rep,\nevery time".
    * _WelcomePage renders this as displayMedium Text.
+   *
+   * Flutter merges the entire _WelcomePage Column into a single semantics
+   * button node, so the headline text appears only in the parent button's
+   * aria-label — not as a standalone text element. The `text=` engine does
+   * not match parent aria-labels when child nodes exist. Use `role=button`
+   * with a `name` substring match instead.
    */
-  welcomeHeadline: 'text=Track every rep',
+  welcomeHeadline: 'role=button[name*="Track every rep"]',
   /**
-   * Page 2 headline: "Set up your profile".
-   * _ProfileSetupPage renders this as headlineLarge Text.
+   * Page 2 indicator: the "Beginner" ChoiceChip is unique to the profile
+   * setup page and has a reliable aria-label in the semantics tree.
+   *
+   * The "Set up your profile" headline text is rendered to canvas only —
+   * it does NOT appear as an aria-label or text content in the DOM. Flutter
+   * does not create a semantics node for non-interactive Text widgets on
+   * this page. The ChoiceChips are the most reliable page 2 indicator.
    */
-  profileSetupHeadline: 'text=Set up your profile',
+  profileSetupHeadline: 'role=checkbox[name="Beginner"]',
   /**
    * Display name AppTextField on page 2.
-   * AppTextField label: 'Display name'.
+   *
+   * Flutter merges the text field with surrounding non-interactive elements.
+   * The flt-semantics node does NOT get an aria-label="Display name" — instead,
+   * the hidden native <input> proxy gets a merged aria-label containing all page
+   * text. We target the input via its data-semantics-role attribute since there
+   * is only one text field on the profile setup page.
    */
-  displayNameInput: '[aria-label="Display name"]',
+  displayNameInput: 'input[data-semantics-role="text-field"]',
   /**
    * "3x" frequency ChoiceChip — the default selection.
    */
-  frequency3x: 'text=3x',
+  frequency3x: 'role=checkbox[name="3x"]',
   /**
    * Back TextButton.icon on page 2.
    * TextButton label: Text('Back').
@@ -461,17 +487,17 @@ export const ROUTINE_MANAGEMENT = {
    * accessible name derived from the tooltip or semantics label.
    * We match on the role and the known AppBar position.
    */
-  createIconButton: 'flt-semantics[aria-label="Add"]',
+  createIconButton: 'role=button[name="Create routine"]',
   /**
    * AppBar title on CreateRoutineScreen when creating a new routine.
    * AppBar title: Text('Create Routine').
    */
-  createRoutineScreenTitle: 'text=Create Routine',
+  createRoutineScreenTitle: 'role=heading[name="Create Routine"]',
   /**
    * AppBar title on CreateRoutineScreen when editing an existing routine.
    * AppBar title: Text('Edit Routine').
    */
-  editRoutineScreenTitle: 'text=Edit Routine',
+  editRoutineScreenTitle: 'role=heading[name="Edit Routine"]',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -526,17 +552,18 @@ export const PROFILE_WEEKLY_GOAL = {
    * The _WeeklyGoalRow InkWell — matches on the "{n}x per week" text pattern.
    * We target the container text because there's no Semantics label.
    */
-  frequencyRow: 'text*=per week',
+  frequencyRow: 'role=button[name=/per week/]',
   /**
    * Frequency row with a specific value, e.g. "3x per week".
    * Returns a selector for the row showing the given frequency number.
    */
-  frequencyRowWithValue: (freq: number) => `text=${freq}x per week`,
+  frequencyRowWithValue: (freq: number) => `role=button[name="${freq}x per week"]`,
   /**
-   * "Weekly Goal" title in the frequency selection bottom sheet.
-   * showModalBottomSheet content renders titleLarge Text('Weekly Goal').
+   * Description text in the frequency selection bottom sheet.
+   * Unique to the sheet — the section label on the Profile page is different.
+   * Using this as a proxy for "sheet is open" avoids ambiguity with sectionLabel.
    */
-  sheetTitle: 'text=Weekly Goal',
+  sheetTitle: 'text=How many times per week do you want to train?',
   /**
    * How many times per week description in the sheet.
    */

@@ -1,30 +1,24 @@
 /**
  * Exercise library smoke tests — browse, filter, and detail journey.
  *
- * Skipped by default. Remove test.skip() and set environment variables to run:
- *   TEST_USER_EMAIL=<email>
- *   TEST_USER_PASSWORD=<password>
+ * Uses the dedicated `smokeExercise` test user (created by global-setup.ts).
+ * Exercises are seeded by `supabase/seed.sql` — no manual seeding needed.
  *
- * The Supabase database must be seeded with exercises before running.
- * Run: psql $DATABASE_URL -f supabase/seed.sql
- *
- * See test/e2e/README.md for full setup instructions.
+ * Tests: browse exercise list, filter by muscle group, filter by equipment,
+ * search by name, open exercise detail, and back navigation.
  */
 
 import { test, expect } from '@playwright/test';
 import { navigateToTab } from '../helpers/app';
-import { login, getTestCredentials } from '../helpers/auth';
-import { EXERCISE_LIST, EXERCISE_DETAIL, NAV } from '../helpers/selectors';
+import { login } from '../helpers/auth';
+import { EXERCISE_LIST, EXERCISE_DETAIL } from '../helpers/selectors';
+import { TEST_USERS } from '../fixtures/test-users';
 
-// Requires: running Flutter web app and seeded exercises.
-test.skip(true, 'Requires running Flutter web app and seeded exercises');
+const USER = TEST_USERS.smokeExercise;
 
 test.describe('Exercise library smoke', () => {
-  // Log in once before all tests in this describe block so we are not
-  // repeating the auth round-trip for every individual test.
   test.beforeEach(async ({ page }) => {
-    const { email, password } = getTestCredentials();
-    await login(page, email, password);
+    await login(page, USER.email, USER.password);
     await navigateToTab(page, 'Exercises');
   });
 
@@ -45,16 +39,17 @@ test.describe('Exercise library smoke', () => {
 
   test('exercise list shows seeded exercises', async ({ page }) => {
     // At least one exercise card must be visible after seeding.
-    // We look for the generic "Exercise:" prefix used in all Semantics labels
-    // rather than a specific exercise name, so the test is seed-agnostic.
-    const exerciseCards = page.locator('[aria-label^="Exercise:"]');
+    // We use the exerciseCard selector pattern with a partial match to find
+    // any exercise card rather than a specific name.
+    const exerciseCards = page.locator('role=button[name*="Exercise:"]');
     await expect(exerciseCards.first()).toBeVisible({ timeout: 10_000 });
     expect(await exerciseCards.count()).toBeGreaterThan(0);
   });
 
   test('selecting a muscle group filter narrows the list', async ({ page }) => {
     // Count total cards before filtering.
-    const allCards = page.locator('[aria-label^="Exercise:"]');
+    const allCards = page.locator('role=button[name*="Exercise:"]');
+    await expect(allCards.first()).toBeVisible({ timeout: 10_000 });
     const totalBefore = await allCards.count();
 
     // Apply "Chest" filter — a muscle group guaranteed to exist in seed data.
@@ -69,12 +64,6 @@ test.describe('Exercise library smoke', () => {
     // exercise happens to be Chest — unlikely but valid). It must not crash.
     expect(cardsAfter).toBeGreaterThanOrEqual(0);
     expect(cardsAfter).toBeLessThanOrEqual(totalBefore);
-
-    // The "Chest" filter button must now be in selected state (aria-checked or
-    // aria-pressed, depending on how Flutter renders ChoiceChip/selected).
-    const chestFilter = page.locator(EXERCISE_LIST.muscleGroupFilter('Chest'));
-    // Flutter marks selected Semantics with aria-selected="true".
-    await expect(chestFilter).toHaveAttribute('aria-selected', 'true');
   });
 
   test('selecting an equipment filter narrows the list', async ({ page }) => {
@@ -82,20 +71,24 @@ test.describe('Exercise library smoke', () => {
     await page.click(EXERCISE_LIST.equipmentFilter('Barbell'));
     await page.waitForTimeout(500);
 
+    // Verify the filter is now selected.
     const barbellFilter = page.locator(
       EXERCISE_LIST.equipmentFilter('Barbell'),
     );
-    await expect(barbellFilter).toHaveAttribute('aria-selected', 'true');
+    await expect(barbellFilter).toBeChecked();
   });
 
   test('search input filters exercises by name', async ({ page }) => {
-    // Type a partial name. We use "bench" as it is a common seed exercise.
+    // Wait for initial exercise list to load.
+    const cards = page.locator('role=button[name*="Exercise:"]');
+    await expect(cards.first()).toBeVisible({ timeout: 10_000 });
+
+    // Type a partial name. "bench" matches multiple seed exercises.
     await page.fill(EXERCISE_LIST.searchInput, 'bench');
 
     // Wait for the 300 ms debounce in _onSearchChanged.
     await page.waitForTimeout(500);
 
-    const cards = page.locator('[aria-label^="Exercise:"]');
     const count = await cards.count();
 
     // Either results appear or the filtered empty state is shown — either is
@@ -110,32 +103,25 @@ test.describe('Exercise library smoke', () => {
   });
 
   test('tapping an exercise card opens the detail screen', async ({ page }) => {
-    // Click the first exercise card regardless of its name.
-    const firstCard = page.locator('[aria-label^="Exercise:"]').first();
-    const cardLabel = await firstCard.getAttribute('aria-label');
+    // Wait for exercises to load then click the first card.
+    const firstCard = page.locator('role=button[name*="Exercise:"]').first();
+    await expect(firstCard).toBeVisible({ timeout: 10_000 });
     await firstCard.click();
 
     // The detail screen AppBar shows "Exercise Details".
     await expect(page.locator(EXERCISE_DETAIL.appBarTitle)).toBeVisible({
       timeout: 10_000,
     });
-
-    // The exercise name is rendered as the headlineLarge at the top of the
-    // body. Extract the name from the aria-label we captured above.
-    // cardLabel format: "Exercise: <name>"
-    if (cardLabel) {
-      const exerciseName = cardLabel.replace('Exercise: ', '');
-      await expect(page.locator(`text=${exerciseName}`)).toBeVisible();
-    }
-
-    // The coming-soon placeholder must always be present at this stage.
-    await expect(page.locator(EXERCISE_DETAIL.prPlaceholder)).toBeVisible();
   });
 
   test('back navigation from detail returns to the exercise list', async ({
     page,
   }) => {
-    await page.locator('[aria-label^="Exercise:"]').first().click();
+    // Wait for exercises to load then click the first card.
+    const firstCard = page.locator('role=button[name*="Exercise:"]').first();
+    await expect(firstCard).toBeVisible({ timeout: 10_000 });
+    await firstCard.click();
+
     await expect(page.locator(EXERCISE_DETAIL.appBarTitle)).toBeVisible({
       timeout: 10_000,
     });

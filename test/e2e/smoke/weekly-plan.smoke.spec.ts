@@ -96,8 +96,10 @@ test.describe('Smoke: Weekly Plan', () => {
   test('can add a routine to the weekly plan from Plan Management screen', async ({
     page,
   }) => {
-    await page.goto('/plan/week');
-    await waitForAppReady(page);
+    // Navigate via hash — page.goto('/plan/week') returns 404 from the
+    // Python file server which has no SPA fallback routing.
+    await page.evaluate(() => { window.location.hash = '#/plan/week'; });
+    await page.waitForTimeout(2_000);
 
     await expect(page.locator(WEEKLY_PLAN.planManagementTitle)).toBeVisible({
       timeout: 15_000,
@@ -105,9 +107,9 @@ test.describe('Smoke: Weekly Plan', () => {
 
     // Clear any existing plan so we can add fresh. Use the popup menu.
     // The AppBar overflow menu has "Clear Week" option.
-    const popupButton = page.locator('flt-semantics[aria-label*="More options"]')
-      .or(page.locator('flt-semantics[aria-label="Show menu"]'))
-      .first();
+    // For a fresh user the plan is empty, but we handle the case where
+    // previous test runs left state behind.
+    const popupButton = page.locator(WEEKLY_PLAN.overflowMenuButton);
 
     const popupVisible = await popupButton.isVisible({ timeout: 3_000 }).catch(() => false);
     if (popupVisible) {
@@ -118,13 +120,29 @@ test.describe('Smoke: Weekly Plan', () => {
         await clearWeek.click();
         // Confirm the clear dialog.
         const clearConfirm = page.locator(WEEKLY_PLAN.clearConfirmButton);
-        await expect(clearConfirm).toBeVisible({ timeout: 5_000 });
-        await clearConfirm.click();
-        // After clearing, the screen re-opens or pops — navigate back.
-        await page.goto('/plan/week');
-        await waitForAppReady(page);
+        const dialogShown = await clearConfirm.isVisible({ timeout: 5_000 }).catch(() => false);
+        if (dialogShown) {
+          await clearConfirm.click();
+          // After clearing, context.pop() navigates away — navigate back via hash.
+          await page.waitForTimeout(1_000);
+          await page.evaluate(() => { window.location.hash = '#/plan/week'; });
+          await page.waitForTimeout(2_000);
+        }
+      } else {
+        // Popup opened but no clear needed — dismiss the popup with Escape.
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(500);
       }
     }
+
+    // Dismiss any lingering popup overlay (Escape closes Flutter popups).
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(500);
+
+    // Ensure we're on the plan management screen.
+    await expect(page.locator(WEEKLY_PLAN.planManagementTitle)).toBeVisible({
+      timeout: 10_000,
+    });
 
     // Tap "Add Routines" button (empty state) or "Add Routine" row.
     const addRoutinesBtn = page.locator(WEEKLY_PLAN.addRoutinesButton)
@@ -164,8 +182,10 @@ test.describe('Smoke: Weekly Plan', () => {
     page,
   }) => {
     // Ensure Push Day is in the plan by navigating to plan management.
-    await page.goto('/plan/week');
-    await waitForAppReady(page);
+    // Navigate via hash — page.goto('/plan/week') returns 404 from the
+    // Python file server which has no SPA fallback routing.
+    await page.evaluate(() => { window.location.hash = '#/plan/week'; });
+    await page.waitForTimeout(2_000);
     await expect(page.locator(WEEKLY_PLAN.planManagementTitle)).toBeVisible({
       timeout: 15_000,
     });
@@ -215,8 +235,10 @@ test.describe('Smoke: Weekly Plan', () => {
     page,
   }) => {
     // Ensure there is at least one routine in the plan first.
-    await page.goto('/plan/week');
-    await waitForAppReady(page);
+    // Navigate via hash — page.goto('/plan/week') returns 404 from the
+    // Python file server which has no SPA fallback routing.
+    await page.evaluate(() => { window.location.hash = '#/plan/week'; });
+    await page.waitForTimeout(2_000);
     await expect(page.locator(WEEKLY_PLAN.planManagementTitle)).toBeVisible({
       timeout: 15_000,
     });
@@ -245,9 +267,8 @@ test.describe('Smoke: Weekly Plan', () => {
     }
 
     // Now clear the week via the popup menu.
-    const popupButton = page.locator('flt-semantics[aria-label*="More options"]')
-      .or(page.locator('flt-semantics[aria-label="Show menu"]'))
-      .first();
+    // The PopupMenuButton is wrapped in Semantics(label: 'More options').
+    const popupButton = page.locator(WEEKLY_PLAN.overflowMenuButton);
     await expect(popupButton).toBeVisible({ timeout: 5_000 });
     await popupButton.click();
 

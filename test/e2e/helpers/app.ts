@@ -51,7 +51,12 @@ export async function waitForAppReady(page: Page): Promise<void> {
       { timeout: 60_000 },
     );
   } catch (e) {
-    const bodyText = await page.evaluate(() => document.body?.innerText ?? '');
+    let bodyText = '';
+    try {
+      bodyText = await page.evaluate(() => document.body?.innerText ?? '');
+    } catch {
+      // Page already closed — diagnostics unavailable.
+    }
     throw new Error(
       `Flutter app failed to render. ` +
         `Body text: "${bodyText.slice(0, 500)}". ` +
@@ -107,26 +112,31 @@ export async function waitForAppReady(page: Page): Promise<void> {
   } catch (e) {
     // Dump diagnostics: what's actually on screen + any console errors.
     const currentUrl = page.url();
-    const snapshot = await page.evaluate(() => {
-      // Check both light DOM and shadow DOM for flt-semantics elements.
-      const lightEls = document.querySelectorAll('flt-semantics');
-      const labels = Array.from(lightEls)
-        .map((el) => el.getAttribute('aria-label'))
-        .filter(Boolean);
+    let snapshot = '';
+    try {
+      snapshot = await page.evaluate(() => {
+        // Check both light DOM and shadow DOM for flt-semantics elements.
+        const lightEls = document.querySelectorAll('flt-semantics');
+        const labels = Array.from(lightEls)
+          .map((el) => el.getAttribute('aria-label'))
+          .filter(Boolean);
 
-      // Also check inside flutter-view shadow root.
-      const flutterView = document.querySelector('flutter-view');
-      if (flutterView?.shadowRoot) {
-        const shadowEls = flutterView.shadowRoot.querySelectorAll('flt-semantics');
-        labels.push(
-          ...Array.from(shadowEls)
-            .map((el) => el.getAttribute('aria-label'))
-            .filter(Boolean),
-        );
-      }
+        // Also check inside flutter-view shadow root.
+        const flutterView = document.querySelector('flutter-view');
+        if (flutterView?.shadowRoot) {
+          const shadowEls = flutterView.shadowRoot.querySelectorAll('flt-semantics');
+          labels.push(
+            ...Array.from(shadowEls)
+              .map((el) => el.getAttribute('aria-label'))
+              .filter(Boolean),
+          );
+        }
 
-      return labels.join(', ');
-    });
+        return labels.join(', ');
+      });
+    } catch {
+      // Page already closed — diagnostics unavailable.
+    }
     throw new Error(
       `App stuck on splash — router did not navigate away. ` +
         `URL: ${currentUrl}. ` +
@@ -158,12 +168,24 @@ export async function navigateToTab(
     Profile: NAV.profileTab,
   };
 
+  // URL segment for each tab — used to detect navigation completion.
+  const urlSegmentMap: Record<string, string> = {
+    Home: 'home',
+    Exercises: 'exercises',
+    Routines: 'routines',
+    Profile: 'profile',
+  };
+
   const selector = selectorMap[tabName];
   await page.click(selector);
 
-  // Wait for the tab content heading to appear as a signal that navigation
-  // completed. The heading text matches the tab label for most screens.
-  await page.waitForSelector(`text=${tabName}`, { timeout: 15_000 });
+  // Wait for the URL to contain the tab's route segment. This is more reliable
+  // than waiting for `text=${tabName}` because `text=` matches visible text node
+  // content, not aria-label attributes (which is what the nav tabs use).
+  await page.waitForURL(`**/${urlSegmentMap[tabName]}**`, { timeout: 15_000 });
+
+  // Brief pause for destination screen semantics tree to populate.
+  await page.waitForTimeout(300);
 }
 
 /**
@@ -229,4 +251,28 @@ export async function flutterFillByInput(
   await page.waitForTimeout(200);
   await page.keyboard.press('Control+a');
   await page.keyboard.type(value, { delay: 10 });
+}
+
+/**
+ * Simulate a long-press on a Flutter element.
+ *
+ * Flutter CanvasKit routes semantics `click()` directly to `SemanticsAction.tap`,
+ * bypassing the GestureDetector long-press timer. To trigger `onLongPress`, we
+ * must send raw pointer events: hover to position the cursor, mouse down, wait
+ * for Flutter's long-press threshold (~500ms), then mouse up.
+ *
+ * @param page     - Playwright page.
+ * @param selector - Playwright selector string for the target element.
+ * @param duration - How long to hold the pointer down (ms). Default 800ms.
+ */
+export async function flutterLongPress(
+  page: Page,
+  selector: string,
+  duration = 800,
+): Promise<void> {
+  const element = page.locator(selector).first();
+  await element.hover();
+  await page.mouse.down();
+  await page.waitForTimeout(duration);
+  await page.mouse.up();
 }
