@@ -48,19 +48,64 @@ class ActiveWorkoutScreen extends ConsumerWidget {
     }
 
     if (displayState == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      // Still loading initial state — wrap with PopScope so Android back
+      // does not close the app.
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop && context.mounted) context.go('/home');
+        },
+        child: const Scaffold(body: Center(child: CircularProgressIndicator())),
+      );
     }
 
-    return Stack(
-      children: [
-        _ActiveWorkoutBody(state: displayState),
-        if (asyncState.isLoading)
-          const ModalBarrier(dismissible: false, color: Colors.black54),
-        if (asyncState.isLoading)
-          const Center(child: CircularProgressIndicator()),
-        if (timerState != null) const RestTimerOverlay(),
-      ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _showDiscardDialog(context, ref, displayState);
+      },
+      child: Stack(
+        children: [
+          _ActiveWorkoutBody(state: displayState),
+          if (asyncState.isLoading)
+            const ModalBarrier(dismissible: false, color: Colors.black54),
+          if (asyncState.isLoading)
+            const Center(child: CircularProgressIndicator()),
+          if (timerState != null) const RestTimerOverlay(),
+        ],
+      ),
     );
+  }
+
+  /// Shows the discard workout dialog and handles the result.
+  ///
+  /// Extracted to the top-level [ActiveWorkoutScreen] so PopScope can invoke it
+  /// regardless of the internal widget tree state.
+  Future<void> _showDiscardDialog(
+    BuildContext context,
+    WidgetRef ref,
+    ActiveWorkoutState state,
+  ) async {
+    final elapsed = DateTime.now().toUtc().difference(state.workout.startedAt);
+    final shouldDiscard = await DiscardWorkoutDialog.show(
+      context,
+      elapsedDuration: elapsed,
+    );
+    if (shouldDiscard == true && context.mounted) {
+      await ref.read(activeWorkoutProvider.notifier).discardWorkout();
+      if (!context.mounted) return;
+
+      final result = ref.read(activeWorkoutProvider);
+      if (result.hasError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to discard workout. Please retry.'),
+          ),
+        );
+        return;
+      }
+      context.go('/home');
+    }
   }
 }
 
@@ -203,129 +248,121 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _onBackPressed();
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          leading: Semantics(
-            label: 'Discard workout',
-            child: IconButton(
-              onPressed: _onBackPressed,
-              icon: const Icon(Icons.close),
-              tooltip: 'Discard workout',
-            ),
+    return Scaffold(
+      appBar: AppBar(
+        leading: Semantics(
+          label: 'Discard workout',
+          child: IconButton(
+            onPressed: _onBackPressed,
+            icon: const Icon(Icons.close),
+            tooltip: 'Discard workout',
           ),
-          title: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_isEditingName)
-                SizedBox(
-                  height: 36,
-                  child: TextField(
-                    controller: _nameController,
-                    autofocus: true,
-                    textAlign: TextAlign.center,
-                    textCapitalization: TextCapitalization.sentences,
-                    style: theme.textTheme.titleMedium,
-                    decoration: const InputDecoration(
-                      isDense: true,
-                      border: UnderlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(vertical: 4),
-                    ),
-                    onSubmitted: (_) => _submitName(),
-                    onTapOutside: (_) => _submitName(),
+        ),
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_isEditingName)
+              SizedBox(
+                height: 36,
+                child: TextField(
+                  controller: _nameController,
+                  autofocus: true,
+                  textAlign: TextAlign.center,
+                  textCapitalization: TextCapitalization.sentences,
+                  style: theme.textTheme.titleMedium,
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    border: UnderlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(vertical: 4),
                   ),
-                )
-              else
-                Semantics(
-                  label: '${widget.state.workout.name}. Tap to rename workout.',
-                  child: GestureDetector(
-                    onTap: () {
-                      _nameController.text = widget.state.workout.name;
-                      setState(() => _isEditingName = true);
-                    },
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          widget.state.workout.name,
-                          style: theme.textTheme.titleMedium,
+                  onSubmitted: (_) => _submitName(),
+                  onTapOutside: (_) => _submitName(),
+                ),
+              )
+            else
+              Semantics(
+                label: '${widget.state.workout.name}. Tap to rename workout.',
+                child: GestureDetector(
+                  onTap: () {
+                    _nameController.text = widget.state.workout.name;
+                    setState(() => _isEditingName = true);
+                  },
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        widget.state.workout.name,
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.edit,
+                        size: 14,
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.4,
                         ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.edit,
-                          size: 14,
-                          color: theme.colorScheme.onSurface.withValues(
-                            alpha: 0.4,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              _ElapsedTimer(startedAt: widget.state.workout.startedAt),
-            ],
-          ),
-          centerTitle: true,
-          actions: [
-            if (widget.state.exercises.length > 1)
-              IconButton(
-                onPressed: _toggleReorderMode,
-                icon: Icon(_reorderMode ? Icons.done : Icons.swap_vert),
-                tooltip: _reorderMode
-                    ? 'Exit reorder mode'
-                    : 'Reorder exercises',
               ),
+            _ElapsedTimer(startedAt: widget.state.workout.startedAt),
           ],
         ),
-        bottomNavigationBar: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (!_hasCompletedSet)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Text(
-                      'Complete at least one set to finish',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.5),
-                      ),
-                    ),
-                  ),
-                FilledButton.icon(
-                  onPressed: _hasCompletedSet ? _onFinish : null,
-                  icon: const Icon(Icons.check_circle),
-                  label: const Text('Finish Workout'),
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 56),
-                    textStyle: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
+        centerTitle: true,
+        actions: [
+          if (widget.state.exercises.length > 1)
+            IconButton(
+              onPressed: _toggleReorderMode,
+              icon: Icon(_reorderMode ? Icons.done : Icons.swap_vert),
+              tooltip: _reorderMode ? 'Exit reorder mode' : 'Reorder exercises',
+            ),
+        ],
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (!_hasCompletedSet)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'Complete at least one set to finish',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
                   ),
                 ),
-              ],
-            ),
+              FilledButton.icon(
+                onPressed: _hasCompletedSet ? _onFinish : null,
+                icon: const Icon(Icons.check_circle),
+                label: const Text('Finish Workout'),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 56),
+                  textStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-        body: widget.state.exercises.isEmpty
-            ? _EmptyWorkoutBody(onAddExercise: _onAddExercise)
-            : _ExerciseList(
-                exercises: widget.state.exercises,
-                onAddExercise: _onAddExercise,
-                reorderMode: _reorderMode,
-              ),
-        floatingActionButton: widget.state.exercises.isNotEmpty
-            ? _AddExerciseFab(onPressed: _onAddExercise)
-            : null,
       ),
+      body: widget.state.exercises.isEmpty
+          ? _EmptyWorkoutBody(onAddExercise: _onAddExercise)
+          : _ExerciseList(
+              exercises: widget.state.exercises,
+              onAddExercise: _onAddExercise,
+              reorderMode: _reorderMode,
+            ),
+      floatingActionButton: widget.state.exercises.isNotEmpty
+          ? _AddExerciseFab(onPressed: _onAddExercise)
+          : null,
     );
   }
 }

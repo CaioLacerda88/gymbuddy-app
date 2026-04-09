@@ -85,8 +85,7 @@ class _NullWeeklyPlanNotifier extends AsyncNotifier<WeeklyPlan?>
 
 class _ActiveWeeklyPlanNotifier extends AsyncNotifier<WeeklyPlan?>
     implements WeeklyPlanNotifier {
-  @override
-  Future<WeeklyPlan?> build() async => WeeklyPlan(
+  static final _plan = WeeklyPlan(
     id: 'plan-1',
     userId: 'user-001',
     weekStart: DateTime(2026, 4, 6),
@@ -97,6 +96,16 @@ class _ActiveWeeklyPlanNotifier extends AsyncNotifier<WeeklyPlan?>
     createdAt: DateTime(2026, 4, 6),
     updatedAt: DateTime(2026, 4, 6),
   );
+
+  @override
+  Future<WeeklyPlan?> build() async => _plan;
+
+  /// Transitions the state to AsyncLoading while retaining previous data.
+  void simulateReload() {
+    state = const AsyncLoading<WeeklyPlan?>().copyWithPrevious(
+      AsyncData(_plan),
+    );
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -386,6 +395,69 @@ void main() {
       // When no routines exist and no active plan, the home screen shows
       // the _CreateRoutineCta widget with "Create Your First Routine".
       expect(find.text('Create Your First Routine'), findsOneWidget);
+    });
+  });
+
+  group('HomeScreen — plan reload stability', () {
+    testWidgets('routines list stays hidden during plan provider reload', (
+      tester,
+    ) async {
+      final planNotifier = _ActiveWeeklyPlanNotifier();
+      final routines = [
+        Routine(
+          id: 'routine-1',
+          name: 'My Push',
+          userId: 'user-001',
+          isDefault: false,
+          exercises: const [],
+          createdAt: DateTime(2026),
+        ),
+        Routine(
+          id: 'routine-2',
+          name: 'My Pull',
+          userId: 'user-001',
+          isDefault: false,
+          exercises: const [],
+          createdAt: DateTime(2026),
+        ),
+      ];
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            routineListProvider.overrideWith(
+              () => _RoutineNotifierWithData(routines),
+            ),
+            workoutHistoryProvider.overrideWith(
+              () => _WorkoutHistoryNotifier([]),
+            ),
+            activeWorkoutProvider.overrideWith(
+              () => _NullActiveWorkoutNotifier(),
+            ),
+            weeklyPlanProvider.overrideWith(() => planNotifier),
+            weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
+            weekVolumeProvider.overrideWith((ref) => Future.value(0.0)),
+            profileProvider.overrideWith(() => _ProfileNotifier()),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: const Scaffold(body: HomeScreen()),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      // Active plan exists — routines list should be hidden.
+      expect(find.text('MY ROUTINES'), findsNothing);
+
+      // Simulate provider reload (e.g., navigating back to home).
+      planNotifier.simulateReload();
+      await tester.pump();
+
+      // During reload, hasActivePlan should remain true — routines list
+      // should still be hidden (not flash momentarily).
+      expect(find.text('MY ROUTINES'), findsNothing);
     });
   });
 
