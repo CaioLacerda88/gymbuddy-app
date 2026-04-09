@@ -15,7 +15,7 @@
 
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth';
-import { navigateToTab, waitForAppReady } from '../helpers/app';
+import { navigateToTab } from '../helpers/app';
 import { WEEKLY_PLAN } from '../helpers/selectors';
 import { TEST_USERS } from '../fixtures/test-users';
 
@@ -44,11 +44,16 @@ test.describe('Smoke: Weekly Plan', () => {
     // After login, either "THIS WEEK" (plan set) or "Plan your week" CTA
     // (no plan yet) should appear in the home area. Both indicate the
     // WeekBucketSection is rendering correctly.
-    const thisWeek = page.locator(WEEKLY_PLAN.thisWeekHeader);
+    //
+    // Note: When no plan is set, _EmptyBucketState renders BOTH "THIS WEEK"
+    // (as a section header) and "Plan your week" (as a CTA). Using .or()
+    // without .first() would match 2 elements and trigger a strict mode
+    // violation, so we use .first() to pick whichever appears first.
+    const thisWeek = page.locator(WEEKLY_PLAN.thisWeekHeader).first();
     const planYourWeek = page.locator(WEEKLY_PLAN.planYourWeekCta);
 
     // Wait for one of the two states to appear.
-    await expect(thisWeek.or(planYourWeek)).toBeVisible({ timeout: 15_000 });
+    await expect(thisWeek.or(planYourWeek).first()).toBeVisible({ timeout: 15_000 });
   });
 
   // ---------------------------------------------------------------------------
@@ -63,18 +68,19 @@ test.describe('Smoke: Weekly Plan', () => {
   }) => {
     // If the plan already exists (from a previous run), clear it first via
     // the Plan Management screen so we can reach the CTA.
+    // Use .first() because _EmptyBucketState renders "THIS WEEK" as a
+    // section header alongside "Plan your week", and _ActiveBucketSection
+    // also renders "THIS WEEK" — strict mode requires a single element.
     const thisWeekVisible = await page
       .locator(WEEKLY_PLAN.thisWeekHeader)
+      .first()
       .isVisible({ timeout: 5_000 })
       .catch(() => false);
 
     if (thisWeekVisible) {
-      // Long-press on the chip row to open plan management.
-      // WeekBucketSection wraps the chip ScrollView in a GestureDetector with
-      // onLongPress: () => context.push('/plan/week').
-      // For automation we navigate directly via URL instead.
-      await page.goto('/plan/week');
-      await waitForAppReady(page);
+      // Plan already exists — navigate to plan management via hash routing.
+      // page.goto() would reload the Flutter SPA and lose app state.
+      await page.evaluate(() => { window.location.hash = '#/plan/week'; });
     } else {
       // Tap the "Plan your week" CTA.
       await page.locator(WEEKLY_PLAN.planYourWeekCta).click();
@@ -216,7 +222,9 @@ test.describe('Smoke: Weekly Plan', () => {
     await navigateToTab(page, 'Home');
 
     // The THIS WEEK section should now show and Push Day chip should be visible.
-    await expect(page.locator(WEEKLY_PLAN.thisWeekHeader)).toBeVisible({
+    // Use .first() to avoid strict mode violation if multiple "THIS WEEK"
+    // text nodes exist in the semantics tree.
+    await expect(page.locator(WEEKLY_PLAN.thisWeekHeader).first()).toBeVisible({
       timeout: 15_000,
     });
     // The chip text content includes the routine name.

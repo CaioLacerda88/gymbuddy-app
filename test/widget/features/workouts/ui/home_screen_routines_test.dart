@@ -4,15 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
+import 'package:gymbuddy_app/features/profile/models/profile.dart';
+import 'package:gymbuddy_app/features/profile/providers/profile_providers.dart';
 import 'package:gymbuddy_app/features/routines/models/routine.dart';
 import 'package:gymbuddy_app/features/routines/providers/notifiers/routine_list_notifier.dart';
+import 'package:gymbuddy_app/features/weekly_plan/data/models/weekly_plan.dart';
+import 'package:gymbuddy_app/features/weekly_plan/providers/weekly_plan_provider.dart';
 import 'package:gymbuddy_app/features/workouts/models/active_workout_state.dart';
 import 'package:gymbuddy_app/features/workouts/models/workout.dart';
 import 'package:gymbuddy_app/features/workouts/providers/notifiers/active_workout_notifier.dart';
 import 'package:gymbuddy_app/features/workouts/providers/workout_history_providers.dart';
 import 'package:gymbuddy_app/features/workouts/providers/workout_providers.dart';
 import 'package:gymbuddy_app/features/workouts/ui/home_screen.dart';
-import 'package:gymbuddy_app/features/personal_records/providers/pr_providers.dart';
 
 void main() {
   group('HomeScreen STARTER ROUTINES deduplication (PO-009)', () {
@@ -29,7 +32,10 @@ void main() {
             activeWorkoutProvider.overrideWith(
               () => _NullActiveWorkoutNotifier(),
             ),
-            recentPRsProvider.overrideWith((ref) => Future.value([])),
+            weeklyPlanProvider.overrideWith(() => _NullWeeklyPlanNotifier()),
+            weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
+            weekVolumeProvider.overrideWith((ref) => Future.value(0)),
+            profileProvider.overrideWith(() => _ProfileNotifier()),
           ],
           child: MaterialApp(
             theme: AppTheme.dark,
@@ -62,7 +68,10 @@ void main() {
               activeWorkoutProvider.overrideWith(
                 () => _NullActiveWorkoutNotifier(),
               ),
-              recentPRsProvider.overrideWith((ref) => Future.value([])),
+              weeklyPlanProvider.overrideWith(() => _NullWeeklyPlanNotifier()),
+              weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
+              weekVolumeProvider.overrideWith((ref) => Future.value(0)),
+              profileProvider.overrideWith(() => _ProfileNotifier()),
             ],
             child: MaterialApp(
               theme: AppTheme.dark,
@@ -103,7 +112,10 @@ void main() {
               activeWorkoutProvider.overrideWith(
                 () => _NullActiveWorkoutNotifier(),
               ),
-              recentPRsProvider.overrideWith((ref) => Future.value([])),
+              weeklyPlanProvider.overrideWith(() => _NullWeeklyPlanNotifier()),
+              weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
+              weekVolumeProvider.overrideWith((ref) => Future.value(0)),
+              profileProvider.overrideWith(() => _ProfileNotifier()),
             ],
             child: MaterialApp(
               theme: AppTheme.dark,
@@ -123,6 +135,37 @@ void main() {
         await tester.pumpAndSettle();
       },
     );
+
+    testWidgets('routines hidden when active plan exists', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            routineListProvider.overrideWith(() => _MixedRoutineNotifier()),
+            workoutHistoryProvider.overrideWith(
+              () => _EmptyWorkoutHistoryNotifier(),
+            ),
+            activeWorkoutProvider.overrideWith(
+              () => _NullActiveWorkoutNotifier(),
+            ),
+            weeklyPlanProvider.overrideWith(() => _ActiveWeeklyPlanNotifier()),
+            weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
+            weekVolumeProvider.overrideWith((ref) => Future.value(0)),
+            profileProvider.overrideWith(() => _ProfileNotifier()),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: const Scaffold(body: HomeScreen()),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump();
+
+      // Routines list should be hidden when active plan exists.
+      expect(find.text('MY ROUTINES'), findsNothing);
+      expect(find.text('STARTER ROUTINES'), findsNothing);
+    });
   });
 }
 
@@ -223,6 +266,44 @@ class _NullActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?>
     implements ActiveWorkoutNotifier {
   @override
   Future<ActiveWorkoutState?> build() async => null;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _NullWeeklyPlanNotifier extends AsyncNotifier<WeeklyPlan?>
+    implements WeeklyPlanNotifier {
+  @override
+  Future<WeeklyPlan?> build() async => null;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _ActiveWeeklyPlanNotifier extends AsyncNotifier<WeeklyPlan?>
+    implements WeeklyPlanNotifier {
+  @override
+  Future<WeeklyPlan?> build() async => WeeklyPlan(
+    id: 'plan-1',
+    userId: 'user-001',
+    weekStart: DateTime(2026, 4, 6),
+    routines: const [
+      BucketRoutine(routineId: 'user-1', order: 1),
+      BucketRoutine(routineId: 'default-1', order: 2),
+    ],
+    createdAt: DateTime(2026, 4, 6),
+    updatedAt: DateTime(2026, 4, 6),
+  );
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _ProfileNotifier extends AsyncNotifier<Profile?>
+    implements ProfileNotifier {
+  @override
+  Future<Profile?> build() async =>
+      const Profile(id: 'user-001', displayName: 'Test', weightUnit: 'kg');
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

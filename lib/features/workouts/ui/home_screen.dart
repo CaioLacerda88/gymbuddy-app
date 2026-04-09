@@ -5,15 +5,16 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/workout_formatters.dart';
-import '../../../shared/widgets/section_header.dart';
-import '../../personal_records/providers/pr_providers.dart';
+import '../../profile/providers/profile_providers.dart';
+import '../../weekly_plan/providers/weekly_plan_provider.dart';
 import '../../weekly_plan/ui/widgets/week_bucket_section.dart';
-import '../../routines/ui/widgets/routine_action_sheet.dart';
 import '../../routines/providers/notifiers/routine_list_notifier.dart';
 import '../../routines/ui/start_routine_action.dart';
+import '../../routines/ui/widgets/routine_action_sheet.dart';
 import '../../routines/ui/widgets/routine_card.dart';
 import '../providers/workout_history_providers.dart';
 import '../providers/workout_providers.dart';
+import 'widgets/contextual_stat_cell.dart';
 import 'widgets/resume_workout_dialog.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -22,7 +23,14 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final profile = ref.watch(profileProvider).valueOrNull;
+    final planAsync = ref.watch(weeklyPlanProvider);
     final routinesAsync = ref.watch(routineListProvider);
+
+    // Determine if user has an active weekly plan.
+    final hasActivePlan =
+        planAsync.valueOrNull != null &&
+        (planAsync.valueOrNull?.routines.isNotEmpty ?? false);
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -30,205 +38,147 @@ class HomeScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
+            // 1. Header — Date + user display name
             const SizedBox(height: 8),
-            Text('GymBuddy', style: theme.textTheme.displayMedium),
-            const SizedBox(height: 4),
             Text(
-              DateFormat('EEE, MMM d').format(DateTime.now()),
+              DateFormat('EEE, MMM d').format(DateTime.now()).toUpperCase(),
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
-            const SizedBox(height: 16),
-
-            // Stat cards
-            const _StatCardsRow(),
+            if (profile?.displayName != null &&
+                profile!.displayName!.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(profile.displayName!, style: theme.textTheme.headlineMedium),
+            ],
             const SizedBox(height: 20),
 
-            // Weekly plan section
+            // 2. THIS WEEK section (hero) — always above the fold
             const WeekBucketSection(),
 
-            // Routines sections
-            routinesAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, _) => Text(
-                'Failed to load routines',
-                style: theme.textTheme.bodyMedium,
-              ),
-              data: (routines) {
-                // Exclude default routines from user list to avoid
-                // duplicates (PO-009).
-                final userRoutines = routines
-                    .where((r) => r.userId != null && !r.isDefault)
-                    .toList();
-                final defaultRoutines = routines
-                    .where((r) => r.isDefault)
-                    .toList();
+            // 3. Contextual stat cells
+            const _ContextualStatCells(),
+            const SizedBox(height: 20),
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (userRoutines.isNotEmpty) ...[
-                      const SectionHeader(title: 'MY ROUTINES'),
-                      const SizedBox(height: 8),
-                      ...userRoutines.map(
-                        (r) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: RoutineCard(
-                            routine: r,
-                            onTap: () => startRoutineWorkout(context, ref, r),
-                            onLongPress: () =>
-                                showRoutineActionSheet(context, ref, r),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                    if (defaultRoutines.isNotEmpty) ...[
-                      if (userRoutines.isEmpty) ...[
-                        const SectionHeader(title: 'STARTER ROUTINES'),
-                        const SizedBox(height: 8),
-                        ...defaultRoutines.map(
-                          (r) => Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: RoutineCard(
-                              routine: r,
-                              onTap: () => startRoutineWorkout(context, ref, r),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const _CreateRoutineCta(),
-                        const SizedBox(height: 16),
-                      ] else ...[
-                        const SectionHeader(title: 'STARTER ROUTINES'),
-                        const SizedBox(height: 8),
-                        ...defaultRoutines.map(
-                          (r) => Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: RoutineCard(
-                              routine: r,
-                              onTap: () => startRoutineWorkout(context, ref, r),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                    ],
-                  ],
-                );
-              },
-            ),
-
-            // Start empty workout
-            Center(
-              child: SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    final existingWorkout = ref
-                        .read(activeWorkoutProvider)
-                        .valueOrNull;
-                    if (existingWorkout != null) {
-                      if (!context.mounted) return;
-                      final result = await ResumeWorkoutDialog.show(
-                        context,
-                        workoutName: existingWorkout.workout.name,
-                      );
-                      if (!context.mounted) return;
-                      if (result == ResumeWorkoutResult.resume) {
-                        context.go('/workout/active');
-                        return;
-                      }
-                      if (result == ResumeWorkoutResult.discard) {
-                        try {
-                          await ref
-                              .read(activeWorkoutProvider.notifier)
-                              .discardWorkout();
-                        } catch (_) {
-                          return; // discard failed — don't start a new workout
-                        }
-                        return; // discard succeeded — don't start a new workout
-                      } else {
-                        return; // dismissed
-                      }
-                    }
-                    await ref
-                        .read(activeWorkoutProvider.notifier)
-                        .startWorkout();
-                    if (!context.mounted) return;
-                    context.go('/workout/active');
-                  },
-                  icon: const Icon(Icons.play_arrow_rounded),
-                  label: const Text('Start Empty Workout'),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 52),
-                    side: BorderSide(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.primary.withValues(alpha: 0.5),
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+            // 4. Start Empty Workout — FilledButton, full-width
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () => _startEmptyWorkout(context, ref),
+                icon: const Icon(Icons.play_arrow_rounded),
+                label: const Text('Start Empty Workout'),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 52),
+                  textStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             ),
             const SizedBox(height: 24),
+
+            // 5. Routines list — hidden when user has active plan
+            if (!hasActivePlan)
+              routinesAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, _) => Text(
+                  'Failed to load routines',
+                  style: theme.textTheme.bodyMedium,
+                ),
+                data: (routines) {
+                  final userRoutines = routines
+                      .where((r) => r.userId != null && !r.isDefault)
+                      .toList();
+                  final defaultRoutines = routines
+                      .where((r) => r.isDefault)
+                      .toList();
+
+                  // Only show onboarding CTA when no routines at all.
+                  if (userRoutines.isEmpty && defaultRoutines.isEmpty) {
+                    return const _CreateRoutineCta();
+                  }
+
+                  return _RoutinesList(
+                    userRoutines: userRoutines,
+                    defaultRoutines: defaultRoutines,
+                  );
+                },
+              ),
           ],
         ),
       ),
     );
   }
+
+  Future<void> _startEmptyWorkout(BuildContext context, WidgetRef ref) async {
+    final existingWorkout = ref.read(activeWorkoutProvider).valueOrNull;
+    if (existingWorkout != null) {
+      if (!context.mounted) return;
+      final result = await ResumeWorkoutDialog.show(
+        context,
+        workoutName: existingWorkout.workout.name,
+      );
+      if (!context.mounted) return;
+      if (result == ResumeWorkoutResult.resume) {
+        context.go('/workout/active');
+        return;
+      }
+      if (result == ResumeWorkoutResult.discard) {
+        try {
+          await ref.read(activeWorkoutProvider.notifier).discardWorkout();
+        } catch (_) {
+          return; // discard failed — don't start a new workout
+        }
+        return; // discard succeeded — don't start a new workout
+      } else {
+        return; // dismissed
+      }
+    }
+    await ref.read(activeWorkoutProvider.notifier).startWorkout();
+    if (!context.mounted) return;
+    context.go('/workout/active');
+  }
 }
 
-class _StatCardsRow extends ConsumerWidget {
-  const _StatCardsRow();
+/// Two horizontal stat cells: last session + this week's volume.
+class _ContextualStatCells extends ConsumerWidget {
+  const _ContextualStatCells();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final workoutCount = ref.watch(workoutCountProvider);
-    final prCount = ref.watch(prCountProvider);
-    final historyAsync = ref.watch(workoutHistoryProvider);
-    final recentPRs = ref.watch(recentPRsProvider);
+    final lastSession = ref.watch(lastSessionProvider);
+    final weekVolume = ref.watch(weekVolumeProvider);
+    final weightUnit =
+        ref.watch(profileProvider).valueOrNull?.weightUnit ?? 'kg';
 
-    // Derive workout subtitle from most recent workout date.
-    final workoutSubtitle = historyAsync.whenOrNull(
-      data: (workouts) {
-        if (workouts.isEmpty) return null;
-        final lastDate = workouts.first.finishedAt ?? workouts.first.startedAt;
-        return WorkoutFormatters.formatRelativeDate(lastDate);
-      },
-    );
+    final lastValue = lastSession != null
+        ? '${lastSession.relativeDate} \u2014 ${lastSession.name}'
+        : 'No workouts yet';
 
-    // Derive records subtitle from most recent PR exercise name.
-    final recordsSubtitle = recentPRs.whenOrNull(
-      data: (prs) {
-        if (prs.isEmpty) return null;
-        return prs.first.exerciseName;
-      },
+    final volumeValue = weekVolume.when(
+      data: (v) => v > 0
+          ? '${WorkoutFormatters.formatVolume(v).replaceAll('kg', weightUnit)} this week'
+          : 'No volume yet',
+      loading: () => '--',
+      error: (_, _) => '--',
     );
 
     return Row(
       children: [
         Expanded(
-          child: _StatCard(
-            count: workoutCount,
-            label: 'Workouts',
-            subtitle: workoutSubtitle,
+          child: ContextualStatCell(
+            label: 'Last session',
+            value: lastValue,
             onTap: () => context.push('/home/history'),
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: _StatCard(
-            count: prCount,
-            label: 'Records',
-            subtitle: recordsSubtitle,
-            onTap: () => context.push('/records'),
+          child: ContextualStatCell(
+            label: "Week's volume",
+            value: volumeValue,
+            onTap: () => context.push('/home/history'),
           ),
         ),
       ],
@@ -236,89 +186,62 @@ class _StatCardsRow extends ConsumerWidget {
   }
 }
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.count,
-    required this.label,
-    required this.onTap,
-    this.subtitle,
+/// Routines list shown when user has no active weekly plan.
+class _RoutinesList extends ConsumerWidget {
+  const _RoutinesList({
+    required this.userRoutines,
+    required this.defaultRoutines,
   });
 
-  final AsyncValue<int> count;
-  final String label;
-  final VoidCallback onTap;
-  final String? subtitle;
+  final List<dynamic> userRoutines;
+  final List<dynamic> defaultRoutines;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final countText = count.when(
-      data: (v) => '$v',
-      loading: () => '--',
-      error: (_, _) => '--',
-    );
-
-    final semanticLabel = count.when(
-      data: (v) => '$v $label, tap to view ${label.toLowerCase()}',
-      loading: () => '$label loading',
-      error: (_, _) => '$label unavailable',
-    );
-
-    return Semantics(
-      label: semanticLabel,
-      button: true,
-      child: Material(
-        color: theme.cardTheme.color ?? theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 72),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    height: 32,
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        countText,
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Text(
-                    label,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(
-                        alpha: 0.55,
-                      ),
-                    ),
-                  ),
-                  if (subtitle != null)
-                    Text(
-                      subtitle!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: theme.colorScheme.primary.withValues(alpha: 0.7),
-                      ),
-                    ),
-                ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (userRoutines.isNotEmpty) ...[
+          Text(
+            'MY ROUTINES',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...userRoutines.map(
+            (r) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: RoutineCard(
+                routine: r,
+                onTap: () => startRoutineWorkout(context, ref, r),
+                onLongPress: () => showRoutineActionSheet(context, ref, r),
               ),
             ),
           ),
-        ),
-      ),
+          const SizedBox(height: 16),
+        ],
+        if (defaultRoutines.isNotEmpty) ...[
+          Text(
+            'STARTER ROUTINES',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...defaultRoutines.map(
+            (r) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: RoutineCard(
+                routine: r,
+                onTap: () => startRoutineWorkout(context, ref, r),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+      ],
     );
   }
 }

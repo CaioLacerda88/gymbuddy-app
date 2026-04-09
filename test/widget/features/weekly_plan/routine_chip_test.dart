@@ -133,12 +133,32 @@ void main() {
       await tester.pump();
     });
 
-    testWidgets('chip height is 52dp (taller CTA per spec)', (tester) async {
+    testWidgets('chip height is 60dp (taller CTA per spec)', (tester) async {
       await tester.pumpWidget(_chip(state: RoutineChipState.next));
 
-      // Verify via rendered size — the chip must be at least 52dp tall.
+      // Verify via rendered size — the chip must be at least 60dp tall.
       final size = tester.getSize(find.byType(RoutineChip));
-      expect(size.height, greaterThanOrEqualTo(52));
+      expect(size.height, greaterThanOrEqualTo(60));
+    });
+
+    testWidgets('shows exercise count as secondary line', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: const Scaffold(
+            body: Center(
+              child: RoutineChip(
+                sequenceNumber: 1,
+                routineName: 'Push Day',
+                chipState: RoutineChipState.next,
+                exerciseCount: 6,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('6 exercises'), findsOneWidget);
     });
   });
 
@@ -194,13 +214,13 @@ void main() {
       expect(tapped, isTrue);
     });
 
-    testWidgets('chip height is 44dp (standard, not CTA height)', (
+    testWidgets('chip height is 48dp (standard, not CTA height)', (
       tester,
     ) async {
       await tester.pumpWidget(_chip(state: RoutineChipState.remaining));
 
       final size = tester.getSize(find.byType(RoutineChip));
-      expect(size.height, greaterThanOrEqualTo(44));
+      expect(size.height, greaterThanOrEqualTo(48));
     });
   });
 

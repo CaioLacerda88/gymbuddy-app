@@ -23,7 +23,7 @@
 
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth';
-import { navigateToTab, waitForAppReady, flutterFillByInput } from '../helpers/app';
+import { navigateToTab } from '../helpers/app';
 import {
   startEmptyWorkout,
   addExercise,
@@ -32,7 +32,7 @@ import {
   completeSet,
   finishWorkout,
 } from '../helpers/workout';
-import { NAV, PR, PR_DISPLAY, WORKOUT, EXERCISE_PICKER } from '../helpers/selectors';
+import { NAV, PR, PR_DISPLAY } from '../helpers/selectors';
 import { TEST_USERS } from '../fixtures/test-users';
 
 const USER = TEST_USERS.smokePR;
@@ -55,23 +55,16 @@ test.describe('Smoke: PR Display', () => {
   // The Records screen is accessible via the stat card on Home that shows
   // the PR count. Tapping it navigates to /records.
   // ---------------------------------------------------------------------------
-  test('can navigate to Personal Records screen from home stat card', async ({
+  test('can navigate to Personal Records screen', async ({
     page,
   }) => {
     await navigateToTab(page, 'Home');
 
-    // Tap the records stat card (aria-label matches "tap to view records").
-    const recordsCard = page.locator(PR_DISPLAY.recordsStatCard);
-    const cardVisible = await recordsCard.isVisible({ timeout: 10_000 }).catch(() => false);
-
-    if (cardVisible) {
-      await recordsCard.click();
-    } else {
-      // Fallback: navigate via hash (not page.goto) to avoid a 404 from the
-      // Python file server which cannot do SPA fallback routing.
-      await page.evaluate(() => { window.location.hash = '#/records'; });
-      await page.waitForTimeout(2_000);
-    }
+    // Navigate to Records screen via hash navigation.
+    // The home screen redesign (Step 12.2b) replaced the Records stat card
+    // with contextual stats, so we use hash-based navigation instead.
+    await page.evaluate(() => { window.location.hash = '#/records'; });
+    await page.waitForTimeout(2_000);
 
     // PRListScreen AppBar title.
     await expect(page.locator(PR_DISPLAY.screenTitle)).toBeVisible({
@@ -184,18 +177,13 @@ test.describe('Smoke: PR Display', () => {
     // Navigate to Home tab explicitly to ensure we're on the home content.
     await navigateToTab(page, 'Home');
 
-    // Navigate to Records by tapping the records stat card on home.
-    // The stat card's aria-label selector may not work after the workout flow
-    // due to Flutter semantics tree refresh timing. Fall back to text selector.
-    const recordsCard = page.locator(PR_DISPLAY.recordsStatCard);
-    const cardFound = await recordsCard.isVisible({ timeout: 5_000 }).catch(() => false);
-
-    if (cardFound) {
-      await recordsCard.click();
-    } else {
-      // Fallback: click the "Records" text visible in the stat card.
-      await page.locator('text=Records').first().click();
-    }
+    // Navigate to Records screen via hash navigation.
+    // The home screen redesign (Step 12.2b) replaced the Records stat card
+    // with contextual stats ("Last session" / "Week's volume"), so the old
+    // recordsStatCard selector no longer matches. Use hash navigation instead
+    // (page.goto would 404 on the Python file server with no SPA fallback).
+    await page.evaluate(() => { window.location.hash = '#/records'; });
+    await page.waitForTimeout(2_000);
     await expect(page.locator(PR_DISPLAY.screenTitle)).toBeVisible({
       timeout: 15_000,
     });

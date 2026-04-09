@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/providers/auth_providers.dart';
+import '../../weekly_plan/providers/weekly_plan_provider.dart';
 import '../data/workout_repository.dart';
 import '../models/workout.dart';
 import 'workout_providers.dart';
@@ -82,3 +83,66 @@ final workoutDetailProvider = FutureProvider.family<WorkoutDetail, String>((
   final repo = ref.watch(workoutRepositoryProvider);
   return repo.getWorkoutDetail(workoutId);
 });
+
+/// Total volume (weight * reps) for all completed sets this week.
+///
+/// Queries workouts where `finished_at >= this Monday` (i.e. completed this
+/// week), then sums (weight * reps) for every completed set. Returns 0.0 when
+/// no workouts exist or user is not authenticated.
+final weekVolumeProvider = FutureProvider<double>((ref) async {
+  final userId = ref.read(authRepositoryProvider).currentUser?.id;
+  if (userId == null) return 0;
+  final repo = ref.watch(workoutRepositoryProvider);
+  final monday = currentWeekMonday();
+  final details = await repo.getFinishedWorkoutsSince(userId, monday);
+
+  var total = 0.0;
+  for (final detail in details) {
+    for (final sets in detail.setsByExercise.values) {
+      for (final s in sets) {
+        if (s.isCompleted) {
+          total += (s.weight ?? 0) * (s.reps ?? 0);
+        }
+      }
+    }
+  }
+  return total;
+});
+
+/// Data about the user's most recent completed workout.
+///
+/// Returns the workout name and how long ago it was. Used by the contextual
+/// stat cells on the home screen. Derives from the already-loaded history.
+typedef LastSessionInfo = ({String name, String relativeDate, DateTime date});
+
+// Returns null during loading, on error, or when no workouts exist.
+// UI shows "No workouts yet" for all three.
+final lastSessionProvider = Provider<LastSessionInfo?>((ref) {
+  final history = ref.watch(workoutHistoryProvider).valueOrNull;
+  if (history == null || history.isEmpty) return null;
+  final workout = history.first;
+  final date = workout.finishedAt ?? workout.startedAt;
+  return (
+    name: workout.name,
+    relativeDate: _formatRelativeDate(date),
+    date: date,
+  );
+});
+
+/// Format a date relative to today for stat cell display.
+///
+/// Normalizes both dates to local time before comparison, so UTC timestamps
+/// from Supabase are correctly compared against the user's local "today".
+String _formatRelativeDate(DateTime date) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final local = date.toLocal();
+  final dateDay = DateTime(local.year, local.month, local.day);
+  final diff = today.difference(dateDay).inDays;
+
+  if (diff == 0) return 'Today';
+  if (diff == 1) return 'Yesterday';
+  if (diff < 7) return '$diff days ago';
+  if (diff < 30) return '${(diff / 7).floor()}w ago';
+  return '${(diff / 30).floor()}mo ago';
+}

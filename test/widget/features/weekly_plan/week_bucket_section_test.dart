@@ -154,7 +154,7 @@ void main() {
       },
     );
 
-    testWidgets('renders nothing when plan has empty routines bucket', (
+    testWidgets('shows THIS WEEK header + Plan CTA when bucket is empty', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -166,8 +166,9 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      // Empty bucket shows the "Plan your week" CTA, not the section header.
-      expect(find.text('THIS WEEK'), findsNothing);
+      // Empty bucket shows "THIS WEEK" header + bordered "Plan your week" CTA.
+      expect(find.text('THIS WEEK'), findsOneWidget);
+      expect(find.textContaining('Plan your week'), findsOneWidget);
     });
 
     testWidgets('renders nothing when plan is loading', (tester) async {

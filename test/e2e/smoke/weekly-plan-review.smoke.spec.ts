@@ -53,12 +53,15 @@ test.describe('Smoke: Weekly Plan Review', () => {
   // ---------------------------------------------------------------------------
   test('home screen weekly plan section renders without error', async ({ page }) => {
     // At least one of the three states must be visible.
-    const thisWeek = page.locator(WEEKLY_PLAN.thisWeekHeader);
+    // Use .first() on each locator to avoid strict mode violations when
+    // multiple "THIS WEEK" text nodes coexist (e.g., _EmptyBucketState
+    // renders "THIS WEEK" header alongside "Plan your week" CTA).
+    const thisWeek = page.locator(WEEKLY_PLAN.thisWeekHeader).first();
     const weekComplete = page.locator(WEEKLY_PLAN.weekCompleteHeader);
     const planYourWeek = page.locator(WEEKLY_PLAN.planYourWeekCta);
 
     await expect(
-      thisWeek.or(weekComplete).or(planYourWeek),
+      thisWeek.or(weekComplete).or(planYourWeek).first(),
     ).toBeVisible({ timeout: 15_000 });
   });
 
