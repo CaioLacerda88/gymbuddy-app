@@ -167,7 +167,7 @@ class _SetRowState extends ConsumerState<SetRow> {
             Padding(
               padding: const EdgeInsets.only(left: 48, bottom: 4),
               child: Text(
-                'Last: ${_formatWeight((widget.lastSet!.weight ?? 0).toDouble())}$weightUnit × ${widget.lastSet!.reps ?? 0}',
+                'Previous: ${_formatWeight((widget.lastSet!.weight ?? 0).toDouble())}$weightUnit × ${widget.lastSet!.reps ?? 0}',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
                 ),

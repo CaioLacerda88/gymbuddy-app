@@ -432,6 +432,7 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
               return s.copyWith(
                 weight: lastCompleted.weight,
                 reps: lastCompleted.reps,
+                isCompleted: true,
               );
             }
             return s;

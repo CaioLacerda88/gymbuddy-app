@@ -213,6 +213,27 @@ void main() {
       expect(find.text('THIS WEEK'), findsOneWidget);
     });
 
+    testWidgets('shows edit icon button in section header (BUG-5)', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        _build(
+          plan: _plan(routines: [_bucket(routineId: 'r-001', order: 1)]),
+          routines: [_routine(id: 'r-001', name: 'Push Day')],
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      // The edit icon (edit_outlined) must be visible in the THIS WEEK header.
+      expect(find.byIcon(Icons.edit_outlined), findsOneWidget);
+    });
+
     testWidgets('shows routine chips for each bucket entry', (tester) async {
       tester.view.physicalSize = const Size(800, 2000);
       tester.view.devicePixelRatio = 1.0;

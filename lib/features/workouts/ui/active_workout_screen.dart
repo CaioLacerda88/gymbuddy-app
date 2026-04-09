@@ -170,9 +170,12 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
       return;
     }
 
-    // Invalidate caches.
+    // Invalidate caches so stat cards and lists reflect the new workout.
     ref.invalidate(workoutHistoryProvider);
+    ref.invalidate(workoutCountProvider);
     ref.invalidate(prListProvider);
+    ref.invalidate(prCountProvider);
+    ref.invalidate(recentPRsProvider);
 
     // Navigate to PR celebration if there are new records, otherwise go home.
     if (prResult != null && prResult.hasNewRecords) {
