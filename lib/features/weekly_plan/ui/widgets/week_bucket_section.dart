@@ -28,51 +28,53 @@ class WeekBucketSection extends ConsumerWidget {
     final routinesAsync = ref.watch(routineListProvider);
     final needsConfirmation = ref.watch(weeklyPlanNeedsConfirmationProvider);
 
-    return planAsync.when(
-      loading: () => const SizedBox.shrink(),
-      error: (_, _) => const SizedBox.shrink(),
-      data: (plan) {
-        final routines = routinesAsync.valueOrNull ?? [];
-        if (routines.isEmpty) return const SizedBox.shrink();
+    // Show previous data during reload instead of blank. Only hide on
+    // initial load (no cached value) or error without cached value.
+    if (planAsync.isLoading && !planAsync.hasValue) {
+      return const SizedBox.shrink();
+    }
+    if (planAsync.hasError && !planAsync.hasValue) {
+      return const SizedBox.shrink();
+    }
 
-        // Build routine name map from available routines.
-        final routineMap = <String, Routine>{for (final r in routines) r.id: r};
-        final nameMap = <String, String>{
-          for (final r in routines) r.id: r.name,
-        };
+    final plan = planAsync.valueOrNull;
+    final routines = routinesAsync.valueOrNull ?? [];
+    if (routines.isEmpty) return const SizedBox.shrink();
 
-        // No plan set yet — show "Plan your week" CTA.
-        if (plan == null || plan.routines.isEmpty) {
-          return _EmptyBucketState(hasRoutines: routines.isNotEmpty);
-        }
+    // Build routine name map from available routines.
+    final routineMap = <String, Routine>{for (final r in routines) r.id: r};
+    final nameMap = <String, String>{for (final r in routines) r.id: r.name};
 
-        // Check if week is complete.
-        final isComplete = ref.watch(isWeekCompleteProvider);
-        if (isComplete) {
-          final stats = ref.watch(weekReviewStatsProvider).valueOrNull;
-          final weightUnit =
-              ref.watch(profileProvider).valueOrNull?.weightUnit ?? 'kg';
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: WeekReviewSection(
-              plan: plan,
-              routineNames: nameMap,
-              totalVolume: stats?.totalVolume ?? 0,
-              prCount: stats?.prCount ?? 0,
-              weightUnit: weightUnit,
-              onNewWeek: () => _startNewWeek(context, ref),
-            ),
-          );
-        }
+    // No plan set yet — show "Plan your week" CTA.
+    if (plan == null || plan.routines.isEmpty) {
+      return _EmptyBucketState(hasRoutines: routines.isNotEmpty);
+    }
 
-        // Active week — show bucket section.
-        return _ActiveBucketSection(
+    // Check if week is complete.
+    final isComplete = ref.watch(isWeekCompleteProvider);
+    if (isComplete) {
+      final stats = ref.watch(weekReviewStatsProvider).valueOrNull;
+      final weightUnit =
+          ref.watch(profileProvider).valueOrNull?.weightUnit ?? 'kg';
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: WeekReviewSection(
           plan: plan,
-          routineMap: routineMap,
-          nameMap: nameMap,
-          needsConfirmation: needsConfirmation,
-        );
-      },
+          routineNames: nameMap,
+          totalVolume: stats?.totalVolume ?? 0,
+          prCount: stats?.prCount ?? 0,
+          weightUnit: weightUnit,
+          onNewWeek: () => _startNewWeek(context, ref),
+        ),
+      );
+    }
+
+    // Active week — show bucket section.
+    return _ActiveBucketSection(
+      plan: plan,
+      routineMap: routineMap,
+      nameMap: nameMap,
+      needsConfirmation: needsConfirmation,
     );
   }
 

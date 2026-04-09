@@ -26,7 +26,7 @@ Future<void> startRoutineWorkout(
     );
     if (!context.mounted) return;
     if (result == ResumeWorkoutResult.resume) {
-      context.go('/workout/active');
+      context.push('/workout/active');
       return;
     }
     if (result == ResumeWorkoutResult.discard) {
@@ -76,5 +76,5 @@ Future<void> startRoutineWorkout(
 
   await ref.read(activeWorkoutProvider.notifier).startFromRoutine(config);
   if (!context.mounted) return;
-  context.go('/workout/active');
+  context.push('/workout/active');
 }

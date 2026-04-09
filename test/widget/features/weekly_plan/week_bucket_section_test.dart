@@ -49,6 +49,27 @@ class _LoadingWeeklyPlanStub extends AsyncNotifier<WeeklyPlan?>
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+/// Stub that resolves with data first, then can be transitioned to a
+/// loading-with-previous-data state to simulate provider reload.
+class _ReloadableWeeklyPlanStub extends AsyncNotifier<WeeklyPlan?>
+    implements WeeklyPlanNotifier {
+  _ReloadableWeeklyPlanStub(this._plan);
+  final WeeklyPlan? _plan;
+
+  @override
+  Future<WeeklyPlan?> build() async => _plan;
+
+  /// Transitions the state to AsyncLoading while retaining previous data.
+  void simulateReload() {
+    state = const AsyncLoading<WeeklyPlan?>().copyWithPrevious(
+      AsyncData(_plan),
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 /// Stub that provides a fixed list of [Routine]s synchronously.
 class _RoutineListStub extends AsyncNotifier<List<Routine>>
     implements RoutineListNotifier {
@@ -562,6 +583,78 @@ void main() {
         expect(find.text('Next workout'), findsOneWidget);
       },
     );
+  });
+
+  group('WeekBucketSection — reload stale data', () {
+    testWidgets('retains THIS WEEK content during provider reload', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final stub = _ReloadableWeeklyPlanStub(
+        _plan(routines: [_bucket(routineId: 'r-001', order: 1)]),
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            weeklyPlanProvider.overrideWith(() => stub),
+            routineListProvider.overrideWith(
+              () => _RoutineListStub([_routine(id: 'r-001', name: 'Push Day')]),
+            ),
+            weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: const Scaffold(body: WeekBucketSection()),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      // Active week is visible.
+      expect(find.text('THIS WEEK'), findsOneWidget);
+
+      // Simulate provider reload (e.g., returning to home screen).
+      stub.simulateReload();
+      await tester.pump();
+
+      // THIS WEEK should still be visible — stale data shown during reload.
+      expect(find.text('THIS WEEK'), findsOneWidget);
+    });
+
+    testWidgets('hides content on initial load when no cached data', (
+      tester,
+    ) async {
+      final stub = _LoadingWeeklyPlanStub();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            weeklyPlanProvider.overrideWith(() => stub),
+            routineListProvider.overrideWith(
+              () => _RoutineListStub([_routine()]),
+            ),
+            weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: const Scaffold(body: WeekBucketSection()),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      // Initial load (no cached data) should show nothing.
+      expect(find.text('THIS WEEK'), findsNothing);
+
+      stub.complete();
+      await tester.pumpAndSettle();
+    });
   });
 
   group('WeekBucketSection — confirmation banner', () {

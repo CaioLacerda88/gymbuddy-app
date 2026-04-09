@@ -28,9 +28,12 @@ class HomeScreen extends ConsumerWidget {
     final routinesAsync = ref.watch(routineListProvider);
 
     // Determine if user has an active weekly plan.
+    // Use hasValue + value to retain previous state during provider reload
+    // (AsyncLoading with previous data), preventing UI flicker.
     final hasActivePlan =
-        planAsync.valueOrNull != null &&
-        (planAsync.valueOrNull?.routines.isNotEmpty ?? false);
+        planAsync.hasValue &&
+        planAsync.value != null &&
+        planAsync.value!.routines.isNotEmpty;
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -121,7 +124,7 @@ class HomeScreen extends ConsumerWidget {
       );
       if (!context.mounted) return;
       if (result == ResumeWorkoutResult.resume) {
-        context.go('/workout/active');
+        context.push('/workout/active');
         return;
       }
       if (result == ResumeWorkoutResult.discard) {
@@ -137,7 +140,7 @@ class HomeScreen extends ConsumerWidget {
     }
     await ref.read(activeWorkoutProvider.notifier).startWorkout();
     if (!context.mounted) return;
-    context.go('/workout/active');
+    context.push('/workout/active');
   }
 }
 

@@ -273,7 +273,7 @@ class _ActiveWorkoutBanner extends ConsumerWidget {
     final elapsed = ref.watch(elapsedTimerProvider(state.workout.startedAt));
 
     return GestureDetector(
-      onTap: () => context.go('/workout/active'),
+      onTap: () => context.push('/workout/active'),
       child: Container(
         height: 56,
         width: double.infinity,

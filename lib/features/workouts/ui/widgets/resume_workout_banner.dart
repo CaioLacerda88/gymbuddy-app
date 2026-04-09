@@ -33,7 +33,7 @@ class ResumeWorkoutBanner extends ConsumerWidget {
       child: GestureDetector(
         onTap: () {
           HapticFeedback.mediumImpact();
-          context.go('/workout/active');
+          context.push('/workout/active');
         },
         child: Container(
           constraints: const BoxConstraints(minHeight: 80),
