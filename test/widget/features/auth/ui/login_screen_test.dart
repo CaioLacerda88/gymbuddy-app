@@ -230,5 +230,39 @@ void main() {
         expect(passwordField.controller.text, isEmpty);
       },
     );
+
+    testWidgets('shows legal links footer with Terms and Privacy buttons', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pump();
+
+      // The intro copy plus both link buttons must be present.
+      expect(find.text('By continuing, you agree to our '), findsOneWidget);
+      expect(find.text('Terms of Service'), findsOneWidget);
+      expect(find.text('Privacy Policy'), findsOneWidget);
+    });
+
+    testWidgets('legal footer links are wired to TextButtons', (tester) async {
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pump();
+
+      // Both links must be tappable TextButtons (we don't assert navigation
+      // here because the login test harness doesn't mount GoRouter).
+      expect(
+        find.ancestor(
+          of: find.text('Terms of Service'),
+          matching: find.byType(TextButton),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.ancestor(
+          of: find.text('Privacy Policy'),
+          matching: find.byType(TextButton),
+        ),
+        findsOneWidget,
+      );
+    });
   });
 }
