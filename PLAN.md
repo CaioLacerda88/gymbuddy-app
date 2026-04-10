@@ -577,7 +577,7 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 | ID | Item | Effort |
 |----|------|--------|
 | ~~W1~~ | ~~OAuth deep link registration~~ | DONE (#42) — AndroidManifest intent-filter for `io.supabase.gymbuddy` |
-| W2 | Wakelock during active workout | 1h |
+| ~~W2~~ | ~~Wakelock during active workout~~ | DONE (#45) — `wakelock_plus` enables on ActiveWorkoutBody mount, disables on dispose; errors swallowed for unsupported platforms; 3 widget tests via platform-interface override |
 | W3 | Stale workout timeout UX | 2-3h | When `startedAt` >6h ago on app open, show prominent modal: "Workout from [date] still open — Resume or Discard?" (deferred from Step 12.3) |
 | W3b | Input length limits (TextField + server CHECK) | 1-2h |
 | W4 | Push notifications (workout reminders) | 1-2 days |
@@ -588,7 +588,7 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 
 ### Suggested Sprint Order
 
-**Sprint A — Store-ready:** ~~B5~~ ~~P7~~ ~~W1~~ (PR #42), ~~B1~~ ~~B4~~ ~~P6~~ (PR #43, icon deferred), ~~QA follow-ups: legal placeholder cleanup across all 5 legal docs, Brazil jurisdiction with CDC carve-out, PWA theme colors, DELETE gate partial-string tests, volume-unit widget tests, live `manage-data.smoke.spec.ts` with backend-verified delete + cascade~~ (PR #44). Remaining for Sprint A: B2 Sentry, B3 analytics, W2 wakelock (PR 5).
+**Sprint A — Store-ready:** ~~B5~~ ~~P7~~ ~~W1~~ (PR #42), ~~B1~~ ~~B4~~ ~~P6~~ (PR #43, icon deferred), ~~QA follow-ups: legal placeholder cleanup across all 5 legal docs, Brazil jurisdiction with CDC carve-out, PWA theme colors, DELETE gate partial-string tests, volume-unit widget tests, live `manage-data.smoke.spec.ts` with backend-verified delete + cascade~~ (PR #44), ~~W2 wakelock~~ (PR #45). Remaining for Sprint A: B2 Sentry, B3 analytics (PR 5).
 **Sprint B (1 week) — Retention + polish:** P1, P2, P4, P8, UX1-UX8
 **Sprint C (1 week) — Resilience:** B6, B7, W3, W3b, W6, W8
 **Deferred to v1.1:** P5 (1RM), W4 (push notifications), W5 (CSV export)
