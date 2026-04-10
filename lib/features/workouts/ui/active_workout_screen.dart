@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/exercise_image.dart';
@@ -130,6 +133,10 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.state.workout.name);
+    // Keep the screen on while the user is actively logging sets. Errors
+    // are swallowed so unsupported platforms (e.g. some web browsers or
+    // test environments without a platform handler) don't break logging.
+    unawaited(WakelockPlus.enable().catchError((_) {}));
   }
 
   @override
@@ -143,6 +150,10 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
 
   @override
   void dispose() {
+    // Release the wakelock before tearing down so the phone can sleep
+    // again once the user leaves the logging view. Fire-and-forget with
+    // error swallowing to stay consistent with the enable path.
+    unawaited(WakelockPlus.disable().catchError((_) {}));
     _nameController.dispose();
     super.dispose();
   }
