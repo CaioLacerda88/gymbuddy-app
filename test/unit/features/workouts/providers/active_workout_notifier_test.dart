@@ -1017,6 +1017,59 @@ void main() {
         verify(() => mockStorage.clearActiveWorkout()).called(1);
       },
     );
+
+    test(
+      'unauthenticated: state becomes AsyncError and no analytics event fires',
+      () async {
+        // Regression for PR #46 reviewer finding 1: when `_userId` throws from
+        // inside `discardWorkout`, the AuthException must be caught by the
+        // AsyncValue.guard (state -> AsyncError) instead of propagating
+        // uncaught. Analytics must NOT fire because the discard did not
+        // actually happen.
+        final initial = makeState(exerciseCount: 1, setsPerExercise: 1);
+        final mockRepo = MockWorkoutRepository();
+        final mockStorage = MockWorkoutLocalStorage();
+        final mockAuth = MockAuthRepository();
+        final analytics = _RecordingAnalyticsRepository();
+
+        when(() => mockStorage.loadActiveWorkout()).thenReturn(initial);
+        when(
+          () => mockStorage.saveActiveWorkout(any()),
+        ).thenAnswer((_) async {});
+        when(() => mockStorage.clearActiveWorkout()).thenAnswer((_) async {});
+        // Session missing — _userId will throw AuthException.
+        when(() => mockAuth.currentUser).thenReturn(null);
+
+        final container = ProviderContainer(
+          overrides: [
+            workoutRepositoryProvider.overrideWithValue(mockRepo),
+            workoutLocalStorageProvider.overrideWithValue(mockStorage),
+            authRepositoryProvider.overrideWithValue(mockAuth),
+            analyticsRepositoryProvider.overrideWithValue(analytics),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await container.read(activeWorkoutProvider.future);
+        // Must NOT throw — the guard catches the AuthException.
+        await container.read(activeWorkoutProvider.notifier).discardWorkout();
+
+        // Drain any queued microtasks (unawaited analytics calls).
+        await Future<void>.microtask(() {});
+
+        expect(
+          container.read(activeWorkoutProvider),
+          isA<AsyncError<ActiveWorkoutState?>>(),
+        );
+        // The repo call never ran because _userId threw first.
+        verifyNever(
+          () => mockRepo.discardWorkout(any(), userId: any(named: 'userId')),
+        );
+        // Analytics must be empty — tracking is inside the guard and only
+        // runs on successful discard.
+        expect(analytics.events, isEmpty);
+      },
+    );
   });
 
   // ================================================================

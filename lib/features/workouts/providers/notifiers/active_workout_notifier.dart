@@ -530,31 +530,31 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
     final current = state.value;
     if (current == null) return;
 
-    final elapsedSeconds = DateTime.now()
-        .toUtc()
-        .difference(current.workout.startedAt)
-        .inSeconds;
-    final completedSets = current.exercises
-        .expand((e) => e.sets)
-        .where((s) => s.isCompleted)
-        .length;
-    // TODO post-PR: differentiate planned_bucket when config exposes the flag
-    final source = current.routineId != null ? 'routine_card' : 'empty';
-    _trackWorkoutEvent(
-      event: AnalyticsEvent.workoutDiscarded(
-        elapsedSeconds: elapsedSeconds,
-        completedSets: completedSets,
-        exerciseCount: current.exercises.length,
-        source: source,
-      ),
-      breadcrumbMessage: 'discarded workout',
-      breadcrumbData: {'workout_id': current.workout.id},
-    );
-
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       await _localStorage.clearActiveWorkout();
       await _repo.discardWorkout(current.workout.id, userId: _userId);
+
+      final elapsedSeconds = DateTime.now()
+          .toUtc()
+          .difference(current.workout.startedAt)
+          .inSeconds;
+      final completedSets = current.exercises
+          .expand((e) => e.sets)
+          .where((s) => s.isCompleted)
+          .length;
+      // TODO post-PR: differentiate planned_bucket when config exposes the flag
+      final source = current.routineId != null ? 'routine_card' : 'empty';
+      _trackWorkoutEvent(
+        event: AnalyticsEvent.workoutDiscarded(
+          elapsedSeconds: elapsedSeconds,
+          completedSets: completedSets,
+          exerciseCount: current.exercises.length,
+          source: source,
+        ),
+        breadcrumbMessage: 'discarded workout',
+        breadcrumbData: {'workout_id': current.workout.id},
+      );
       return null;
     });
   }
