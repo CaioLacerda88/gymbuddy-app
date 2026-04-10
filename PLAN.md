@@ -33,7 +33,8 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 12.3b | Copy Fix + Content Expansion (exercises, routines) | DONE | #40 |
 | 12.3c | Standalone Routine → Plan Prompt | DONE | #41 |
 | 13a-PR1 | Account Deletion + Volume Unit + OAuth Deep Link | DONE | #42 |
-| 13 | Production Readiness (remaining Sprint A: B1, P6, B4, B2, B3, W2) | IN PROGRESS | - |
+| 13a-PR2 | Release Signing + Branding + Privacy Policy & ToS (icon DEFERRED) | DONE | #43 |
+| 13 | Production Readiness (remaining Sprint A: B2, B3, W2; icon post-gamification) | IN PROGRESS | - |
 | 14 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
 | 15 | Gamification Advanced (Quests, Stats Panel) | TODO | - |
 | 16 | Nice-to-Have (v2.0+) | BACKLOG | - |
@@ -534,10 +535,10 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 
 | ID | Item | Effort | Notes |
 |----|------|--------|-------|
-| B1 | Release signing | 1-2h | `build.gradle.kts` uses debug signing. Create release keystore, wire into Gradle, store password in GitHub Secrets |
+| ~~B1~~ | ~~Release signing~~ | DONE (#43) | `build.gradle.kts` reads `key.properties` via `rootProject.file()`, signs release with configured keystore, falls back to debug when absent. `key.properties.example` template + `.gitignore` covers `*.jks`/`*.keystore`/`*.p12`. User generates keystore post-merge. |
 | B2 | Crash reporting | 2-3h | Sentry Flutter SDK. Wire into `AppException` hierarchy. Breadcrumbs for key user actions |
 | B3 | Analytics (basic events) | 3-4h | `signup`, `login`, `first_workout_completed`, `workout_finished`, `routine_started`, `pr_broken`, `app_opened`. Options: PostHog, Amplitude, Mixpanel free tier |
-| B4 | Privacy Policy & ToS | 1 day | Hosted URL required by Play Store. Cover data collected, storage, retention, user rights. Link from Profile + store listing |
+| ~~B4~~ | ~~Privacy Policy & ToS~~ | DONE (#43) | `assets/legal/privacy_policy.md` + `terms_of_service.md` rendered in-app via `flutter_markdown_plus`, mirrored to `docs/` for GitHub Pages at `https://caiolacerda88.github.io/gymbuddy-app/`. New `/privacy-policy` + `/terms-of-service` routes (public-route allowlist). Linked from Profile LEGAL section + login footer. User must enable Pages + review draft text post-merge. |
 | ~~B5~~ | ~~Account deletion~~ | DONE (#42) | Edge Function `delete-user` + AuthRepository.deleteAccount + Manage Data UI with type-DELETE confirmation. Cascade via existing FKs. |
 | B6 | ProGuard/R8 optimization | 2-3h | No minify/shrink today (19.7MB → ~12-14MB). Need keep rules for Supabase + Hive reflection |
 | B7 | Offline workout save & retry | 1-2 days | Hive queue exists but no sync worker. Detect connectivity failure on `finishWorkout()` → queue → retry. `connectivity_plus` package |
@@ -551,7 +552,7 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 | ~~P3~~ | ~~Forgot password flow~~ | ~~done~~ | ~~Already implemented in `login_screen.dart:92-115`~~ |
 | P4 | Exercise images fix (QA-005) | 3-4h | GitHub URLs return 404. Migrate to Supabase Storage or CDN. Broken images signal abandoned product. |
 | P5 | 1RM estimation | 2-3h | Epley formula. Display on exercise detail + PR cards |
-| P6 | App branding | 1 day | App label "gymbuddy_app" → "GymBuddy". Custom launcher icon + splash. Play Store assets |
+| P6 | App branding | DONE (#43) | Strings done: AndroidManifest label, `web/manifest.json`, `web/index.html` → "GymBuddy". **Icon DEFERRED to post-gamification phase** — pixel-RPG-meets-gym direction will be revisited then. |
 | ~~P7~~ | ~~Volume unit display~~ | DONE (#42) | `formatVolume()` takes weightUnit; threaded through home_screen + workout_detail_screen (per-set rows + totals). |
 | P8 | New-user empty-state CTA | 2-3h | When no workouts logged and no plan: show "Start your first workout" hero + beginner routine recommendation on home screen. Currently drops user at empty state with no guidance. **(PO finding)** |
 
@@ -586,7 +587,7 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 
 ### Suggested Sprint Order
 
-**Sprint A — Store-ready:** ~~B5~~ ~~P7~~ ~~W1~~ (PR #42), remaining: B1, B4, P6 (PR 2), B2, B3, W2 (PR 3)
+**Sprint A — Store-ready:** ~~B5~~ ~~P7~~ ~~W1~~ (PR #42), ~~B1~~ ~~B4~~ ~~P6~~ (PR #43, icon deferred), remaining: B2, B3, W2 (PR 3)
 **Sprint B (1 week) — Retention + polish:** P1, P2, P4, P8, UX1-UX8
 **Sprint C (1 week) — Resilience:** B6, B7, W3, W3b, W6, W8
 **Deferred to v1.1:** P5 (1RM), W4 (push notifications), W5 (CSV export)
