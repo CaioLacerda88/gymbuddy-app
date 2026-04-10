@@ -83,6 +83,38 @@ class AuthNotifier extends AsyncNotifier<Session?> {
       return _repo.currentSession;
     });
   }
+
+  /// Permanently delete the current user's account.
+  ///
+  /// Invokes the `delete-user` Edge Function via [AuthRepository]. On
+  /// success the state transitions to [AsyncData] and a best-effort local
+  /// sign-out is attempted to trigger the auth state listener redirect to
+  /// the login screen. Sign-out errors after a successful delete are
+  /// swallowed intentionally: the server has already invalidated the user,
+  /// so surfacing "Failed to delete account" here would be catastrophically
+  /// misleading (the account IS gone and the user cannot log in again).
+  ///
+  /// On delete failure, the state transitions to [AsyncError] with the
+  /// wrapped [AppException] so the UI can surface a safe error message and
+  /// the caller returns early before the sign-out attempt.
+  Future<void> deleteAccount() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      await _repo.deleteAccount();
+      return null;
+    });
+    if (state.hasError) return;
+
+    // Account deleted successfully — best-effort local sign-out. Any error
+    // here is ignored because the server-side user is already gone and the
+    // auth state listener will handle the redirect regardless.
+    try {
+      await _repo.signOut();
+    } catch (_) {
+      // Intentionally swallowed: see doc comment above.
+    }
+    state = const AsyncData(null);
+  }
 }
 
 final authNotifierProvider = AsyncNotifierProvider<AuthNotifier, Session?>(

@@ -3,12 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/workout_formatters.dart';
+import '../../personal_records/providers/pr_providers.dart';
+import '../../profile/providers/profile_providers.dart';
 import '../data/workout_repository.dart';
 import '../models/exercise_set.dart';
 import '../models/set_type.dart';
 import '../models/workout_exercise.dart';
 import '../providers/workout_history_providers.dart';
-import '../../personal_records/providers/pr_providers.dart';
 
 /// Read-only detail view of a completed workout.
 class WorkoutDetailScreen extends ConsumerWidget {
@@ -50,15 +51,17 @@ class WorkoutDetailScreen extends ConsumerWidget {
   }
 }
 
-class _WorkoutDetailBody extends StatelessWidget {
+class _WorkoutDetailBody extends ConsumerWidget {
   const _WorkoutDetailBody({required this.detail});
 
   final WorkoutDetail detail;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final workout = detail.workout;
+    final weightUnit =
+        ref.watch(profileProvider).valueOrNull?.weightUnit ?? 'kg';
     final dateText = WorkoutFormatters.formatWorkoutDate(
       workout.finishedAt ?? workout.startedAt,
     );
@@ -97,6 +100,7 @@ class _WorkoutDetailBody extends StatelessWidget {
               exercise: exercise,
               sets: sets,
               workoutId: detail.workout.id,
+              weightUnit: weightUnit,
             );
           }, childCount: detail.exercises.length),
         ),
@@ -141,7 +145,8 @@ class _WorkoutDetailBody extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Total Volume: ${WorkoutFormatters.formatVolume(totalVolume)}',
+                  'Total Volume: '
+                  '${WorkoutFormatters.formatVolume(totalVolume, weightUnit: weightUnit)}',
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: theme.colorScheme.primary,
                   ),
@@ -160,11 +165,13 @@ class _ReadOnlyExerciseCard extends ConsumerWidget {
     required this.exercise,
     required this.sets,
     required this.workoutId,
+    required this.weightUnit,
   });
 
   final WorkoutExercise exercise;
   final List<ExerciseSet> sets;
   final String workoutId;
+  final String weightUnit;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -189,7 +196,11 @@ class _ReadOnlyExerciseCard extends ConsumerWidget {
               _SetColumnHeaders(theme: theme),
               const Divider(height: 1),
               ...sets.map(
-                (s) => _ReadOnlySetRow(set: s, isPR: prSetIds.contains(s.id)),
+                (s) => _ReadOnlySetRow(
+                  set: s,
+                  isPR: prSetIds.contains(s.id),
+                  weightUnit: weightUnit,
+                ),
               ),
             ],
           ],
@@ -234,10 +245,15 @@ class _SetColumnHeaders extends StatelessWidget {
 }
 
 class _ReadOnlySetRow extends StatelessWidget {
-  const _ReadOnlySetRow({required this.set, this.isPR = false});
+  const _ReadOnlySetRow({
+    required this.set,
+    required this.weightUnit,
+    this.isPR = false,
+  });
 
   final ExerciseSet set;
   final bool isPR;
+  final String weightUnit;
 
   String get _typeLabel => switch (set.setType) {
     SetType.working => 'W',
@@ -279,7 +295,7 @@ class _ReadOnlySetRow extends StatelessWidget {
           ),
           Expanded(
             child: Text(
-              '${set.weight?.toStringAsFixed(set.weight == set.weight?.roundToDouble() ? 0 : 1) ?? '-'} kg',
+              '${set.weight?.toStringAsFixed(set.weight == set.weight?.roundToDouble() ? 0 : 1) ?? '-'} $weightUnit',
               style: textStyle,
               textAlign: TextAlign.center,
             ),
