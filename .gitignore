@@ -61,6 +61,8 @@ android/keystore/
 
 # Claude
 .claude/
+.agents/
+skills-lock.json
 
 # Superpowers
 .superpowers/
