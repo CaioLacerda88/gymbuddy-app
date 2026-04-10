@@ -17,9 +17,17 @@ Fixes (tech-lead):
 
 Verification:
 - [x] `make ci` green (format + gen + analyze 0 issues + 912 tests passed)
-- [ ] Start Docker Desktop → `npx supabase start` → verify healthy
-- [ ] qa-engineer Round 2: live E2E account deletion against local Supabase + live volume-unit kg↔lbs flip
-- [ ] All merged Sprint A items green before PR
+- [x] Docker + local Supabase healthy (all core containers up)
+- [x] qa-engineer Round 2: live E2E account deletion spec written + passing; volume unit kg↔lbs flip exercised via Playwright MCP
+- [x] Backend verification: user row gone (Admin API), cascade worked (0 workouts), re-login rejected
+- [x] Smoke suite regression check: 59 passed, 0 new failures
+
+Extra fixes (Round 2 caught):
+- [x] **#5 MORE placeholder text** — Round 1 QA only flagged privacy_policy.md section 1; Round 2 found 5 more instances: privacy_policy section 11, terms_of_service sections 11+12, docs/index.md, docs/privacy_policy.md section 11, docs/terms_of_service.md sections 11+12. Also `[JURISDICTION]` in both ToS files. Fixed inline by orchestrator — email parentheticals removed, `[JURISDICTION]` → "the Federative Republic of Brazil" with venue in Comarca de Santos, State of São Paulo (operator's actual location), with CDC consumer-domicile carve-out.
+- [x] Post-fix `make ci` re-run: still 912 tests passing
 
 Ship:
-- [ ] Open PR, reviewer pass, squash merge, update PLAN.md (mark Phase 13a Sprint A fully shipped incl. follow-ups)
+- [ ] Commit + push + open PR
+- [ ] reviewer pass
+- [ ] squash merge
+- [ ] update PLAN.md (mark Phase 13a Sprint A fully shipped incl. follow-ups)

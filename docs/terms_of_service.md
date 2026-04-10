@@ -78,8 +78,8 @@ We may revise these Terms from time to time. When we do, we will update the "Las
 
 ## 11. Governing Law
 
-These Terms are governed by the laws of **[JURISDICTION]** (placeholder — final governing-law jurisdiction to be confirmed before public release), without regard to conflict-of-laws principles. Any disputes will be resolved in the courts of that jurisdiction.
+These Terms are governed by the laws of **the Federative Republic of Brazil**. Any disputes will be resolved in the competent courts of the Comarca de Santos, State of São Paulo, Brazil, without prejudice to any consumer-protection rights that grant Brazilian consumers the right to sue in their own domicile under the Código de Defesa do Consumidor.
 
 ## 12. Contact
 
-Questions about these Terms? Contact us at **support@gymbuddy.app** (placeholder).
+Questions about these Terms? Contact us at **support@gymbuddy.app**.

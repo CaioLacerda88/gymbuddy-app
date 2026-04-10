@@ -86,4 +86,4 @@ We may update this Privacy Policy from time to time. When we do, we will update 
 
 ## 11. Contact
 
-Questions, concerns, or requests? Reach us at **support@gymbuddy.app** (placeholder).
+Questions, concerns, or requests? Reach us at **support@gymbuddy.app**.
