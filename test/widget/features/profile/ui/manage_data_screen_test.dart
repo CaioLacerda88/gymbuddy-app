@@ -433,6 +433,78 @@ void main() {
         expect(button.onPressed, isNotNull);
       });
 
+      testWidgets(
+        'DELETE confirm button stays disabled when user types "DELET" '
+        '(one char short)',
+        (tester) async {
+          final mockAuth = MockAuthRepository();
+          when(() => mockAuth.deleteAccount()).thenAnswer((_) async {});
+          when(() => mockAuth.signOut()).thenAnswer((_) async {});
+
+          await tester.pumpWidget(buildTestWidget(authRepo: mockAuth));
+          await tester.pump();
+          await tester.pump();
+
+          await tester.tap(find.text('Delete Account'));
+          await tester.pumpAndSettle();
+
+          // Button starts disabled.
+          final initialButton = tester.widget<GradientButton>(
+            find.byType(GradientButton),
+          );
+          expect(initialButton.onPressed, isNull);
+
+          // Type a partial match — one char short.
+          await tester.enterText(find.byType(TextField), 'DELET');
+          await tester.pump();
+
+          // Button must remain disabled.
+          final button = tester.widget<GradientButton>(
+            find.byType(GradientButton),
+          );
+          expect(button.onPressed, isNull);
+
+          // And deleteAccount must not have been invoked.
+          verifyNever(() => mockAuth.deleteAccount());
+        },
+      );
+
+      testWidgets(
+        'DELETE confirm button stays disabled when user types "DELETED" '
+        '(trailing char)',
+        (tester) async {
+          final mockAuth = MockAuthRepository();
+          when(() => mockAuth.deleteAccount()).thenAnswer((_) async {});
+          when(() => mockAuth.signOut()).thenAnswer((_) async {});
+
+          await tester.pumpWidget(buildTestWidget(authRepo: mockAuth));
+          await tester.pump();
+          await tester.pump();
+
+          await tester.tap(find.text('Delete Account'));
+          await tester.pumpAndSettle();
+
+          // Button starts disabled.
+          final initialButton = tester.widget<GradientButton>(
+            find.byType(GradientButton),
+          );
+          expect(initialButton.onPressed, isNull);
+
+          // Type a superset — one char too many.
+          await tester.enterText(find.byType(TextField), 'DELETED');
+          await tester.pump();
+
+          // Button must remain disabled.
+          final button = tester.widget<GradientButton>(
+            find.byType(GradientButton),
+          );
+          expect(button.onPressed, isNull);
+
+          // And deleteAccount must not have been invoked.
+          verifyNever(() => mockAuth.deleteAccount());
+        },
+      );
+
       testWidgets('cancel closes dialog without invoking deleteAccount', (
         tester,
       ) async {

@@ -11,7 +11,7 @@ This Privacy Policy describes how GymBuddy ("we", "us", or "our") collects, uses
 
 ## 1. Who We Are
 
-GymBuddy is a fitness tracking application that helps you log workouts, track personal records, and manage your exercise library. If you have questions about this policy, contact us at **support@gymbuddy.app** (placeholder — final contact email to be confirmed before public release).
+GymBuddy is a fitness tracking application that helps you log workouts, track personal records, and manage your exercise library. If you have questions about this policy, contact us at **support@gymbuddy.app**.
 
 ## 2. Information We Collect
 
@@ -86,4 +86,4 @@ We may update this Privacy Policy from time to time. When we do, we will update 
 
 ## 11. Contact
 
-Questions, concerns, or requests? Reach us at **support@gymbuddy.app** (placeholder).
+Questions, concerns, or requests? Reach us at **support@gymbuddy.app**.
