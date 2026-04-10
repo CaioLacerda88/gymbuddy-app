@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymbuddy_app/core/data/base_repository.dart';
 import 'package:gymbuddy_app/core/exceptions/app_exception.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
+import 'package:gymbuddy_app/features/analytics/data/analytics_repository.dart';
+import 'package:gymbuddy_app/features/analytics/data/models/analytics_event.dart';
+import 'package:gymbuddy_app/features/analytics/providers/analytics_providers.dart';
 import 'package:gymbuddy_app/features/auth/data/auth_repository.dart';
 import 'package:gymbuddy_app/features/auth/providers/auth_providers.dart';
 import 'package:gymbuddy_app/features/personal_records/data/pr_repository.dart';
@@ -27,6 +31,22 @@ class MockWorkoutRepository extends Mock implements WorkoutRepository {}
 
 class MockPRRepository extends Mock implements PRRepository {}
 
+/// Fake analytics repository that swallows events — prevents the real
+/// [AnalyticsRepository] from touching `Supabase.instance` during widget
+/// tests. Used by the delete-account flow which fires `account_deleted`.
+class _FakeAnalyticsRepository extends BaseRepository
+    implements AnalyticsRepository {
+  const _FakeAnalyticsRepository();
+
+  @override
+  Future<void> insertEvent({
+    required String userId,
+    required AnalyticsEvent event,
+    required String? platform,
+    required String? appVersion,
+  }) async {}
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -41,6 +61,12 @@ Widget buildTestWidget({
   final mockAuth = authRepo ?? MockAuthRepository();
   final mockUser = MockUser();
   when(() => mockUser.id).thenReturn('user-001');
+  // `AuthNotifier.deleteAccount` reads `user.createdAt` to compute
+  // `daysSinceSignup` for the `account_deleted` analytics event. gotrue
+  // `User.createdAt` is a non-nullable ISO-8601 String, so the mock must
+  // return a valid string — `null` would blow up before the mocked
+  // `deleteAccount()` call.
+  when(() => mockUser.createdAt).thenReturn('2024-01-01T00:00:00.000Z');
   when(() => mockAuth.currentUser).thenReturn(mockUser);
   when(() => mockAuth.currentSession).thenReturn(null);
   when(
@@ -55,6 +81,12 @@ Widget buildTestWidget({
   if (workoutRepo == null) {
     when(() => mockWorkoutRepo.clearHistory(any())).thenAnswer((_) async {});
   }
+  // The delete-account flow calls `getFinishedWorkoutCount` to attach the
+  // count to the `account_deleted` event. Stub a default so tests that
+  // don't care about the analytics path still resolve.
+  when(
+    () => mockWorkoutRepo.getFinishedWorkoutCount(any()),
+  ).thenAnswer((_) async => 0);
 
   final mockPRRepo = prRepo ?? MockPRRepository();
   if (prRepo == null) {
@@ -66,6 +98,13 @@ Widget buildTestWidget({
       authRepositoryProvider.overrideWithValue(mockAuth),
       workoutRepositoryProvider.overrideWithValue(mockWorkoutRepo),
       prRepositoryProvider.overrideWithValue(mockPRRepo),
+      // Prevents `AuthNotifier.deleteAccount` from constructing the real
+      // `AnalyticsRepository(Supabase.instance.client)` when it fires the
+      // `account_deleted` event. Without this override the test would
+      // trip the `Supabase.instance._isInitialized` assertion.
+      analyticsRepositoryProvider.overrideWithValue(
+        const _FakeAnalyticsRepository(),
+      ),
       workoutCountProvider.overrideWith((ref) => Future.value(workoutCount)),
       prCountProvider.overrideWith((ref) => Future.value(prCount)),
     ],

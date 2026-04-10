@@ -3,6 +3,11 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/device/platform_info.dart';
+import '../../../../core/observability/sentry_report.dart';
+import '../../../analytics/data/models/analytics_event.dart';
+import '../../../analytics/providers/analytics_providers.dart';
+import '../../../workouts/providers/workout_providers.dart';
 import '../../data/auth_repository.dart';
 import '../auth_providers.dart';
 import '../signup_state_provider.dart';
@@ -31,6 +36,7 @@ class AuthNotifier extends AsyncNotifier<Session?> {
       if (response.session == null) {
         ref.read(signupPendingEmailProvider.notifier).state = email;
       }
+      SentryReport.addBreadcrumb(category: 'auth', message: 'sign_up_email');
       return response.session;
     });
   }
@@ -45,6 +51,7 @@ class AuthNotifier extends AsyncNotifier<Session?> {
         email: email,
         password: password,
       );
+      SentryReport.addBreadcrumb(category: 'auth', message: 'sign_in_email');
       return response.session;
     });
   }
@@ -53,6 +60,7 @@ class AuthNotifier extends AsyncNotifier<Session?> {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       await _repo.signInWithGoogle();
+      SentryReport.addBreadcrumb(category: 'auth', message: 'sign_in_google');
       // OAuth redirects externally; session comes via onAuthStateChange.
       return _repo.currentSession;
     });
@@ -62,6 +70,7 @@ class AuthNotifier extends AsyncNotifier<Session?> {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       await _repo.signOut();
+      SentryReport.addBreadcrumb(category: 'auth', message: 'sign_out');
       return null;
     });
   }
@@ -104,6 +113,43 @@ class AuthNotifier extends AsyncNotifier<Session?> {
       return null;
     });
     if (state.hasError) return;
+
+    // Fire account_deleted BEFORE the sign-out so we still have a valid
+    // session. This is the ONE analytics event we MUST await — the row has
+    // to land before the CASCADE DELETE from auth.users drops it. The
+    // try/catch wraps the await so a failed insert still allows deletion
+    // to proceed.
+    final user = _repo.currentUser;
+    if (user != null) {
+      // User.createdAt from gotrue is an ISO-8601 String, not a DateTime.
+      final createdAt = DateTime.tryParse(user.createdAt);
+      final daysSinceSignup = createdAt == null
+          ? 0
+          : DateTime.now().difference(createdAt).inDays;
+      int workoutCount = 0;
+      try {
+        final workoutRepo = ref.read(workoutRepositoryProvider);
+        workoutCount = await workoutRepo.getFinishedWorkoutCount(user.id);
+      } catch (_) {
+        // Best-effort — if we can't count, ship a 0.
+      }
+      try {
+        await ref
+            .read(analyticsRepositoryProvider)
+            .insertEvent(
+              userId: user.id,
+              event: AnalyticsEvent.accountDeleted(
+                workoutCount: workoutCount,
+                daysSinceSignup: daysSinceSignup,
+              ),
+              platform: currentPlatform(),
+              appVersion: currentAppVersion(),
+            );
+      } catch (_) {
+        // Best-effort — never block deletion on analytics.
+      }
+      SentryReport.addBreadcrumb(category: 'auth', message: 'account_deleted');
+    }
 
     // Account deleted successfully — best-effort local sign-out. Any error
     // here is ignored because the server-side user is already gone and the
