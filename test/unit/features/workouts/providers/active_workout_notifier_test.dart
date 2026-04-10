@@ -43,6 +43,24 @@ class _FakeAnalyticsRepository extends BaseRepository
   }) async {}
 }
 
+/// Recording analytics repo — captures every event so tests can assert on
+/// the event content (e.g. `source` value) that the notifier fires.
+/// Not `const` so it can accumulate state.
+class _RecordingAnalyticsRepository extends BaseRepository
+    implements AnalyticsRepository {
+  final List<AnalyticsEvent> events = [];
+
+  @override
+  Future<void> insertEvent({
+    required String userId,
+    required AnalyticsEvent event,
+    required String? platform,
+    required String? appVersion,
+  }) async {
+    events.add(event);
+  }
+}
+
 /// Creates a minimal [User] that satisfies the `_userId` getter in the notifier.
 User fakeUser({String id = 'user-test-001'}) {
   return User(
@@ -1683,6 +1701,111 @@ void main() {
             .first;
         expect(newSet.weight, 60.0);
         expect(newSet.reps, 0);
+      },
+    );
+  });
+
+  // ================================================================
+  // Analytics event source values — PR 5 observability
+  //
+  // _trackWorkoutEvent is fire-and-forget (unawaited). We drain the
+  // microtask queue with Future.microtask so the recording repo
+  // captures the event before we assert.
+  // ================================================================
+
+  group('ActiveWorkoutNotifier — analytics source values', () {
+    /// Helper that creates a container whose analytics repo records events.
+    ({
+      ProviderContainer container,
+      MockWorkoutRepository mockRepo,
+      MockWorkoutLocalStorage mockStorage,
+      MockAuthRepository mockAuth,
+      _RecordingAnalyticsRepository analytics,
+    })
+    makeRecordingContainer(ActiveWorkoutState? initialState) {
+      final mockRepo = MockWorkoutRepository();
+      final mockStorage = MockWorkoutLocalStorage();
+      final mockAuth = MockAuthRepository();
+      final analytics = _RecordingAnalyticsRepository();
+
+      when(() => mockStorage.loadActiveWorkout()).thenReturn(initialState);
+      when(() => mockStorage.saveActiveWorkout(any())).thenAnswer((_) async {});
+
+      final container = ProviderContainer(
+        overrides: [
+          workoutRepositoryProvider.overrideWithValue(mockRepo),
+          workoutLocalStorageProvider.overrideWithValue(mockStorage),
+          authRepositoryProvider.overrideWithValue(mockAuth),
+          analyticsRepositoryProvider.overrideWithValue(analytics),
+        ],
+      );
+      return (
+        container: container,
+        mockRepo: mockRepo,
+        mockStorage: mockStorage,
+        mockAuth: mockAuth,
+        analytics: analytics,
+      );
+    }
+
+    test('startWorkout fires workout_started with source="empty"', () async {
+      final bundle = makeRecordingContainer(null);
+      addTearDown(bundle.container.dispose);
+
+      when(() => bundle.mockAuth.currentUser).thenReturn(fakeUser());
+      when(
+        () => bundle.mockRepo.createActiveWorkout(
+          userId: any(named: 'userId'),
+          name: any(named: 'name'),
+        ),
+      ).thenAnswer((_) async => makeWorkout(id: 'workout-new'));
+
+      await bundle.container.read(activeWorkoutProvider.future);
+      await bundle.container
+          .read(activeWorkoutProvider.notifier)
+          .startWorkout('Leg Day');
+
+      // Let the unawaited analytics call resolve.
+      await Future<void>.microtask(() {});
+
+      expect(bundle.analytics.events, hasLength(1));
+      expect(bundle.analytics.events.first.name, 'workout_started');
+      expect(bundle.analytics.events.first.props['source'], 'empty');
+      expect(bundle.analytics.events.first.props['routine_id'], isNull);
+    });
+
+    test(
+      'discardWorkout fires workout_discarded with source="empty" when no routineId',
+      () async {
+        // Use an initial state with no routineId (plain empty workout).
+        final initial = makeState(exerciseCount: 1, setsPerExercise: 1);
+        // Confirm the factory produces a state without a routineId.
+        expect(initial.routineId, isNull);
+
+        final bundle = makeRecordingContainer(initial);
+        addTearDown(bundle.container.dispose);
+
+        when(() => bundle.mockAuth.currentUser).thenReturn(fakeUser());
+        when(
+          () => bundle.mockRepo.discardWorkout(
+            any(),
+            userId: any(named: 'userId'),
+          ),
+        ).thenAnswer((_) async {});
+        when(
+          () => bundle.mockStorage.clearActiveWorkout(),
+        ).thenAnswer((_) async {});
+
+        await bundle.container.read(activeWorkoutProvider.future);
+        await bundle.container
+            .read(activeWorkoutProvider.notifier)
+            .discardWorkout();
+
+        await Future<void>.microtask(() {});
+
+        expect(bundle.analytics.events, hasLength(1));
+        expect(bundle.analytics.events.first.name, 'workout_discarded');
+        expect(bundle.analytics.events.first.props['source'], 'empty');
       },
     );
   });

@@ -515,6 +515,47 @@ void main() {
       );
     });
 
+    // -----------------------------------------------------------------------
+    // Crash-reports toggle (PR 5 — observability)
+    // -----------------------------------------------------------------------
+
+    testWidgets(
+      'shows PRIVACY section header and "Send crash reports" switch',
+      (tester) async {
+        const profile = Profile(
+          id: 'user-1',
+          displayName: 'Jane',
+          weightUnit: 'kg',
+        );
+
+        await tester.pumpWidget(buildTestWidget(profile: profile));
+        await tester.pump();
+
+        expect(find.text('PRIVACY'), findsOneWidget);
+        expect(find.text('Send crash reports'), findsOneWidget);
+        expect(find.byType(SwitchListTile), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      '"Send crash reports" switch is ON by default (no persisted value)',
+      (tester) async {
+        const profile = Profile(
+          id: 'user-1',
+          displayName: 'Jane',
+          weightUnit: 'kg',
+        );
+
+        await tester.pumpWidget(buildTestWidget(profile: profile));
+        await tester.pump();
+
+        final switchTile = tester.widget<SwitchListTile>(
+          find.byType(SwitchListTile),
+        );
+        expect(switchTile.value, isTrue);
+      },
+    );
+
     testWidgets(
       'PO-039: cancelling the edit dialog does not close the profile screen',
       (tester) async {
