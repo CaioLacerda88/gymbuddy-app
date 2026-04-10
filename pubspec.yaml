@@ -23,6 +23,7 @@ dependencies:
   flutter_svg: ^2.0.10+1
   intl: ^0.20.0
   uuid: ^4.5.1
+  wakelock_plus: ^1.2.8
 
 dev_dependencies:
   flutter_test:
@@ -35,6 +36,9 @@ dev_dependencies:
   hive_generator: ^2.0.0
   mocktail: ^1.0.0
   fake_async: ^1.3.3
+  # Exposed directly by wakelock_plus for testing — we reference
+  # WakelockPlusPlatformInterface from test fakes.
+  wakelock_plus_platform_interface: ^1.4.0
 
 flutter:
   uses-material-design: true
