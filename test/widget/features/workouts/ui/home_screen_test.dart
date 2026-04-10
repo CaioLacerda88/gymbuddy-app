@@ -130,6 +130,19 @@ class _NullProfileNotifier extends AsyncNotifier<Profile?>
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _ProfileNotifierWithUnit extends AsyncNotifier<Profile?>
+    implements ProfileNotifier {
+  _ProfileNotifierWithUnit(this._weightUnit);
+  final String _weightUnit;
+
+  @override
+  Future<Profile?> build() async =>
+      Profile(id: 'user-001', displayName: 'Alex', weightUnit: _weightUnit);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -485,5 +498,66 @@ void main() {
 
       expect(find.text('View All'), findsNothing);
     });
+  });
+
+  group('HomeScreen week volume unit threading', () {
+    Widget buildWithUnit(String unit) {
+      return ProviderScope(
+        overrides: [
+          routineListProvider.overrideWith(() => _EmptyRoutineNotifier()),
+          workoutHistoryProvider.overrideWith(
+            () => _WorkoutHistoryNotifier(const []),
+          ),
+          activeWorkoutProvider.overrideWith(
+            () => _NullActiveWorkoutNotifier(),
+          ),
+          weeklyPlanProvider.overrideWith(() => _NullWeeklyPlanNotifier()),
+          weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
+          weekVolumeProvider.overrideWith((ref) => Future.value(12400.0)),
+          profileProvider.overrideWith(() => _ProfileNotifierWithUnit(unit)),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: const Scaffold(body: HomeScreen()),
+        ),
+      );
+    }
+
+    testWidgets("Week's volume stat card shows the user's weight unit", (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(buildWithUnit('kg'));
+      await tester.pump();
+      await tester.pump();
+
+      // The volume cell text is "<number> <unit> this week".
+      expect(find.textContaining('12,400 kg this week'), findsOneWidget);
+      // Make sure the other unit is nowhere on the week volume cell.
+      expect(find.textContaining('lbs'), findsNothing);
+    });
+
+    testWidgets(
+      "Week's volume stat card flips to lbs when profile weightUnit is lbs",
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(buildWithUnit('lbs'));
+        await tester.pump();
+        await tester.pump();
+
+        // Same stored volume, just a different suffix — no conversion.
+        expect(find.textContaining('12,400 lbs this week'), findsOneWidget);
+        // And the kg suffix must not appear in the volume cell.
+        expect(find.textContaining('12,400 kg'), findsNothing);
+      },
+    );
   });
 }

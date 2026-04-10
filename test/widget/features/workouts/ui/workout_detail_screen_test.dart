@@ -5,11 +5,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
 import 'package:gymbuddy_app/features/personal_records/providers/pr_providers.dart';
+import 'package:gymbuddy_app/features/profile/models/profile.dart';
+import 'package:gymbuddy_app/features/profile/providers/profile_providers.dart';
 import 'package:gymbuddy_app/features/workouts/data/workout_repository.dart';
 import 'package:gymbuddy_app/features/workouts/providers/workout_history_providers.dart';
 import 'package:gymbuddy_app/features/workouts/ui/workout_detail_screen.dart';
 
 import '../../../../fixtures/test_factories.dart';
+
+class _ProfileNotifierWithUnit extends AsyncNotifier<Profile?>
+    implements ProfileNotifier {
+  _ProfileNotifierWithUnit(this._weightUnit);
+  final String _weightUnit;
+
+  @override
+  Future<Profile?> build() async =>
+      Profile(id: 'user-001', weightUnit: _weightUnit);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 void main() {
   WorkoutDetail makeDetail() {
@@ -180,5 +195,126 @@ void main() {
       final iconWidget = tester.widget<Icon>(find.byIcon(Icons.emoji_events));
       expect(iconWidget.size, 18.0);
     });
+  });
+
+  group('WorkoutDetailScreen weight unit threading', () {
+    // Fake workout: 3 completed sets at 60/80/100 × 10/8/5.
+    // Total volume = 600 + 640 + 500 = 1,740.
+    WorkoutDetail makeVolumeDetail() {
+      return WorkoutRepository.parseWorkoutDetail({
+        ...TestWorkoutFactory.create(id: 'w-1', name: 'Push Day'),
+        'workout_exercises': [
+          {
+            ...TestWorkoutExerciseFactory.create(id: 'we-1', exerciseId: 'e-1'),
+            'exercise': TestExerciseFactory.create(
+              id: 'e-1',
+              name: 'Bench Press',
+            ),
+            'sets': [
+              TestSetFactory.create(
+                id: 'set-1',
+                workoutExerciseId: 'we-1',
+                setNumber: 1,
+                weight: 60.0,
+                reps: 10,
+              ),
+              TestSetFactory.create(
+                id: 'set-2',
+                workoutExerciseId: 'we-1',
+                setNumber: 2,
+                weight: 80.0,
+                reps: 8,
+              ),
+              TestSetFactory.create(
+                id: 'set-3',
+                workoutExerciseId: 'we-1',
+                setNumber: 3,
+                weight: 100.0,
+                reps: 5,
+              ),
+            ],
+          },
+        ],
+      });
+    }
+
+    testWidgets('Per-set weight row shows kg suffix when profile is kg', (
+      tester,
+    ) async {
+      final detail = makeVolumeDetail();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            workoutDetailProvider(
+              'w-1',
+            ).overrideWith((ref) => Future.value(detail)),
+            workoutPRSetIdsProvider(
+              'w-1',
+            ).overrideWith((ref) => Future.value(<String>{})),
+            profileProvider.overrideWith(() => _ProfileNotifierWithUnit('kg')),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: const WorkoutDetailScreen(workoutId: 'w-1'),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      // Per-set rows: "60 kg", "80 kg", "100 kg".
+      expect(find.text('60 kg'), findsOneWidget);
+      expect(find.text('80 kg'), findsOneWidget);
+      expect(find.text('100 kg'), findsOneWidget);
+
+      // Total volume footer: 60*10 + 80*8 + 100*5 = 1,740.
+      expect(find.text('Total Volume: 1,740 kg'), findsOneWidget);
+
+      // No lbs anywhere.
+      expect(find.textContaining('lbs'), findsNothing);
+    });
+
+    testWidgets(
+      'Per-set weight row and total flip to lbs when profile weightUnit '
+      'is lbs',
+      (tester) async {
+        final detail = makeVolumeDetail();
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              workoutDetailProvider(
+                'w-1',
+              ).overrideWith((ref) => Future.value(detail)),
+              workoutPRSetIdsProvider(
+                'w-1',
+              ).overrideWith((ref) => Future.value(<String>{})),
+              profileProvider.overrideWith(
+                () => _ProfileNotifierWithUnit('lbs'),
+              ),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.dark,
+              home: const WorkoutDetailScreen(workoutId: 'w-1'),
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        // Stored values are in the user's chosen unit — no conversion, only
+        // the suffix flips. The numeric part is identical to the kg test.
+        expect(find.text('60 lbs'), findsOneWidget);
+        expect(find.text('80 lbs'), findsOneWidget);
+        expect(find.text('100 lbs'), findsOneWidget);
+
+        // Total volume footer: same numeric value, different suffix.
+        expect(find.text('Total Volume: 1,740 lbs'), findsOneWidget);
+
+        // And kg must not appear anywhere in the rendered tree.
+        expect(find.textContaining(' kg'), findsNothing);
+      },
+    );
   });
 }
