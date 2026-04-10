@@ -1,0 +1,157 @@
+// ignore_for_file: invalid_annotation_target
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+part 'analytics_event.freezed.dart';
+
+/// Typed product analytics events. Fixed set — new events require adding
+/// a factory here and a case in the `name` + `props` getters.
+///
+/// Prop keys are serialized to snake_case to match the `analytics_events`
+/// table's `props jsonb` column convention.
+@freezed
+class AnalyticsEvent with _$AnalyticsEvent {
+  const AnalyticsEvent._();
+
+  const factory AnalyticsEvent.onboardingCompleted({
+    required String fitnessLevel,
+    required int trainingFrequency,
+  }) = _OnboardingCompleted;
+
+  const factory AnalyticsEvent.workoutStarted({
+    required String source,
+    required String? routineId,
+    required int exerciseCount,
+    required bool hadActiveWorkoutConflict,
+  }) = _WorkoutStarted;
+
+  const factory AnalyticsEvent.workoutDiscarded({
+    required int elapsedSeconds,
+    required int completedSets,
+    required int exerciseCount,
+    required String source,
+  }) = _WorkoutDiscarded;
+
+  const factory AnalyticsEvent.workoutFinished({
+    required int durationSeconds,
+    required int exerciseCount,
+    required int totalSets,
+    required int completedSets,
+    required int incompleteSetsSkipped,
+    required bool hadPr,
+    required String source,
+    required int workoutNumber,
+  }) = _WorkoutFinished;
+
+  const factory AnalyticsEvent.prCelebrationSeen({
+    required bool isFirstWorkout,
+    required int prCount,
+    required List<String> recordTypes,
+  }) = _PrCelebrationSeen;
+
+  const factory AnalyticsEvent.weekPlanSaved({
+    required int routineCount,
+    required bool atSoftCap,
+    required bool usedAutofill,
+    required bool replacedExisting,
+  }) = _WeekPlanSaved;
+
+  const factory AnalyticsEvent.weekComplete({
+    required int sessionsCompleted,
+    required int prCountThisWeek,
+    required int planSize,
+    required int weekNumber,
+  }) = _WeekComplete;
+
+  const factory AnalyticsEvent.addToPlanPromptResponded({
+    required String action,
+    required String trigger,
+    required String routineId,
+  }) = _AddToPlanPromptResponded;
+
+  const factory AnalyticsEvent.accountDeleted({
+    required int workoutCount,
+    required int daysSinceSignup,
+  }) = _AccountDeleted;
+
+  /// Event name as stored in the `name` column of `analytics_events`.
+  String get name => map(
+    onboardingCompleted: (_) => 'onboarding_completed',
+    workoutStarted: (_) => 'workout_started',
+    workoutDiscarded: (_) => 'workout_discarded',
+    workoutFinished: (_) => 'workout_finished',
+    prCelebrationSeen: (_) => 'pr_celebration_seen',
+    weekPlanSaved: (_) => 'week_plan_saved',
+    weekComplete: (_) => 'week_complete',
+    addToPlanPromptResponded: (_) => 'add_to_plan_prompt_responded',
+    accountDeleted: (_) => 'account_deleted',
+  );
+
+  /// Props as stored in the `props` jsonb column. Keys are snake_case.
+  /// Values are primitive JSON types only (String, int, double, bool, List).
+  Map<String, Object?> get props => when(
+    onboardingCompleted: (fitnessLevel, trainingFrequency) => {
+      'fitness_level': fitnessLevel,
+      'training_frequency': trainingFrequency,
+    },
+    workoutStarted: (source, routineId, exerciseCount, hadConflict) => {
+      'source': source,
+      'routine_id': routineId,
+      'exercise_count': exerciseCount,
+      'had_active_workout_conflict': hadConflict,
+    },
+    workoutDiscarded: (elapsed, completedSets, exerciseCount, source) => {
+      'elapsed_seconds': elapsed,
+      'completed_sets': completedSets,
+      'exercise_count': exerciseCount,
+      'source': source,
+    },
+    workoutFinished:
+        (
+          durationSeconds,
+          exerciseCount,
+          totalSets,
+          completedSets,
+          incompleteSetsSkipped,
+          hadPr,
+          source,
+          workoutNumber,
+        ) => {
+          'duration_seconds': durationSeconds,
+          'exercise_count': exerciseCount,
+          'total_sets': totalSets,
+          'completed_sets': completedSets,
+          'incomplete_sets_skipped': incompleteSetsSkipped,
+          'had_pr': hadPr,
+          'source': source,
+          'workout_number': workoutNumber,
+        },
+    prCelebrationSeen: (isFirstWorkout, prCount, recordTypes) => {
+      'is_first_workout': isFirstWorkout,
+      'pr_count': prCount,
+      'record_types': recordTypes,
+    },
+    weekPlanSaved: (routineCount, atSoftCap, usedAutofill, replacedExisting) =>
+        {
+          'routine_count': routineCount,
+          'at_soft_cap': atSoftCap,
+          'used_autofill': usedAutofill,
+          'replaced_existing': replacedExisting,
+        },
+    weekComplete: (sessionsCompleted, prCountThisWeek, planSize, weekNumber) =>
+        {
+          'sessions_completed': sessionsCompleted,
+          'pr_count_this_week': prCountThisWeek,
+          'plan_size': planSize,
+          'week_number': weekNumber,
+        },
+    addToPlanPromptResponded: (action, trigger, routineId) => {
+      'action': action,
+      'trigger': trigger,
+      'routine_id': routineId,
+    },
+    accountDeleted: (workoutCount, daysSinceSignup) => {
+      'workout_count': workoutCount,
+      'days_since_signup': daysSinceSignup,
+    },
+  );
+}
