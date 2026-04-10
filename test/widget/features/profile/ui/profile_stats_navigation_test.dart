@@ -4,10 +4,13 @@
 /// and tapping the PRs stat card navigates to `/records`.
 library;
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:gymbuddy_app/core/local_storage/hive_service.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
 import 'package:gymbuddy_app/features/auth/data/auth_repository.dart';
 import 'package:gymbuddy_app/features/auth/providers/auth_providers.dart';
@@ -16,6 +19,7 @@ import 'package:gymbuddy_app/features/profile/models/profile.dart';
 import 'package:gymbuddy_app/features/profile/providers/profile_providers.dart';
 import 'package:gymbuddy_app/features/profile/ui/profile_screen.dart';
 import 'package:gymbuddy_app/features/workouts/providers/workout_history_providers.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
@@ -98,6 +102,21 @@ Widget _buildTestApp() {
 // ---------------------------------------------------------------------------
 
 void main() {
+  late Directory tempDir;
+
+  setUpAll(() async {
+    tempDir = await Directory.systemTemp.createTemp('profile_nav_test_');
+    Hive.init(tempDir.path);
+    await Hive.openBox<dynamic>(HiveService.userPrefs);
+  });
+
+  tearDownAll(() async {
+    await Hive.close();
+    if (tempDir.existsSync()) {
+      tempDir.deleteSync(recursive: true);
+    }
+  });
+
   group('BUG-3: Profile stat card navigation', () {
     testWidgets('tapping Workouts card navigates to /home/history', (
       tester,

@@ -6,9 +6,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
 import 'package:gymbuddy_app/features/auth/data/auth_repository.dart';
 import 'package:gymbuddy_app/features/auth/providers/auth_providers.dart';
+import 'dart:io';
+
+import 'package:gymbuddy_app/core/local_storage/hive_service.dart';
 import 'package:gymbuddy_app/features/profile/models/profile.dart';
 import 'package:gymbuddy_app/features/profile/providers/profile_providers.dart';
 import 'package:gymbuddy_app/features/profile/ui/profile_screen.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -60,6 +64,23 @@ extension _MockUserEmail on MockUser {
 }
 
 void main() {
+  late Directory tempDir;
+
+  setUpAll(() async {
+    // ProfileScreen watches crashReportsEnabledProvider which reads the
+    // user_prefs Hive box. Open it on a temp path so tests don't crash.
+    tempDir = await Directory.systemTemp.createTemp('profile_widget_test_');
+    Hive.init(tempDir.path);
+    await Hive.openBox<dynamic>(HiveService.userPrefs);
+  });
+
+  tearDownAll(() async {
+    await Hive.close();
+    if (tempDir.existsSync()) {
+      tempDir.deleteSync(recursive: true);
+    }
+  });
+
   group('ProfileScreen', () {
     testWidgets('shows display name when profile has displayName', (
       tester,
