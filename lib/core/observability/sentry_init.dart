@@ -50,6 +50,10 @@ Future<void> initSentryAndRun(Future<void> Function() appRunner) async {
       options.beforeBreadcrumb = (Breadcrumb? crumb, Hint hint) {
         if (crumb == null) return null;
         final msg = crumb.message ?? '';
+        // NOTE: only `message` is scanned for PII. Callers adding breadcrumbs
+        // must not put user email, name, session tokens, or other PII in the
+        // `data` map. If we ever need to filter `data` too, extend this to
+        // walk the map values.
         if (msg.contains('@')) return null;
         return crumb;
       };
