@@ -24,9 +24,12 @@ class WorkoutFormatters {
     return '< 1m';
   }
 
-  /// Format total volume like "1,234 kg".
-  static String formatVolume(double volume) {
-    return '${_volumeFormat.format(volume.round())} kg';
+  /// Format total volume like "1,234 kg" (or the caller's preferred unit).
+  ///
+  /// [weightUnit] defaults to `'kg'` to preserve backward compatibility with
+  /// call sites that don't yet thread through the user's preference.
+  static String formatVolume(double volume, {String weightUnit = 'kg'}) {
+    return '${_volumeFormat.format(volume.round())} $weightUnit';
   }
 
   /// Format workout date contextually.

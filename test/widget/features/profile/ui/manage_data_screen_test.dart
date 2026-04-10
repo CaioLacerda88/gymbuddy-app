@@ -36,11 +36,20 @@ Widget buildTestWidget({
   int prCount = 3,
   MockWorkoutRepository? workoutRepo,
   MockPRRepository? prRepo,
+  MockAuthRepository? authRepo,
 }) {
-  final mockAuth = MockAuthRepository();
+  final mockAuth = authRepo ?? MockAuthRepository();
   final mockUser = MockUser();
   when(() => mockUser.id).thenReturn('user-001');
   when(() => mockAuth.currentUser).thenReturn(mockUser);
+  when(() => mockAuth.currentSession).thenReturn(null);
+  when(
+    () => mockAuth.onAuthStateChange(),
+  ).thenAnswer((_) => const Stream<AuthState>.empty());
+  if (authRepo == null) {
+    when(() => mockAuth.deleteAccount()).thenAnswer((_) async {});
+    when(() => mockAuth.signOut()).thenAnswer((_) async {});
+  }
 
   final mockWorkoutRepo = workoutRepo ?? MockWorkoutRepository();
   if (workoutRepo == null) {
@@ -70,7 +79,7 @@ Widget buildTestWidget({
 
 void main() {
   group('ManageDataScreen', () {
-    testWidgets('renders both data management options', (tester) async {
+    testWidgets('renders all data management options', (tester) async {
       await tester.pumpWidget(buildTestWidget());
       await tester.pump();
       await tester.pump();
@@ -79,6 +88,11 @@ void main() {
       expect(find.text('Delete Workout History'), findsOneWidget);
       expect(find.text('DANGER'), findsOneWidget);
       expect(find.text('Reset All Account Data'), findsOneWidget);
+      expect(find.text('Delete Account'), findsOneWidget);
+      expect(
+        find.text('Permanently delete your account and all data'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('shows live workout count in subtitle', (tester) async {
@@ -347,6 +361,163 @@ void main() {
         // PRs must be deleted first to avoid FK violation on set_id.
         expect(callOrder, ['clearAllRecords', 'clearHistory']);
       });
+    });
+
+    group('Delete Account type-to-confirm', () {
+      testWidgets('shows full-screen dialog with explanation', (tester) async {
+        await tester.pumpWidget(buildTestWidget());
+        await tester.pump();
+        await tester.pump();
+
+        await tester.tap(find.text('Delete Account'));
+        await tester.pumpAndSettle();
+
+        // AppBar title.
+        expect(
+          find.descendant(
+            of: find.byType(AppBar),
+            matching: find.text('Delete Account'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.textContaining('permanently delete your account'),
+          findsOneWidget,
+        );
+        expect(find.text('Type DELETE to confirm'), findsOneWidget);
+      });
+
+      testWidgets('Delete Account button is disabled until DELETE typed', (
+        tester,
+      ) async {
+        await tester.pumpWidget(buildTestWidget());
+        await tester.pump();
+        await tester.pump();
+
+        await tester.tap(find.text('Delete Account'));
+        await tester.pumpAndSettle();
+
+        // Button should be disabled before typing.
+        final button = tester.widget<GradientButton>(
+          find.byType(GradientButton),
+        );
+        expect(button.onPressed, isNull);
+
+        // Type 'DELETE'.
+        await tester.enterText(find.byType(TextField), 'DELETE');
+        await tester.pump();
+
+        // Button should now be enabled.
+        final updatedButton = tester.widget<GradientButton>(
+          find.byType(GradientButton),
+        );
+        expect(updatedButton.onPressed, isNotNull);
+      });
+
+      testWidgets('typing delete (lowercase) also enables button', (
+        tester,
+      ) async {
+        await tester.pumpWidget(buildTestWidget());
+        await tester.pump();
+        await tester.pump();
+
+        await tester.tap(find.text('Delete Account'));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextField), 'delete');
+        await tester.pump();
+
+        final button = tester.widget<GradientButton>(
+          find.byType(GradientButton),
+        );
+        expect(button.onPressed, isNotNull);
+      });
+
+      testWidgets('cancel closes dialog without invoking deleteAccount', (
+        tester,
+      ) async {
+        final mockAuth = MockAuthRepository();
+        when(() => mockAuth.deleteAccount()).thenAnswer((_) async {});
+        when(() => mockAuth.signOut()).thenAnswer((_) async {});
+
+        await tester.pumpWidget(buildTestWidget(authRepo: mockAuth));
+        await tester.pump();
+        await tester.pump();
+
+        await tester.tap(find.text('Delete Account'));
+        await tester.pumpAndSettle();
+
+        // Two "Cancel" buttons exist (TextButton in the dialog and the
+        // close icon's tooltip — only the dialog one is a TextButton).
+        await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+        await tester.pumpAndSettle();
+
+        verifyNever(() => mockAuth.deleteAccount());
+        verifyNever(() => mockAuth.signOut());
+      });
+
+      testWidgets('confirm triggers deleteAccount + signOut on the auth repo', (
+        tester,
+      ) async {
+        final mockAuth = MockAuthRepository();
+        when(() => mockAuth.deleteAccount()).thenAnswer((_) async {});
+        when(() => mockAuth.signOut()).thenAnswer((_) async {});
+
+        await tester.pumpWidget(buildTestWidget(authRepo: mockAuth));
+        await tester.pump();
+        await tester.pump();
+
+        await tester.tap(find.text('Delete Account'));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextField), 'DELETE');
+        await tester.pump();
+
+        // Tap the GradientButton labelled "Delete Account" inside the dialog.
+        await tester.tap(find.byType(GradientButton));
+        await tester.pumpAndSettle();
+
+        // deleteAccount must be called before signOut — if the order were
+        // reversed and signOut failed, we'd delete the account then leave
+        // the user logged in (or vice versa). Order matters for UX safety.
+        verifyInOrder([
+          () => mockAuth.deleteAccount(),
+          () => mockAuth.signOut(),
+        ]);
+      });
+
+      testWidgets(
+        'shows safe error snackbar when deleteAccount throws AppException',
+        (tester) async {
+          final mockAuth = MockAuthRepository();
+          when(
+            () => mockAuth.deleteAccount(),
+          ).thenThrow(const NetworkException('connection refused'));
+          when(() => mockAuth.signOut()).thenAnswer((_) async {});
+
+          await tester.pumpWidget(buildTestWidget(authRepo: mockAuth));
+          await tester.pump();
+          await tester.pump();
+
+          await tester.tap(find.text('Delete Account'));
+          await tester.pumpAndSettle();
+
+          await tester.enterText(find.byType(TextField), 'DELETE');
+          await tester.pump();
+
+          await tester.tap(find.byType(GradientButton));
+          await tester.pumpAndSettle();
+
+          // Should show safe message via userMessage, not raw error.
+          expect(
+            find.textContaining('Failed to delete account'),
+            findsOneWidget,
+          );
+          expect(find.textContaining('connection refused'), findsNothing);
+          // signOut must NOT be called when delete fails.
+          verifyNever(() => mockAuth.signOut());
+        },
+      );
     });
 
     group('Error states show safe messages', () {

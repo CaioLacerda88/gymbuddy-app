@@ -77,6 +77,17 @@ void main() {
     test('rounds down correctly', () {
       expect(WorkoutFormatters.formatVolume(1234.4), '1,234 kg');
     });
+
+    test('uses the provided weightUnit when supplied', () {
+      expect(
+        WorkoutFormatters.formatVolume(1234, weightUnit: 'lbs'),
+        '1,234 lbs',
+      );
+    });
+
+    test('honors weightUnit for zero volume', () {
+      expect(WorkoutFormatters.formatVolume(0, weightUnit: 'lbs'), '0 lbs');
+    });
   });
 
   group('WorkoutFormatters.formatWorkoutDate', () {

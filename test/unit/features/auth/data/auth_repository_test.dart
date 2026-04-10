@@ -6,6 +6,8 @@ import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 class MockGoTrueClient extends Mock implements supabase.GoTrueClient {}
 
+class MockFunctionsClient extends Mock implements supabase.FunctionsClient {}
+
 class FakeAuthResponse extends Fake implements supabase.AuthResponse {
   FakeAuthResponse({this.session});
 
@@ -15,11 +17,13 @@ class FakeAuthResponse extends Fake implements supabase.AuthResponse {
 
 void main() {
   late MockGoTrueClient mockAuth;
+  late MockFunctionsClient mockFunctions;
   late AuthRepository repo;
 
   setUp(() {
     mockAuth = MockGoTrueClient();
-    repo = AuthRepository(mockAuth);
+    mockFunctions = MockFunctionsClient();
+    repo = AuthRepository(mockAuth, functions: mockFunctions);
   });
 
   group('AuthRepository', () {
@@ -163,6 +167,44 @@ void main() {
         when(() => mockAuth.onAuthStateChange).thenAnswer((_) => stream);
 
         expect(repo.onAuthStateChange(), same(stream));
+      });
+    });
+
+    group('deleteAccount', () {
+      test('invokes the delete-user Edge Function on success', () async {
+        when(() => mockFunctions.invoke(any())).thenAnswer(
+          (_) async =>
+              supabase.FunctionResponse(data: {'success': true}, status: 200),
+        );
+
+        await expectLater(repo.deleteAccount(), completes);
+        verify(() => mockFunctions.invoke('delete-user')).called(1);
+      });
+
+      test('throws when the Edge Function returns a 4xx status', () async {
+        when(() => mockFunctions.invoke(any())).thenAnswer(
+          (_) async =>
+              supabase.FunctionResponse(data: {'error': 'bad'}, status: 401),
+        );
+
+        expect(() => repo.deleteAccount(), throwsA(isA<AppException>()));
+      });
+
+      test('throws when the Edge Function returns a 5xx status', () async {
+        when(() => mockFunctions.invoke(any())).thenAnswer(
+          (_) async =>
+              supabase.FunctionResponse(data: {'error': 'oops'}, status: 500),
+        );
+
+        expect(() => repo.deleteAccount(), throwsA(isA<AppException>()));
+      });
+
+      test('maps thrown errors through mapException', () async {
+        when(
+          () => mockFunctions.invoke(any()),
+        ).thenThrow(Exception('Network down'));
+
+        expect(() => repo.deleteAccount(), throwsA(isA<NetworkException>()));
       });
     });
   });

@@ -161,7 +161,7 @@ class _ContextualStatCells extends ConsumerWidget {
 
     final volumeValue = weekVolume.when(
       data: (v) => v > 0
-          ? '${WorkoutFormatters.formatVolume(v).replaceAll('kg', weightUnit)} this week'
+          ? '${WorkoutFormatters.formatVolume(v, weightUnit: weightUnit)} this week'
           : 'No volume yet',
       loading: () => '--',
       error: (_, _) => '--',

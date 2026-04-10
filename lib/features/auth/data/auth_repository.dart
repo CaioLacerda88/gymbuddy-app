@@ -3,9 +3,17 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/data/base_repository.dart';
 
 class AuthRepository extends BaseRepository {
-  const AuthRepository(this._auth);
+  const AuthRepository(this._auth, {FunctionsClient? functions})
+    : _injectedFunctions = functions;
 
   final GoTrueClient _auth;
+  final FunctionsClient? _injectedFunctions;
+
+  /// Functions client used for invoking Edge Functions. Tests can inject a
+  /// mock via the constructor; in production we fall back to the global
+  /// Supabase client's functions instance.
+  FunctionsClient get _functions =>
+      _injectedFunctions ?? Supabase.instance.client.functions;
 
   /// Stream of auth state changes.
   Stream<AuthState> onAuthStateChange() => _auth.onAuthStateChange;
@@ -62,5 +70,22 @@ class AuthRepository extends BaseRepository {
   /// Refresh the current session token.
   Future<AuthResponse> refreshSession() {
     return mapException(() => _auth.refreshSession());
+  }
+
+  /// Delete the current user's account permanently.
+  ///
+  /// Calls the `delete-user` Edge Function, which verifies the caller's JWT
+  /// and then uses the service-role key to call `auth.admin.deleteUser()`.
+  /// All user-owned rows in public tables cascade via FK constraints, so a
+  /// single successful call removes the account and every piece of data
+  /// tied to it. Callers should follow up with [signOut] so the auth state
+  /// listener can redirect to the login screen.
+  Future<void> deleteAccount() {
+    return mapException(() async {
+      final response = await _functions.invoke('delete-user');
+      if (response.status >= 400) {
+        throw Exception('Delete account failed (status ${response.status})');
+      }
+    });
   }
 }
