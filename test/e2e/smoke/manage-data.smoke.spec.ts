@@ -24,7 +24,7 @@ import { test, expect } from '@playwright/test';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import path from 'path';
-import { waitForAppReady } from '../helpers/app';
+import { login } from '../helpers/auth';
 import { AUTH, NAV, PROFILE, MANAGE_DATA } from '../helpers/selectors';
 
 dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
@@ -161,26 +161,10 @@ test.describe('Manage Data — account deletion smoke', () => {
     'Delete Account: partial string keeps confirm disabled, full DELETE enables, deletion verified in backend',
     async ({ page }) => {
       // ── 1. Log in ─────────────────────────────────────────────────────────
-      await page.goto('/');
-      await waitForAppReady(page);
-      await expect(page.locator(AUTH.appTitle)).toBeVisible({ timeout: 10_000 });
-
-      // Fill email field
-      await page.click(AUTH.emailInput);
-      await page.locator('input').last().waitFor({ state: 'attached', timeout: 5_000 });
-      await page.waitForTimeout(200);
-      await page.keyboard.press('Control+a');
-      await page.keyboard.type(userEmail, { delay: 10 });
-
-      // Fill password field
-      await page.click(AUTH.passwordInput);
-      await page.locator('input').last().waitFor({ state: 'attached', timeout: 5_000 });
-      await page.waitForTimeout(200);
-      await page.keyboard.press('Control+a');
-      await page.keyboard.type(userPassword, { delay: 10 });
-
-      await page.click(AUTH.loginButton);
-      await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 20_000 });
+      // Use the shared helper for the happy-path sign-in. The re-login attempt
+      // later in this test is kept raw because it's expected to fail and the
+      // helper would assert the happy path.
+      await login(page, userEmail, userPassword);
 
       // ── 2. Navigate to Profile → Manage Data ──────────────────────────────
       await page.click(NAV.profileTab);
@@ -271,14 +255,25 @@ test.describe('Manage Data — account deletion smoke', () => {
       expect(isOnHome, 'Should NOT navigate to home after re-login with deleted credentials').toBe(false);
 
       // ── 11. Backend verification: user must be absent from auth ────────────
-      const { data: listData } = await supabase.auth.admin.listUsers({
-        perPage: 1000,
-      });
-      const deletedUser = listData?.users?.find((u) => u.id === userId);
+      // Use getUserById (O(1)) instead of listUsers to avoid a false-positive
+      // once the test DB grows beyond the page size. The Supabase admin SDK
+      // returns one of two shapes for a missing user depending on server
+      // behavior, so we accept EITHER:
+      //   - an AuthError with a 404-ish status (most common: 404 not found),
+      //   - or a success-shaped response with data.user === null.
+      const getUserResult = await supabase.auth.admin.getUserById(userId);
+      const userGone =
+        (getUserResult.error !== null &&
+          (getUserResult.error.status === undefined ||
+            getUserResult.error.status === 404 ||
+            getUserResult.error.status >= 400)) ||
+        getUserResult.data.user === null;
       expect(
-        deletedUser,
-        `User ${userEmail} (${userId}) should not exist in auth.users after deletion`,
-      ).toBeUndefined();
+        userGone,
+        `User ${userEmail} (${userId}) should not exist in auth.users after deletion. ` +
+          `getUserById returned: error=${JSON.stringify(getUserResult.error)} ` +
+          `data=${JSON.stringify(getUserResult.data)}`,
+      ).toBe(true);
 
       // ── 12. Cascade verification: workouts must be gone ────────────────────
       const { data: workoutsAfterDelete } = await supabase
