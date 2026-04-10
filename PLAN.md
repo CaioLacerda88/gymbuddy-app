@@ -32,7 +32,8 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 12.3a | P0 Bug Fixes (back nav, home flicker) | DONE | #39 |
 | 12.3b | Copy Fix + Content Expansion (exercises, routines) | DONE | #40 |
 | 12.3c | Standalone Routine → Plan Prompt | DONE | #41 |
-| 13 | Production Readiness (Store Blockers) | TODO | - |
+| 13a-PR1 | Account Deletion + Volume Unit + OAuth Deep Link | DONE | #42 |
+| 13 | Production Readiness (remaining Sprint A: B1, P6, B4, B2, B3, W2) | IN PROGRESS | - |
 | 14 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
 | 15 | Gamification Advanced (Quests, Stats Panel) | TODO | - |
 | 16 | Nice-to-Have (v2.0+) | BACKLOG | - |
@@ -537,7 +538,7 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 | B2 | Crash reporting | 2-3h | Sentry Flutter SDK. Wire into `AppException` hierarchy. Breadcrumbs for key user actions |
 | B3 | Analytics (basic events) | 3-4h | `signup`, `login`, `first_workout_completed`, `workout_finished`, `routine_started`, `pr_broken`, `app_opened`. Options: PostHog, Amplitude, Mixpanel free tier |
 | B4 | Privacy Policy & ToS | 1 day | Hosted URL required by Play Store. Cover data collected, storage, retention, user rights. Link from Profile + store listing |
-| B5 | Account deletion | 3-4h | **Highest priority.** Required by Google Play (Jan 2026 policy). Edge Function to delete `auth.users` row + all user data. Must be in-app AND via web URL. Confirmation → sign out → login |
+| ~~B5~~ | ~~Account deletion~~ | DONE (#42) | Edge Function `delete-user` + AuthRepository.deleteAccount + Manage Data UI with type-DELETE confirmation. Cascade via existing FKs. |
 | B6 | ProGuard/R8 optimization | 2-3h | No minify/shrink today (19.7MB → ~12-14MB). Need keep rules for Supabase + Hive reflection |
 | B7 | Offline workout save & retry | 1-2 days | Hive queue exists but no sync worker. Detect connectivity failure on `finishWorkout()` → queue → retry. `connectivity_plus` package |
 
@@ -551,7 +552,7 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 | P4 | Exercise images fix (QA-005) | 3-4h | GitHub URLs return 404. Migrate to Supabase Storage or CDN. Broken images signal abandoned product. |
 | P5 | 1RM estimation | 2-3h | Epley formula. Display on exercise detail + PR cards |
 | P6 | App branding | 1 day | App label "gymbuddy_app" → "GymBuddy". Custom launcher icon + splash. Play Store assets |
-| P7 | Volume unit display | 30min | Hardcoded "kg" → profile weight unit. Data correctness bug, not cosmetic. |
+| ~~P7~~ | ~~Volume unit display~~ | DONE (#42) | `formatVolume()` takes weightUnit; threaded through home_screen + workout_detail_screen (per-set rows + totals). |
 | P8 | New-user empty-state CTA | 2-3h | When no workouts logged and no plan: show "Start your first workout" hero + beginner routine recommendation on home screen. Currently drops user at empty state with no guidance. **(PO finding)** |
 
 ### 13c: UX Polish (pre-launch quality bar)
@@ -573,7 +574,7 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 
 | ID | Item | Effort |
 |----|------|--------|
-| W1 | OAuth deep link registration | 1-2h |
+| ~~W1~~ | ~~OAuth deep link registration~~ | DONE (#42) — AndroidManifest intent-filter for `io.supabase.gymbuddy` |
 | W2 | Wakelock during active workout | 1h |
 | W3 | Stale workout timeout UX | 2-3h | When `startedAt` >6h ago on app open, show prominent modal: "Workout from [date] still open — Resume or Discard?" (deferred from Step 12.3) |
 | W3b | Input length limits (TextField + server CHECK) | 1-2h |
@@ -585,7 +586,7 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 
 ### Suggested Sprint Order
 
-**Sprint A (1 week) — Store-ready:** B1, B4, B5, P6, P7, B2, B3, W1, W2
+**Sprint A — Store-ready:** ~~B5~~ ~~P7~~ ~~W1~~ (PR #42), remaining: B1, B4, P6 (PR 2), B2, B3, W2 (PR 3)
 **Sprint B (1 week) — Retention + polish:** P1, P2, P4, P8, UX1-UX8
 **Sprint C (1 week) — Resilience:** B6, B7, W3, W3b, W6, W8
 **Deferred to v1.1:** P5 (1RM), W4 (push notifications), W5 (CSV export)
