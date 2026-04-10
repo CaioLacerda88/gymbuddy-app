@@ -4,9 +4,69 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ---
 
-## Next up: Phase 13a Sprint A — PR 5 (observability)
+## In progress: Phase 13a Sprint A — PR 5 (observability)
 
-**Status (2026-04-10):** PR 4 (W2 wakelock) shipped as #45 — squash-merged to main. PR 5 still needs design work before implementation.
+**Status (2026-04-10):** Plan written (`docs/superpowers/plans/2026-04-10-pr5-observability.md`), branch `feature/phase13a-sprintA-pr5-observability`, **Tasks 1-11 of 19 implemented + committed**. Paused before Task 12 to restart for `.mcp.json` (openai-gpt-image) to load. Resume at Task 12.
+
+### Execution mode
+Subagent-driven development (superpowers:subagent-driven-development). One tech-lead subagent per task, spec + quality review between tasks, TaskList tracks state.
+
+### Branch state
+Feature branch: `feature/phase13a-sprintA-pr5-observability` (from main @ f9c95ee)
+
+Commits so far (bottom = oldest):
+1. `eebde73` docs(phase13a): add PR 5 observability plan + WIP decisions
+2. `62f5627` feat(core): add analytics_events table migration (PR 5) — Task 1
+3. `b771ce4` feat(analytics): add typed AnalyticsEvent union for 9 events (PR 5) — Task 2
+4. `0eaba7e` feat(analytics): add AnalyticsRepository with fire-and-forget insert (PR 5) — Task 3
+5. `5492d77` feat(analytics): add platform info helper + repository provider (PR 5) — Task 4
+6. `a795bbd` chore(deps): add sentry_flutter + SENTRY_DSN env key (PR 5) — Task 5
+7. `3494629` feat(core): add SentryReport gating wrapper (PR 5) — Task 6
+8. `3fa3567` feat(core): wire SentryFlutter.init with strict PII scrubbing (PR 5) — Task 7
+9. `22c89d7` feat(core): capture unexpected repo errors to Sentry (PR 5) — Task 8
+10. `46ee672` feat(core): add SentryNavigatorObserver with UUID scrubbing (PR 5) — Task 9
+11. `da92413` feat(profile): add crash reports opt-out provider (PR 5) — Task 10
+12. `b3df7a7` feat(profile): add Send crash reports toggle in Privacy section (PR 5) — Task 11
+
+**Current test count:** 939 passing (935 baseline + 4 new in crash_reports_enabled_provider_test). Analyzer: 0 issues.
+
+### Deviations applied during implementation (not in the plan file)
+- **Task 2 (AnalyticsEvent):** `name` getter uses Freezed's `map` instead of `when` to avoid 25 `unnecessary_underscores` analyzer infos that `--fatal-infos` treats as failures. `props` getter still uses `when` since it destructures fields. Semantically equivalent.
+- **Task 3 (AnalyticsRepository test Fake):** Two fixes to the spec's Fake infrastructure because it wouldn't compile/run as written:
+  1. Removed `PostgrestQueryOptions? options` from `_FakeInsertBuilder.insert` — that parameter doesn't exist in pinned `postgrest 2.6.0`.
+  2. Rewrote `_FakeErrorFilterBuilder.then` to actively invoke the `onError` callback — the spec version returned `Future.error(_error)` but that hangs Dart's `await` because when you implement `Future<T>`, `await` passes its own internal `onError` to `.then()` and the Fake must call it to signal the awaiter's completer. Added `// ignore: must_be_immutable` on the Fake (intentional test spy).
+  - Production code (`analytics_repository.dart`) matches spec exactly.
+- **Task 7 (sentry_init.dart):** Three API adjustments to match installed `sentry_flutter 8.14.2` (verified against the installed source):
+  1. Callback signatures typed with concrete types: `(SentryEvent event, Hint hint)` for `beforeSend`, `(Breadcrumb? crumb, Hint hint)` for `beforeBreadcrumb`.
+  2. `event.copyWith(user: null)` CANNOT clear the user — `copyWith` internally uses `user: user ?? this.user`, so null preserves existing. When no Supabase user exists, the code now returns `event` unchanged (relies on `sendDefaultPii: false` to keep user fields empty). Inline comment added so nobody re-introduces the bug.
+  3. `sanitizeRouteName` return type changed from `RouteSettings` → `RouteSettings?` to match the `RouteNameExtractor` typedef.
+- **Task 7 (package_info_plus):** Pinned to `^9.0.1` (10.0.0 requires a newer Dart SDK).
+- **Task 10 (crash_reports_enabled_provider_test):** Uses `Directory.systemTemp.createTemp` + `Hive.init(tempDir.path)` instead of the spec's `FakePathProviderPlatform` + `Hive.initFlutter`. Reason: `path_provider_platform_interface` and `plugin_platform_interface` are transitive-only in pubspec.lock — importing them requires new dev_deps AND trips `depend_on_referenced_packages`. The temp-dir pattern is already the house style (matches `test/unit/features/workouts/data/workout_local_storage_test.dart`) and needs zero new packages.
+- **Task 11 (profile_screen + widget tests):** Plan literal had `BorderRadius.circular(12)` and `surfaceContainerLow`; used the existing project conventions instead — `BorderRadius.circular(kRadiusMd)` and `theme.cardTheme.color ?? theme.colorScheme.surface` — to match `DATA MANAGEMENT` / `LEGAL` sections.
+- **Task 11 (profile widget tests):** `ProfileScreen` now watches `crashReportsEnabledProvider` which reads `Hive.box(HiveService.userPrefs)`. The 3 profile widget test files (`profile_screen_test.dart`, `profile_stats_test.dart`, `profile_stats_navigation_test.dart`) didn't initialize Hive → HiveError. Fix: added `setUpAll` to each that opens a temp-dir-backed `user_prefs` box, with matching `tearDownAll` cleanup. Zero changes to the 8+ ProviderScope blocks — fixing the test setup is cleaner than overriding the provider in every scope.
+
+### Tasks remaining (8/19)
+- [ ] **Task 12** — Privacy policy edits (both `assets/legal/privacy_policy.md` and `docs/privacy_policy.md`, preserving Jekyll front-matter in docs/). 5 targeted changes. Plan lines 1599-1689.
+- [ ] **Task 13** — Fire `onboarding_completed` in `_finishOnboarding`. Plan lines 1693-1753.
+- [ ] **Task 14** — Wire workout lifecycle (3 events + breadcrumbs) into `active_workout_notifier.dart` with `_trackWorkoutEvent` helper. Plan lines 1757-1938. Most complex event-wire task.
+- [ ] **Task 15** — Fire `pr_celebration_seen` (initState + addPostFrameCallback) and `add_to_plan_prompt_responded` (3-way action enum) in `pr_celebration_screen.dart`. Plan lines 1942-2060.
+- [ ] **Task 16** — Refactor `_savePlan` in `plan_management_screen.dart` to accept `{usedAutofill, replacedExisting}` + fire `week_plan_saved`. Update all 4 call sites. Plan lines 2064-2156.
+- [ ] **Task 17** — Fire `week_complete` in `WeeklyPlanNotifier.markRoutineComplete` on `!wasAllComplete && isNowAllComplete` transition. Plan lines 2160-2251.
+- [ ] **Task 18** — Auth breadcrumbs (sign-up/sign-in/sign-out) + `account_deleted` event with `await` (not unawaited — CASCADE DELETE race). Plan lines 2255-2390.
+- [ ] **Task 19** — Final verification gate: `make ci`, local migration apply, E2E smoke, manual event verification, `gh pr create`. Plan lines 2394-2500.
+
+### How to resume after restart (for `.mcp.json` load)
+1. Read `tasks/WIP.md` (this file) and `docs/superpowers/plans/2026-04-10-pr5-observability.md`
+2. `git checkout feature/phase13a-sprintA-pr5-observability` (should already be checked out)
+3. Verify baseline: `export PATH="/c/flutter/bin:$PATH" && dart analyze --fatal-infos && flutter test` → expect 939 passing
+4. Resume TaskList from task #17 (plan Task 12 — Privacy policy edits). The TaskList IDs are #6-#24 mapping to plan Tasks 1-19.
+5. New plan Task per commit: user asked to commit after every task completes (short of final verification task). Keep this habit.
+6. Keep using `superpowers:subagent-driven-development` workflow: dispatch `tech-lead` per task with the full step-by-step text from the plan, then verify the diff + run the full suite before advancing.
+7. MCP note: `.mcp.json` at repo root registers `openai-gpt-image` MCP server. Needs `OPENAI_API_KEY` in shell env. Should load automatically on Claude Code restart; verify with `/mcp`.
+
+### Prior design decisions (locked in before implementation)
+
+All 5 design questions are already resolved and cemented in the plan. Preserved here for context:
 
 ### PR 5: B2 + B3 — Observability (Sentry + Analytics)  (5-8h, needs design)
 
