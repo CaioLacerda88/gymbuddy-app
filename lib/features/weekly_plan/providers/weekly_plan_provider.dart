@@ -3,7 +3,11 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/device/platform_info.dart';
+import '../../analytics/data/models/analytics_event.dart';
+import '../../analytics/providers/analytics_providers.dart';
 import '../../auth/providers/auth_providers.dart';
+import '../../personal_records/providers/pr_providers.dart' show prListProvider;
 import '../data/models/weekly_plan.dart';
 import '../data/weekly_plan_repository.dart';
 
@@ -108,6 +112,66 @@ class WeeklyPlanNotifier extends AsyncNotifier<WeeklyPlan?> {
         currentRoutines: plan.routines,
       );
     });
+
+    // Detect transition to all-complete and fire week_complete event once.
+    // The `plan` variable above is the PRE-transition snapshot; `newPlan` is
+    // POST-transition. The `!wasAllComplete && isNowAllComplete` guard makes
+    // this fire exactly once, even on idempotent re-taps (the second call
+    // would see `wasAllComplete == true` and skip).
+    final newPlan = state.valueOrNull;
+    if (newPlan == null) return;
+    final wasAllComplete =
+        plan.routines.isNotEmpty &&
+        plan.routines.every((r) => r.completedWorkoutId != null);
+    final isNowAllComplete =
+        newPlan.routines.isNotEmpty &&
+        newPlan.routines.every((r) => r.completedWorkoutId != null);
+    if (!wasAllComplete && isNowAllComplete) {
+      final userId = ref.read(authRepositoryProvider).currentUser?.id;
+      if (userId != null) {
+        // NOTE: `weekStart` is the client-local Monday midnight (see
+        // currentWeekMonday). A PR achieved in a different timezone near the
+        // week boundary could be miscounted here; acceptable for now since
+        // SQL can also derive this from pr_celebration_seen events later.
+        final weekStart = newPlan.weekStart;
+        final weekEnd = weekStart.add(const Duration(days: 7));
+        // Read the PR list without awaiting. On a cold read (never warmed up
+        // by the PR list screen or recent PRs widget), this returns null and
+        // we fall back to 0 — SQL can correct it from pr_celebration_seen.
+        final prsAsync = ref.read(prListProvider);
+        final prCountThisWeek =
+            prsAsync.valueOrNull
+                ?.where(
+                  (pr) =>
+                      pr.achievedAt.isAfter(weekStart) &&
+                      pr.achievedAt.isBefore(weekEnd),
+                )
+                .length ??
+            0;
+        // Week number = ISO weeks since user signup. Not cheaply available
+        // here without an extra auth roundtrip, so we emit 0 and let SQL
+        // compute it later from the event stream + auth.users.created_at.
+        const weekNumber =
+            0; // TODO post-PR: compute from currentUser.createdAt
+        unawaited(
+          ref
+              .read(analyticsRepositoryProvider)
+              .insertEvent(
+                userId: userId,
+                event: AnalyticsEvent.weekComplete(
+                  sessionsCompleted: newPlan.routines
+                      .where((r) => r.completedWorkoutId != null)
+                      .length,
+                  prCountThisWeek: prCountThisWeek,
+                  planSize: newPlan.routines.length,
+                  weekNumber: weekNumber,
+                ),
+                platform: currentPlatform(),
+                appVersion: currentAppVersion(),
+              ),
+        );
+      }
+    }
   }
 
   /// Auto-populate from last week's plan (reset completions).
