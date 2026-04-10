@@ -1,10 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/device/platform_info.dart';
 import '../../../shared/widgets/gradient_button.dart';
 import '../../../shared/widgets/app_text_field.dart';
+import '../../analytics/data/models/analytics_event.dart';
+import '../../analytics/providers/analytics_providers.dart';
 import '../../profile/providers/profile_providers.dart';
+import '../providers/auth_providers.dart';
 import '../providers/onboarding_provider.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
@@ -67,6 +73,25 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             trainingFrequencyPerWeek: _trainingFrequency,
           );
       ref.read(needsOnboardingProvider.notifier).state = false;
+
+      // Fire analytics — best-effort, not awaited so it can't block navigation.
+      final userId = ref.read(authRepositoryProvider).currentUser?.id;
+      if (userId != null) {
+        unawaited(
+          ref
+              .read(analyticsRepositoryProvider)
+              .insertEvent(
+                userId: userId,
+                event: AnalyticsEvent.onboardingCompleted(
+                  fitnessLevel: _fitnessLevel,
+                  trainingFrequency: _trainingFrequency,
+                ),
+                platform: currentPlatform(),
+                appVersion: currentAppVersion(),
+              ),
+        );
+      }
+
       if (mounted) context.go('/home');
     } catch (e) {
       if (mounted) {
