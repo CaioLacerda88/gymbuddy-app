@@ -16,6 +16,10 @@ class CrashReportsEnabledNotifier extends Notifier<bool> {
   bool build() {
     final box = Hive.box(HiveService.userPrefs);
     final value = box.get(_hiveKey, defaultValue: true) as bool;
+    // Keep the static SentryReport flag in sync with the Hive-backed state
+    // so invalidation/rebuild (hot reload, future ref.invalidate) cannot
+    // diverge the runtime toggle from the persisted preference.
+    SentryReport.setEnabled(value);
     return value;
   }
 

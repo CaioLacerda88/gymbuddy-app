@@ -65,4 +65,43 @@ void main() {
     expect(container.read(crashReportsEnabledProvider), true);
     expect(SentryReport.isEnabled, true);
   });
+
+  test(
+    'build() syncs SentryReport.isEnabled with the persisted Hive value',
+    () async {
+      // Regression for PR #46 reviewer finding 3: provider rebuild (hot reload,
+      // ref.invalidate) must re-apply the persisted flag to the static
+      // SentryReport so the notifier state and the gating flag cannot diverge.
+
+      // Case 1: persisted false -> build() must push false to SentryReport
+      // even when the static flag starts out as true (the default from setUp).
+      await Hive.box(HiveService.userPrefs).put('crash_reports_enabled', false);
+      expect(
+        SentryReport.isEnabled,
+        true,
+        reason: 'setUp seeds SentryReport to enabled before each test',
+      );
+
+      final container1 = ProviderContainer();
+      addTearDown(container1.dispose);
+
+      // First read triggers build().
+      expect(container1.read(crashReportsEnabledProvider), false);
+      expect(
+        SentryReport.isEnabled,
+        false,
+        reason: 'build() must sync the static flag with the Hive value',
+      );
+
+      // Case 2: flip Hive to true, invalidate, rebuild -> static flag flips back.
+      await Hive.box(HiveService.userPrefs).put('crash_reports_enabled', true);
+      container1.invalidate(crashReportsEnabledProvider);
+      expect(container1.read(crashReportsEnabledProvider), true);
+      expect(
+        SentryReport.isEnabled,
+        true,
+        reason: 'rebuild after invalidate must re-sync the static flag',
+      );
+    },
+  );
 }
