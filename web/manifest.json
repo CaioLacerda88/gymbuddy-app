@@ -1,11 +1,11 @@
 {
-    "name": "gymbuddy_app",
-    "short_name": "gymbuddy_app",
+    "name": "GymBuddy",
+    "short_name": "GymBuddy",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "GymBuddy — Track every rep, every time.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

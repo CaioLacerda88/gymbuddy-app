@@ -27,6 +27,7 @@ import '../../features/weekly_plan/ui/plan_management_screen.dart';
 import '../../features/workouts/ui/workout_detail_screen.dart';
 import '../../features/routines/models/routine.dart';
 import '../../features/workouts/ui/workout_history_screen.dart';
+import '../../shared/widgets/legal_doc_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -45,10 +46,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         return location == '/splash' ? null : '/splash';
       }
 
-      // Not logged in → go to login (unless already there or on email confirmation).
+      // Not logged in → go to login (unless already there, on email
+      // confirmation, or viewing a public legal page).
       if (!isLoggedIn) {
         final hasSignupPending = ref.read(signupPendingEmailProvider) != null;
         if (location == '/email-confirmation' && hasSignupPending) return null;
+        if (location == '/privacy-policy' || location == '/terms-of-service') {
+          return null;
+        }
         return location == '/login' ? null : '/login';
       }
 
@@ -80,6 +85,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/onboarding',
         builder: (context, state) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        path: '/privacy-policy',
+        builder: (context, state) => const LegalDocScreen(
+          title: 'Privacy Policy',
+          assetPath: 'assets/legal/privacy_policy.md',
+        ),
+      ),
+      GoRoute(
+        path: '/terms-of-service',
+        builder: (context, state) => const LegalDocScreen(
+          title: 'Terms of Service',
+          assetPath: 'assets/legal/terms_of_service.md',
+        ),
       ),
       GoRoute(
         path: '/workout/active',

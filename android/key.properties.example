@@ -1,0 +1,16 @@
+# Template only — copy this file to android/key.properties and fill in real
+# values. NEVER put real credentials in this file: android/key.properties.example
+# is committed to git, but android/key.properties is gitignored.
+#
+# Generate a release keystore (run from repo root):
+#   keytool -genkey -v \
+#     -keystore android/keystore/gymbuddy-release.jks \
+#     -keyalg RSA -keysize 2048 -validity 10000 \
+#     -alias gymbuddy-release
+#
+# storeFile is resolved relative to the android/ folder (not android/app/), so
+# the default below points at android/keystore/gymbuddy-release.jks.
+storePassword=YOUR_STORE_PASSWORD
+keyPassword=YOUR_KEY_PASSWORD
+keyAlias=gymbuddy-release
+storeFile=keystore/gymbuddy-release.jks

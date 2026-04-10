@@ -110,6 +110,26 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 24),
+            // Legal section
+            Text(
+              'LEGAL',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _LegalTile(
+              title: 'Privacy Policy',
+              icon: Icons.privacy_tip_outlined,
+              onTap: () => context.push('/privacy-policy'),
+            ),
+            const SizedBox(height: 8),
+            _LegalTile(
+              title: 'Terms of Service',
+              icon: Icons.description_outlined,
+              onTap: () => context.push('/terms-of-service'),
+            ),
+            const SizedBox(height: 24),
             // Logout button
             const _LogoutButton(),
           ],
@@ -498,6 +518,49 @@ class _WeeklyGoalRow extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _LegalTile extends StatelessWidget {
+  const _LegalTile({
+    required this.title,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String title;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      color: theme.cardTheme.color ?? theme.colorScheme.surface,
+      borderRadius: BorderRadius.circular(kRadiusMd),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(kRadiusMd),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+              const SizedBox(width: 12),
+              Expanded(child: Text(title, style: theme.textTheme.titleMedium)),
+              Icon(
+                Icons.chevron_right,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

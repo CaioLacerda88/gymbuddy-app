@@ -332,8 +332,9 @@ void main() {
       await tester.pumpWidget(buildTestWidget(profile: profile));
       await tester.pump();
 
-      // Both Manage Data and Weekly Goal rows have chevron icons.
-      expect(find.byIcon(Icons.chevron_right), findsNWidgets(2));
+      // Weekly Goal, Manage Data, Privacy Policy, and Terms of Service rows
+      // each render a chevron icon.
+      expect(find.byIcon(Icons.chevron_right), findsNWidgets(4));
     });
 
     // PO-039: The display name must show an edit icon and be tappable, opening
@@ -433,6 +434,65 @@ void main() {
         expect(textField.controller?.text, 'Jane Smith');
       },
     );
+
+    testWidgets(
+      'shows LEGAL section with Privacy Policy and Terms of Service',
+      (tester) async {
+        const profile = Profile(
+          id: 'user-1',
+          displayName: 'Jane',
+          weightUnit: 'kg',
+        );
+
+        await tester.pumpWidget(buildTestWidget(profile: profile));
+        await tester.pump();
+
+        expect(find.text('LEGAL'), findsOneWidget);
+        expect(find.text('Privacy Policy'), findsOneWidget);
+        expect(find.text('Terms of Service'), findsOneWidget);
+        expect(find.byIcon(Icons.privacy_tip_outlined), findsOneWidget);
+        expect(find.byIcon(Icons.description_outlined), findsOneWidget);
+      },
+    );
+
+    testWidgets('Privacy Policy legal tile is tappable', (tester) async {
+      const profile = Profile(
+        id: 'user-1',
+        displayName: 'Jane',
+        weightUnit: 'kg',
+      );
+
+      await tester.pumpWidget(buildTestWidget(profile: profile));
+      await tester.pump();
+
+      // Ensure the tile exists and is wired up to an InkWell (tappable).
+      expect(
+        find.ancestor(
+          of: find.text('Privacy Policy'),
+          matching: find.byType(InkWell),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('Terms of Service legal tile is tappable', (tester) async {
+      const profile = Profile(
+        id: 'user-1',
+        displayName: 'Jane',
+        weightUnit: 'kg',
+      );
+
+      await tester.pumpWidget(buildTestWidget(profile: profile));
+      await tester.pump();
+
+      expect(
+        find.ancestor(
+          of: find.text('Terms of Service'),
+          matching: find.byType(InkWell),
+        ),
+        findsOneWidget,
+      );
+    });
 
     testWidgets(
       'PO-039: cancelling the edit dialog does not close the profile screen',

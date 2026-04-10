@@ -332,12 +332,52 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           : "Don't have an account? Sign up",
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  _LegalFooter(),
                 ],
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _LegalFooter extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final mutedColor = theme.colorScheme.onSurface.withValues(alpha: 0.6);
+    final linkColor = theme.colorScheme.primary.withValues(alpha: 0.85);
+    final baseStyle = theme.textTheme.bodySmall?.copyWith(color: mutedColor);
+    final linkStyle = theme.textTheme.bodySmall?.copyWith(
+      color: linkColor,
+      fontWeight: FontWeight.w600,
+    );
+
+    TextButton legalButton(String label, String path) {
+      return TextButton(
+        onPressed: () => context.push(path),
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+          minimumSize: const Size(0, 0),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        child: Text(label, style: linkStyle),
+      );
+    }
+
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Text('By continuing, you agree to our ', style: baseStyle),
+        legalButton('Terms of Service', '/terms-of-service'),
+        Text(' and ', style: baseStyle),
+        legalButton('Privacy Policy', '/privacy-policy'),
+        Text('.', style: baseStyle),
+      ],
     );
   }
 }
