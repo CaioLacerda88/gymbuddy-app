@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 /// Returns the current platform as a short string: 'android', 'ios', 'web',
 /// 'macos', 'windows', 'linux', 'fuchsia', or 'unknown'.
@@ -33,4 +34,15 @@ String? currentAppVersion() => _cachedAppVersion;
 /// Sets the cached app version. Call once at app boot.
 void setAppVersion(String version) {
   _cachedAppVersion = version;
+}
+
+/// Reads the app version from the platform and caches it for later retrieval.
+/// Call once at app boot, before any analytics insert.
+Future<void> initAppVersion() async {
+  try {
+    final info = await PackageInfo.fromPlatform();
+    _cachedAppVersion = '${info.version}+${info.buildNumber}';
+  } catch (_) {
+    _cachedAppVersion = null;
+  }
 }
