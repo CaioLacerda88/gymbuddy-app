@@ -9,7 +9,13 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymbuddy_app/core/data/base_repository.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
+import 'package:gymbuddy_app/features/analytics/data/analytics_repository.dart';
+import 'package:gymbuddy_app/features/analytics/data/models/analytics_event.dart';
+import 'package:gymbuddy_app/features/analytics/providers/analytics_providers.dart';
+import 'package:gymbuddy_app/features/auth/data/auth_repository.dart';
+import 'package:gymbuddy_app/features/auth/providers/auth_providers.dart';
 import 'package:gymbuddy_app/features/profile/models/profile.dart';
 import 'package:gymbuddy_app/features/profile/providers/profile_providers.dart';
 import 'package:gymbuddy_app/features/routines/models/routine.dart';
@@ -19,6 +25,7 @@ import 'package:gymbuddy_app/features/weekly_plan/providers/weekly_plan_provider
 import 'package:gymbuddy_app/features/weekly_plan/ui/plan_management_screen.dart';
 import 'package:gymbuddy_app/features/workouts/models/workout.dart';
 import 'package:gymbuddy_app/features/workouts/providers/workout_history_providers.dart';
+import 'package:mocktail/mocktail.dart';
 
 // ---------------------------------------------------------------------------
 // Stubs
@@ -91,6 +98,23 @@ class _EmptyHistoryNotifier extends AsyncNotifier<List<Workout>>
   Future<void> refresh() async {}
 }
 
+class _MockAuthRepository extends Mock implements AuthRepository {}
+
+/// No-op analytics repo — prevents tests from touching `Supabase.instance`
+/// when `_savePlan` fires `week_plan_saved`.
+class _FakeAnalyticsRepository extends BaseRepository
+    implements AnalyticsRepository {
+  const _FakeAnalyticsRepository();
+
+  @override
+  Future<void> insertEvent({
+    required String userId,
+    required AnalyticsEvent event,
+    required String? platform,
+    required String? appVersion,
+  }) async {}
+}
+
 // ---------------------------------------------------------------------------
 // Factories
 // ---------------------------------------------------------------------------
@@ -129,12 +153,21 @@ Widget _build({
   required List<Routine> routines,
   int trainingFrequency = 3,
 }) {
+  // Null-user auth mock — `_savePlan` reads `.currentUser?.id` and early-returns
+  // when null, short-circuiting the analytics insert without touching Supabase.
+  final mockAuth = _MockAuthRepository();
+  when(() => mockAuth.currentUser).thenReturn(null);
+
   return ProviderScope(
     overrides: [
       weeklyPlanProvider.overrideWith(() => _WeeklyPlanStub(plan)),
       routineListProvider.overrideWith(() => _RoutineListStub(routines)),
       profileProvider.overrideWith(() => _ProfileStub(trainingFrequency)),
       workoutHistoryProvider.overrideWith(() => _EmptyHistoryNotifier()),
+      authRepositoryProvider.overrideWithValue(mockAuth),
+      analyticsRepositoryProvider.overrideWithValue(
+        const _FakeAnalyticsRepository(),
+      ),
     ],
     child: MaterialApp(
       theme: AppTheme.dark,

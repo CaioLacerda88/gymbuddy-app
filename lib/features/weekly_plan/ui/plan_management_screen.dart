@@ -1,8 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/device/platform_info.dart';
 import '../../../core/theme/radii.dart';
+import '../../analytics/data/models/analytics_event.dart';
+import '../../analytics/providers/analytics_providers.dart';
+import '../../auth/providers/auth_providers.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../../routines/models/routine.dart';
 import '../../routines/providers/notifiers/routine_list_notifier.dart';
@@ -166,7 +172,7 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
       _bucketRoutines.insert(newIndex, item);
       _renumber();
     });
-    _savePlan();
+    _savePlan(usedAutofill: false, replacedExisting: false);
   }
 
   void _renumber() {
@@ -182,7 +188,7 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
       _bucketRoutines.removeAt(index);
       _renumber();
     });
-    _savePlan();
+    _savePlan(usedAutofill: false, replacedExisting: false);
 
     // Undo snackbar.
     if (mounted) {
@@ -200,7 +206,7 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
                 _bucketRoutines.insert(safeIndex, removed);
                 _renumber();
               });
-              _savePlan();
+              _savePlan(usedAutofill: false, replacedExisting: false);
             },
           ),
         ),
@@ -235,7 +241,7 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
           );
         }
       });
-      _savePlan();
+      _savePlan(usedAutofill: false, replacedExisting: false);
     }
   }
 
@@ -301,13 +307,16 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
         : ranked.length;
     final selected = ranked.take(count).toList();
 
+    // Capture BEFORE the mutation so we can record whether autofill
+    // replaced an existing plan.
+    final wasNotEmpty = _bucketRoutines.isNotEmpty;
     setState(() {
       _dirty = true;
       _bucketRoutines = selected.indexed.map((entry) {
         return BucketRoutine(routineId: entry.$2.id, order: entry.$1 + 1);
       }).toList();
     });
-    _savePlan();
+    _savePlan(usedAutofill: true, replacedExisting: wasNotEmpty);
   }
 
   Future<void> _confirmClear(BuildContext ctx) async {
@@ -337,8 +346,30 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
     context.pop();
   }
 
-  void _savePlan() {
+  void _savePlan({required bool usedAutofill, required bool replacedExisting}) {
     ref.read(weeklyPlanProvider.notifier).upsertPlan(_bucketRoutines);
+
+    // Fire analytics after initiating the save. We do not await the upsert —
+    // analytics is best-effort and the UI must remain responsive.
+    final userId = ref.read(authRepositoryProvider).currentUser?.id;
+    if (userId == null) return;
+    final trainingFrequency =
+        ref.read(profileProvider).valueOrNull?.trainingFrequencyPerWeek ?? 3;
+    unawaited(
+      ref
+          .read(analyticsRepositoryProvider)
+          .insertEvent(
+            userId: userId,
+            event: AnalyticsEvent.weekPlanSaved(
+              routineCount: _bucketRoutines.length,
+              atSoftCap: _bucketRoutines.length >= trainingFrequency,
+              usedAutofill: usedAutofill,
+              replacedExisting: replacedExisting,
+            ),
+            platform: currentPlatform(),
+            appVersion: currentAppVersion(),
+          ),
+    );
   }
 }
 
