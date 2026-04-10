@@ -4,6 +4,18 @@ Patterns and mistakes to avoid. Reviewed at session start.
 
 ---
 
+## 2026-04-10: Placeholder cleanup needs a whole-repo grep, not per-file surgery
+
+**Mistake:** Round 1 QA flagged one `(placeholder)` instance in `assets/legal/privacy_policy.md` section 1 and the orchestrator briefed tech-lead to fix exactly that one line (plus the `docs/` mirror). Tech-lead did exactly what was asked. Round 2 QA (against live Supabase) then found FIVE more instances the first pass had missed: privacy_policy section 11, terms_of_service sections 11+12, docs/index.md, and both docs/ ToS mirrors — plus a `[JURISDICTION]` template token in the ToS governing-law clause. A cleanup pass that should have been one PR became a two-commit amend cycle.
+
+**Root cause:** Round 1's QA agent cited one `file:line` in its report and the orchestrator trusted the citation to be exhaustive. It wasn't. The agent had grepped one search term in one file, not the whole pattern class across the whole repo.
+
+**Lesson:** Placeholder-cleanup tasks are inherently whole-repo. Before declaring them scoped, always run `Grep(pattern: "placeholder|\[[A-Z_]+\]|TODO|TBD", path: repo)` across `.md` (and any other text-based user-facing asset directory). The orchestrator must do this grep itself when writing the fix brief — do NOT delegate enumeration to a single-file QA citation.
+
+**Rule:** For any "clean up X across legal/docs/copy" task: before dispatching the fix agent, the orchestrator runs a pattern grep across all user-facing asset directories and includes the complete match list in the brief. QA agents cite representative instances, not exhaustive ones — treat their reports as "at least these", not "only these".
+
+---
+
 ## 2026-04-09: context.go() vs context.push() on Flutter web with GoRouter
 
 **Mistake:** Changed all `context.go('/workout/active')` to `context.push()` to "ensure back-stack entry" for Android back button. This broke 3 E2E tests that rely on page reload.

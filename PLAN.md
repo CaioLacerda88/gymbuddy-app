@@ -34,6 +34,7 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 12.3c | Standalone Routine → Plan Prompt | DONE | #41 |
 | 13a-PR1 | Account Deletion + Volume Unit + OAuth Deep Link | DONE | #42 |
 | 13a-PR2 | Release Signing + Branding + Privacy Policy & ToS (icon DEFERRED) | DONE | #43 |
+| 13a-PR3 | Sprint A QA follow-ups (legal polish, PWA theme, test coverage, live delete E2E) | DONE | #44 |
 | 13 | Production Readiness (remaining Sprint A: B2, B3, W2; icon post-gamification) | IN PROGRESS | - |
 | 14 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
 | 15 | Gamification Advanced (Quests, Stats Panel) | TODO | - |
@@ -587,7 +588,7 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 
 ### Suggested Sprint Order
 
-**Sprint A — Store-ready:** ~~B5~~ ~~P7~~ ~~W1~~ (PR #42), ~~B1~~ ~~B4~~ ~~P6~~ (PR #43, icon deferred), remaining: B2, B3, W2 (PR 3)
+**Sprint A — Store-ready:** ~~B5~~ ~~P7~~ ~~W1~~ (PR #42), ~~B1~~ ~~B4~~ ~~P6~~ (PR #43, icon deferred), ~~QA follow-ups: legal placeholder cleanup across all 5 legal docs, Brazil jurisdiction with CDC carve-out, PWA theme colors, DELETE gate partial-string tests, volume-unit widget tests, live `manage-data.smoke.spec.ts` with backend-verified delete + cascade~~ (PR #44). Remaining for Sprint A: B2 Sentry, B3 analytics, W2 wakelock (PR 5).
 **Sprint B (1 week) — Retention + polish:** P1, P2, P4, P8, UX1-UX8
 **Sprint C (1 week) — Resilience:** B6, B7, W3, W3b, W6, W8
 **Deferred to v1.1:** P5 (1RM), W4 (push notifications), W5 (CSV export)
