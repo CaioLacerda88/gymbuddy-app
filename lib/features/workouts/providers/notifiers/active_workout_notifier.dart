@@ -4,7 +4,11 @@ import 'dart:developer';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/device/platform_info.dart';
 import '../../../../core/exceptions/app_exception.dart' as app;
+import '../../../../core/observability/sentry_report.dart';
+import '../../../analytics/data/models/analytics_event.dart';
+import '../../../analytics/providers/analytics_providers.dart';
 import '../../../auth/providers/auth_providers.dart';
 import '../../../exercises/models/exercise.dart';
 import '../../../personal_records/domain/pr_detection_service.dart';
@@ -74,6 +78,16 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
         exercises: const [],
       );
       _saveToHive(activeState);
+      _trackWorkoutEvent(
+        event: const AnalyticsEvent.workoutStarted(
+          source: 'empty',
+          routineId: null,
+          exerciseCount: 0,
+          hadActiveWorkoutConflict: false,
+        ),
+        breadcrumbMessage: 'started empty workout',
+        breadcrumbData: {'workout_id': workout.id},
+      );
       return activeState;
     });
   }
@@ -146,6 +160,20 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
         routineId: config.routineId,
       );
       _saveToHive(activeState);
+      // TODO post-PR: differentiate planned_bucket when config exposes the flag
+      _trackWorkoutEvent(
+        event: AnalyticsEvent.workoutStarted(
+          source: 'routine_card',
+          routineId: config.routineId,
+          exerciseCount: config.exercises.length,
+          hadActiveWorkoutConflict: false,
+        ),
+        breadcrumbMessage: 'started workout from routine',
+        breadcrumbData: {
+          'workout_id': workout.id,
+          'routine_id': config.routineId,
+        },
+      );
       return activeState;
     });
   }
@@ -502,6 +530,27 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
     final current = state.value;
     if (current == null) return;
 
+    final elapsedSeconds = DateTime.now()
+        .toUtc()
+        .difference(current.workout.startedAt)
+        .inSeconds;
+    final completedSets = current.exercises
+        .expand((e) => e.sets)
+        .where((s) => s.isCompleted)
+        .length;
+    // TODO post-PR: differentiate planned_bucket when config exposes the flag
+    final source = current.routineId != null ? 'routine_card' : 'empty';
+    _trackWorkoutEvent(
+      event: AnalyticsEvent.workoutDiscarded(
+        elapsedSeconds: elapsedSeconds,
+        completedSets: completedSets,
+        exerciseCount: current.exercises.length,
+        source: source,
+      ),
+      breadcrumbMessage: 'discarded workout',
+      breadcrumbData: {'workout_id': current.workout.id},
+    );
+
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       await _localStorage.clearActiveWorkout();
@@ -525,6 +574,9 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
     state = const AsyncLoading();
 
     PRDetectionResult? prResult;
+    // Hoisted so the analytics event can still report a number (0) when PR
+    // detection throws before the count is fetched.
+    int workoutCount = 0;
 
     state = await AsyncValue.guard(() async {
       final now = DateTime.now().toUtc();
@@ -559,7 +611,7 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
 
         // Fetch total finished workout count for accurate first-workout detection.
         // The current workout is already saved at this point, so count >= 1.
-        final workoutCount = await _repo.getFinishedWorkoutCount(_userId);
+        workoutCount = await _repo.getFinishedWorkoutCount(_userId);
 
         prResult = prService.detectPRs(
           userId: _userId,
@@ -620,6 +672,31 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
         );
       }
 
+      final totalSets = sets.length;
+      final completedSetsCount = sets.where((s) => s.isCompleted).length;
+      final incompleteSetsSkipped = totalSets - completedSetsCount;
+      final hadPr = prResult?.newRecords.isNotEmpty ?? false;
+      // TODO post-PR: differentiate planned_bucket when config exposes the flag
+      final source = current.routineId != null ? 'routine_card' : 'empty';
+      _trackWorkoutEvent(
+        event: AnalyticsEvent.workoutFinished(
+          durationSeconds: durationSeconds,
+          exerciseCount: exercises.length,
+          totalSets: totalSets,
+          completedSets: completedSetsCount,
+          incompleteSetsSkipped: incompleteSetsSkipped,
+          hadPr: hadPr,
+          source: source,
+          workoutNumber: workoutCount,
+        ),
+        breadcrumbMessage: 'finished workout',
+        breadcrumbData: {
+          'workout_id': workout.id,
+          'workout_number': workoutCount,
+          'had_pr': hadPr,
+        },
+      );
+
       await _localStorage.clearActiveWorkout();
       return null;
     });
@@ -637,6 +714,33 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
           level: 900,
         );
       }),
+    );
+  }
+
+  /// Fire-and-forget insert of a product analytics event plus a matching
+  /// Sentry breadcrumb.
+  ///
+  /// Only called from workout lifecycle methods where the user is already
+  /// authenticated (a workout is active), so `_userId` is safe to access.
+  /// The underlying [AnalyticsRepository.insertEvent] swallows all errors.
+  void _trackWorkoutEvent({
+    required AnalyticsEvent event,
+    required String breadcrumbMessage,
+    Map<String, Object?>? breadcrumbData,
+  }) {
+    final analyticsRepo = ref.read(analyticsRepositoryProvider);
+    unawaited(
+      analyticsRepo.insertEvent(
+        userId: _userId,
+        event: event,
+        platform: currentPlatform(),
+        appVersion: currentAppVersion(),
+      ),
+    );
+    SentryReport.addBreadcrumb(
+      category: 'workout',
+      message: breadcrumbMessage,
+      data: breadcrumbData,
     );
   }
 }
