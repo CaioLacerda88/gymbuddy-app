@@ -1,21 +1,54 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymbuddy_app/core/data/base_repository.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
+import 'package:gymbuddy_app/features/analytics/data/analytics_repository.dart';
+import 'package:gymbuddy_app/features/analytics/data/models/analytics_event.dart';
+import 'package:gymbuddy_app/features/analytics/providers/analytics_providers.dart';
+import 'package:gymbuddy_app/features/auth/data/auth_repository.dart';
+import 'package:gymbuddy_app/features/auth/providers/auth_providers.dart';
 import 'package:gymbuddy_app/features/personal_records/domain/pr_detection_service.dart';
 import 'package:gymbuddy_app/features/personal_records/models/personal_record.dart';
 import 'package:gymbuddy_app/features/personal_records/models/record_type.dart';
 import 'package:gymbuddy_app/features/personal_records/ui/pr_celebration_screen.dart';
 import 'package:gymbuddy_app/features/profile/models/profile.dart';
 import 'package:gymbuddy_app/features/profile/providers/profile_providers.dart';
+import 'package:mocktail/mocktail.dart';
+
+class _MockAuthRepository extends Mock implements AuthRepository {}
+
+/// No-op analytics repo — prevents tests from touching `Supabase.instance`
+/// when the screen fires `pr_celebration_seen` in `initState`.
+class _FakeAnalyticsRepository extends BaseRepository
+    implements AnalyticsRepository {
+  const _FakeAnalyticsRepository();
+
+  @override
+  Future<void> insertEvent({
+    required String userId,
+    required AnalyticsEvent event,
+    required String? platform,
+    required String? appVersion,
+  }) async {}
+}
 
 void main() {
   Widget buildTestWidget({
     required PRDetectionResult result,
     required Map<String, String> exerciseNames,
   }) {
+    final mockAuth = _MockAuthRepository();
+    when(() => mockAuth.currentUser).thenReturn(null);
+
     return ProviderScope(
-      overrides: [profileProvider.overrideWith(() => _FakeProfileNotifier())],
+      overrides: [
+        profileProvider.overrideWith(() => _FakeProfileNotifier()),
+        authRepositoryProvider.overrideWithValue(mockAuth),
+        analyticsRepositoryProvider.overrideWithValue(
+          const _FakeAnalyticsRepository(),
+        ),
+      ],
       child: MaterialApp(
         theme: AppTheme.dark,
         home: PRCelebrationScreen(result: result, exerciseNames: exerciseNames),
