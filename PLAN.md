@@ -35,6 +35,8 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 13a-PR1 | Account Deletion + Volume Unit + OAuth Deep Link | DONE | #42 |
 | 13a-PR2 | Release Signing + Branding + Privacy Policy & ToS (icon DEFERRED) | DONE | #43 |
 | 13a-PR3 | Sprint A QA follow-ups (legal polish, PWA theme, test coverage, live delete E2E) | DONE | #44 |
+| 13a-PR6 | Bulk Dependency Upgrade + Toolchain Refresh (Riverpod 3, GoRouter 17, Freezed 3) | PLANNED | - |
+| 13a-PR7 | Close local CI Android build gap (`make ci` runs `flutter build apk --debug`) | PLANNED | - |
 | 13 | Production Readiness (remaining Sprint A: B2, B3, W2; icon post-gamification) | IN PROGRESS | - |
 | 14 | Offline Support | TODO | - |
 | 15 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
@@ -591,11 +593,446 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 ### Suggested Sprint Order
 
 **Sprint A — Store-ready:** ~~B5~~ ~~P7~~ ~~W1~~ (PR #42), ~~B1~~ ~~B4~~ ~~P6~~ (PR #43, icon deferred), ~~QA follow-ups: legal placeholder cleanup across all 5 legal docs, Brazil jurisdiction with CDC carve-out, PWA theme colors, DELETE gate partial-string tests, volume-unit widget tests, live `manage-data.smoke.spec.ts` with backend-verified delete + cascade~~ (PR #44), ~~W2 wakelock~~ (PR #45). Remaining for Sprint A: B2 Sentry, B3 analytics (PR 5).
+**Sprint A → B bridge — Tech debt sweep:** PR 6 — Bulk dependency upgrade + toolchain refresh (Riverpod 3, GoRouter 17, Freezed 3). PR 7 — Close local CI Android build gap (`make ci` adds `flutter build apk --debug`). Both land before Sprint B retention work so P1 (charts) can pull in `fl_chart` against the modern toolchain and the new Makefile gate catches Android plugin breakage pre-push.
 **Sprint B (1 week) — Retention + polish:** P1, P2, P4, P8, UX1-UX8
 **Sprint C (1 week) — Resilience:** B6, W3, W3b, W6, W8 (B7 promoted to Phase 14)
 **Deferred to v1.1:** P5 (1RM), W4 (push notifications), W5 (CSV export)
 
 > **PO strategic note:** Consider shipping Phase 15a (XP overlay + level badge) alongside launch for competitive differentiation vs Strong/Hevy. Without it, GymBuddy is a feature-subset of established competitors.
+
+---
+
+## Phase 13a PR 6: Bulk Dependency Upgrade + Toolchain Refresh
+
+> **Status:** PLANNED. Bridge PR between Sprint A (observability bundle in PR 5) and Sprint B (P1/P2/P4/P8/UX1-8). Pure plumbing — no user-visible changes. Cuts across the entire codebase. 0 features added.
+
+### 1. Goal
+
+Sweep 34 outdated direct + transitive dependencies (untouched since project scaffold) up to current stable lines — Riverpod 2.6 → 3, GoRouter 13 → 17, Freezed 2 → 3, codegen toolchain (`build_runner`/`json_serializable`/`source_gen`/`analyzer`) — so Sprint B can pull in modern packages (`fl_chart` for P1, expanded exercise content for P2) against a current toolchain instead of dragging four years of breaking changes into a feature PR.
+
+### 2. Why now
+
+- The forced `sentry_flutter 8.14.2 → 9.x` bump on the PR 5 branch surfaced **34 outdated packages** (`flutter pub outdated` ground truth, captured at 2026-04-11) — nobody has run a dep sweep since Step 1.
+- Two transitive packages are **discontinued** on the current line: `build_resolvers` and `build_runner_core` (both consumed by `build_runner 2.4.13`). Newer `build_runner 4.x` replaces them.
+- Two of three Sprint B "blocks retention" items add new packages: P1 (`fl_chart` or `syncfusion_flutter_charts`) and P2 (no new package, but bulk migrations). Doing the upgrade inside a feature PR would conflate breakage attribution.
+- Phase 14 (Offline Support) adds `connectivity_plus` — also better landed on a fresh toolchain.
+
+### 3. Scope table — outdated packages
+
+Source: `flutter pub outdated` run on `feature/phase13a-sprintA-pr5-observability` @ 2026-04-11. Difficulty key: T = trivial (no API change), M = moderate (mechanical edits + codegen), H = hard (semantic changes, risk of behavioural drift).
+
+| Package | Type | Current | Latest | Δ | Difficulty | Notes |
+|---------|------|---------|--------|---|------------|-------|
+| **flutter_riverpod** | dep | 2.6.1 | 3.3.1 | +1 major | H | Provider failures wrapped in `ProviderException`. `ProviderObserver` callback signature changed. New `Notifier`/`AsyncNotifier` superclasses. `FutureProvider` still supported but functional providers discouraged in favor of class-based notifiers. |
+| **riverpod** (transitive) | dep | 2.6.1 | 3.2.1 | +1 major | H | Auto-bumped with `flutter_riverpod`. |
+| **riverpod_annotation** | dep | 2.6.1 | 4.0.2 | +2 majors | T (for us) | **Unused in our codebase** — zero `@riverpod` annotations. Bump to keep pubspec coherent. |
+| **riverpod_generator** | dev | 2.4.0 | 4.0.3 | +2 majors | T (for us) | **Unused in our codebase**. Bump in lockstep with `riverpod_annotation`. |
+| **riverpod_analyzer_utils** (transitive) | dev | 0.5.1 | 0.5.10 | minor | T | Auto-bumped with generator. |
+| **go_router** | dep | 13.2.5 | 17.2.0 | **+4 majors** | H | Migration guides for v14, v15, v16, v17 — must walk all four. `GoRouterRedirect` signature stable. `StatefulShellRoute` API stable (we don't even use it — see codebase impact below). `optionURLReflectsImperativeAPIs` static is the most likely behavioural drift point. |
+| **freezed** | dev | 2.5.2 | 3.2.5 | +1 major | M | Union types now require `sealed class` keyword. `.map()` / `.when()` retained but discouraged in favor of Dart 3 pattern matching. **Affects exactly ONE file in our codebase** (`AnalyticsEvent`) — see assessment. |
+| **freezed_annotation** | dep | 2.4.4 | 3.1.0 | +1 major | M | Bumps in lockstep with `freezed`. |
+| **flutter_dotenv** | dep | 5.2.1 | 6.0.0 | +1 major | T | Surface unchanged (`dotenv.load()` / `dotenv.env['X']`). Risk: low. Verify `mergeWith` and `maybeGet` still exist. |
+| **build_runner** | dev | 2.4.13 | 2.13.1 | minor (significant) | M | Newer runner replaces discontinued `build_resolvers`/`build_runner_core` 2.x with 3.x/9.x. Codegen output may shift slightly. |
+| **build** (transitive) | dev | 2.4.1 | 4.0.5 | +2 majors | T | Auto-bumped with `build_runner`. |
+| **build_resolvers** (transitive) | dev | 2.4.2 (discontinued) | 3.0.4 (discontinued) | +1 major | T | New runner pulls 3.x; both lines marked discontinued — Dart team replacement is in `build` itself. Monitor warnings post-bump. |
+| **build_runner_core** (transitive) | dev | 7.3.2 (discontinued) | 9.3.2 (discontinued) | +2 majors | T | Same story as `build_resolvers`. |
+| **build_config** (transitive) | dev | 1.1.2 | 1.3.0 | minor | T | |
+| **source_gen** (transitive) | dev | 1.5.0 | 4.2.2 | **+3 majors** | M | Risk: codegen output diff. All `*.g.dart` and `*.freezed.dart` will regenerate; review the `make gen` diff carefully. |
+| **source_helper** (transitive) | dev | 1.3.5 | 1.3.11 | patch | T | |
+| **json_serializable** | dev | 6.8.0 | 6.13.1 | minor | T | No major bump — within 6.x line. Should be a clean bump. Re-runs codegen. |
+| **json_annotation** | dep | 4.9.0 | 4.11.0 | minor | T | Lockstep with `json_serializable`. |
+| **analyzer** (transitive) | dev | 6.4.1 | 12.1.0 | **+6 majors** | M | Pulled by `build_runner` and `riverpod_generator`. Likely the lever that forces the codegen toolchain bump. May surface new lints in `--fatal-infos` mode. |
+| **_fe_analyzer_shared** (transitive) | dev | 67.0.0 | 99.0.0 | huge | T | Auto-bumped with analyzer. |
+| **analyzer_plugin** (transitive) | dev | 0.11.3 | 0.14.8 | minor | T | |
+| **dart_style** (transitive) | dev | 2.3.6 | 3.1.8 | +1 major | T | New formatter version may reformat large parts of the codebase. Run `dart format .` once and commit the diff in the same step. |
+| **custom_lint_core** (transitive) | dev | 0.6.3 | 0.8.2 | minor | T | |
+| **shelf_web_socket** (transitive) | dev | 2.0.1 | 3.0.0 | +1 major | T | Used only by `build_runner`'s dev server. |
+| **test_api** (transitive) | dev | 0.7.10 | 0.7.11 | patch | T | |
+| **package_info_plus** | dep | 9.0.1 | 10.0.0 | +1 major | **BLOCKED** | 10.0.0 requires Dart SDK newer than 3.11.4. Pin remains 9.0.1 unless we also bump the Flutter SDK — out of scope for this PR. Document gap. |
+| **package_info_plus_platform_interface** (transitive) | dep | 3.2.1 | 4.0.0 | +1 major | **BLOCKED** | Same SDK constraint. |
+| **mocktail** | dev | 1.0.4 | 1.0.5 | patch | T | |
+| **jni** (transitive) | dep | 0.14.2 | 1.0.0 | +1 major | T | Pulled in by `wakelock_plus` — verify wakelock still works on Android. |
+| **meta** (transitive) | dep | 1.17.0 | 1.18.2 | patch | T | Pinned by Flutter SDK; will not move until SDK bump. Document. |
+| **path_provider_android** (transitive) | dep | 2.2.23 | 2.3.1 | minor | T | |
+| **vector_math** (transitive) | dep | 2.2.0 | 2.3.0 | minor | T | Pinned by Flutter SDK; same as `meta`. |
+| **win32** (transitive) | dep | 5.15.0 | 6.0.0 | +1 major | T | Windows desktop only — not in our build matrix. Will resolve naturally. |
+
+`flutter_lints` is currently `^6.0.0` and **does not appear in `pub outdated`** — already at the latest 6.x. No bump needed.
+
+### 4. Codebase impact assessment
+
+Performed by grep on `feature/phase13a-sprintA-pr5-observability` @ 2026-04-11. **No code edited during this assessment — read-only enumeration.**
+
+#### 4.1 Riverpod 2 → 3
+
+- **Provider files affected:** 11 (`exercise_providers.dart`, `pr_providers.dart`, `auth_providers.dart`, `workout_history_providers.dart`, `workout_providers.dart`, `weekly_plan_provider.dart`, `week_review_stats_provider.dart`, `routine_list_notifier.dart`, `active_workout_notifier.dart`, `profile_providers.dart`, `crash_reports_enabled_provider.dart`).
+- **Consumer files affected:** 40 files contain `ref.watch` / `ref.read` / `ref.listen` / `ref.invalidate` — total **243 call sites**.
+- **Manual `Notifier` / `AsyncNotifier` subclasses:** 8 (`AuthNotifier`, `ProfileNotifier`, `WorkoutHistoryNotifier`, `RoutineListNotifier`, `RestTimerNotifier`, `ActiveWorkoutNotifier`, `WeeklyPlanNotifier`, `CrashReportsEnabledNotifier`).
+- **Functional providers:** `FutureProvider` (15+ instances), `StreamProvider` (2 — `authStateProvider`, `elapsedTimerProvider`), `StateProvider` (5 — UI filters and UI flags), `Provider` (1 — `routerProvider`).
+- **`@riverpod` annotation usage:** **ZERO**. No `part 'X.g.dart';` directives in any provider file. `riverpod_annotation` and `riverpod_generator` are pubspec dependencies but **unused** in the source tree.
+- **What actually breaks:**
+  - **`ProviderException` wrapping** — Riverpod 3 wraps any provider failure in a `ProviderException` whose `.exception` field is the original error. Per the migration guide: this is only an issue when code does `try { ref.read(p.future) } on SpecificException { ... }`. **Sites to audit:** every call site that catches non-`AsyncValue` errors from a provider read. `AsyncValue.error`, `ref.listen(..., onError: ...)`, and `ProviderObserver` are unaffected. Grep for `} on .*Exception` near `ref.read(...future)`.
+  - **`ProviderObserver` API** — callbacks now take `ProviderObserverContext` instead of `(ProviderContainer, ProviderBase)`. We do **not** define a custom observer (only Sentry's `SentryNavigatorObserver`, which is unrelated). Risk: zero unless tests use a fake observer.
+  - **`ref.state` / `ref.listenSelf` / `ref.future` removed from `Ref`** — moved to `Notifier`/`AsyncNotifier` instance methods. Our notifier classes already use the instance form (`state = ...`, never `ref.state = ...`). Grep confirms zero `ref.state` / `ref.future` in `lib/`.
+  - **`AsyncNotifier.build()` signature** — unchanged. Existing 8 notifier classes should work as-is.
+- **Migration difficulty for our codebase:** **MODERATE** despite the call-site count. The high count is `ref.watch`/`ref.read` (which are stable APIs); the actual breaks are narrow.
+
+#### 4.2 GoRouter 13 → 17 (4 majors)
+
+- **Files affected:** `lib/core/router/app_router.dart` (the entire router definition, ~360 lines), 20 UI files using `context.go()` / `context.push()` / `context.pop()` — total **71 call sites**.
+- **Specific patterns we use** (from reading `app_router.dart` in full):
+  - `GoRouter(initialLocation:, refreshListenable:, observers:, redirect:, routes:)` — top-level constructor.
+  - `ShellRoute(builder:, routes:)` — **NOTE: we use `ShellRoute`, NOT `StatefulShellRoute`.** The PLAN.md "Tech Stack & Architecture" line referencing `StatefulShellRoute` is stale — actual code is `ShellRoute`. The new step does **not** need a `StatefulShellRoute` migration.
+  - `GoRoute(path:, builder:, routes:, redirect:)` — nested.
+  - `GoRouterState.of(context).matchedLocation` — used in `_ShellScaffold._currentIndex`.
+  - `state.pathParameters['id']!` — used in 4 routes.
+  - `state.extra` — used in 4 routes (workout active redirect, PR celebration, create routine, etc.).
+  - Custom `_RouterRefreshListenable extends ChangeNotifier` wrapping `ref.listen(authStateProvider, ...)` + `ref.listen(needsOnboardingProvider, ...)`.
+- **Likely breaking changes across v14-v17** (must read each migration guide individually before implementing — Context7 only surfaces the index, not the full diff):
+  - **v14**: Likely changes to `GoRouterState` API, possibly `pathParameters`/`uri.queryParameters`. Verify with the official `flutter.dev/go/go-router-v14-breaking-changes` page.
+  - **v15**: Likely `onException` callback changes, possibly `redirect` signature normalization. Verify.
+  - **v16**: Likely `GoRouter.of(context)` / `.maybeOf(context)` static method tweaks. Verify.
+  - **v17**: Latest. Spot-check the changelog for `ShellRoute` builder signature drift, `GoRouterState.matchedLocation` rename, or `state.extra` typing changes.
+- **`optionURLReflectsImperativeAPIs`** is a static property that controls whether `context.push()` writes to the URL bar — important because we have a known bug (lessons.md) about `context.go()` vs `context.push()` on Flutter web. Verify behaviour after upgrade with the existing E2E suite.
+- **Migration difficulty for our codebase:** **HARD** because four majors compound — but the surface area is bounded (1 router file + 20 callers).
+
+#### 4.3 Freezed 2 → 3
+
+- **`@freezed` classes in `lib/`:** 16 total. **15 are simple data classes** (single factory, only used for `.copyWith` + JSON serialization). **1 is a union type:** `lib/features/analytics/data/models/analytics_event.dart`.
+- **`@freezed` classes in `test/`:** 0. Test fixtures use plain Dart classes.
+- **`.when` / `.map` / `.maybeWhen` / `.maybeMap` total occurrences:** 90 across 31 files — but **the vast majority are `AsyncValue.when(...)` calls in widgets**, not Freezed union pattern matching. Confirmed by spot-check — `async_value_builder.dart`, `exercise_detail_screen.dart`, `profile_screen.dart`, `manage_data_screen.dart` all call `.when` on `AsyncValue<T>`. **`AsyncValue` is from Riverpod, not Freezed.** Freezed 3's `.when` deprecation does not affect these.
+- **Actual Freezed `.when` / `.map` call sites:** ALL inside `analytics_event.dart` — used for `name` getter (`.map`) and `props` getter (`.when`). That single file is the entire Freezed 2→3 union-API migration surface.
+- **What breaks for `AnalyticsEvent`:**
+  - Must add `sealed` keyword: `class AnalyticsEvent` → `sealed class AnalyticsEvent`.
+  - `.map` and `.when` are still supported in Freezed 3 (legacy methods retained per migration guide), so the existing getters can stay as-is during the bump. **Recommendation:** make the `sealed` keyword change in this PR, leave `.map` / `.when` migration to a follow-up if it's not forced. Keeping the diff small reduces blast radius.
+- **What breaks for the 15 data classes:**
+  - **NOTHING.** Single-factory data classes do not need `sealed`. `.copyWith` and JSON serialization are unchanged in Freezed 3.
+- **Migration difficulty for our codebase:** **MODERATE → TRIVIAL once you realize only one file has union semantics.** The 90 `.when` matches are a red herring — they're `AsyncValue`.
+
+#### 4.4 Codegen toolchain (build_runner / source_gen / analyzer)
+
+- All `*.g.dart` files (9 — `Workout`, `Exercise`, `PersonalRecord`, `WorkoutExercise`, `Profile`, `ExerciseSet`, `ActiveWorkoutState`, `Routine`, `WeeklyPlan`) and all `*.freezed.dart` files (16) will regenerate.
+- Risk: subtle codegen output differences (formatter, deprecated annotations, hash function changes) producing a noisy diff.
+- Mitigation: commit the regenerated files in the same atomic commit as the toolchain bump. Reviewer reads `make gen` diff once, not per-file.
+
+### 5. Skill workflow citations
+
+Per the mandatory pre-spec skill consultation (read in full at planning time):
+
+- **`.agents/skills/flutter-managing-state/SKILL.md`** — covers MVVM with `ChangeNotifier` + `provider` package, NOT Riverpod. Cited here for the **"Single Source of Truth"** principle (Architecture and Data Flow section): the Riverpod 3 migration must preserve our existing repository-as-SSOT pattern. The skill's "Workflow: Implementing MVVM with Provider" steps 1-5 (validation feedback loop) **do** apply directly to verifying each migrated `AsyncNotifier`: trigger → notifier → repository → emit → UI rebuild. Use that 5-step loop as the per-notifier verification protocol after Riverpod commits.
+- **`.agents/skills/flutter-implementing-navigation-and-routing/SKILL.md`** — covers `Navigator` (imperative) and declarative routing via `go_router`. Most relevant section: **"Implementing Declarative Navigation"** + **"Workflow: Implementing Deep-Linkable Routing"** (lines 41-78). Cite the workflow checklist when reviewing whether each `context.go()` / `context.push()` call site still resolves correctly post-upgrade. The skill does NOT cover `StatefulShellRoute` (we don't use it anyway — see 4.2). The "Implementing Nested Navigation" section uses raw `Navigator` widgets and does NOT apply to our `ShellRoute`-based architecture.
+- **`.agents/skills/flutter-theming-apps/SKILL.md`** — critical citation: **"Component Theme Normalization"** section (lines 42-51). The skill explicitly lists deprecated theme types: `CardTheme` → `CardThemeData`, `DialogTheme` → `DialogThemeData`, `TabBarTheme` → `TabBarThemeData`, `AppBarTheme` → `AppBarThemeData`, `BottomAppBarTheme` → `BottomAppBarThemeData`, `InputDecorationTheme` → `InputDecorationThemeData`. **Action: grep `lib/core/theme/` for any of these older types before the upgrade and convert in a dedicated commit if the new toolchain warns on them.** Also cite **"Workflow: Migrating Legacy Themes to Material 3"** (lines 71-81) as the per-warning checklist. The current `flutter_lints 6.0.0` may already warn on these — verify on the baseline first.
+- **`.agents/skills/flutter-animating-apps/SKILL.md`** — only relevant section: **"Implementing Explicit Animations"** (line 54+) — reminds us to check `AnimationController.dispose()` is still called everywhere (no API change expected, just a hygiene re-check). We use explicit animations in the PR celebration screen and the rest timer overlay. Spot-check after the SDK-adjacent bumps land.
+
+### 6. Order of operations (atomic commits)
+
+Each commit must leave the build green and tests passing. **No "breaks here, fixed in next commit".** The reviewer can `git checkout` any single commit and run `make ci` cleanly.
+
+| # | Commit | Files | Risk |
+|---|--------|-------|------|
+| 0 | `chore(deps): tag pre-upgrade baseline` | `.gitignore` (no diff — tag-only commit) + `git tag pre-13a-bulk-upgrade` | none |
+| 1 | `chore(deps): bump low-risk transitive + dev patches` | `pubspec.yaml`, `pubspec.lock` | low — `mocktail`, `meta`-adjacent transitive minors only. Smoke test only. |
+| 2 | `chore(deps): bump codegen toolchain (build_runner, json_serializable, analyzer)` | `pubspec.yaml`, `pubspec.lock`, **all** `*.g.dart`, **all** `*.freezed.dart` | M — regenerated artifacts. Run `make gen` and commit the full diff in one shot. **This is the longest-to-review commit because of the codegen blast radius.** |
+| 3 | `chore(deps): bump freezed 2→3 + freezed_annotation 2→3` | `pubspec.yaml`, `pubspec.lock`, **`analytics_event.dart`** (`class` → `sealed class`), regenerated `analytics_event.freezed.dart` | M — focused on one file. The 15 data classes regenerate without source edits. |
+| 4 | `chore(deps): bump riverpod 2→3 (flutter_riverpod, riverpod, riverpod_annotation, riverpod_generator)` | `pubspec.yaml`, `pubspec.lock`, **8 notifier files** + any consumer that catches a typed exception from `ref.read(p.future)` | **H** — biggest correctness risk. See per-package migration notes (§7). |
+| 5 | `chore(deps): bump go_router 13→17` | `pubspec.yaml`, `pubspec.lock`, **`app_router.dart`**, 20 caller files | **H** — four majors compounded. Per-major migration walk required. |
+| 6 | `chore(deps): bump flutter_dotenv 5→6` | `pubspec.yaml`, `pubspec.lock`, possibly `main.dart` and `sentry_init.dart` if any API removed | low — surface unchanged in skim, verify against changelog. |
+| 7 | `chore(deps): theme component normalization (CardThemeData, AppBarThemeData, etc.)` | `lib/core/theme/*.dart` (whatever uses the old `*Theme` types) | low — mechanical rename, may be empty if we already use `*ThemeData`. |
+| 8 | `chore(deps): document SDK-blocked upgrades + intentional pins` | `pubspec.yaml` (comments only) | none — just adds comments next to `package_info_plus: ^9.0.1` and `meta` pin notes. |
+
+**Per-commit gate:** after each commit, run `make ci` locally. If a commit goes red, do NOT proceed to the next; root-cause and amend the same commit (or create a tightly-scoped follow-up commit before moving on). Never let the working tree drift between checkpoints.
+
+### 7. Per-upgrade migration notes
+
+#### 7.1 Codegen toolchain (commit 2)
+
+- Bump `build_runner`, `json_serializable`, and let transitives (`source_gen`, `analyzer`, `_fe_analyzer_shared`, `dart_style`, `build`, `build_resolvers`, `build_runner_core`, `build_config`) follow the resolver.
+- `dart pub upgrade --major-versions build_runner json_serializable` then `flutter pub get`.
+- Run `make gen` (which is `dart run build_runner build --delete-conflicting-outputs`).
+- Run `dart format .` — **the new `dart_style 3.x` will reformat code.** Commit the format diff together with the generated artifacts.
+- Run `dart analyze --fatal-infos`. The newer `analyzer 12.x` may surface new info-level lints — fix them in the same commit (do not silence them).
+- **Rollback trigger:** if `make gen` fails on more than one file due to source-gen incompatibility, abort. Pin `analyzer` to the previous major and retry — or revert and try freezed first.
+
+#### 7.2 Freezed 2 → 3 (commit 3)
+
+- Per the **Freezed migration guide** (Context7: `/rrousselgit/freezed`, file `packages/freezed/migration_guide.md`):
+  - Union types **must** be marked `sealed class`. Action: `analytics_event.dart` line 12 — `class AnalyticsEvent with _$AnalyticsEvent` → `sealed class AnalyticsEvent with _$AnalyticsEvent`.
+  - `.map(...)` and `.when(...)` are **still supported** as legacy methods (Context7 confirms in the README example). **Do not** rewrite the `name` and `props` getters in this PR — keep the diff minimal. Pattern-matching migration is a separate cleanup PR.
+  - The 15 single-factory data classes (`Workout`, `Exercise`, `Profile`, etc.) need **no source edits**.
+- Run `make gen` to regenerate `analytics_event.freezed.dart` against the new generator.
+- Run the analytics-event unit tests (`test/unit/features/analytics/data/models/analytics_event_test.dart` if it exists, otherwise skip — they're covered by repository tests).
+- **Expected diffs:** one source line in `analytics_event.dart` + 16 regenerated `*.freezed.dart` files (single line headers/comments may shift, otherwise stable).
+- **Rollback trigger:** if `make gen` errors on a non-`AnalyticsEvent` freezed class, the data-class assumption is wrong — stop, regrep `@freezed` for multi-factory classes, and re-plan.
+
+#### 7.3 Riverpod 2 → 3 (commit 4)
+
+- Follow the **Riverpod 3.0 migration guide** (Context7: `/rrousselgit/riverpod`, file `website/docs/3.0_migration.mdx`).
+- **Pre-flight grep:** find every `} on ` exception catch within ~20 lines after a `ref.read(...future)` or `await ref.read(...future)` call. These are the only sites that need editing. Expected count: low (we mostly handle `AsyncValue.error` in widgets).
+- For each found site, wrap or unwrap per the migration guide:
+  ```diff
+  - } on NotFoundException catch (e) { ... }
+  + } on ProviderException catch (e) {
+  +   if (e.exception is NotFoundException) { ... }
+  +   else rethrow;
+  + }
+  ```
+- **`@riverpod` annotation usage:** zero in our codebase, so the `riverpod_generator` 2→4 bump is a pubspec-only change (commit it together with `riverpod_annotation` for atomicity even though we don't currently use either).
+- **Custom `ProviderObserver`:** we don't define one. Skip.
+- **`ref.state` / `ref.future` / `ref.listenSelf`:** zero matches in `lib/`. Skip.
+- **AsyncNotifier subclasses:** spot-check each of the 8 to confirm `build()` still returns the correct shape. The base class signature is unchanged; existing code should work.
+- **Run `flutter test`** after the bump, expect **all 959 tests pass**. Any new failure must be root-caused — do NOT modify a test to "match new behavior" without understanding why.
+- **Rollback trigger:** if 5+ unit tests fail with `ProviderException`-related stack traces, the catch-site sweep was incomplete. Revert this commit, run a more thorough grep, retry. If 20+ tests fail, abort entirely and discuss.
+
+#### 7.4 GoRouter 13 → 17 (commit 5)
+
+- **Walk all four breaking-change pages** before editing code:
+  1. https://flutter.dev/go/go-router-v14-breaking-changes
+  2. https://flutter.dev/go/go-router-v15-breaking-changes
+  3. https://flutter.dev/go/go-router-v16-breaking-changes
+  4. https://flutter.dev/go/go-router-v17-breaking-changes
+- Cite the **flutter-implementing-navigation-and-routing skill's "Workflow: Implementing Deep-Linkable Routing"** (lines 73-78) as the validation checklist.
+- **Files to edit (estimated):**
+  - `lib/core/router/app_router.dart` — primary surface. Verify `GoRouter(...)` constructor params, `ShellRoute(...)`, `GoRoute(...)` builders, `redirect:` signature, `state.matchedLocation`, `state.pathParameters`, `state.extra`, `_RouterRefreshListenable` integration with `refreshListenable:`.
+  - 20 caller files using `context.go()` / `context.push()` / `context.pop()` — verify the stable API hasn't shifted.
+  - **Lessons.md note:** `tasks/lessons.md` documents that `context.go()` → `context.push()` broke Flutter web reload in GoRouter 13.x. **Verify the lessons.md fix is still correct in 17.x** — re-test the workout discard flow on web after the bump.
+- **Sanity test sequence after bump:**
+  1. `flutter analyze --fatal-infos`
+  2. `flutter test` — all 959 pass
+  3. `flutter build web --release` — must build
+  4. `flutter run -d chrome` — manually click through `splash → login → onboarding → home → exercises → /exercises/:id → back → routines → profile → /profile/manage-data → back → /records → /plan/week`. Verify no broken transitions.
+  5. Run the full local Playwright smoke suite (`FLUTTER_APP_URL= npx playwright test --project=smoke`).
+- **Rollback trigger:** if 3+ E2E smoke tests fail with route-related selectors, revert and walk the migration guides one more time. Do not band-aid by editing test selectors — the bug is in the router upgrade.
+
+#### 7.5 flutter_dotenv 5 → 6 (commit 6)
+
+- Read the v6.0.0 changelog (Context7's `/java-james/flutter_dotenv` snippets confirm the public surface — `dotenv.load()`, `dotenv.env['X']`, `dotenv.get()`, `dotenv.maybeGet()`, `mergeWith` — is unchanged).
+- Files to verify: `lib/main.dart` (loads `.env` and reads `SUPABASE_URL`/`SUPABASE_ANON_KEY`), `lib/core/observability/sentry_init.dart` (reads `SENTRY_DSN`).
+- **Rollback trigger:** if `flutter run` fails with a `LateInitializationError` on `dotenv.env`, the load API changed. Revert and pin to 5.x with a tracking issue.
+
+#### 7.6 Theme normalization (commit 7)
+
+- Grep `lib/core/theme/` for `CardTheme(`, `DialogTheme(`, `TabBarTheme(`, `AppBarTheme(`, `BottomAppBarTheme(`, `InputDecorationTheme(`. Replace with `*ThemeData` per the **flutter-theming-apps skill's "Component Theme Normalization"** section.
+- This commit may be empty if `core/theme/` already uses the `*ThemeData` types — that's fine, skip the commit.
+- **Rollback trigger:** never — this is a mechanical rename.
+
+### 8. Bulletproof testing strategy — 7 gates
+
+Every gate must be GREEN before merge. No exceptions, no "should pass" — only evidence.
+
+#### Gate 1 — Static checks
+
+- [ ] `dart format --set-exit-if-changed .` exits 0 (clean)
+- [ ] `dart analyze --fatal-infos` reports **0 issues, 0 warnings, 0 infos**
+- [ ] `make gen` runs to completion and produces **no diff** when re-run a second time (idempotent)
+- [ ] `flutter pub outdated` shows zero direct deps with a `Resolvable` newer than `Current` (excluding intentionally pinned `package_info_plus`)
+
+#### Gate 2 — Test suites
+
+- [ ] `flutter test` reports **959 passing, 0 failing, 0 skipped** (must equal pre-upgrade count exactly — no silent skips)
+- [ ] Snapshot test count diff: capture `flutter test --reporter compact 2>&1 | tail -1` before and after; numbers must match digit-for-digit
+- [ ] If a test was deleted as part of the migration, it must be replaced with a coverage-equivalent test or PR description must explain why
+- [ ] Any new test failure must be **root-caused with a written diagnosis in the PR body**, not deleted or marked `skip:`
+
+#### Gate 3 — Build matrix
+
+- [ ] `flutter build apk --debug` succeeds
+- [ ] `flutter build apk --release` succeeds
+- [ ] `flutter build apk --release` APK size: capture pre-upgrade `du -h build/app/outputs/flutter-apk/app-release.apk` and post-upgrade. Must be **within ±10%** of baseline. >10% growth requires investigation.
+- [ ] `flutter build web --release` succeeds
+- [ ] Web bundle size: capture pre-upgrade `du -sh build/web` and post-upgrade. Must be **within ±10%** of baseline.
+- [ ] **iOS gap (open question for human):** `flutter build ios --debug --no-codesign` cannot run on the Windows dev box. We have no Mac CI runner. **Decision needed before this PR runs:** either (a) accept the gap and document "iOS not validated, will be tested when iOS is added in v1.1", or (b) spin up a Mac runner for one CI run. Recommend (a) since iOS is explicitly deferred per "Tech Stack & Architecture: Android-first, iOS deferred."
+
+#### Gate 4 — E2E suite
+
+- [ ] Local prerequisite: Supabase containers healthy (`docker ps | grep supa`), `build/web` rebuilt from current branch
+- [ ] `FLUTTER_APP_URL= npx playwright test --project=smoke --reporter=list` — **all smoke tests pass**, no flaky retries
+- [ ] `FLUTTER_APP_URL= npx playwright test --reporter=list` — **full regression suite passes** (smoke + full)
+- [ ] No selector drift: `selectors.ts` should require zero edits for this PR (this is a plumbing PR — no UI text changes). If selectors.ts changes, PR description must justify why a dependency upgrade caused a UI text change.
+- [ ] Visual regression: we currently have **no visual diff tests**. Document this as a gap to add later (Phase 13c-ish UX polish task) but do not block this PR.
+
+#### Gate 5 — Manual QA smoke on real device
+
+- [ ] Install `app-release.apk` on a physical Android device (or fully-booted emulator)
+- [ ] Walk through the following flows, ticking each:
+  - [ ] **Auth:** Cold launch → splash → login screen renders → email/password sign-in succeeds → lands on home
+  - [ ] **Onboarding (new user path):** Sign up new test user → onboarding pages 1-2 → land on home with profile populated
+  - [ ] **Exercises:** Tap Exercises tab → list loads → tap a category chip → list filters → tap an exercise → detail screen loads with image (or fallback icon) and form tips
+  - [ ] **Workout flow (the hot path):** Home → tap a routine → workout starts pre-filled → log a working set → tap rest timer → adjust by +30s → tap Finish → Finish dialog → workout saves → routes back to home
+  - [ ] **PR celebration:** Log a heavier set than the previous workout → finish → PR celebration screen renders → tap Continue → routes correctly
+  - [ ] **Weekly plan:** Home → tap Edit on THIS WEEK section → Plan management screen loads → reorder a chip → save → home reflects new order
+  - [ ] **Profile:** Tap profile → tap Workouts stat card → routes to history → back → tap PRs stat card → routes to records → back → tap Manage Data → screen loads → back
+  - [ ] **Background → foreground:** Send app to background mid-workout → wait 30s → resume → active workout banner still present → resume to active workout → state preserved
+- [ ] **Specific upgrade-impact spot checks:**
+  - [ ] **GoRouter 17:** Hardware back button on every screen behaves identically to pre-upgrade (no jumps to wrong screen, no app exits from mid-stack)
+  - [ ] **Riverpod 3:** After a workout finish, home stat cards update without manual refresh (verifies provider invalidation chain still works — Bug #2 from 12.2a regression)
+  - [ ] **Freezed 3:** PR celebration screen renders correctly (`AnalyticsEvent` is the only union, but its consumer is the analytics repo, not this UI — UI tests cover it transitively)
+  - [ ] **Sentry still captures errors:** force a deliberate crash via the dev menu (or temporarily uncomment a `throw` in a test build) and confirm the event lands in Sentry within 60s
+  - [ ] **Crash reports opt-out toggle (PR 5):** Profile → Privacy → toggle OFF → trigger same test crash → confirm **nothing** lands in Sentry → toggle ON → trigger again → confirm event lands
+  - [ ] **Analytics events still fire (PR 5):** finish a workout → check the `analytics_events` table in Supabase Studio for a `workout_finished` row with the expected `props` shape
+
+#### Gate 6 — Performance sanity check
+
+- [ ] **Cold start time:** measure 5 cold launches before AND after the upgrade on the same device. Log to a scratch file. Median post-upgrade must be **within ±15%** of pre-upgrade. >15% regression = investigate.
+- [ ] **Workout screen rebuild count:** open Flutter DevTools → Performance tab → Rebuild Stats. Start a workout, log 3 sets, finish. Compare rebuild counts pre/post. **Must not exceed 1.5× the pre-upgrade count.** Riverpod 3's new internal change-detection could over-rebuild if we hit an edge case.
+- [ ] **Jank check:** `flutter run --profile`, navigate to active workout screen, log 5 sets quickly. DevTools Timeline must show **0 dropped frames** during the interaction sequence.
+
+#### Gate 7 — Observability regression (PR 5 backstop)
+
+- [ ] **All 9 PR 5 analytics events still fire:** run one workout end-to-end (sign in fresh → finish onboarding → start workout from routine → log sets → finish → see PR celebration → respond to plan prompt → wait until next week → mark week complete). Query `analytics_events` and confirm a row exists for each of:
+  - [ ] `onboarding_completed`
+  - [ ] `workout_started`
+  - [ ] `workout_finished`
+  - [ ] `pr_celebration_seen`
+  - [ ] `add_to_plan_prompt_responded`
+  - [ ] `week_plan_saved`
+  - [ ] `week_complete`
+  - [ ] `account_deleted` (do this last on a throwaway test user — destructive)
+- [ ] **Sentry crash reporting:** verify the smoke tests in Gate 5 landed events in the Sentry dashboard
+- [ ] **Crash reports opt-out** still gates Sentry per Gate 5
+- [ ] **Sentry navigation observer** still emits route breadcrumbs (verify on a captured error after walking 3+ screens — the breadcrumb panel should show the route trail with sanitized UUIDs)
+
+### 9. Rollback plan
+
+- **Pre-flight**: tag baseline `git tag pre-13a-bulk-upgrade` (commit 0). Push tag to remote. Capture `pubspec.lock` as `pubspec.lock.pre-bulk-upgrade.txt` artifact in the PR for explicit comparison.
+- **Per-commit rollback**: each commit is atomic. `git revert <commit>` restores the previous green state without touching neighboring commits.
+- **Full PR revert**: if CI is red and root cause is unclear after 3 fix attempts, `git revert` the entire merge commit cleanly (squash-merge makes this one revert).
+- **Pubspec rollback**: copy `pubspec.lock.pre-bulk-upgrade.txt` back over `pubspec.lock`, run `flutter pub get`, force-resolution to baseline.
+- **Codegen rollback**: after pubspec rollback, re-run `make gen` to regenerate against the old toolchain.
+
+### 10. Acceptance criteria
+
+- [ ] All 7 gates green (evidence in PR body, not "should pass")
+- [ ] Snapshot test count digit-for-digit match (959 → 959)
+- [ ] Zero new analyzer infos / warnings (current baseline is 0)
+- [ ] All breaking changes documented in PR body with the affected file and the chosen fix
+- [ ] Flutter skill citations included for each major migration (per §5)
+- [ ] Rollback tag `pre-13a-bulk-upgrade` exists and is pushed
+- [ ] PR body includes a "Lessons learned" section: what actually broke vs what this spec predicted. Feed surprises into `tasks/lessons.md`.
+- [ ] APK size and web bundle size deltas reported in PR body (Gate 3)
+- [ ] Cold start delta reported in PR body (Gate 6)
+- [ ] iOS gap explicitly acknowledged in PR body (Gate 3)
+
+### 11. Out of scope
+
+- **No new features.** Zero functional changes that a user could see in screenshots.
+- **No refactoring beyond what the upgrade forces.** Resist the urge to "while I'm here, clean up X" — that goes in a separate PR.
+- **No new tests** unless a new test is needed to prove a specific migration didn't regress (e.g., a pin test for `ProviderException` wrapping if we hit a tricky catch site).
+- **No Flutter SDK upgrade.** `environment: sdk: ^3.11.4` stays. If any required dep upgrade demands a newer SDK, **stop and surface to the user before proceeding.**
+- **No `package_info_plus` 10.x** (blocked by SDK constraint — pinned at 9.0.1 with a comment).
+- **No `pattern-matching migration`** for `AnalyticsEvent` — keep `.map`/`.when` calls intact, just add the `sealed` keyword. Pattern-matching cleanup is a separate trivial PR if we want it later.
+- **No theme system rebuild.** Component normalization (commit 7) is a mechanical rename only; design tokens, color scheme, and typography stay frozen.
+- **No CI matrix expansion.** No new workflow files, no new runners. Existing `ci.yml` and `e2e.yml` jobs run unchanged.
+- **No iOS validation.** Acknowledged in Gate 3.
+- **No Phase 14 prep.** `connectivity_plus` is NOT added in this PR — that's the first commit of Phase 14.
+
+### 12. Time estimate (agent-hours, not wall clock)
+
+| Phase | Effort | Notes |
+|-------|--------|-------|
+| Skill re-read + migration guide reading (4 go_router pages, riverpod 3 page, freezed migration guide) | 1.5h | Mandatory before any code edits |
+| Commit 1 (low-risk patches) | 0.5h | Flush trivial bumps |
+| Commit 2 (codegen toolchain) | **3-4h** | Largest blast radius. Codegen diff review + analyzer info fixes dominate. |
+| Commit 3 (Freezed 2→3) | 0.5h | Surgical — one source line + regen |
+| Commit 4 (Riverpod 2→3) | **2-3h** | Catch-site sweep + 8 notifier verification + full test run |
+| Commit 5 (GoRouter 13→17) | **3-4h** | Four migration guides + router file edit + 20 caller spot-check + manual web walk + E2E suite |
+| Commit 6 (flutter_dotenv 5→6) | 0.5h | Likely no-op edits |
+| Commit 7 (theme normalization) | 0.5-1h | Mechanical rename, may be zero-diff |
+| Commit 8 (pin documentation) | 0.25h | Comment-only |
+| Gate 1-3 verification | 1h | Format + analyze + tests + 4 builds |
+| Gate 4 (E2E full suite) | 0.5h wall + run time | Mostly waiting on the runner |
+| Gate 5 (manual device QA) | 1.5h | Real device walk-through |
+| Gate 6 (perf sanity) | 1h | DevTools + cold start measurements |
+| Gate 7 (observability backstop) | 0.5h | Re-verify PR 5 events + Sentry |
+| PR write-up + lessons.md update | 0.5h | |
+| **Total** | **17-22 agent-hours** | Roughly 2-3 working sessions if fully focused. Spread across 2 days with verification gates between sessions. |
+
+**The codegen toolchain bump (commit 2) is historically the longest part of any Flutter dep sweep** because it forces analyzer + dart_style updates that surface lint regressions across the whole codebase. Plan accordingly.
+
+### 13. Open questions for the human (decide before execution starts)
+
+1. **iOS gap in Gate 3:** confirm we accept "iOS not validated, will be tested in v1.1" given Android-first scope. (Recommended: yes.)
+2. **Visual regression gap in Gate 4:** flag as a Sprint C / Phase 13c follow-up to add `playwright` snapshot tests, or accept the gap permanently for v1.0?
+3. **Discontinued `build_resolvers` / `build_runner_core`:** the Dart team has marked these discontinued in BOTH our current AND target versions. The replacement (folded into `build` itself) may not be fully landed. Acceptable risk?
+4. **`package_info_plus` 10.x SDK block:** acknowledge we pin to 9.0.1 indefinitely, OR plan a Flutter SDK bump as a separate PR right after this one to unblock 10.x?
+5. **`AnalyticsEvent` pattern-matching cleanup:** keep `.map`/`.when` for now (recommended) or rewrite to `switch` expressions in this PR? (Recommended: keep for now to minimize blast radius.)
+6. **Freezed 3 may emit deprecation warnings on `.when`/`.map`** even with the legacy methods retained. If `dart analyze --fatal-infos` flags these, we may be forced into the pattern-matching rewrite mid-PR. Decide pre-emptively: rewrite is in-scope OR add a targeted `// ignore_for_file: deprecated_member_use` for `analytics_event.dart` only.
+
+---
+
+## Phase 13a PR 7: Close local CI Android build gap
+
+> **Status:** PLANNED. Tooling/process fix surfaced by the `sentry_flutter 8 → 9` upgrade on PR #46. Single-line Makefile change + a CLAUDE.md docs update. Independent of PR 6 — can ship before, after, or in parallel.
+
+### Finding
+
+`make ci` currently runs `format + analyze + gen + test`. It does **not** run any Android build step. The `sentry_flutter 8 → 9` upgrade on the PR 5 branch (PR #46) hit a Kotlin language-version compile error inside the bumped plugin's native Android code. `dart analyze` and `flutter test` are entirely Dart-side checks — they cannot detect Gradle/Kotlin/Java compile failures in plugin native code. The break only surfaced on GitHub Actions' `build` job, which means we pushed a broken branch and burned CI cycles to discover it.
+
+This applies to any plugin with native Android code (`sentry_flutter`, `hive`, `cached_network_image`, `flutter_dotenv`, `package_info_plus`, `wakelock_plus`, anything FFI-based) — every dep upgrade that touches such a plugin can re-trigger the same class of failure.
+
+### Fix options considered
+
+1. **(Recommended) Add `flutter build apk --debug --no-shrink` to `make ci`.** Adds ~3 minutes to the local gate. Catches the failure before push every time. Downside: slower local iteration loop — `make ci` is no longer instant.
+2. Add a separate `make ci-android` target invoked only when `pubspec.yaml` or `android/` files changed. Conditional gate, faster default path, but requires git-aware tooling and is more complex to maintain.
+3. Keep `make ci` fast and document in `CLAUDE.md` that `flutter build apk --debug` MUST be run when `pubspec.yaml` or `android/` files change. Discipline-based — already failed us once on PR #46.
+
+### Decision
+
+**Option 1.** The 3-minute cost is the price of catching native plugin failures pre-push deterministically. Discipline-based gates have proven unreliable in this codebase.
+
+### Implementation (single tiny PR)
+
+**Files to touch:**
+
+- `Makefile` — add `flutter build apk --debug --no-shrink` as the **last** step of the `ci` target (after `test`, so a unit test failure short-circuits before the slow build runs).
+- `CLAUDE.md` — update the "Commands" section so the `make ci` line accurately reflects `format + analyze + gen + test + android-debug-build`. Add a one-line note that `make ci` now takes ~3-5 minutes due to the Android build step.
+
+**Suggested Makefile diff (illustrative — implementer may adjust target ordering for parallelism):**
+
+```makefile
+ci: format analyze gen test build-android-debug
+
+build-android-debug:
+	flutter build apk --debug --no-shrink
+```
+
+**`--no-shrink` rationale:** the goal is "does Gradle/Kotlin compile cleanly", not "does R8 shrink correctly". Skipping shrink saves ~30s per run. R8 shrinking is exercised by the `release` build job in CI's `build.yml`, so we don't lose coverage.
+
+### Acceptance criteria
+
+- [ ] `make ci` includes a step that runs `flutter build apk --debug --no-shrink`
+- [ ] `make ci` fails with a non-zero exit code if the Android debug APK build fails
+- [ ] **Verification by deliberate breakage:** temporarily inject a Gradle syntax error in `android/app/build.gradle.kts`, run `make ci`, confirm it goes red on the new step. Revert the breakage. Re-run `make ci`, confirm it goes green. (Capture the red/green output in the PR body.)
+- [ ] `CLAUDE.md` Commands section updated to reflect the new gate scope
+- [ ] CI pipeline (`ci.yml`) is **NOT** modified — this PR only changes the local gate. CI's existing `build` job already covers this on the remote, so no parallel work is needed there.
+- [ ] Wall-clock time for `make ci` post-change is documented in the PR body (expected: ~3-5 min, up from ~1-2 min)
+
+### Testing strategy
+
+This is a one-line Makefile change. The 7-gate strategy from PR 6 does not apply. Verification is:
+
+1. Run `make ci` on a clean checkout — must pass
+2. Inject a deliberate Gradle break (e.g., `applicationId "broken syntax"`), run `make ci` — must red on the new step
+3. Revert the break, run `make ci` again — must green
+4. Capture and paste both runs into the PR body as evidence
+
+### Out of scope
+
+- No CI workflow changes (`ci.yml` stays as-is)
+- No iOS build added (no Mac CI runner; iOS deferred per project scope)
+- No release-build added to `make ci` (too slow for local; CI handles it)
+- No conditional build logic based on changed files (rejected as Option 2 above)
+- No new tests — this is a Makefile change
+
+### Time estimate
+
+**0.5-1 agent-hour.** Single-line Makefile edit + verification by breakage + CLAUDE.md doc update + PR write-up.
+
+### Sequencing relative to PR 6
+
+PR 7 is **independent** of PR 6 — the Makefile change has zero overlap with the dep upgrade. Recommended order:
+
+- **Ship PR 7 FIRST** (it's a 1-hour PR that protects PR 6). With the new `make ci` gate in place, PR 6's commits each get an Android build check before push, catching native plugin breakage from `flutter_dotenv 5→6`, `riverpod 2→3`, etc., at the local gate.
+- Alternative: ship PR 6 first if the user prioritizes the dep sweep — but then PR 6's commits skip the Android build pre-push gate and rely on GitHub Actions to catch any plugin breakage.
 
 ---
 
