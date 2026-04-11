@@ -202,7 +202,13 @@ void main() {
         expect(event.props['sessions_completed'], 3);
         expect(event.props['plan_size'], 3);
         expect(event.props['pr_count_this_week'], 0);
-        expect(event.props['week_number'], 0);
+        // week_number is computed from auth.user.createdAt (2026-01-01). We
+        // only assert it is a positive ordinal number — the exact value
+        // depends on DateTime.now() at run time, which is not the subject
+        // of this test. See weekly_plan_provider_week_number_test.dart
+        // for the deterministic coverage.
+        expect(event.props['week_number'], isA<int>());
+        expect(event.props['week_number'] as int, greaterThanOrEqualTo(1));
       },
     );
 

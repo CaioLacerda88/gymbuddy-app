@@ -16,6 +16,29 @@ final weeklyPlanRepositoryProvider = Provider<WeeklyPlanRepository>((ref) {
   return WeeklyPlanRepository(Supabase.instance.client);
 });
 
+/// Computes the ordinal week number since user signup from a Supabase
+/// `User.createdAt` string. Returns null when [createdAtIso] is null or
+/// cannot be parsed — callers should skip the analytics event entirely in
+/// that case (better to omit than ship week_number: 0).
+///
+/// Formula: `floor(daysSinceSignup / 7) + 1`, so days 0-6 after signup map
+/// to week 1, days 7-13 to week 2, etc. A negative result (clock skew)
+/// clamps to 1.
+int? computeWeekNumberSinceSignup(String? createdAtIso, {DateTime? now}) {
+  if (createdAtIso == null || createdAtIso.isEmpty) return null;
+  final createdAt = DateTime.tryParse(createdAtIso);
+  if (createdAt == null) return null;
+  final current = now ?? DateTime.now().toUtc();
+  final diff = current.difference(createdAt);
+  final days = diff.inDays;
+  if (days < 0) return 1; // clock skew — clamp rather than drop the event
+  return (days ~/ 7) + 1;
+}
+
+/// Private wrapper around [computeWeekNumberSinceSignup] for the notifier.
+int? _computeWeekNumberSinceSignup(String? createdAtIso) =>
+    computeWeekNumberSinceSignup(createdAtIso);
+
 /// Returns the Monday (ISO week start) for the given date.
 DateTime currentWeekMonday([DateTime? now]) {
   final date = now ?? DateTime.now();
@@ -127,7 +150,8 @@ class WeeklyPlanNotifier extends AsyncNotifier<WeeklyPlan?> {
         newPlan.routines.isNotEmpty &&
         newPlan.routines.every((r) => r.completedWorkoutId != null);
     if (!wasAllComplete && isNowAllComplete) {
-      final userId = ref.read(authRepositoryProvider).currentUser?.id;
+      final authUser = ref.read(authRepositoryProvider).currentUser;
+      final userId = authUser?.id;
       if (userId != null) {
         // NOTE: `weekStart` is the client-local Monday midnight (see
         // currentWeekMonday). A PR achieved in a different timezone near the
@@ -148,28 +172,31 @@ class WeeklyPlanNotifier extends AsyncNotifier<WeeklyPlan?> {
                 )
                 .length ??
             0;
-        // Week number = ISO weeks since user signup. Not cheaply available
-        // here without an extra auth roundtrip, so we emit 0 and let SQL
-        // compute it later from the event stream + auth.users.created_at.
-        const weekNumber =
-            0; // TODO post-PR: compute from currentUser.createdAt
-        unawaited(
-          ref
-              .read(analyticsRepositoryProvider)
-              .insertEvent(
-                userId: userId,
-                event: AnalyticsEvent.weekComplete(
-                  sessionsCompleted: newPlan.routines
-                      .where((r) => r.completedWorkoutId != null)
-                      .length,
-                  prCountThisWeek: prCountThisWeek,
-                  planSize: newPlan.routines.length,
-                  weekNumber: weekNumber,
+        // Week number = ordinal week since user signup, computed from
+        // auth.users.created_at. Formula: floor(daysSinceSignup / 7) + 1,
+        // so the first seven days post-signup = week 1. If created_at is
+        // not parseable we skip the event entirely — shipping a
+        // known-bad column (week_number: 0) is worse than omitting it.
+        final weekNumber = _computeWeekNumberSinceSignup(authUser?.createdAt);
+        if (weekNumber != null) {
+          unawaited(
+            ref
+                .read(analyticsRepositoryProvider)
+                .insertEvent(
+                  userId: userId,
+                  event: AnalyticsEvent.weekComplete(
+                    sessionsCompleted: newPlan.routines
+                        .where((r) => r.completedWorkoutId != null)
+                        .length,
+                    prCountThisWeek: prCountThisWeek,
+                    planSize: newPlan.routines.length,
+                    weekNumber: weekNumber,
+                  ),
+                  platform: currentPlatform(),
+                  appVersion: currentAppVersion(),
                 ),
-                platform: currentPlatform(),
-                appVersion: currentAppVersion(),
-              ),
-        );
+          );
+        }
       }
     }
   }
