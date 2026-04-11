@@ -24,6 +24,33 @@ void main() {
       SentryReport.setEnabled(true);
       expect(SentryReport.isEnabled, true);
     });
+
+    test('enabled→disabled transition updates isEnabled even when Sentry SDK '
+        'is not initialised (clearBreadcrumbs swallowed by try/catch)', () {
+      // In unit tests the Sentry SDK is never initialized (no DSN), so
+      // Sentry.configureScope throws internally. The try/catch in
+      // setEnabled must swallow that and still update _enabled to false.
+      // This guards the regression where an exception in clearBreadcrumbs
+      // could leave _enabled == true after the opt-out toggle.
+      expect(SentryReport.isEnabled, true);
+      expect(
+        () => SentryReport.setEnabled(false),
+        returnsNormally,
+        reason: 'clearBreadcrumbs failure must be swallowed, not thrown',
+      );
+      expect(SentryReport.isEnabled, false);
+    });
+
+    test(
+      'disabled→disabled transition is a no-op (does not call clearBreadcrumbs)',
+      () {
+        // Only the wasEnabled && !value branch triggers clearBreadcrumbs.
+        // Setting false→false must be a pure no-op (no SDK interaction).
+        SentryReport.setEnabled(false);
+        expect(() => SentryReport.setEnabled(false), returnsNormally);
+        expect(SentryReport.isEnabled, false);
+      },
+    );
   });
 
   group('SentryReport.captureException', () {

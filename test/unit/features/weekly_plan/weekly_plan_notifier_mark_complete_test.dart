@@ -354,5 +354,45 @@ void main() {
         expect(bundle.analytics.events, hasLength(1));
       },
     );
+
+    test(
+      'does NOT fire week_complete when user createdAt is unparseable (skip-not-zero)',
+      () async {
+        // This guards the "if weekNumber != null" branch in the notifier.
+        // When created_at cannot be parsed, computeWeekNumberSinceSignup
+        // returns null and the event must be entirely skipped — shipping
+        // week_number: 0 would corrupt cohort analysis.
+        const badCreatedAtUser = User(
+          id: 'user-bad-date',
+          appMetadata: {},
+          userMetadata: {},
+          aud: 'authenticated',
+          createdAt: 'not-a-valid-iso-date',
+        );
+
+        final before = _makePlan(routineIds: ['r-a']);
+        final after = _makePlan(routineIds: ['r-a'], completedIndices: {0});
+
+        final bundle = _makeContainer(
+          initialPlan: before,
+          afterMarkPlan: after,
+          user: badCreatedAtUser,
+        );
+        addTearDown(bundle.container.dispose);
+        await bundle.container.read(prListProvider.future);
+
+        await bundle.container
+            .read(weeklyPlanProvider.notifier)
+            .markRoutineComplete(routineId: 'r-a', workoutId: 'w-a');
+
+        expect(
+          bundle.analytics.events,
+          isEmpty,
+          reason:
+              'week_complete must be SKIPPED (not sent with week_number: 0) '
+              'when user.createdAt cannot be parsed.',
+        );
+      },
+    );
   });
 }
