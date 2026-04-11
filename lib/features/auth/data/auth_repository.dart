@@ -85,11 +85,17 @@ class AuthRepository extends BaseRepository {
   /// can redirect to the login screen.
   Future<void> deleteAccount({String? platform, String? appVersion}) {
     return mapException(() async {
+      // Use `if (x != null)` collection-if rather than the newer null-aware
+      // map value syntax (`'platform': ?platform`): build_runner's bundled
+      // analyzer on CI can't parse the latter, so the freezed/json_serializable
+      // generators fail at the `auth_repository.dart` parse step.
       final response = await _functions.invoke(
         'delete-user',
         body: <String, dynamic>{
-          'platform': ?platform,
-          'app_version': ?appVersion,
+          // ignore: use_null_aware_elements
+          if (platform != null) 'platform': platform,
+          // ignore: use_null_aware_elements
+          if (appVersion != null) 'app_version': appVersion,
         },
       );
       if (response.status >= 400) {
