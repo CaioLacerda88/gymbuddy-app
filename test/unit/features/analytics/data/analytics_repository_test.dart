@@ -127,9 +127,9 @@ void main() {
 
       await repo.insertEvent(
         userId: 'user-abc',
-        event: const AnalyticsEvent.accountDeleted(
-          workoutCount: 0,
-          daysSinceSignup: 1,
+        event: const AnalyticsEvent.onboardingCompleted(
+          fitnessLevel: 'beginner',
+          trainingFrequency: 3,
         ),
         platform: null,
         appVersion: null,
@@ -148,9 +148,9 @@ void main() {
       await expectLater(
         repo.insertEvent(
           userId: 'user-abc',
-          event: const AnalyticsEvent.accountDeleted(
-            workoutCount: 0,
-            daysSinceSignup: 1,
+          event: const AnalyticsEvent.onboardingCompleted(
+            fitnessLevel: 'beginner',
+            trainingFrequency: 3,
           ),
           platform: 'android',
           appVersion: '1.0.0',

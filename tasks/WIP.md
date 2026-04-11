@@ -9,12 +9,15 @@ Active work being done by agents. Each section is removed once the branch is mer
 **Status (2026-04-10):** Plan written (`docs/superpowers/plans/2026-04-10-pr5-observability.md`), branch `feature/phase13a-sprintA-pr5-observability`, **Tasks 1-11 of 19 implemented + committed**. Paused before Task 12 to restart for `.mcp.json` (openai-gpt-image) to load. Resume at Task 12.
 
 ### Execution mode
+
 Subagent-driven development (superpowers:subagent-driven-development). One tech-lead subagent per task, spec + quality review between tasks, TaskList tracks state.
 
 ### Branch state
+
 Feature branch: `feature/phase13a-sprintA-pr5-observability` (from main @ f9c95ee)
 
 Commits so far (bottom = oldest):
+
 1. `eebde73` docs(phase13a): add PR 5 observability plan + WIP decisions
 2. `62f5627` feat(core): add analytics_events table migration (PR 5) — Task 1
 3. `b771ce4` feat(analytics): add typed AnalyticsEvent union for 9 events (PR 5) — Task 2
@@ -31,6 +34,7 @@ Commits so far (bottom = oldest):
 **Current test count:** 939 passing (935 baseline + 4 new in crash_reports_enabled_provider_test). Analyzer: 0 issues.
 
 ### Deviations applied during implementation (not in the plan file)
+
 - **Task 2 (AnalyticsEvent):** `name` getter uses Freezed's `map` instead of `when` to avoid 25 `unnecessary_underscores` analyzer infos that `--fatal-infos` treats as failures. `props` getter still uses `when` since it destructures fields. Semantically equivalent.
 - **Task 3 (AnalyticsRepository test Fake):** Two fixes to the spec's Fake infrastructure because it wouldn't compile/run as written:
   1. Removed `PostgrestQueryOptions? options` from `_FakeInsertBuilder.insert` — that parameter doesn't exist in pinned `postgrest 2.6.0`.
@@ -46,6 +50,7 @@ Commits so far (bottom = oldest):
 - **Task 11 (profile widget tests):** `ProfileScreen` now watches `crashReportsEnabledProvider` which reads `Hive.box(HiveService.userPrefs)`. The 3 profile widget test files (`profile_screen_test.dart`, `profile_stats_test.dart`, `profile_stats_navigation_test.dart`) didn't initialize Hive → HiveError. Fix: added `setUpAll` to each that opens a temp-dir-backed `user_prefs` box, with matching `tearDownAll` cleanup. Zero changes to the 8+ ProviderScope blocks — fixing the test setup is cleaner than overriding the provider in every scope.
 
 ### Tasks remaining (8/19)
+
 - [ ] **Task 12** — Privacy policy edits (both `assets/legal/privacy_policy.md` and `docs/privacy_policy.md`, preserving Jekyll front-matter in docs/). 5 targeted changes. Plan lines 1599-1689.
 - [ ] **Task 13** — Fire `onboarding_completed` in `_finishOnboarding`. Plan lines 1693-1753.
 - [ ] **Task 14** — Wire workout lifecycle (3 events + breadcrumbs) into `active_workout_notifier.dart` with `_trackWorkoutEvent` helper. Plan lines 1757-1938. Most complex event-wire task.
@@ -56,6 +61,7 @@ Commits so far (bottom = oldest):
 - [ ] **Task 19** — Final verification gate: `make ci`, local migration apply, E2E smoke, manual event verification, `gh pr create`. Plan lines 2394-2500.
 
 ### How to resume after restart (for `.mcp.json` load)
+
 1. Read `tasks/WIP.md` (this file) and `docs/superpowers/plans/2026-04-10-pr5-observability.md`
 2. `git checkout feature/phase13a-sprintA-pr5-observability` (should already be checked out)
 3. Verify baseline: `export PATH="/c/flutter/bin:$PATH" && dart analyze --fatal-infos && flutter test` → expect 939 passing
@@ -68,11 +74,12 @@ Commits so far (bottom = oldest):
 
 All 5 design questions are already resolved and cemented in the plan. Preserved here for context:
 
-### PR 5: B2 + B3 — Observability (Sentry + Analytics)  (5-8h, needs design)
+### PR 5: B2 + B3 — Observability (Sentry + Analytics) (5-8h, needs design)
 
 **Goal:** Crash reporting via Sentry + basic product analytics for retention tracking.
 
 **Design decisions locked in:**
+
 - **Q1 — Analytics backend:** ✅ **Supabase-native** `public.analytics_events` table. No PostHog, no third-party SDK. Reasons: LGPD (data stays first-party, privacy policy section 2 survives with a one-line tweak), zero new dependencies, free tier effectively unlimited for MVP volume, full SQL for retention/funnels via views.
   - Schema: `(id uuid pk, user_id uuid fk auth.users on delete cascade, name text, props jsonb default '{}', created_at timestamptz default now())`
   - Indexes: `(user_id, created_at desc)`, `(name, created_at desc)`
@@ -80,6 +87,7 @@ All 5 design questions are already resolved and cemented in the plan. Preserved 
   - Flutter: thin `AnalyticsRepository` wrapping `supabase.from('analytics_events').insert(...)`, mockable for tests.
 
 **Open questions (remaining):**
+
 - **Q2 — Sentry DSN management:** ✅ **`.env` file** (parity with Supabase creds) with **empty-DSN-skips-init** twist. In `main.dart`, read `dotenv.env['SENTRY_DSN'] ?? ''`; if empty, bypass `SentryFlutter.init` entirely. Benefits: dev builds and tests never send (empty DSN locally), prod CI writes the real one, no separate codepath. `tracesSampleRate: 0.0` for MVP (no perf tracing). `environment: kReleaseMode ? 'prod' : 'dev'`.
 - **Q3 — PII + LGPD + opt-out:** ✅ locked in.
   - **Q3a Sentry scrubbing — strict mode:**
@@ -120,11 +128,14 @@ All 5 design questions are already resolved and cemented in the plan. Preserved 
   - No free-text fields, no email/name, no PII in any prop. `user_id` is on the row (not in props).
 
   **Q4a — Platform + app_version as TABLE COLUMNS** (not props):
+
   ```sql
   platform    text,        -- 'android' | 'ios' | 'web'
   app_version text,        -- e.g. '1.2.3+45'
   ```
+
   Indexable, type-safe, populated on every insert by the `AnalyticsRepository` wrapper.
+
 - **Q5 — Sentry integration points:** ✅ locked in. Three-tier instrumentation:
   - **Tier 1 — Foundation:** `runZonedGuarded` in `lib/main.dart` wrapping `runApp`, `SentryFlutter.init(appRunner: ...)` which auto-wires `FlutterError.onError` and `PlatformDispatcher.instance.onError`. Canonical pattern from Sentry docs.
   - **Tier 2 — Explicit captures:** `Sentry.captureException(e, stackTrace: st)` in `lib/core/data/base_repository.dart` catch blocks where AppExceptions are constructed. Single chokepoint for all data-layer errors.
@@ -143,6 +154,7 @@ All 5 design questions are already resolved and cemented in the plan. Preserved 
   - Document in a `docs/ops/sentry-runbook.md` file during a future ops PR, not now
 
 **Files to read on session resume (for context):**
+
 - `lib/main.dart` — Sentry.init wiring
 - `lib/app.dart` — NavigatorObserver + app_opened event
 - `lib/core/exceptions/app_exception.dart` — sealed hierarchy
@@ -158,6 +170,7 @@ All 5 design questions are already resolved and cemented in the plan. Preserved 
 - `supabase/migrations/` — new migration for `public.analytics_events` + RLS policy
 
 **Proposed PR 5 sub-sequence (Supabase-native analytics + Sentry):**
+
 1. Migration: `public.analytics_events` table + indexes + RLS policy (apply to hosted Supabase post-merge)
 2. `AnalyticsRepository` abstraction + Supabase impl (mockable via BaseRepository pattern)
 3. Sentry dep + DSN in `.env`/`.env.example` + `Sentry.init` in `main.dart` with `runZonedGuarded` + `FlutterError.onError`
@@ -174,12 +187,3 @@ All 5 design questions are already resolved and cemented in the plan. Preserved 
 3. Brainstorming → writing-plans → implement
 
 ---
-
-## Parallel track: pixel-art-skill v0.1 (general-purpose Claude skill)
-
-**Source repo:** `~/Projects/pixel-art-skill/` (separate git history, not part of GymBuddy)
-
-- Spec: `~/Projects/pixel-art-skill/docs/specs/2026-04-10-pixel-art-skill-design.md`
-- Plan: `~/Projects/pixel-art-skill/docs/plans/2026-04-10-pixel-art-skill-v0.1.md`
-- Being picked up in a separate Claude Code window — do NOT touch from the GymBuddy session
-- After v0.1 ships and installs to `~/.claude/skills/pixel-art/`, first real-world test is the deferred GymBuddy P6 app icon

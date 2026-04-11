@@ -82,14 +82,6 @@ void main() {
       );
       expect(event.name, 'add_to_plan_prompt_responded');
     });
-
-    test('accountDeleted → "account_deleted"', () {
-      const event = AnalyticsEvent.accountDeleted(
-        workoutCount: 12,
-        daysSinceSignup: 47,
-      );
-      expect(event.name, 'account_deleted');
-    });
   });
 
   group('AnalyticsEvent.props', () {

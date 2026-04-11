@@ -68,10 +68,10 @@ class AnalyticsEvent with _$AnalyticsEvent {
     required String routineId,
   }) = _AddToPlanPromptResponded;
 
-  const factory AnalyticsEvent.accountDeleted({
-    required int workoutCount,
-    required int daysSinceSignup,
-  }) = _AccountDeleted;
+  // NOTE: the `account_deleted` event is intentionally NOT in this sealed
+  // class. It's written from inside the `delete-user` Edge Function to a
+  // separate no-FK table (`account_deletion_events`) so the row survives
+  // the CASCADE delete on `auth.users`. See that function for details.
 
   /// Event name as stored in the `name` column of `analytics_events`.
   String get name => map(
@@ -83,7 +83,6 @@ class AnalyticsEvent with _$AnalyticsEvent {
     weekPlanSaved: (_) => 'week_plan_saved',
     weekComplete: (_) => 'week_complete',
     addToPlanPromptResponded: (_) => 'add_to_plan_prompt_responded',
-    accountDeleted: (_) => 'account_deleted',
   );
 
   /// Props as stored in the `props` jsonb column. Keys are snake_case.
@@ -148,10 +147,6 @@ class AnalyticsEvent with _$AnalyticsEvent {
       'action': action,
       'trigger': trigger,
       'routine_id': routineId,
-    },
-    accountDeleted: (workoutCount, daysSinceSignup) => {
-      'workout_count': workoutCount,
-      'days_since_signup': daysSinceSignup,
     },
   );
 }

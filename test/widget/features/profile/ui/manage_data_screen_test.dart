@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/data/base_repository.dart';
 import 'package:gymbuddy_app/core/exceptions/app_exception.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
-import 'package:gymbuddy_app/features/analytics/data/analytics_repository.dart';
-import 'package:gymbuddy_app/features/analytics/data/models/analytics_event.dart';
-import 'package:gymbuddy_app/features/analytics/providers/analytics_providers.dart';
 import 'package:gymbuddy_app/features/auth/data/auth_repository.dart';
 import 'package:gymbuddy_app/features/auth/providers/auth_providers.dart';
 import 'package:gymbuddy_app/features/personal_records/data/pr_repository.dart';
@@ -31,22 +27,6 @@ class MockWorkoutRepository extends Mock implements WorkoutRepository {}
 
 class MockPRRepository extends Mock implements PRRepository {}
 
-/// Fake analytics repository that swallows events — prevents the real
-/// [AnalyticsRepository] from touching `Supabase.instance` during widget
-/// tests. Used by the delete-account flow which fires `account_deleted`.
-class _FakeAnalyticsRepository extends BaseRepository
-    implements AnalyticsRepository {
-  const _FakeAnalyticsRepository();
-
-  @override
-  Future<void> insertEvent({
-    required String userId,
-    required AnalyticsEvent event,
-    required String? platform,
-    required String? appVersion,
-  }) async {}
-}
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -61,19 +41,18 @@ Widget buildTestWidget({
   final mockAuth = authRepo ?? MockAuthRepository();
   final mockUser = MockUser();
   when(() => mockUser.id).thenReturn('user-001');
-  // `AuthNotifier.deleteAccount` reads `user.createdAt` to compute
-  // `daysSinceSignup` for the `account_deleted` analytics event. gotrue
-  // `User.createdAt` is a non-nullable ISO-8601 String, so the mock must
-  // return a valid string — `null` would blow up before the mocked
-  // `deleteAccount()` call.
-  when(() => mockUser.createdAt).thenReturn('2024-01-01T00:00:00.000Z');
   when(() => mockAuth.currentUser).thenReturn(mockUser);
   when(() => mockAuth.currentSession).thenReturn(null);
   when(
     () => mockAuth.onAuthStateChange(),
   ).thenAnswer((_) => const Stream<AuthState>.empty());
   if (authRepo == null) {
-    when(() => mockAuth.deleteAccount()).thenAnswer((_) async {});
+    when(
+      () => mockAuth.deleteAccount(
+        platform: any(named: 'platform'),
+        appVersion: any(named: 'appVersion'),
+      ),
+    ).thenAnswer((_) async {});
     when(() => mockAuth.signOut()).thenAnswer((_) async {});
   }
 
@@ -81,12 +60,6 @@ Widget buildTestWidget({
   if (workoutRepo == null) {
     when(() => mockWorkoutRepo.clearHistory(any())).thenAnswer((_) async {});
   }
-  // The delete-account flow calls `getFinishedWorkoutCount` to attach the
-  // count to the `account_deleted` event. Stub a default so tests that
-  // don't care about the analytics path still resolve.
-  when(
-    () => mockWorkoutRepo.getFinishedWorkoutCount(any()),
-  ).thenAnswer((_) async => 0);
 
   final mockPRRepo = prRepo ?? MockPRRepository();
   if (prRepo == null) {
@@ -98,13 +71,6 @@ Widget buildTestWidget({
       authRepositoryProvider.overrideWithValue(mockAuth),
       workoutRepositoryProvider.overrideWithValue(mockWorkoutRepo),
       prRepositoryProvider.overrideWithValue(mockPRRepo),
-      // Prevents `AuthNotifier.deleteAccount` from constructing the real
-      // `AnalyticsRepository(Supabase.instance.client)` when it fires the
-      // `account_deleted` event. Without this override the test would
-      // trip the `Supabase.instance._isInitialized` assertion.
-      analyticsRepositoryProvider.overrideWithValue(
-        const _FakeAnalyticsRepository(),
-      ),
       workoutCountProvider.overrideWith((ref) => Future.value(workoutCount)),
       prCountProvider.overrideWith((ref) => Future.value(prCount)),
     ],
@@ -477,7 +443,12 @@ void main() {
         '(one char short)',
         (tester) async {
           final mockAuth = MockAuthRepository();
-          when(() => mockAuth.deleteAccount()).thenAnswer((_) async {});
+          when(
+            () => mockAuth.deleteAccount(
+              platform: any(named: 'platform'),
+              appVersion: any(named: 'appVersion'),
+            ),
+          ).thenAnswer((_) async {});
           when(() => mockAuth.signOut()).thenAnswer((_) async {});
 
           await tester.pumpWidget(buildTestWidget(authRepo: mockAuth));
@@ -504,7 +475,12 @@ void main() {
           expect(button.onPressed, isNull);
 
           // And deleteAccount must not have been invoked.
-          verifyNever(() => mockAuth.deleteAccount());
+          verifyNever(
+            () => mockAuth.deleteAccount(
+              platform: any(named: 'platform'),
+              appVersion: any(named: 'appVersion'),
+            ),
+          );
         },
       );
 
@@ -513,7 +489,12 @@ void main() {
         '(trailing char)',
         (tester) async {
           final mockAuth = MockAuthRepository();
-          when(() => mockAuth.deleteAccount()).thenAnswer((_) async {});
+          when(
+            () => mockAuth.deleteAccount(
+              platform: any(named: 'platform'),
+              appVersion: any(named: 'appVersion'),
+            ),
+          ).thenAnswer((_) async {});
           when(() => mockAuth.signOut()).thenAnswer((_) async {});
 
           await tester.pumpWidget(buildTestWidget(authRepo: mockAuth));
@@ -540,7 +521,12 @@ void main() {
           expect(button.onPressed, isNull);
 
           // And deleteAccount must not have been invoked.
-          verifyNever(() => mockAuth.deleteAccount());
+          verifyNever(
+            () => mockAuth.deleteAccount(
+              platform: any(named: 'platform'),
+              appVersion: any(named: 'appVersion'),
+            ),
+          );
         },
       );
 
@@ -548,7 +534,12 @@ void main() {
         tester,
       ) async {
         final mockAuth = MockAuthRepository();
-        when(() => mockAuth.deleteAccount()).thenAnswer((_) async {});
+        when(
+          () => mockAuth.deleteAccount(
+            platform: any(named: 'platform'),
+            appVersion: any(named: 'appVersion'),
+          ),
+        ).thenAnswer((_) async {});
         when(() => mockAuth.signOut()).thenAnswer((_) async {});
 
         await tester.pumpWidget(buildTestWidget(authRepo: mockAuth));
@@ -563,7 +554,12 @@ void main() {
         await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
         await tester.pumpAndSettle();
 
-        verifyNever(() => mockAuth.deleteAccount());
+        verifyNever(
+          () => mockAuth.deleteAccount(
+            platform: any(named: 'platform'),
+            appVersion: any(named: 'appVersion'),
+          ),
+        );
         verifyNever(() => mockAuth.signOut());
       });
 
@@ -571,7 +567,12 @@ void main() {
         tester,
       ) async {
         final mockAuth = MockAuthRepository();
-        when(() => mockAuth.deleteAccount()).thenAnswer((_) async {});
+        when(
+          () => mockAuth.deleteAccount(
+            platform: any(named: 'platform'),
+            appVersion: any(named: 'appVersion'),
+          ),
+        ).thenAnswer((_) async {});
         when(() => mockAuth.signOut()).thenAnswer((_) async {});
 
         await tester.pumpWidget(buildTestWidget(authRepo: mockAuth));
@@ -592,7 +593,10 @@ void main() {
         // reversed and signOut failed, we'd delete the account then leave
         // the user logged in (or vice versa). Order matters for UX safety.
         verifyInOrder([
-          () => mockAuth.deleteAccount(),
+          () => mockAuth.deleteAccount(
+            platform: any(named: 'platform'),
+            appVersion: any(named: 'appVersion'),
+          ),
           () => mockAuth.signOut(),
         ]);
       });
@@ -602,7 +606,10 @@ void main() {
         (tester) async {
           final mockAuth = MockAuthRepository();
           when(
-            () => mockAuth.deleteAccount(),
+            () => mockAuth.deleteAccount(
+              platform: any(named: 'platform'),
+              appVersion: any(named: 'appVersion'),
+            ),
           ).thenThrow(const NetworkException('connection refused'));
           when(() => mockAuth.signOut()).thenAnswer((_) async {});
 
