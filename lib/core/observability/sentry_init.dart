@@ -39,10 +39,10 @@ Future<void> initSentryAndRun(Future<void> Function() appRunner) async {
         final userId = Supabase.instance.client.auth.currentUser?.id;
         // With sendDefaultPii: false, Sentry won't auto-populate user fields,
         // so when we have no Supabase user we just pass the event through
-        // untouched. copyWith(user: null) preserves the existing user via
-        // `user ?? this.user`, so it cannot be used to clear.
+        // untouched. As of sentry_flutter 9.x, SentryEvent fields are mutable
+        // and `copyWith` is deprecated, so we assign directly.
         if (userId != null) {
-          return event.copyWith(user: SentryUser(id: userId));
+          event.user = SentryUser(id: userId);
         }
         return event;
       };
