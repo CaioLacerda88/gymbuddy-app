@@ -9,6 +9,65 @@ final _uuidInPath = RegExp(
   r'/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}',
 );
 
+/// Matches `token@host` style email addresses. We scrub these from outbound
+/// Sentry events so a third-party exception whose message happens to contain
+/// a user email never reaches the tracker.
+final _emailRegex = RegExp(r'[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}');
+
+/// Replaces any email addresses in [value] with `[email]`. Returns [value]
+/// unchanged when it contains no email or when it is null.
+String? scrubEmails(String? value) {
+  if (value == null || value.isEmpty) return value;
+  if (!value.contains('@')) return value;
+  return value.replaceAll(_emailRegex, '[email]');
+}
+
+/// Walks every user-visible string field on [event] (message, exception
+/// values, stack-frame descriptions) and replaces email-like substrings with
+/// `[email]`. Mutates and returns [event] — callers can chain.
+///
+/// Defense-in-depth against third-party packages embedding user input in
+/// exception messages. Our own repositories short-circuit at the
+/// `on AppException { rethrow; }` branch in [BaseRepository.mapException]
+/// so AppException subclasses never reach `beforeSend`; this scrub only
+/// ever touches unexpected non-domain errors.
+SentryEvent scrubEventPii(SentryEvent event) {
+  // 1. Top-level message (SentryMessage fields are mutable in sentry 9.x)
+  final msg = event.message;
+  if (msg != null) {
+    final scrubbedFormatted = scrubEmails(msg.formatted);
+    if (scrubbedFormatted != null && scrubbedFormatted != msg.formatted) {
+      msg.formatted = scrubbedFormatted;
+    }
+    final scrubbedTemplate = scrubEmails(msg.template);
+    if (scrubbedTemplate != msg.template) {
+      msg.template = scrubbedTemplate;
+    }
+  }
+
+  // 2. Exception values and their stack frames
+  final exceptions = event.exceptions;
+  if (exceptions != null) {
+    for (final ex in exceptions) {
+      final scrubbedValue = scrubEmails(ex.value);
+      if (scrubbedValue != ex.value) {
+        ex.value = scrubbedValue;
+      }
+      final frames = ex.stackTrace?.frames;
+      if (frames != null) {
+        for (final frame in frames) {
+          final scrubbedDesc = scrubEmails(frame.contextLine);
+          if (scrubbedDesc != frame.contextLine) {
+            frame.contextLine = scrubbedDesc;
+          }
+        }
+      }
+    }
+  }
+
+  return event;
+}
+
 /// Initializes Sentry if `SENTRY_DSN` is set in dotenv. Otherwise runs
 /// `appRunner` directly (dev builds, tests, and any build where the DSN
 /// has not been injected by CI).
@@ -16,8 +75,12 @@ final _uuidInPath = RegExp(
 /// Strict PII posture:
 /// - `sendDefaultPii: false` — no IP, no auto-captured user info
 /// - `tracesSampleRate: 0.0` — no performance tracing for MVP
-/// - `beforeSend` sets only the Supabase user_id on the event
-/// - `beforeBreadcrumb` drops breadcrumbs containing email-like strings
+/// - `beforeSend` sets only the Supabase user_id on the event, then runs
+///   [scrubEventPii] to redact any email-like substrings from the message,
+///   exception values, and stack-frame context lines (defense-in-depth
+///   against third-party packages that embed user input in error messages)
+/// - `beforeBreadcrumb` drops breadcrumbs containing email-like strings and
+///   also scans breadcrumb `data` string values
 Future<void> initSentryAndRun(Future<void> Function() appRunner) async {
   final dsn = dotenv.env['SENTRY_DSN'] ?? '';
   if (dsn.isEmpty) {
@@ -44,17 +107,29 @@ Future<void> initSentryAndRun(Future<void> Function() appRunner) async {
         if (userId != null) {
           event.user = SentryUser(id: userId);
         }
-        return event;
+        // Scrub any email-like substrings from user-visible event fields.
+        // BaseRepository.mapException short-circuits AppException before the
+        // capture branch runs, so this only ever catches third-party errors
+        // that happen to echo user input — but we run it unconditionally as
+        // a defense-in-depth measure.
+        return scrubEventPii(event);
       };
 
       options.beforeBreadcrumb = (Breadcrumb? crumb, Hint hint) {
         if (crumb == null) return null;
         final msg = crumb.message ?? '';
-        // NOTE: only `message` is scanned for PII. Callers adding breadcrumbs
-        // must not put user email, name, session tokens, or other PII in the
-        // `data` map. If we ever need to filter `data` too, extend this to
-        // walk the map values.
         if (msg.contains('@')) return null;
+        // Defense-in-depth: walk breadcrumb `data` string values too. Our
+        // own call sites only put bounded IDs (workout_id, routine_id, etc.)
+        // in `data`, and SentryReport.addBreadcrumb documents this rule,
+        // but if a future caller slips in user input we redact the whole
+        // crumb rather than shipping it.
+        final data = crumb.data;
+        if (data != null) {
+          for (final value in data.values) {
+            if (value is String && value.contains('@')) return null;
+          }
+        }
         return crumb;
       };
     },
