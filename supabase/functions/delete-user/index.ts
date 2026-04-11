@@ -30,12 +30,30 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// CORS: restrict to the Supabase project URL only. The Flutter app invokes
+// this function via `supabase.functions.invoke` (SDK call, no browser CORS),
+// so we do NOT need a wildcard. Pinning to SUPABASE_URL keeps the function
+// invokable from the local Supabase Studio / dashboard while blocking
+// arbitrary cross-origin callers.
+const allowedOrigin = Deno.env.get('SUPABASE_URL') ?? '';
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': allowedOrigin,
   'Access-Control-Allow-Headers':
     'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  Vary: 'Origin',
 };
+
+// Maximum byte length for the optional client-supplied metadata fields
+// (platform, app_version). Anything longer is clamped — prevents a bad
+// client from stuffing PII-bearing strings into audit rows.
+const MAX_METADATA_LEN = 64;
+
+function clampMeta(value: string): string {
+  return value.length > MAX_METADATA_LEN
+    ? value.slice(0, MAX_METADATA_LEN)
+    : value;
+}
 
 serve(async (req) => {
   // Preflight
@@ -59,13 +77,19 @@ serve(async (req) => {
 
     // Parse optional POST body for platform / app_version. A missing or
     // malformed body is tolerated — we just write NULLs for those columns.
+    // Both fields are clamped to MAX_METADATA_LEN to prevent a bad client
+    // from shoving long / PII-bearing strings into the audit row.
     let platform: string | null = null;
     let appVersion: string | null = null;
     try {
       if (req.headers.get('content-type')?.includes('application/json')) {
         const body = await req.json();
-        if (typeof body?.platform === 'string') platform = body.platform;
-        if (typeof body?.app_version === 'string') appVersion = body.app_version;
+        if (typeof body?.platform === 'string') {
+          platform = clampMeta(body.platform);
+        }
+        if (typeof body?.app_version === 'string') {
+          appVersion = clampMeta(body.app_version);
+        }
       }
     } catch (_) {
       // Ignore parse errors — body is optional.
@@ -92,37 +116,49 @@ serve(async (req) => {
     //
     // Best-effort: if anything fails here we still proceed with the delete.
     // The audit row is valuable but not worth blocking the user's explicit
-    // erasure request.
+    // erasure request. The count query and the audit insert live in
+    // SEPARATE try blocks so a transient failure of the count query cannot
+    // swallow the audit row — we fall back to `null` for workout_count and
+    // still write the event.
+
+    // 1a. Finished workout count for this user (nullable fallback).
+    let workoutCount: number | null = null;
     try {
-      // Finished workout count for this user.
-      const { count: workoutCount } = await adminClient
+      const { count } = await adminClient
         .from('workouts')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', user.id)
         .not('finished_at', 'is', null);
+      workoutCount = count ?? 0;
+    } catch (_) {
+      // Transient count failure — leave as null so the audit row still ships.
+    }
 
-      // Days since signup, floored.
-      const createdAtIso = user.created_at;
-      let daysSinceSignup = 0;
-      if (createdAtIso) {
-        const createdAt = new Date(createdAtIso);
-        if (!Number.isNaN(createdAt.getTime())) {
-          daysSinceSignup = Math.floor(
-            (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24),
-          );
-        }
+    // 1b. Days since signup, floored. Pure computation, no I/O, no try needed.
+    const createdAtIso = user.created_at;
+    let daysSinceSignup = 0;
+    if (createdAtIso) {
+      const createdAt = new Date(createdAtIso);
+      if (!Number.isNaN(createdAt.getTime())) {
+        daysSinceSignup = Math.floor(
+          (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24),
+        );
       }
+    }
 
+    // 1c. Insert the audit row. Separate try so 1a failing cannot skip this.
+    try {
       await adminClient.from('account_deletion_events').insert({
         props: {
-          workout_count: workoutCount ?? 0,
+          workout_count: workoutCount,
           days_since_signup: daysSinceSignup,
         },
         platform,
         app_version: appVersion,
       });
     } catch (_) {
-      // Swallow and continue to the delete.
+      // Swallow and continue to the delete. Audit failure must never block
+      // the user's explicit erasure request.
     }
 
     // --- 2. Delete the user ---
