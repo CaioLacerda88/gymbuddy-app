@@ -216,6 +216,47 @@ void main() {
         },
       );
 
+      test('omits platform and app_version from body when both are null '
+          '(collection-if must not produce null-value keys)', () async {
+        // Guards the CI fix (commit 897bc89): the collection-if syntax
+        // `if (x != null) 'key': x` must produce an EMPTY map when both
+        // args are null — not a map with null values like
+        // `{'platform': null, 'app_version': null}`, which the Edge Function
+        // would receive and store in the audit row.
+        when(
+          () => mockFunctions.invoke(any(), body: any(named: 'body')),
+        ).thenAnswer(
+          (_) async =>
+              supabase.FunctionResponse(data: {'success': true}, status: 200),
+        );
+
+        await repo
+            .deleteAccount(); // both platform and appVersion default to null
+
+        final captured = verify(
+          () => mockFunctions.invoke(
+            'delete-user',
+            body: captureAny(named: 'body'),
+          ),
+        ).captured;
+        expect(captured.single, isA<Map<String, dynamic>>());
+        final body = captured.single as Map<String, dynamic>;
+        expect(
+          body.containsKey('platform'),
+          isFalse,
+          reason:
+              'When platform is null the collection-if must omit the key '
+              'entirely, not insert a null value.',
+        );
+        expect(
+          body.containsKey('app_version'),
+          isFalse,
+          reason:
+              'When appVersion is null the collection-if must omit the key '
+              'entirely, not insert a null value.',
+        );
+      });
+
       test('throws when the Edge Function returns a 4xx status', () async {
         when(
           () => mockFunctions.invoke(any(), body: any(named: 'body')),
