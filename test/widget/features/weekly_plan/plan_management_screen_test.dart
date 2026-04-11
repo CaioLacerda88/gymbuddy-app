@@ -26,6 +26,7 @@ import 'package:gymbuddy_app/features/weekly_plan/ui/plan_management_screen.dart
 import 'package:gymbuddy_app/features/workouts/models/workout.dart';
 import 'package:gymbuddy_app/features/workouts/providers/workout_history_providers.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show User;
 
 // ---------------------------------------------------------------------------
 // Stubs
@@ -100,6 +101,8 @@ class _EmptyHistoryNotifier extends AsyncNotifier<List<Workout>>
 
 class _MockAuthRepository extends Mock implements AuthRepository {}
 
+class _MockUser extends Mock implements User {}
+
 /// No-op analytics repo — prevents tests from touching `Supabase.instance`
 /// when `_savePlan` fires `week_plan_saved`.
 class _FakeAnalyticsRepository extends BaseRepository
@@ -113,6 +116,24 @@ class _FakeAnalyticsRepository extends BaseRepository
     required String? platform,
     required String? appVersion,
   }) async {}
+}
+
+/// Captures every `insertEvent` call so tests can assert firing counts.
+class _CapturingAnalyticsRepository extends BaseRepository
+    implements AnalyticsRepository {
+  _CapturingAnalyticsRepository();
+
+  final List<AnalyticsEvent> events = [];
+
+  @override
+  Future<void> insertEvent({
+    required String userId,
+    required AnalyticsEvent event,
+    required String? platform,
+    required String? appVersion,
+  }) async {
+    events.add(event);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -152,11 +173,21 @@ Widget _build({
   required WeeklyPlan? plan,
   required List<Routine> routines,
   int trainingFrequency = 3,
+  AnalyticsRepository? analytics,
+  AuthRepository? auth,
 }) {
-  // Null-user auth mock — `_savePlan` reads `.currentUser?.id` and early-returns
-  // when null, short-circuiting the analytics insert without touching Supabase.
-  final mockAuth = _MockAuthRepository();
-  when(() => mockAuth.currentUser).thenReturn(null);
+  // Default: null-user auth mock — `_savePlan` reads `.currentUser?.id` and
+  // early-returns when null, short-circuiting analytics inserts without
+  // touching Supabase. Tests that want to assert analytics fires must pass
+  // their own auth mock with a non-null user.
+  final AuthRepository authRepo;
+  if (auth != null) {
+    authRepo = auth;
+  } else {
+    final mockAuth = _MockAuthRepository();
+    when(() => mockAuth.currentUser).thenReturn(null);
+    authRepo = mockAuth;
+  }
 
   return ProviderScope(
     overrides: [
@@ -164,9 +195,9 @@ Widget _build({
       routineListProvider.overrideWith(() => _RoutineListStub(routines)),
       profileProvider.overrideWith(() => _ProfileStub(trainingFrequency)),
       workoutHistoryProvider.overrideWith(() => _EmptyHistoryNotifier()),
-      authRepositoryProvider.overrideWithValue(mockAuth),
+      authRepositoryProvider.overrideWithValue(authRepo),
       analyticsRepositoryProvider.overrideWithValue(
-        const _FakeAnalyticsRepository(),
+        analytics ?? const _FakeAnalyticsRepository(),
       ),
     ],
     child: MaterialApp(
@@ -463,6 +494,132 @@ void main() {
         // Empty plan result: empty state stays since no routines were added.
         // Auto-fill with freq=0 selects 0 routines, leaving the bucket empty.
         expect(find.text('No routines planned this week'), findsOneWidget);
+      },
+    );
+  });
+
+  group('PlanManagementScreen analytics debouncing', () {
+    testWidgets('fires week_plan_saved exactly once for a multi-edit session '
+        '(auto-fill + remove + undo) — flushed on dispose', (tester) async {
+      tester.view.physicalSize = const Size(800, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final routines = [
+        _routine(id: 'r-001', name: 'Push Day'),
+        _routine(id: 'r-002', name: 'Pull Day'),
+      ];
+
+      final mockUser = _MockUser();
+      when(() => mockUser.id).thenReturn('user-001');
+      final mockAuth = _MockAuthRepository();
+      when(() => mockAuth.currentUser).thenReturn(mockUser);
+
+      final capturing = _CapturingAnalyticsRepository();
+
+      // Pump screen in an empty state so we can drive edits.
+      await tester.pumpWidget(
+        _build(
+          plan: null,
+          routines: routines,
+          trainingFrequency: 2,
+          analytics: capturing,
+          auth: mockAuth,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Edit 1: auto-fill — this fires _savePlan once.
+      await tester.tap(find.text('Auto-fill'));
+      await tester.pumpAndSettle();
+
+      // Edit 2 + 3: remove a routine, then undo it. Each tap calls
+      // _savePlan internally. Under the old code, this bucket of three
+      // edits in a row would fire three week_plan_saved events; under
+      // the debounced implementation they all roll up to one.
+      await tester.drag(find.text('Push Day'), const Offset(-500, 0));
+      await tester.pumpAndSettle();
+
+      // Undo the remove. Snackbar action label is "UNDO".
+      final undoFinder = find.text('UNDO');
+      if (undoFinder.evaluate().isNotEmpty) {
+        await tester.tap(undoFinder);
+        await tester.pumpAndSettle();
+      }
+
+      // So far: no analytics event should have been inserted — everything
+      // is pending until dispose.
+      expect(
+        capturing.events,
+        isEmpty,
+        reason: 'week_plan_saved is debounced — it must not fire during edits',
+      );
+
+      // Tear down the screen. The dispose() hook should flush a single
+      // event.
+      await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+      await tester.pumpAndSettle();
+
+      final weekPlanSavedEvents = capturing.events
+          .where((e) => e.name == 'week_plan_saved')
+          .toList();
+      expect(
+        weekPlanSavedEvents,
+        hasLength(1),
+        reason:
+            'Exactly one week_plan_saved event should flush at dispose, '
+            'regardless of the number of edits in the session',
+      );
+
+      // The flushed event should reflect the most-recent session state —
+      // used_autofill=true (because we auto-filled at some point in the
+      // session) and routine_count equal to the current bucket size.
+      final event = weekPlanSavedEvents.single;
+      expect(event.props['used_autofill'], true);
+    });
+
+    testWidgets(
+      'does NOT fire week_plan_saved on dispose when no edits were made',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final routines = [_routine(id: 'r-001', name: 'Push Day')];
+        final plan = _plan(routines: [_bucket(routineId: 'r-001', order: 1)]);
+
+        final mockUser = _MockUser();
+        when(() => mockUser.id).thenReturn('user-001');
+        final mockAuth = _MockAuthRepository();
+        when(() => mockAuth.currentUser).thenReturn(mockUser);
+
+        final capturing = _CapturingAnalyticsRepository();
+
+        await tester.pumpWidget(
+          _build(
+            plan: plan,
+            routines: routines,
+            trainingFrequency: 3,
+            analytics: capturing,
+            auth: mockAuth,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // No edits — just unmount.
+        await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+        await tester.pumpAndSettle();
+
+        final weekPlanSavedEvents = capturing.events
+            .where((e) => e.name == 'week_plan_saved')
+            .toList();
+        expect(
+          weekPlanSavedEvents,
+          isEmpty,
+          reason: 'No-op view of the plan screen must not fire week_plan_saved',
+        );
       },
     );
   });
