@@ -466,18 +466,19 @@ class _RoutineRow extends StatelessWidget {
   final bool isDone;
   final VoidCallback? onDismissed;
 
-  static const _primaryGreen = Color(0xFF00E676);
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Use the theme primary color (M3 green) instead of a hardcoded hex so
+    // future brand/theme changes propagate here automatically.
+    final primary = theme.colorScheme.primary;
 
     final content = Container(
       margin: const EdgeInsets.only(bottom: 4),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: isDone
-            ? _primaryGreen.withValues(alpha: 0.08)
+            ? primary.withValues(alpha: 0.08)
             : theme.cardTheme.color ?? theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(kRadiusMd),
       ),
@@ -485,7 +486,7 @@ class _RoutineRow extends StatelessWidget {
         children: [
           // Sequence number or checkmark.
           if (isDone)
-            const Icon(Icons.check_circle, color: _primaryGreen, size: 24)
+            Icon(Icons.check_circle, color: primary, size: 24)
           else
             Container(
               width: 24,
@@ -514,7 +515,7 @@ class _RoutineRow extends StatelessWidget {
                   name,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: isDone ? _primaryGreen : null,
+                    color: isDone ? primary : null,
                   ),
                 ),
                 Text(

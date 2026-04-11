@@ -22,6 +22,15 @@ class AnalyticsEvent with _$AnalyticsEvent {
   // sites shipped `false` unconditionally), and shipping a permanently-
   // false column corrupts funnel analysis. Re-add the flag in a future
   // PR when the conflict-detection code path exists to populate it.
+  //
+  // GDPR note: this factory writes `routine_id` into the `props` jsonb
+  // column alongside the row's `user_id` foreign key. A routine UUID is
+  // not PII in isolation but it links a user to one of their routines
+  // inside `analytics_events`. Erasure is handled by the existing FK
+  // CASCADE on `auth.users` → `analytics_events.user_id`: the row
+  // disappears along with its props payload, so no separate purge on
+  // `props->>'routine_id'` is required. The same applies to the
+  // `addToPlanPromptResponded` factory below.
   const factory AnalyticsEvent.workoutStarted({
     required String source,
     required String? routineId,

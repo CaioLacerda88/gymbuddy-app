@@ -718,9 +718,16 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
   /// Fire-and-forget insert of a product analytics event plus a matching
   /// Sentry breadcrumb.
   ///
-  /// Only called from workout lifecycle methods where the user is already
-  /// authenticated (a workout is active), so `_userId` is safe to access.
-  /// The underlying [AnalyticsRepository.insertEvent] swallows all errors.
+  /// Throws [app.AuthException] via the [_userId] getter if the user is not
+  /// authenticated. Safe today because every call site runs inside
+  /// `AsyncValue.guard` (which captures the exception into `AsyncError`) and
+  /// is only reached after a workout has been started — which itself requires
+  /// authentication. Do NOT call this from any code path that might run
+  /// without an active session, or wrap the call in a try/catch.
+  ///
+  /// The underlying [AnalyticsRepository.insertEvent] swallows all errors
+  /// itself, so there is nothing to await and nothing to handle here beyond
+  /// the `_userId` read.
   void _trackWorkoutEvent({
     required AnalyticsEvent event,
     required String breadcrumbMessage,
