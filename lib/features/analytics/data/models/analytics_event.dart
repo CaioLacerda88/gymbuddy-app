@@ -17,11 +17,15 @@ class AnalyticsEvent with _$AnalyticsEvent {
     required int trainingFrequency,
   }) = _OnboardingCompleted;
 
+  // NOTE: `had_active_workout_conflict` was intentionally removed in PR 5
+  // review item 6. The app does not currently detect conflicts (both call
+  // sites shipped `false` unconditionally), and shipping a permanently-
+  // false column corrupts funnel analysis. Re-add the flag in a future
+  // PR when the conflict-detection code path exists to populate it.
   const factory AnalyticsEvent.workoutStarted({
     required String source,
     required String? routineId,
     required int exerciseCount,
-    required bool hadActiveWorkoutConflict,
   }) = _WorkoutStarted;
 
   const factory AnalyticsEvent.workoutDiscarded({
@@ -92,11 +96,10 @@ class AnalyticsEvent with _$AnalyticsEvent {
       'fitness_level': fitnessLevel,
       'training_frequency': trainingFrequency,
     },
-    workoutStarted: (source, routineId, exerciseCount, hadConflict) => {
+    workoutStarted: (source, routineId, exerciseCount) => {
       'source': source,
       'routine_id': routineId,
       'exercise_count': exerciseCount,
-      'had_active_workout_conflict': hadConflict,
     },
     workoutDiscarded: (elapsed, completedSets, exerciseCount, source) => {
       'elapsed_seconds': elapsed,

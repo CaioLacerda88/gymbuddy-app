@@ -83,7 +83,6 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
           source: 'empty',
           routineId: null,
           exerciseCount: 0,
-          hadActiveWorkoutConflict: false,
         ),
         breadcrumbMessage: 'started empty workout',
         breadcrumbData: {'workout_id': workout.id},
@@ -166,7 +165,6 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
           source: 'routine_card',
           routineId: config.routineId,
           exerciseCount: config.exercises.length,
-          hadActiveWorkoutConflict: false,
         ),
         breadcrumbMessage: 'started workout from routine',
         breadcrumbData: {

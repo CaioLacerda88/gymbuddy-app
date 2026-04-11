@@ -16,7 +16,6 @@ void main() {
         source: 'empty',
         routineId: null,
         exerciseCount: 0,
-        hadActiveWorkoutConflict: false,
       );
       expect(event.name, 'workout_started');
     });
@@ -101,12 +100,13 @@ void main() {
         source: 'empty',
         routineId: null,
         exerciseCount: 0,
-        hadActiveWorkoutConflict: false,
       );
       expect(event.props['routine_id'], null);
       expect(event.props['source'], 'empty');
       expect(event.props['exercise_count'], 0);
-      expect(event.props['had_active_workout_conflict'], false);
+      // had_active_workout_conflict was intentionally removed in PR 5
+      // review item 6 — app does not yet detect conflicts.
+      expect(event.props.containsKey('had_active_workout_conflict'), false);
     });
 
     test('workoutFinished includes all props in snake_case', () {
