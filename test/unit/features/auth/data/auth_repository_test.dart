@@ -20,6 +20,12 @@ void main() {
   late MockFunctionsClient mockFunctions;
   late AuthRepository repo;
 
+  setUpAll(() {
+    // Required so `any(named: 'body')` / `captureAny(named: 'body')` can
+    // match the `Map<String, dynamic>` passed to `FunctionsClient.invoke`.
+    registerFallbackValue(<String, dynamic>{});
+  });
+
   setUp(() {
     mockAuth = MockGoTrueClient();
     mockFunctions = MockFunctionsClient();
@@ -172,17 +178,89 @@ void main() {
 
     group('deleteAccount', () {
       test('invokes the delete-user Edge Function on success', () async {
-        when(() => mockFunctions.invoke(any())).thenAnswer(
+        when(
+          () => mockFunctions.invoke(any(), body: any(named: 'body')),
+        ).thenAnswer(
           (_) async =>
               supabase.FunctionResponse(data: {'success': true}, status: 200),
         );
 
         await expectLater(repo.deleteAccount(), completes);
-        verify(() => mockFunctions.invoke('delete-user')).called(1);
+        verify(
+          () => mockFunctions.invoke('delete-user', body: any(named: 'body')),
+        ).called(1);
+      });
+
+      test(
+        'forwards platform + app_version in the Edge Function body',
+        () async {
+          when(
+            () => mockFunctions.invoke(any(), body: any(named: 'body')),
+          ).thenAnswer(
+            (_) async =>
+                supabase.FunctionResponse(data: {'success': true}, status: 200),
+          );
+
+          await repo.deleteAccount(platform: 'android', appVersion: '1.2.3');
+
+          final captured = verify(
+            () => mockFunctions.invoke(
+              'delete-user',
+              body: captureAny(named: 'body'),
+            ),
+          ).captured;
+          expect(captured.single, isA<Map<String, dynamic>>());
+          final body = captured.single as Map<String, dynamic>;
+          expect(body['platform'], 'android');
+          expect(body['app_version'], '1.2.3');
+        },
+      );
+
+      test('omits platform and app_version from body when both are null '
+          '(collection-if must not produce null-value keys)', () async {
+        // Guards the CI fix (commit 897bc89): the collection-if syntax
+        // `if (x != null) 'key': x` must produce an EMPTY map when both
+        // args are null — not a map with null values like
+        // `{'platform': null, 'app_version': null}`, which the Edge Function
+        // would receive and store in the audit row.
+        when(
+          () => mockFunctions.invoke(any(), body: any(named: 'body')),
+        ).thenAnswer(
+          (_) async =>
+              supabase.FunctionResponse(data: {'success': true}, status: 200),
+        );
+
+        await repo
+            .deleteAccount(); // both platform and appVersion default to null
+
+        final captured = verify(
+          () => mockFunctions.invoke(
+            'delete-user',
+            body: captureAny(named: 'body'),
+          ),
+        ).captured;
+        expect(captured.single, isA<Map<String, dynamic>>());
+        final body = captured.single as Map<String, dynamic>;
+        expect(
+          body.containsKey('platform'),
+          isFalse,
+          reason:
+              'When platform is null the collection-if must omit the key '
+              'entirely, not insert a null value.',
+        );
+        expect(
+          body.containsKey('app_version'),
+          isFalse,
+          reason:
+              'When appVersion is null the collection-if must omit the key '
+              'entirely, not insert a null value.',
+        );
       });
 
       test('throws when the Edge Function returns a 4xx status', () async {
-        when(() => mockFunctions.invoke(any())).thenAnswer(
+        when(
+          () => mockFunctions.invoke(any(), body: any(named: 'body')),
+        ).thenAnswer(
           (_) async =>
               supabase.FunctionResponse(data: {'error': 'bad'}, status: 401),
         );
@@ -191,7 +269,9 @@ void main() {
       });
 
       test('throws when the Edge Function returns a 5xx status', () async {
-        when(() => mockFunctions.invoke(any())).thenAnswer(
+        when(
+          () => mockFunctions.invoke(any(), body: any(named: 'body')),
+        ).thenAnswer(
           (_) async =>
               supabase.FunctionResponse(data: {'error': 'oops'}, status: 500),
         );
@@ -201,7 +281,7 @@ void main() {
 
       test('maps thrown errors through mapException', () async {
         when(
-          () => mockFunctions.invoke(any()),
+          () => mockFunctions.invoke(any(), body: any(named: 'body')),
         ).thenThrow(Exception('Network down'));
 
         expect(() => repo.deleteAccount(), throwsA(isA<NetworkException>()));

@@ -1,8 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/device/platform_info.dart';
+import '../../analytics/data/models/analytics_event.dart';
+import '../../analytics/providers/analytics_providers.dart';
+import '../../auth/providers/auth_providers.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../../weekly_plan/providers/weekly_plan_provider.dart';
 import '../../workouts/ui/widgets/add_to_plan_prompt.dart';
@@ -67,7 +73,31 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen>
           HapticFeedback.mediumImpact();
         });
       }
+      _logCelebrationSeen();
     });
+  }
+
+  /// Fires the `pr_celebration_seen` analytics event fire-and-forget.
+  void _logCelebrationSeen() {
+    final userId = ref.read(authRepositoryProvider).currentUser?.id;
+    if (userId == null) return;
+    final recordTypes = widget.result.newRecords
+        .map((r) => r.recordType.toSnakeCase)
+        .toList();
+    unawaited(
+      ref
+          .read(analyticsRepositoryProvider)
+          .insertEvent(
+            userId: userId,
+            event: AnalyticsEvent.prCelebrationSeen(
+              isFirstWorkout: widget.result.isFirstWorkout,
+              prCount: widget.result.newRecords.length,
+              recordTypes: recordTypes,
+            ),
+            platform: currentPlatform(),
+            appVersion: currentAppVersion(),
+          ),
+    );
   }
 
   @override
@@ -86,12 +116,45 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen>
         routineName: routineName,
       );
       if (!mounted) return;
+      _logAddToPlanResponse(routineId: routineId, shouldAdd: shouldAdd);
       if (shouldAdd == true) {
         await ref.read(weeklyPlanProvider.notifier).addRoutineToPlan(routineId);
       }
       if (!mounted) return;
     }
     context.go('/home');
+  }
+
+  /// Fires the `add_to_plan_prompt_responded` analytics event fire-and-forget.
+  ///
+  /// `shouldAdd == true`  -> `added`
+  /// `shouldAdd == false` -> `skipped`
+  /// `shouldAdd == null`  -> `dismissed` (user tapped outside the sheet)
+  void _logAddToPlanResponse({
+    required String routineId,
+    required bool? shouldAdd,
+  }) {
+    final action = shouldAdd == true
+        ? 'added'
+        : shouldAdd == false
+        ? 'skipped'
+        : 'dismissed';
+    final userId = ref.read(authRepositoryProvider).currentUser?.id;
+    if (userId == null) return;
+    unawaited(
+      ref
+          .read(analyticsRepositoryProvider)
+          .insertEvent(
+            userId: userId,
+            event: AnalyticsEvent.addToPlanPromptResponded(
+              action: action,
+              trigger: 'pr_celebration_continue',
+              routineId: routineId,
+            ),
+            platform: currentPlatform(),
+            appVersion: currentAppVersion(),
+          ),
+    );
   }
 
   String _formatValue(PersonalRecord record, String weightUnit) {

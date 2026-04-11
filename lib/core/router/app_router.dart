@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
+import '../observability/sentry_init.dart' show sanitizeRouteName;
 import '../../features/auth/providers/auth_providers.dart';
 import '../../features/auth/providers/onboarding_provider.dart';
 import '../../features/auth/providers/signup_state_provider.dart';
@@ -35,6 +37,13 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/splash',
     refreshListenable: _RouterRefreshListenable(ref),
+    observers: [
+      SentryNavigatorObserver(
+        enableAutoTransactions: false,
+        setRouteNameAsTransaction: false,
+        routeNameExtractor: sanitizeRouteName,
+      ),
+    ],
     redirect: (context, state) {
       final isLoading = authState.isLoading;
       final isLoggedIn = authState.valueOrNull?.session != null;

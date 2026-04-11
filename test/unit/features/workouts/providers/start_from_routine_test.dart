@@ -1,5 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymbuddy_app/core/data/base_repository.dart';
+import 'package:gymbuddy_app/features/analytics/data/analytics_repository.dart';
+import 'package:gymbuddy_app/features/analytics/data/models/analytics_event.dart';
+import 'package:gymbuddy_app/features/analytics/providers/analytics_providers.dart';
 import 'package:gymbuddy_app/features/auth/data/auth_repository.dart';
 import 'package:gymbuddy_app/features/auth/providers/auth_providers.dart';
 import 'package:gymbuddy_app/features/exercises/models/exercise.dart';
@@ -24,6 +28,21 @@ class MockWorkoutLocalStorage extends Mock implements WorkoutLocalStorage {}
 class MockAuthRepository extends Mock implements AuthRepository {}
 
 class FakeActiveWorkoutState extends Fake implements ActiveWorkoutState {}
+
+/// No-op analytics repo used in unit tests — avoids hitting
+/// `Supabase.instance` while still letting the notifier call `insertEvent`.
+class _FakeAnalyticsRepository extends BaseRepository
+    implements AnalyticsRepository {
+  const _FakeAnalyticsRepository();
+
+  @override
+  Future<void> insertEvent({
+    required String userId,
+    required AnalyticsEvent event,
+    required String? platform,
+    required String? appVersion,
+  }) async {}
+}
 
 class _MockProfileNotifier extends AsyncNotifier<Profile?>
     implements ProfileNotifier {
@@ -79,6 +98,9 @@ _makeContainer() {
       workoutLocalStorageProvider.overrideWithValue(mockStorage),
       authRepositoryProvider.overrideWithValue(mockAuth),
       profileProvider.overrideWith(() => _MockProfileNotifier()),
+      analyticsRepositoryProvider.overrideWithValue(
+        const _FakeAnalyticsRepository(),
+      ),
     ],
   );
   return (

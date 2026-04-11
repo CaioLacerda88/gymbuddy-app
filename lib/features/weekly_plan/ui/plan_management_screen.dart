@@ -1,8 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/device/platform_info.dart';
 import '../../../core/theme/radii.dart';
+import '../../analytics/data/analytics_repository.dart';
+import '../../analytics/data/models/analytics_event.dart';
+import '../../analytics/providers/analytics_providers.dart';
+import '../../auth/providers/auth_providers.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../../routines/models/routine.dart';
 import '../../routines/providers/notifiers/routine_list_notifier.dart';
@@ -35,6 +42,43 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
 
   /// Whether we've received the initial provider data at least once.
   bool _seeded = false;
+
+  // --- Analytics debounce state -----------------------------------------
+  //
+  // `week_plan_saved` must fire at most once per edit session, otherwise
+  // every reorder/remove/undo pushes a duplicate event and the funnel is
+  // meaningless. The persistence call (`upsertPlan`) still runs on every
+  // edit — we debounce ONLY the analytics insert. We fire once per session
+  // when the user leaves the screen (dispose), capturing whichever options
+  // were most recently in effect.
+  //
+  // Tracked bits:
+  // - `_pendingAnalyticsEvent`: true once the user has made at least one
+  //   edit that would have fired `week_plan_saved`
+  // - `_lastUsedAutofill` / `_lastReplacedExisting`: latest flags from the
+  //   most recent edit, used when we finally fire at dispose
+  // - `_debouncedAnalyticsRepo` / `_debouncedAnalyticsUserId`: captured on
+  //   the FIRST edit. `ref` cannot be used in dispose() — Riverpod treats
+  //   the element as already torn down at that point — so we must hold the
+  //   repo and user id directly.
+  bool _pendingAnalyticsEvent = false;
+  bool _lastUsedAutofill = false;
+  bool _lastReplacedExisting = false;
+  AnalyticsRepository? _debouncedAnalyticsRepo;
+  String? _debouncedAnalyticsUserId;
+  int? _debouncedTrainingFrequency;
+
+  @override
+  void dispose() {
+    // Fire a single analytics event for the entire edit session, capturing
+    // the most-recent flags (usedAutofill / replacedExisting). This is the
+    // funnel-friendly "user saved the plan" signal — intermediate reorders
+    // and undos do not fire their own events.
+    if (_pendingAnalyticsEvent) {
+      _flushAnalyticsEvent();
+    }
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -166,7 +210,7 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
       _bucketRoutines.insert(newIndex, item);
       _renumber();
     });
-    _savePlan();
+    _savePlan(usedAutofill: false, replacedExisting: false);
   }
 
   void _renumber() {
@@ -182,7 +226,7 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
       _bucketRoutines.removeAt(index);
       _renumber();
     });
-    _savePlan();
+    _savePlan(usedAutofill: false, replacedExisting: false);
 
     // Undo snackbar.
     if (mounted) {
@@ -200,7 +244,7 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
                 _bucketRoutines.insert(safeIndex, removed);
                 _renumber();
               });
-              _savePlan();
+              _savePlan(usedAutofill: false, replacedExisting: false);
             },
           ),
         ),
@@ -235,7 +279,7 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
           );
         }
       });
-      _savePlan();
+      _savePlan(usedAutofill: false, replacedExisting: false);
     }
   }
 
@@ -301,13 +345,16 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
         : ranked.length;
     final selected = ranked.take(count).toList();
 
+    // Capture BEFORE the mutation so we can record whether autofill
+    // replaced an existing plan.
+    final wasNotEmpty = _bucketRoutines.isNotEmpty;
     setState(() {
       _dirty = true;
       _bucketRoutines = selected.indexed.map((entry) {
         return BucketRoutine(routineId: entry.$2.id, order: entry.$1 + 1);
       }).toList();
     });
-    _savePlan();
+    _savePlan(usedAutofill: true, replacedExisting: wasNotEmpty);
   }
 
   Future<void> _confirmClear(BuildContext ctx) async {
@@ -337,8 +384,65 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
     context.pop();
   }
 
-  void _savePlan() {
+  /// Persist the current bucket state to Supabase and record that we owe an
+  /// analytics event when the user finally leaves the screen.
+  ///
+  /// We deliberately do NOT fire `week_plan_saved` here: a single edit
+  /// session (reorder + remove + undo + add routine) calls this method four
+  /// or more times in a few seconds. Firing per-call floods the funnel with
+  /// duplicate events. Instead we mark that an event is pending and store
+  /// the most-recent flags; the actual insert happens once, at dispose,
+  /// via [_flushAnalyticsEvent]. The persistence call stays per-edit so
+  /// UX stays live.
+  ///
+  /// We ALSO capture a reference to the analytics repository and the user id
+  /// on the first edit — `ref` cannot be used inside `dispose()` (the
+  /// ConsumerStatefulElement is already torn down by then), so we must hold
+  /// the repo object directly.
+  void _savePlan({required bool usedAutofill, required bool replacedExisting}) {
     ref.read(weeklyPlanProvider.notifier).upsertPlan(_bucketRoutines);
+    _pendingAnalyticsEvent = true;
+    // usedAutofill and replacedExisting are "sticky" within a session: if
+    // the user first auto-filled then reordered one card, the event that
+    // ships at dispose should still say used_autofill=true. So we OR-in
+    // any truthy value instead of overwriting.
+    _lastUsedAutofill = _lastUsedAutofill || usedAutofill;
+    _lastReplacedExisting = _lastReplacedExisting || replacedExisting;
+    // Capture repo + user id + training frequency while ref is still alive.
+    // Refreshed on every edit so the latest profile value is used at flush.
+    _debouncedAnalyticsRepo = ref.read(analyticsRepositoryProvider);
+    _debouncedAnalyticsUserId = ref
+        .read(authRepositoryProvider)
+        .currentUser
+        ?.id;
+    _debouncedTrainingFrequency =
+        ref.read(profileProvider).valueOrNull?.trainingFrequencyPerWeek ?? 3;
+  }
+
+  /// Fire the debounced `week_plan_saved` analytics event exactly once.
+  /// Called from [dispose] when the user leaves the plan screen.
+  ///
+  /// Must not touch `ref` — the widget element is disposed before this
+  /// runs. All data needed to build the event has been captured in the
+  /// state fields during earlier edits.
+  void _flushAnalyticsEvent() {
+    final userId = _debouncedAnalyticsUserId;
+    final repo = _debouncedAnalyticsRepo;
+    final trainingFrequency = _debouncedTrainingFrequency ?? 3;
+    if (userId == null || repo == null) return;
+    unawaited(
+      repo.insertEvent(
+        userId: userId,
+        event: AnalyticsEvent.weekPlanSaved(
+          routineCount: _bucketRoutines.length,
+          atSoftCap: _bucketRoutines.length >= trainingFrequency,
+          usedAutofill: _lastUsedAutofill,
+          replacedExisting: _lastReplacedExisting,
+        ),
+        platform: currentPlatform(),
+        appVersion: currentAppVersion(),
+      ),
+    );
   }
 }
 
@@ -362,18 +466,19 @@ class _RoutineRow extends StatelessWidget {
   final bool isDone;
   final VoidCallback? onDismissed;
 
-  static const _primaryGreen = Color(0xFF00E676);
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Use the theme primary color (M3 green) instead of a hardcoded hex so
+    // future brand/theme changes propagate here automatically.
+    final primary = theme.colorScheme.primary;
 
     final content = Container(
       margin: const EdgeInsets.only(bottom: 4),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: isDone
-            ? _primaryGreen.withValues(alpha: 0.08)
+            ? primary.withValues(alpha: 0.08)
             : theme.cardTheme.color ?? theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(kRadiusMd),
       ),
@@ -381,7 +486,7 @@ class _RoutineRow extends StatelessWidget {
         children: [
           // Sequence number or checkmark.
           if (isDone)
-            const Icon(Icons.check_circle, color: _primaryGreen, size: 24)
+            Icon(Icons.check_circle, color: primary, size: 24)
           else
             Container(
               width: 24,
@@ -410,7 +515,7 @@ class _RoutineRow extends StatelessWidget {
                   name,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: isDone ? _primaryGreen : null,
+                    color: isDone ? primary : null,
                   ),
                 ),
                 Text(

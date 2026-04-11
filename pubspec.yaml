@@ -24,6 +24,8 @@ dependencies:
   intl: ^0.20.0
   uuid: ^4.5.1
   wakelock_plus: ^1.2.8
+  sentry_flutter: ^9.16.1
+  package_info_plus: ^9.0.1
 
 dev_dependencies:
   flutter_test:
@@ -39,6 +41,7 @@ dev_dependencies:
   # Exposed directly by wakelock_plus for testing — we reference
   # WakelockPlusPlatformInterface from test fakes.
   wakelock_plus_platform_interface: ^1.4.0
+  flutter_launcher_icons: ^0.14.1
 
 flutter:
   uses-material-design: true
@@ -46,3 +49,14 @@ flutter:
     - .env
     - assets/icons/
     - assets/legal/
+
+flutter_launcher_icons:
+  image_path: "assets/icon/icon.png"
+  android: "ic_launcher"
+  min_sdk_android: 21
+  remove_alpha_ios: false
+  web:
+    generate: true
+    image_path: "assets/icon/icon.png"
+    background_color: "#0F0F1A"
+    theme_color: "#00E676"

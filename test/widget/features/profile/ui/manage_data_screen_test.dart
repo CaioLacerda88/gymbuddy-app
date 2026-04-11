@@ -47,7 +47,12 @@ Widget buildTestWidget({
     () => mockAuth.onAuthStateChange(),
   ).thenAnswer((_) => const Stream<AuthState>.empty());
   if (authRepo == null) {
-    when(() => mockAuth.deleteAccount()).thenAnswer((_) async {});
+    when(
+      () => mockAuth.deleteAccount(
+        platform: any(named: 'platform'),
+        appVersion: any(named: 'appVersion'),
+      ),
+    ).thenAnswer((_) async {});
     when(() => mockAuth.signOut()).thenAnswer((_) async {});
   }
 
@@ -438,7 +443,12 @@ void main() {
         '(one char short)',
         (tester) async {
           final mockAuth = MockAuthRepository();
-          when(() => mockAuth.deleteAccount()).thenAnswer((_) async {});
+          when(
+            () => mockAuth.deleteAccount(
+              platform: any(named: 'platform'),
+              appVersion: any(named: 'appVersion'),
+            ),
+          ).thenAnswer((_) async {});
           when(() => mockAuth.signOut()).thenAnswer((_) async {});
 
           await tester.pumpWidget(buildTestWidget(authRepo: mockAuth));
@@ -465,7 +475,12 @@ void main() {
           expect(button.onPressed, isNull);
 
           // And deleteAccount must not have been invoked.
-          verifyNever(() => mockAuth.deleteAccount());
+          verifyNever(
+            () => mockAuth.deleteAccount(
+              platform: any(named: 'platform'),
+              appVersion: any(named: 'appVersion'),
+            ),
+          );
         },
       );
 
@@ -474,7 +489,12 @@ void main() {
         '(trailing char)',
         (tester) async {
           final mockAuth = MockAuthRepository();
-          when(() => mockAuth.deleteAccount()).thenAnswer((_) async {});
+          when(
+            () => mockAuth.deleteAccount(
+              platform: any(named: 'platform'),
+              appVersion: any(named: 'appVersion'),
+            ),
+          ).thenAnswer((_) async {});
           when(() => mockAuth.signOut()).thenAnswer((_) async {});
 
           await tester.pumpWidget(buildTestWidget(authRepo: mockAuth));
@@ -501,7 +521,12 @@ void main() {
           expect(button.onPressed, isNull);
 
           // And deleteAccount must not have been invoked.
-          verifyNever(() => mockAuth.deleteAccount());
+          verifyNever(
+            () => mockAuth.deleteAccount(
+              platform: any(named: 'platform'),
+              appVersion: any(named: 'appVersion'),
+            ),
+          );
         },
       );
 
@@ -509,7 +534,12 @@ void main() {
         tester,
       ) async {
         final mockAuth = MockAuthRepository();
-        when(() => mockAuth.deleteAccount()).thenAnswer((_) async {});
+        when(
+          () => mockAuth.deleteAccount(
+            platform: any(named: 'platform'),
+            appVersion: any(named: 'appVersion'),
+          ),
+        ).thenAnswer((_) async {});
         when(() => mockAuth.signOut()).thenAnswer((_) async {});
 
         await tester.pumpWidget(buildTestWidget(authRepo: mockAuth));
@@ -524,7 +554,12 @@ void main() {
         await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
         await tester.pumpAndSettle();
 
-        verifyNever(() => mockAuth.deleteAccount());
+        verifyNever(
+          () => mockAuth.deleteAccount(
+            platform: any(named: 'platform'),
+            appVersion: any(named: 'appVersion'),
+          ),
+        );
         verifyNever(() => mockAuth.signOut());
       });
 
@@ -532,7 +567,12 @@ void main() {
         tester,
       ) async {
         final mockAuth = MockAuthRepository();
-        when(() => mockAuth.deleteAccount()).thenAnswer((_) async {});
+        when(
+          () => mockAuth.deleteAccount(
+            platform: any(named: 'platform'),
+            appVersion: any(named: 'appVersion'),
+          ),
+        ).thenAnswer((_) async {});
         when(() => mockAuth.signOut()).thenAnswer((_) async {});
 
         await tester.pumpWidget(buildTestWidget(authRepo: mockAuth));
@@ -553,7 +593,10 @@ void main() {
         // reversed and signOut failed, we'd delete the account then leave
         // the user logged in (or vice versa). Order matters for UX safety.
         verifyInOrder([
-          () => mockAuth.deleteAccount(),
+          () => mockAuth.deleteAccount(
+            platform: any(named: 'platform'),
+            appVersion: any(named: 'appVersion'),
+          ),
           () => mockAuth.signOut(),
         ]);
       });
@@ -563,7 +606,10 @@ void main() {
         (tester) async {
           final mockAuth = MockAuthRepository();
           when(
-            () => mockAuth.deleteAccount(),
+            () => mockAuth.deleteAccount(
+              platform: any(named: 'platform'),
+              appVersion: any(named: 'appVersion'),
+            ),
           ).thenThrow(const NetworkException('connection refused'));
           when(() => mockAuth.signOut()).thenAnswer((_) async {});
 

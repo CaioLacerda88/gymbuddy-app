@@ -10,6 +10,7 @@ import '../../personal_records/providers/pr_providers.dart'
     show prCountProvider;
 import '../../workouts/providers/workout_history_providers.dart'
     show workoutCountProvider;
+import '../providers/crash_reports_enabled_provider.dart';
 import '../providers/profile_providers.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -128,6 +129,38 @@ class ProfileScreen extends ConsumerWidget {
               title: 'Terms of Service',
               icon: Icons.description_outlined,
               onTap: () => context.push('/terms-of-service'),
+            ),
+            const SizedBox(height: 24),
+            // Privacy section
+            Text(
+              'PRIVACY',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Material(
+              color: theme.cardTheme.color ?? theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(kRadiusMd),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
+                child: SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Send crash reports'),
+                  subtitle: const Text(
+                    'Help improve GymBuddy by sending anonymous crash data.',
+                  ),
+                  value: ref.watch(crashReportsEnabledProvider),
+                  onChanged: (value) {
+                    ref
+                        .read(crashReportsEnabledProvider.notifier)
+                        .setEnabled(value);
+                  },
+                ),
+              ),
             ),
             const SizedBox(height: 24),
             // Logout button

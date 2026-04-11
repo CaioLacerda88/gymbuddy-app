@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Last updated: 2026-04-09**
+**Last updated: 2026-04-10**
 
 This Privacy Policy describes how GymBuddy ("we", "us", or "our") collects, uses, and protects your information when you use the GymBuddy mobile and web application (the "App").
 
@@ -10,7 +10,7 @@ GymBuddy is a fitness tracking application that helps you log workouts, track pe
 
 ## 2. Information We Collect
 
-We collect only the information you provide directly. GymBuddy does not use tracking SDKs, advertising identifiers, or analytics services that share data with third parties.
+We collect only the information you provide directly and a small number of in-app events used to improve the App (see "Usage Events" below). GymBuddy does not use advertising SDKs, ad networks, or analytics services that share your data with advertisers. We use Sentry to receive crash reports when the App encounters an unhandled error — see Section 5.
 
 ### Account Information
 - **Email address** — used for authentication and account recovery.
@@ -28,9 +28,13 @@ We collect only the information you provide directly. GymBuddy does not use trac
 - Customizations you make to the exercise library
 - Personal records detected by the App
 
+### Usage Events
+
+To understand how the App is used and improve reliability, we log a small set of in-app events (for example: when you sign up, finish a workout, or set a personal record) to our own database alongside your other data. These events record the action and its basic parameters (e.g. workout duration, exercise count). They never contain your email address, display name, workout notes, or any free-text input. These events are tied to your account and deleted when you delete your account.
+
 ## 3. How We Collect Information
 
-All information is collected directly from the App based on actions you take (signing up, logging workouts, editing your profile, etc.). We do not track your location, device activity, or usage patterns outside of the features required to provide the service.
+All information is collected directly from the App based on actions you take (signing up, logging workouts, editing your profile, etc.). We do not track your location or device activity. The usage events described in Section 2 are collected to improve the App and are the only form of usage tracking.
 
 ## 4. How Your Data Is Stored
 
@@ -48,6 +52,7 @@ GymBuddy uses the following third-party services:
 
 - **Supabase** — hosting, authentication, and database.
 - **Google** — OAuth authentication only, if you choose to sign in with Google.
+- **Sentry** — crash reporting only. When the App encounters an unhandled error, a stack trace, the environment (OS, app version), and your account ID (no email, no name, no IP address) are sent to sentry.io so we can diagnose and fix the bug. You can disable this at any time in **Profile → Privacy → Send crash reports**. For Sentry's own policies, see [sentry.io/privacy](https://sentry.io/privacy/).
 
 We do **not** use advertising networks. We do **not** sell your data. We do **not** share your fitness data with insurers, employers, or anyone else.
 

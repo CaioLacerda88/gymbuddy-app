@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/device/platform_info.dart';
+import '../../../../core/observability/sentry_report.dart';
 import '../../data/auth_repository.dart';
 import '../auth_providers.dart';
 import '../signup_state_provider.dart';
@@ -31,6 +33,7 @@ class AuthNotifier extends AsyncNotifier<Session?> {
       if (response.session == null) {
         ref.read(signupPendingEmailProvider.notifier).state = email;
       }
+      SentryReport.addBreadcrumb(category: 'auth', message: 'sign_up_email');
       return response.session;
     });
   }
@@ -45,6 +48,7 @@ class AuthNotifier extends AsyncNotifier<Session?> {
         email: email,
         password: password,
       );
+      SentryReport.addBreadcrumb(category: 'auth', message: 'sign_in_email');
       return response.session;
     });
   }
@@ -53,6 +57,7 @@ class AuthNotifier extends AsyncNotifier<Session?> {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       await _repo.signInWithGoogle();
+      SentryReport.addBreadcrumb(category: 'auth', message: 'sign_in_google');
       // OAuth redirects externally; session comes via onAuthStateChange.
       return _repo.currentSession;
     });
@@ -62,6 +67,7 @@ class AuthNotifier extends AsyncNotifier<Session?> {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       await _repo.signOut();
+      SentryReport.addBreadcrumb(category: 'auth', message: 'sign_out');
       return null;
     });
   }
@@ -97,13 +103,24 @@ class AuthNotifier extends AsyncNotifier<Session?> {
   /// On delete failure, the state transitions to [AsyncError] with the
   /// wrapped [AppException] so the UI can surface a safe error message and
   /// the caller returns early before the sign-out attempt.
+  ///
+  /// The `account_deleted` audit event is written from inside the Edge
+  /// Function (service role, pre-delete, into the no-FK
+  /// `account_deletion_events` table). Doing it client-side would be
+  /// pointless — the CASCADE on `analytics_events.user_id` would wipe the
+  /// row the moment `auth.admin.deleteUser()` ran.
   Future<void> deleteAccount() async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      await _repo.deleteAccount();
+      await _repo.deleteAccount(
+        platform: currentPlatform(),
+        appVersion: currentAppVersion(),
+      );
       return null;
     });
     if (state.hasError) return;
+
+    SentryReport.addBreadcrumb(category: 'auth', message: 'account_deleted');
 
     // Account deleted successfully — best-effort local sign-out. Any error
     // here is ignored because the server-side user is already gone and the

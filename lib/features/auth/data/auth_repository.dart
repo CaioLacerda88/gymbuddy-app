@@ -78,11 +78,26 @@ class AuthRepository extends BaseRepository {
   /// and then uses the service-role key to call `auth.admin.deleteUser()`.
   /// All user-owned rows in public tables cascade via FK constraints, so a
   /// single successful call removes the account and every piece of data
-  /// tied to it. Callers should follow up with [signOut] so the auth state
-  /// listener can redirect to the login screen.
-  Future<void> deleteAccount() {
+  /// tied to it. Before the delete, the Edge Function writes an anonymous
+  /// row to `account_deletion_events` for churn analytics — [platform] and
+  /// [appVersion] are forwarded so the audit row carries that context.
+  /// Callers should follow up with [signOut] so the auth state listener
+  /// can redirect to the login screen.
+  Future<void> deleteAccount({String? platform, String? appVersion}) {
     return mapException(() async {
-      final response = await _functions.invoke('delete-user');
+      // Use `if (x != null)` collection-if rather than the newer null-aware
+      // map value syntax (`'platform': ?platform`): build_runner's bundled
+      // analyzer on CI can't parse the latter, so the freezed/json_serializable
+      // generators fail at the `auth_repository.dart` parse step.
+      final response = await _functions.invoke(
+        'delete-user',
+        body: <String, dynamic>{
+          // ignore: use_null_aware_elements
+          if (platform != null) 'platform': platform,
+          // ignore: use_null_aware_elements
+          if (appVersion != null) 'app_version': appVersion,
+        },
+      );
       if (response.status >= 400) {
         throw Exception('Delete account failed (status ${response.status})');
       }
