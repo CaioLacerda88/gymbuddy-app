@@ -42,7 +42,7 @@ class ActiveWorkoutScreen extends ConsumerWidget {
     final asyncState = ref.watch(activeWorkoutProvider);
     final timerState = ref.watch(restTimerProvider);
 
-    // valueOrNull retains the previous data during AsyncLoading transitions.
+    // .value returns null during AsyncLoading, retaining previous data on reload.
     final displayState = asyncState.value;
 
     if (displayState == null && !asyncState.isLoading) {
