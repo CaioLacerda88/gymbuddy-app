@@ -17,13 +17,19 @@ PR7  (CI Android build gap)     ~0.5h   Makefile + CLAUDE.md
           → AB-PR5 (Polish)             Store screenshots, final animation QA
 ```
 
-### Next up: PR7 — Close local CI Android build gap
+### ACTIVE: PR7 — Close local CI Android build gap
 
-- **Spec:** PLAN.md lines 1465-1540 (fully written)
-- **Scope:** Add `flutter build apk --debug --no-shrink` as last step of `make ci` target
-- **Files:** `Makefile`, `CLAUDE.md` (Commands section)
-- **Verification:** Deliberate Gradle breakage → red, revert → green
-- **Effort:** 0.5-1 agent-hour
+**Branch:** `feature/phase13a-pr7-ci-android-build`
+**Spec:** PLAN.md lines 1465-1540
+
+- [x] Add `build-android-debug` target to Makefile (`flutter build apk --debug --no-shrink`)
+- [x] Add `build-android-debug` as last dependency of `ci` target
+- [x] Update `.PHONY` line to include `build-android-debug`
+- [x] Update CLAUDE.md Commands section: `make ci` description → `format + gen + analyze + test + android-debug-build`
+- [x] Add note in CLAUDE.md that `make ci` takes ~3-5 min due to Android build
+- [x] Verify: full pipeline passes (994 tests + Android debug build in 52.5s)
+- [x] Verify: Inject Gradle syntax error → build fails with exit code 1
+- [x] Verify: Revert breakage → build passes with exit code 0
 
 ### Then: PR6 — Bulk Dependency Upgrade + Toolchain Refresh
 
