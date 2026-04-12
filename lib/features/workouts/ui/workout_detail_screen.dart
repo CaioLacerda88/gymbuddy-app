@@ -60,8 +60,7 @@ class _WorkoutDetailBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final workout = detail.workout;
-    final weightUnit =
-        ref.watch(profileProvider).valueOrNull?.weightUnit ?? 'kg';
+    final weightUnit = ref.watch(profileProvider).value?.weightUnit ?? 'kg';
     final dateText = WorkoutFormatters.formatWorkoutDate(
       workout.finishedAt ?? workout.startedAt,
     );
@@ -176,8 +175,7 @@ class _ReadOnlyExerciseCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final prSetIds =
-        ref.watch(workoutPRSetIdsProvider(workoutId)).valueOrNull ?? {};
+    final prSetIds = ref.watch(workoutPRSetIdsProvider(workoutId)).value ?? {};
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),

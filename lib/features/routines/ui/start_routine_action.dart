@@ -18,7 +18,7 @@ Future<void> startRoutineWorkout(
   Routine routine,
 ) async {
   // Guard: check for an active workout before overwriting.
-  final existingWorkout = ref.read(activeWorkoutProvider).valueOrNull;
+  final existingWorkout = ref.read(activeWorkoutProvider).value;
   if (existingWorkout != null) {
     final result = await ResumeWorkoutDialog.show(
       context,

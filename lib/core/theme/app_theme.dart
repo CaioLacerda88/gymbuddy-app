@@ -40,7 +40,7 @@ class AppTheme {
       cardTheme: _cardTheme,
       elevatedButtonTheme: _elevatedButtonTheme,
       inputDecorationTheme: _inputDecorationTheme,
-      appBarTheme: const AppBarTheme(
+      appBarTheme: const AppBarThemeData(
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -88,7 +88,7 @@ class AppTheme {
     ),
   );
 
-  static final _inputDecorationTheme = InputDecorationTheme(
+  static final _inputDecorationTheme = InputDecorationThemeData(
     filled: true,
     fillColor: _cardColor,
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),

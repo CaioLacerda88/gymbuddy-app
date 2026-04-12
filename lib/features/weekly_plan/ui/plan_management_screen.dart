@@ -89,7 +89,7 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
       ref.listenManual(weeklyPlanProvider, (previous, next) {
         // Only seed from provider if user hasn't started editing.
         if (_dirty) return;
-        final plan = next.valueOrNull;
+        final plan = next.value;
         if (plan != null && !_seeded) {
           setState(() {
             _bucketRoutines = [...plan.routines];
@@ -110,10 +110,9 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
     final routinesAsync = ref.watch(routineListProvider);
     final profile = ref.watch(profileProvider);
 
-    final allRoutines = routinesAsync.valueOrNull ?? [];
+    final allRoutines = routinesAsync.value ?? [];
     final routineMap = <String, Routine>{for (final r in allRoutines) r.id: r};
-    final trainingFrequency =
-        profile.valueOrNull?.trainingFrequencyPerWeek ?? 3;
+    final trainingFrequency = profile.value?.trainingFrequencyPerWeek ?? 3;
 
     final atSoftCap = _bucketRoutines.length >= trainingFrequency;
 
@@ -324,7 +323,7 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
     }
 
     // Build frequency map from workout history (name -> count).
-    final history = ref.read(workoutHistoryProvider).valueOrNull ?? [];
+    final history = ref.read(workoutHistoryProvider).value ?? [];
     final nameFrequency = <String, int>{};
     for (final workout in history) {
       nameFrequency[workout.name] = (nameFrequency[workout.name] ?? 0) + 1;
@@ -416,7 +415,7 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
         .currentUser
         ?.id;
     _debouncedTrainingFrequency =
-        ref.read(profileProvider).valueOrNull?.trainingFrequencyPerWeek ?? 3;
+        ref.read(profileProvider).value?.trainingFrequencyPerWeek ?? 3;
   }
 
   /// Fire the debounced `week_plan_saved` analytics event exactly once.

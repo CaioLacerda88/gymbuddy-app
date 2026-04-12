@@ -5,7 +5,7 @@ part 'workout.freezed.dart';
 part 'workout.g.dart';
 
 @freezed
-class Workout with _$Workout {
+abstract class Workout with _$Workout {
   @JsonSerializable(fieldRename: FieldRename.snake)
   const factory Workout({
     required String id,

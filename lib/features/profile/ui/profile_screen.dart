@@ -352,9 +352,9 @@ class _StatsRow extends ConsumerWidget {
     final prCountAsync = ref.watch(prCountProvider);
     final profile = ref.watch(profileProvider);
 
-    final workoutCount = workoutCountAsync.valueOrNull ?? 0;
-    final prCount = prCountAsync.valueOrNull ?? 0;
-    final memberSince = profile.valueOrNull?.createdAt;
+    final workoutCount = workoutCountAsync.value ?? 0;
+    final prCount = prCountAsync.value ?? 0;
+    final memberSince = profile.value?.createdAt;
 
     return Row(
       children: [

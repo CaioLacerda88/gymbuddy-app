@@ -81,8 +81,7 @@ class _RecordsList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Hoist the weightUnit read here so each card does not independently
     // watch profileProvider.
-    final weightUnit =
-        ref.watch(profileProvider).valueOrNull?.weightUnit ?? 'kg';
+    final weightUnit = ref.watch(profileProvider).value?.weightUnit ?? 'kg';
 
     // Group by exerciseId.
     final grouped = <String, List<PRWithExercise>>{};

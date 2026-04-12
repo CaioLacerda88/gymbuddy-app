@@ -7,7 +7,7 @@ part 'routine.freezed.dart';
 part 'routine.g.dart';
 
 @freezed
-class RoutineSetConfig with _$RoutineSetConfig {
+abstract class RoutineSetConfig with _$RoutineSetConfig {
   @JsonSerializable(fieldRename: FieldRename.snake)
   const factory RoutineSetConfig({
     int? targetReps,
@@ -20,7 +20,7 @@ class RoutineSetConfig with _$RoutineSetConfig {
 }
 
 @freezed
-class RoutineExercise with _$RoutineExercise {
+abstract class RoutineExercise with _$RoutineExercise {
   @JsonSerializable(fieldRename: FieldRename.snake, explicitToJson: true)
   const factory RoutineExercise({
     required String exerciseId,
@@ -34,7 +34,7 @@ class RoutineExercise with _$RoutineExercise {
 }
 
 @freezed
-class Routine with _$Routine {
+abstract class Routine with _$Routine {
   @JsonSerializable(fieldRename: FieldRename.snake, explicitToJson: true)
   const factory Routine({
     required String id,

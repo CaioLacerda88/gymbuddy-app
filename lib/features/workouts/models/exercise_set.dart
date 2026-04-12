@@ -12,7 +12,7 @@ SetType _setTypeFromJson(dynamic value) =>
 String _setTypeToJson(SetType type) => type.name;
 
 @freezed
-class ExerciseSet with _$ExerciseSet {
+abstract class ExerciseSet with _$ExerciseSet {
   @JsonSerializable(fieldRename: FieldRename.snake)
   const factory ExerciseSet({
     required String id,

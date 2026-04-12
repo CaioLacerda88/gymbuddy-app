@@ -325,8 +325,7 @@ class _PRSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final asyncRecords = ref.watch(exercisePRsProvider(exerciseId));
-    final weightUnit =
-        ref.watch(profileProvider).valueOrNull?.weightUnit ?? 'kg';
+    final weightUnit = ref.watch(profileProvider).value?.weightUnit ?? 'kg';
 
     return asyncRecords.when(
       loading: () => const Padding(

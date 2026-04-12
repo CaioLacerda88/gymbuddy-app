@@ -23,7 +23,7 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final profile = ref.watch(profileProvider).valueOrNull;
+    final profile = ref.watch(profileProvider).value;
     final planAsync = ref.watch(weeklyPlanProvider);
     final routinesAsync = ref.watch(routineListProvider);
 
@@ -115,7 +115,7 @@ class HomeScreen extends ConsumerWidget {
   }
 
   Future<void> _startEmptyWorkout(BuildContext context, WidgetRef ref) async {
-    final existingWorkout = ref.read(activeWorkoutProvider).valueOrNull;
+    final existingWorkout = ref.read(activeWorkoutProvider).value;
     if (existingWorkout != null) {
       if (!context.mounted) return;
       final result = await ResumeWorkoutDialog.show(
@@ -152,8 +152,7 @@ class _ContextualStatCells extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final lastSession = ref.watch(lastSessionProvider);
     final weekVolume = ref.watch(weekVolumeProvider);
-    final weightUnit =
-        ref.watch(profileProvider).valueOrNull?.weightUnit ?? 'kg';
+    final weightUnit = ref.watch(profileProvider).value?.weightUnit ?? 'kg';
 
     final lastValue = lastSession != null
         ? '${lastSession.relativeDate} \u2014 ${lastSession.name}'

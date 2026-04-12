@@ -118,7 +118,7 @@ typedef LastSessionInfo = ({String name, String relativeDate, DateTime date});
 // Returns null during loading, on error, or when no workouts exist.
 // UI shows "No workouts yet" for all three.
 final lastSessionProvider = Provider<LastSessionInfo?>((ref) {
-  final history = ref.watch(workoutHistoryProvider).valueOrNull;
+  final history = ref.watch(workoutHistoryProvider).value;
   if (history == null || history.isEmpty) return null;
   final workout = history.first;
   final date = workout.finishedAt ?? workout.startedAt;

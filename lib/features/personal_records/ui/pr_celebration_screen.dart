@@ -186,8 +186,7 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final weightUnit =
-        ref.watch(profileProvider).valueOrNull?.weightUnit ?? 'kg';
+    final weightUnit = ref.watch(profileProvider).value?.weightUnit ?? 'kg';
 
     return Scaffold(
       body: Stack(

@@ -46,7 +46,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
     redirect: (context, state) {
       final isLoading = authState.isLoading;
-      final isLoggedIn = authState.valueOrNull?.session != null;
+      final isLoggedIn = authState.value?.session != null;
       final needsOnboarding = ref.read(needsOnboardingProvider);
       final location = state.matchedLocation;
 
@@ -114,7 +114,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         redirect: (context, state) {
           // Check in-memory state first (set immediately by startWorkout),
           // then fall back to Hive (persisted across restarts).
-          final inMemory = ref.read(activeWorkoutProvider).valueOrNull;
+          final inMemory = ref.read(activeWorkoutProvider).value;
           final inHive = ref.read(hasActiveWorkoutProvider);
           if (inMemory == null && !inHive) return '/home';
           return null;
@@ -239,7 +239,7 @@ class _ShellScaffold extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final activeState = ref.watch(activeWorkoutProvider).valueOrNull;
+    final activeState = ref.watch(activeWorkoutProvider).value;
     final tabIndex = _currentIndex(context);
     // When on a non-tab route (e.g. /records, /plan/week), pass index 0 to
     // satisfy NavigationBar's range requirement but hide the indicator so no

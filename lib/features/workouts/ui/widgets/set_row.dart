@@ -131,8 +131,7 @@ class _SetRowState extends ConsumerState<SetRow> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final set = widget.set;
-    final weightUnit =
-        ref.watch(profileProvider).valueOrNull?.weightUnit ?? 'kg';
+    final weightUnit = ref.watch(profileProvider).value?.weightUnit ?? 'kg';
     final notifier = ref.read(activeWorkoutProvider.notifier);
 
     return Dismissible(

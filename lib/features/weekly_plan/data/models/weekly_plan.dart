@@ -6,7 +6,7 @@ part 'weekly_plan.g.dart';
 
 /// A single routine entry in the weekly bucket.
 @freezed
-class BucketRoutine with _$BucketRoutine {
+abstract class BucketRoutine with _$BucketRoutine {
   @JsonSerializable(fieldRename: FieldRename.snake)
   const factory BucketRoutine({
     required String routineId,
@@ -21,7 +21,7 @@ class BucketRoutine with _$BucketRoutine {
 
 /// The weekly plan for a given week.
 @freezed
-class WeeklyPlan with _$WeeklyPlan {
+abstract class WeeklyPlan with _$WeeklyPlan {
   @JsonSerializable(fieldRename: FieldRename.snake)
   const factory WeeklyPlan({
     required String id,
