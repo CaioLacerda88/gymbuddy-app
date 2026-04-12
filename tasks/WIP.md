@@ -4,32 +4,23 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ---
 
-## Roadmap: Phase 13 Sprint A→B Bridge + Sprint B
+## FIX NEEDED: E2E full suite infrastructure crash
 
-Sprint A is COMPLETE (PRs #42-#46). PR7 merged (#47). Next work follows this dependency chain:
+**Problem:** The full E2E project (84 tests) fails with `net::ERR_CONNECTION_REFUSED` — the web server (`npx http-server`) crashes mid-suite. Confirmed on both main and PR6 branches (pre-existing, not a regression).
 
-```
-PR7  (CI Android build gap)     DONE    #47
-  → PR6  (Bulk dep upgrade)     ~1 day  Riverpod 3, GoRouter 17, Freezed 3, codegen toolchain
-    → Sprint B (Retention)      ~1 week P1 charts, P2 exercises, P4 images, P8 empty-state, UX1-UX8
-      → AB-PR1 (Foundation)     ~30-40h New theme, fonts, tokens, shared widgets
-        → AB-PR2/3/4 (parallel)         Active workout, celebration, info surfaces
-          → AB-PR5 (Polish)             Store screenshots, final animation QA
-```
+**Root cause:** `playwright.config.ts` line 44 uses `npx http-server ../../build/web -p 4200 -c-1 --silent` as the web server. This single-process Node.js static server crashes under the load of 147 tests × 2 workers on Windows. The smoke project (61 tests) completes before the crash; the full project tests fail because the server is already dead.
 
-### Next up: PR6 — Bulk Dependency Upgrade + Toolchain Refresh
+**Evidence:**
+- Main branch: 63 passed (all smoke), 83 failed (3 smoke BUG-001 + all 80 full = ERR_CONNECTION_REFUSED)
+- PR6 branch: 72 passed (all smoke + some early full), 74 failed (3 smoke BUG-001 + rest full)
+- Error in test-results: `page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:4200/`
 
-- **Spec:** PLAN.md lines 1108-1464 (fully written, includes codebase impact assessment)
-- **Scope:** 34 outdated packages — Riverpod 2→3, GoRouter 13→17, Freezed 2→3, codegen toolchain
-- **Key risks:** Riverpod 243 call sites, GoRouter 71 call sites, codegen output regeneration
-- **Blocked packages:** `package_info_plus` 10.0.0 (needs newer Dart SDK), `meta`/`vector_math` (pinned by Flutter SDK)
-- **Effort:** ~1 day
+**Proposed fix (next phase):**
+1. Replace `npx http-server` with a more robust server (e.g., `npx serve -l 4200 ../../build/web` or configure `--cors` + connection limits)
+2. OR add Playwright `webServer.reuseExistingServer: false` + restart logic between projects
+3. OR reduce worker count for the `full` project to `workers: 1` to reduce server pressure
+4. Update CLAUDE.md which incorrectly states the server is `python -m http.server` (it's actually `npx http-server`)
 
-### Pending install
-
-Release APK built at `build/app/outputs/flutter-apk/app-release.apk` (63.1MB, 2026-04-11). Phone was disconnected at build time. Install command when phone is connected:
-```bash
-adb install -r build/app/outputs/flutter-apk/app-release.apk
-```
+**Scope:** This is a test infra fix, not app code. Schedule for Sprint B or a dedicated infra PR.
 
 ---
