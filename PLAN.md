@@ -37,9 +37,9 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 13a-PR3 | Sprint A QA follow-ups (legal polish, PWA theme, test coverage, live delete E2E) | DONE | #44 |
 | 13a-PR5 | Observability: Sentry crash reporting + first-party analytics_events (B2 + B3) | DONE | #46 |
 | 13a-PR6 | Bulk Dependency Upgrade + Toolchain Refresh (Riverpod 3, GoRouter 17, Freezed 3) | PLANNED | - |
-| 13a-PR7 | Close local CI Android build gap (`make ci` runs `flutter build apk --debug`) | PLANNED | - |
+| 13a-PR7 | Close local CI Android build gap (`make ci` runs `flutter build apk --debug`) | DONE | #47 |
 | 13c | UX Polish & Athletic Brutalism Redesign | PLANNED | - |
-| 13 | Production Readiness (Sprint A DONE; bridge PRs 6+7 next, then Sprint B retention) | IN PROGRESS | - |
+| 13 | Production Readiness (Sprint A DONE; PR7 merged, PR6 next, then Sprint B retention) | IN PROGRESS | - |
 | 14 | Offline Support | TODO | - |
 | 15 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
 | 16 | Gamification Advanced (Quests, Stats Panel) | TODO | - |
