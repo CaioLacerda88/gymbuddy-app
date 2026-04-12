@@ -66,19 +66,21 @@ cd test/e2e && npm install && cd ../..
 ```bash
 cd test/e2e
 
-# Override FLUTTER_APP_URL so Playwright auto-starts python http.server on :4200
-# (.env.local sets FLUTTER_APP_URL=http://localhost:8080 for CI — we override it)
-FLUTTER_APP_URL= npx playwright test --project=smoke --reporter=list
+# Run full regression suite (all 147 tests)
+FLUTTER_APP_URL= npx playwright test --reporter=list
+
+# Quick smoke check only (61 tests)
+FLUTTER_APP_URL= npx playwright test smoke/ --reporter=list
 
 # Run a single test file:
-FLUTTER_APP_URL= npx playwright test --project=smoke smoke/auth.smoke.spec.ts
+FLUTTER_APP_URL= npx playwright test smoke/auth.smoke.spec.ts
 
 # Run a specific test by line number:
-FLUTTER_APP_URL= npx playwright test --project=smoke "smoke/auth.smoke.spec.ts:16"
+FLUTTER_APP_URL= npx playwright test "smoke/auth.smoke.spec.ts:16"
 ```
 
 **Key details:**
-- `FLUTTER_APP_URL=` (empty) overrides `.env.local` → Playwright auto-serves `build/web/` via `python -m http.server` on port 4200
+- `FLUTTER_APP_URL=` (empty) overrides `.env.local` → Playwright auto-serves `build/web/` via custom Node.js static server on port 4200
 - **Env auto-swap**: Global setup injects local Supabase credentials into `build/web/assets/.env` so the Flutter app connects to the same Supabase instance the tests use. No manual `.env` swap needed.
 - Global setup creates test users via Supabase Admin API → requires local Supabase running
 - Global teardown deletes test users → idempotent, safe to rerun

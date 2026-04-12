@@ -38,10 +38,10 @@ export default defineConfig({
     ? {}
     : {
         webServer: {
-          // http-server is multi-threaded and serves all files including dotfiles (.env).
-          // npx serve -s hides dotfiles, breaking flutter_dotenv.
-          // -c-1 disables caching so the latest .env is always served.
-          command: `npx http-server ../../build/web -p ${LOCAL_PORT} -c-1 --silent`,
+          // Custom static server: serves dotfiles (.env for flutter_dotenv),
+          // streams responses with backpressure, and handles SPA fallback.
+          // Replaces npx http-server which crashed under concurrent Playwright load.
+          command: `node static-server.cjs ../../build/web ${LOCAL_PORT}`,
           port: LOCAL_PORT,
           reuseExistingServer: true,
           timeout: 30_000,
@@ -49,17 +49,12 @@ export default defineConfig({
       }),
   projects: [
     {
-      name: 'smoke',
-      testMatch: /smoke\/.*\.spec\.ts$/,
+      name: 'regression',
+      testMatch: /(?:smoke|full)\/.*\.spec\.ts$/,
       use: {
-        // Smoke tests should be fast; fail quickly on regressions.
         actionTimeout: 15_000,
         navigationTimeout: 30_000,
       },
-    },
-    {
-      name: 'full',
-      testMatch: /full\/.*\.spec\.ts$/,
     },
   ],
 });
