@@ -35,10 +35,11 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 13a-PR1 | Account Deletion + Volume Unit + OAuth Deep Link | DONE | #42 |
 | 13a-PR2 | Release Signing + Branding + Privacy Policy & ToS (icon DEFERRED) | DONE | #43 |
 | 13a-PR3 | Sprint A QA follow-ups (legal polish, PWA theme, test coverage, live delete E2E) | DONE | #44 |
+| 13a-PR5 | Observability: Sentry crash reporting + first-party analytics_events (B2 + B3) | DONE | #46 |
 | 13a-PR6 | Bulk Dependency Upgrade + Toolchain Refresh (Riverpod 3, GoRouter 17, Freezed 3) | PLANNED | - |
 | 13a-PR7 | Close local CI Android build gap (`make ci` runs `flutter build apk --debug`) | PLANNED | - |
 | 13c | UX Polish & Athletic Brutalism Redesign | PLANNED | - |
-| 13 | Production Readiness (remaining Sprint A: B2, B3, W2; icon post-gamification) | IN PROGRESS | - |
+| 13 | Production Readiness (Sprint A DONE; bridge PRs 6+7 next, then Sprint B retention) | IN PROGRESS | - |
 | 14 | Offline Support | TODO | - |
 | 15 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
 | 16 | Gamification Advanced (Quests, Stats Panel) | TODO | - |
@@ -542,8 +543,8 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 | ID | Item | Effort | Notes |
 |----|------|--------|-------|
 | ~~B1~~ | ~~Release signing~~ | DONE (#43) | `build.gradle.kts` reads `key.properties` via `rootProject.file()`, signs release with configured keystore, falls back to debug when absent. `key.properties.example` template + `.gitignore` covers `*.jks`/`*.keystore`/`*.p12`. User generates keystore post-merge. |
-| B2 | Crash reporting | 2-3h | Sentry Flutter SDK. Wire into `AppException` hierarchy. Breadcrumbs for key user actions |
-| B3 | Analytics (basic events) | 3-4h | `signup`, `login`, `first_workout_completed`, `workout_finished`, `routine_started`, `pr_broken`, `app_opened`. Options: PostHog, Amplitude, Mixpanel free tier |
+| ~~B2~~ | ~~Crash reporting~~ | DONE (#46) | `sentry_flutter 9.16.1` wired via `runZonedGuarded` + `SentryFlutter.init` in `main.dart`. Empty-DSN skips init (dev/test safe). Strict PII scrubbing: `sendDefaultPii: false`, `tracesSampleRate: 0.0`, `beforeSend` sets `SentryUser(id: ...)` only + `scrubEventPii()` walks message/exception/stack frame contextLine for emails, `beforeBreadcrumb` drops any crumb whose data values contain `@`. `BaseRepository.mapException` captures unexpected errors. `SentryNavigatorObserver` wired into GoRouter with UUID → `:id` sanitizer. Auth + workout-lifecycle breadcrumbs (transition name + workout_id only, no weights/notes). Profile → Privacy → "Send crash reports" toggle (defaults ON, Hive-backed via `crashReportsEnabledProvider`) gates `SentryReport`; flipping OFF clears breadcrumbs. 22 new unit tests covering the scrubbers and opt-out. |
+| ~~B3~~ | ~~Analytics (basic events)~~ | DONE (#46) | First-party `public.analytics_events` table (migration `20260410_analytics_events.sql`) — `(id, user_id fk auth.users cascade, name, props jsonb, platform, app_version, created_at)`, RLS insert-own-only, no SELECT policy. Thin `AnalyticsRepository` (fire-and-forget, swallows errors via `unawaited`). Typed Freezed union `AnalyticsEvent` — **8 ratified events** wired at call sites: `onboarding_completed`, `workout_started`, `workout_discarded`, `workout_finished`, `pr_celebration_seen`, `week_plan_saved` (debounced to one event per edit session, flushed on dispose), `week_complete` (fires on `!wasAllComplete && isNowAllComplete`), `add_to_plan_prompt_responded`. `week_number` computed client-side via `computeWeekNumberSinceSignup` (null createdAt → event SKIPPED). Deferred `account_deleted` event → dedicated `public.account_deletion_events` audit table, written by `delete-user` Edge Function **before** the CASCADE DELETE (CASCADE-safe, anonymous `user_uuid` text column, no FK). 9th event `workout_started.had_active_workout_conflict` prop deferred pending follow-up PR. Privacy policy (`assets/legal/` + `docs/`) updated with Sentry + analytics disclosure. |
 | ~~B4~~ | ~~Privacy Policy & ToS~~ | DONE (#43) | `assets/legal/privacy_policy.md` + `terms_of_service.md` rendered in-app via `flutter_markdown_plus`, mirrored to `docs/` for GitHub Pages at `https://caiolacerda88.github.io/gymbuddy-app/`. New `/privacy-policy` + `/terms-of-service` routes (public-route allowlist). Linked from Profile LEGAL section + login footer. User must enable Pages + review draft text post-merge. |
 | ~~B5~~ | ~~Account deletion~~ | DONE (#42) | Edge Function `delete-user` + AuthRepository.deleteAccount + Manage Data UI with type-DELETE confirmation. Cascade via existing FKs. |
 | B6 | ProGuard/R8 optimization | 2-3h | No minify/shrink today (19.7MB → ~12-14MB). Need keep rules for Supabase + Hive reflection |
@@ -1093,7 +1094,7 @@ Every place where the original audit was overridden by PO or tech-lead review. T
 
 ### Suggested Sprint Order
 
-**Sprint A — Store-ready:** ~~B5~~ ~~P7~~ ~~W1~~ (PR #42), ~~B1~~ ~~B4~~ ~~P6~~ (PR #43, icon deferred), ~~QA follow-ups: legal placeholder cleanup across all 5 legal docs, Brazil jurisdiction with CDC carve-out, PWA theme colors, DELETE gate partial-string tests, volume-unit widget tests, live `manage-data.smoke.spec.ts` with backend-verified delete + cascade~~ (PR #44), ~~W2 wakelock~~ (PR #45). Remaining for Sprint A: B2 Sentry, B3 analytics (PR 5).
+**Sprint A — Store-ready: COMPLETE.** ~~B5~~ ~~P7~~ ~~W1~~ (PR #42), ~~B1~~ ~~B4~~ ~~P6~~ (PR #43, icon deferred), ~~QA follow-ups~~ (PR #44), ~~W2 wakelock~~ (PR #45), ~~B2 Sentry + B3 analytics~~ (PR #46).
 **Sprint A → B bridge — Tech debt sweep:** PR 6 — Bulk dependency upgrade + toolchain refresh (Riverpod 3, GoRouter 17, Freezed 3). PR 7 — Close local CI Android build gap (`make ci` adds `flutter build apk --debug`). Both land before Sprint B retention work so P1 (charts) can pull in `fl_chart` against the modern toolchain and the new Makefile gate catches Android plugin breakage pre-push.
 **Sprint B (1 week) — Retention + polish:** P1, P2, P4, P8, UX1-UX8
 **Sprint B+ — Athletic Brutalism redesign (parallelizable after AB-PR1):** AB-PR1 (foundation) → AB-PR2 (core loop), AB-PR3 (celebration), AB-PR4 (info surfaces) in parallel → AB-PR5 (polish + store screenshots). Sequencing hard-gate: AB-PR1 lands AFTER PR6 bulk upgrade; all AB-PR* land AFTER Sprint B retention work (P1-P8, UX1-UX8).

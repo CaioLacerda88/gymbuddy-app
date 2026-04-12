@@ -1,4 +1,4 @@
-.PHONY: gen gen-watch format analyze test ci
+.PHONY: gen gen-watch format analyze test build-android-debug ci
 
 gen:
 	dart run build_runner build --delete-conflicting-outputs
@@ -15,4 +15,7 @@ analyze:
 test:
 	flutter test
 
-ci: format gen analyze test
+build-android-debug:
+	flutter build apk --debug --no-shrink
+
+ci: format gen analyze test build-android-debug

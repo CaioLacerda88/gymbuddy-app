@@ -19,7 +19,8 @@ make gen-watch               # code generation in watch mode
 make format                  # dart format .
 make analyze                 # dart analyze --fatal-infos
 make test                    # flutter test
-make ci                      # full pipeline: format + analyze + gen + test
+make build-android-debug     # android debug APK (Gradle/Kotlin compile check)
+make ci                      # full pipeline: format + gen + analyze + test + android-debug-build (~3-5 min)
 
 flutter run -d android       # run on Android
 flutter run -d chrome        # run on Chrome (for Playwright e2e)
