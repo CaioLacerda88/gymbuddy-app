@@ -39,7 +39,7 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 13a-PR6 | Bulk Dependency Upgrade + Toolchain Refresh (Riverpod 3, GoRouter 17, Freezed 3) | PLANNED | - |
 | 13a-PR7 | Close local CI Android build gap (`make ci` runs `flutter build apk --debug`) | PLANNED | - |
 | 13c | UX Polish & Athletic Brutalism Redesign | PLANNED | - |
-| 13 | Production Readiness (remaining Sprint A: W2; icon post-gamification) | IN PROGRESS | - |
+| 13 | Production Readiness (Sprint A DONE; bridge PRs 6+7 next, then Sprint B retention) | IN PROGRESS | - |
 | 14 | Offline Support | TODO | - |
 | 15 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
 | 16 | Gamification Advanced (Quests, Stats Panel) | TODO | - |
@@ -1094,7 +1094,7 @@ Every place where the original audit was overridden by PO or tech-lead review. T
 
 ### Suggested Sprint Order
 
-**Sprint A — Store-ready:** ~~B5~~ ~~P7~~ ~~W1~~ (PR #42), ~~B1~~ ~~B4~~ ~~P6~~ (PR #43, icon deferred), ~~QA follow-ups: legal placeholder cleanup across all 5 legal docs, Brazil jurisdiction with CDC carve-out, PWA theme colors, DELETE gate partial-string tests, volume-unit widget tests, live `manage-data.smoke.spec.ts` with backend-verified delete + cascade~~ (PR #44), ~~W2 wakelock~~ (PR #45). Remaining for Sprint A: B2 Sentry, B3 analytics (PR 5).
+**Sprint A — Store-ready: COMPLETE.** ~~B5~~ ~~P7~~ ~~W1~~ (PR #42), ~~B1~~ ~~B4~~ ~~P6~~ (PR #43, icon deferred), ~~QA follow-ups~~ (PR #44), ~~W2 wakelock~~ (PR #45), ~~B2 Sentry + B3 analytics~~ (PR #46).
 **Sprint A → B bridge — Tech debt sweep:** PR 6 — Bulk dependency upgrade + toolchain refresh (Riverpod 3, GoRouter 17, Freezed 3). PR 7 — Close local CI Android build gap (`make ci` adds `flutter build apk --debug`). Both land before Sprint B retention work so P1 (charts) can pull in `fl_chart` against the modern toolchain and the new Makefile gate catches Android plugin breakage pre-push.
 **Sprint B (1 week) — Retention + polish:** P1, P2, P4, P8, UX1-UX8
 **Sprint B+ — Athletic Brutalism redesign (parallelizable after AB-PR1):** AB-PR1 (foundation) → AB-PR2 (core loop), AB-PR3 (celebration), AB-PR4 (info surfaces) in parallel → AB-PR5 (polish + store screenshots). Sequencing hard-gate: AB-PR1 lands AFTER PR6 bulk upgrade; all AB-PR* land AFTER Sprint B retention work (P1-P8, UX1-UX8).
