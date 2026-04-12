@@ -1,4 +1,4 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 /// Tracks whether the current user has completed onboarding.
 /// This is set to true after signup and cleared after onboarding completes.

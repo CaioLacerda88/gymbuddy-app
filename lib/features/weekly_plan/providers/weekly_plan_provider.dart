@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/device/platform_info.dart';
@@ -117,7 +118,7 @@ class WeeklyPlanNotifier extends AsyncNotifier<WeeklyPlan?> {
     required String routineId,
     required String workoutId,
   }) async {
-    final plan = state.valueOrNull;
+    final plan = state.value;
     if (plan == null) return;
 
     // Check if this routine is in the bucket and not yet completed.
@@ -141,7 +142,7 @@ class WeeklyPlanNotifier extends AsyncNotifier<WeeklyPlan?> {
     // POST-transition. The `!wasAllComplete && isNowAllComplete` guard makes
     // this fire exactly once, even on idempotent re-taps (the second call
     // would see `wasAllComplete == true` and skip).
-    final newPlan = state.valueOrNull;
+    final newPlan = state.value;
     if (newPlan == null) return;
     final wasAllComplete =
         plan.routines.isNotEmpty &&
@@ -164,7 +165,7 @@ class WeeklyPlanNotifier extends AsyncNotifier<WeeklyPlan?> {
         // we fall back to 0 — SQL can correct it from pr_celebration_seen.
         final prsAsync = ref.read(prListProvider);
         final prCountThisWeek =
-            prsAsync.valueOrNull
+            prsAsync.value
                 ?.where(
                   (pr) =>
                       pr.achievedAt.isAfter(weekStart) &&
@@ -230,7 +231,7 @@ class WeeklyPlanNotifier extends AsyncNotifier<WeeklyPlan?> {
   /// Returns `true` if the routine was added, `false` if it was already
   /// present or no plan exists to add to.
   Future<bool> addRoutineToPlan(String routineId) async {
-    final plan = state.valueOrNull;
+    final plan = state.value;
     if (plan == null) return false;
 
     // Already in plan — nothing to do.
@@ -250,7 +251,7 @@ class WeeklyPlanNotifier extends AsyncNotifier<WeeklyPlan?> {
 
   /// Clear the current week's plan.
   Future<void> clearPlan() async {
-    final plan = state.valueOrNull;
+    final plan = state.value;
     if (plan == null) return;
     final repo = ref.read(weeklyPlanRepositoryProvider);
     await repo.deletePlan(plan.id);

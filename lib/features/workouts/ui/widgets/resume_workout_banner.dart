@@ -17,7 +17,7 @@ class ResumeWorkoutBanner extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncWorkout = ref.watch(activeWorkoutProvider);
-    final state = asyncWorkout.valueOrNull;
+    final state = asyncWorkout.value;
 
     if (state == null) return const SizedBox.shrink();
     if (state.exercises.isEmpty) return const SizedBox.shrink();
@@ -26,7 +26,7 @@ class ResumeWorkoutBanner extends ConsumerWidget {
     final elapsedAsync = ref.watch(
       elapsedTimerProvider(state.workout.startedAt),
     );
-    final elapsed = elapsedAsync.valueOrNull ?? Duration.zero;
+    final elapsed = elapsedAsync.value ?? Duration.zero;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),

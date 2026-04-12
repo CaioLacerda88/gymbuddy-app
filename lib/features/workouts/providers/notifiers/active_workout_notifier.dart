@@ -104,8 +104,7 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
       // Fetch last-workout weights for pre-filling sets.
       final exerciseIds = config.exercises.map((e) => e.exerciseId).toList();
       final lastSets = await _repo.getLastWorkoutSets(exerciseIds);
-      final weightUnitStr =
-          ref.read(profileProvider).valueOrNull?.weightUnit ?? 'kg';
+      final weightUnitStr = ref.read(profileProvider).value?.weightUnit ?? 'kg';
       final weightUnit = WeightUnit.fromString(weightUnitStr);
 
       // Build exercises with pre-filled sets.
@@ -178,12 +177,12 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
 
   /// Rename the active workout in-memory and persist to Hive.
   void renameWorkout(String name) {
-    final current = state.valueOrNull;
+    final current = state.value;
     if (current == null) return;
     state = AsyncData(
       current.copyWith(workout: current.workout.copyWith(name: name)),
     );
-    _saveToHive(state.valueOrNull!);
+    _saveToHive(state.value!);
   }
 
   String _generateWorkoutName() {
@@ -644,7 +643,7 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
       try {
         final matchedRoutineId = current.routineId;
         if (matchedRoutineId != null) {
-          final plan = ref.read(weeklyPlanProvider).valueOrNull;
+          final plan = ref.read(weeklyPlanProvider).value;
           if (plan != null && plan.routines.isNotEmpty) {
             final hasBucketMatch = plan.routines.any(
               (r) =>

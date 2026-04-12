@@ -43,7 +43,7 @@ class ActiveWorkoutScreen extends ConsumerWidget {
     final timerState = ref.watch(restTimerProvider);
 
     // valueOrNull retains the previous data during AsyncLoading transitions.
-    final displayState = asyncState.valueOrNull;
+    final displayState = asyncState.value;
 
     if (displayState == null && !asyncState.isLoading) {
       // Workout was finished or discarded -- navigate home.
@@ -207,7 +207,7 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
     if (result == null || !mounted) return;
 
     // Capture exercise names before finishing (state is cleared after).
-    final currentState = ref.read(activeWorkoutProvider).valueOrNull;
+    final currentState = ref.read(activeWorkoutProvider).value;
     final exerciseNames = <String, String>{};
     if (currentState != null) {
       for (final e in currentState.exercises) {
@@ -225,7 +225,7 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
     final routineName = routineId != null
         ? ref
               .read(routineListProvider)
-              .valueOrNull
+              .value
               ?.where((r) => r.id == routineId)
               .firstOrNull
               ?.name
@@ -276,7 +276,7 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
   /// and the routine is NOT already in the plan.
   bool _shouldShowPlanPrompt(String? routineId) {
     if (routineId == null) return false;
-    final plan = ref.read(weeklyPlanProvider).valueOrNull;
+    final plan = ref.read(weeklyPlanProvider).value;
     if (plan == null) return false;
     return !plan.routines.any((r) => r.routineId == routineId);
   }
@@ -651,12 +651,11 @@ class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
 
     // Fetch previous session sets for this exercise.
     final lastSetsAsync = ref.watch(lastWorkoutSetsProvider(exerciseId));
-    final lastSetsMap = lastSetsAsync.valueOrNull ?? {};
+    final lastSetsMap = lastSetsAsync.value ?? {};
     final lastSets = lastSetsMap[exerciseId] ?? [];
 
     // Get weight unit for equipment-type defaults.
-    final weightUnitStr =
-        ref.watch(profileProvider).valueOrNull?.weightUnit ?? 'kg';
+    final weightUnitStr = ref.watch(profileProvider).value?.weightUnit ?? 'kg';
     final weightUnit = WeightUnit.fromString(weightUnitStr);
 
     return Card(
@@ -864,7 +863,7 @@ class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
                   // Mark the newly added set as new after state updates.
                   // The notifier adds the set synchronously, so we can
                   // read back the updated state to find the new set ID.
-                  final updated = ref.read(activeWorkoutProvider).valueOrNull;
+                  final updated = ref.read(activeWorkoutProvider).value;
                   if (updated != null) {
                     final updatedExercise = updated.exercises
                         .where((e) => e.workoutExercise.id == weId)
@@ -992,8 +991,7 @@ class _ExerciseDetailSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final asyncRecords = ref.watch(exercisePRsProvider(exercise.id));
-    final weightUnit =
-        ref.watch(profileProvider).valueOrNull?.weightUnit ?? 'kg';
+    final weightUnit = ref.watch(profileProvider).value?.weightUnit ?? 'kg';
 
     return DraggableScrollableSheet(
       initialChildSize: 0.85,

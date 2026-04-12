@@ -56,7 +56,7 @@ enum EquipmentType {
 }
 
 @freezed
-class Exercise with _$Exercise {
+abstract class Exercise with _$Exercise {
   @JsonSerializable(fieldRename: FieldRename.snake)
   const factory Exercise({
     required String id,

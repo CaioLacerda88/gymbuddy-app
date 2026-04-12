@@ -37,8 +37,8 @@ class WeekBucketSection extends ConsumerWidget {
       return const SizedBox.shrink();
     }
 
-    final plan = planAsync.valueOrNull;
-    final routines = routinesAsync.valueOrNull ?? [];
+    final plan = planAsync.value;
+    final routines = routinesAsync.value ?? [];
     if (routines.isEmpty) return const SizedBox.shrink();
 
     // Build routine name map from available routines.
@@ -53,9 +53,8 @@ class WeekBucketSection extends ConsumerWidget {
     // Check if week is complete.
     final isComplete = ref.watch(isWeekCompleteProvider);
     if (isComplete) {
-      final stats = ref.watch(weekReviewStatsProvider).valueOrNull;
-      final weightUnit =
-          ref.watch(profileProvider).valueOrNull?.weightUnit ?? 'kg';
+      final stats = ref.watch(weekReviewStatsProvider).value;
+      final weightUnit = ref.watch(profileProvider).value?.weightUnit ?? 'kg';
       return Padding(
         padding: const EdgeInsets.only(bottom: 16),
         child: WeekReviewSection(

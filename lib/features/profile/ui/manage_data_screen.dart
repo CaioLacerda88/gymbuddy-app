@@ -18,7 +18,7 @@ class ManageDataScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final workoutCount = ref.watch(workoutCountProvider);
 
-    final workoutCountValue = workoutCount.valueOrNull ?? 0;
+    final workoutCountValue = workoutCount.value ?? 0;
 
     final workoutCountText = workoutCount.when(
       data: (v) => '$v',

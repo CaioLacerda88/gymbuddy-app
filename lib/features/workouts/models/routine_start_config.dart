@@ -5,7 +5,7 @@ import '../../exercises/models/exercise.dart';
 part 'routine_start_config.freezed.dart';
 
 @freezed
-class RoutineStartExercise with _$RoutineStartExercise {
+abstract class RoutineStartExercise with _$RoutineStartExercise {
   const factory RoutineStartExercise({
     required String exerciseId,
     required Exercise exercise,
@@ -16,7 +16,7 @@ class RoutineStartExercise with _$RoutineStartExercise {
 }
 
 @freezed
-class RoutineStartConfig with _$RoutineStartConfig {
+abstract class RoutineStartConfig with _$RoutineStartConfig {
   const factory RoutineStartConfig({
     required String routineName,
     required List<RoutineStartExercise> exercises,

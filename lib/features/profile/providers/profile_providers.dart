@@ -40,7 +40,7 @@ class ProfileNotifier extends AsyncNotifier<Profile?> {
   }
 
   Future<void> updateTrainingFrequency(int frequency) async {
-    final current = state.valueOrNull;
+    final current = state.value;
     if (current == null) return;
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
@@ -52,7 +52,7 @@ class ProfileNotifier extends AsyncNotifier<Profile?> {
   }
 
   Future<void> toggleWeightUnit() async {
-    final current = state.valueOrNull;
+    final current = state.value;
     if (current == null) return;
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;

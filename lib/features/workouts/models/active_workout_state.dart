@@ -9,7 +9,7 @@ part 'active_workout_state.freezed.dart';
 part 'active_workout_state.g.dart';
 
 @freezed
-class ActiveWorkoutExercise with _$ActiveWorkoutExercise {
+abstract class ActiveWorkoutExercise with _$ActiveWorkoutExercise {
   @JsonSerializable(fieldRename: FieldRename.snake)
   const factory ActiveWorkoutExercise({
     required WorkoutExercise workoutExercise,
@@ -21,7 +21,7 @@ class ActiveWorkoutExercise with _$ActiveWorkoutExercise {
 }
 
 @freezed
-class ActiveWorkoutState with _$ActiveWorkoutState {
+abstract class ActiveWorkoutState with _$ActiveWorkoutState {
   @JsonSerializable(fieldRename: FieldRename.snake)
   const factory ActiveWorkoutState({
     required Workout workout,

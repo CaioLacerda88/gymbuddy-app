@@ -23,7 +23,7 @@ class WeekReviewStats {
 /// Only produces meaningful data when the plan has completed routines.
 /// Returns default zeros while loading or if no plan exists.
 final weekReviewStatsProvider = FutureProvider<WeekReviewStats>((ref) async {
-  final plan = ref.watch(weeklyPlanProvider).valueOrNull;
+  final plan = ref.watch(weeklyPlanProvider).value;
   if (plan == null || plan.routines.isEmpty) {
     return const WeekReviewStats();
   }

@@ -12,7 +12,7 @@ RecordType _recordTypeFromJson(dynamic value) =>
 String _recordTypeToJson(RecordType type) => type.toSnakeCase;
 
 @freezed
-class PersonalRecord with _$PersonalRecord {
+abstract class PersonalRecord with _$PersonalRecord {
   @JsonSerializable(fieldRename: FieldRename.snake)
   const factory PersonalRecord({
     required String id,

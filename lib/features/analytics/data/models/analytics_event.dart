@@ -9,7 +9,7 @@ part 'analytics_event.freezed.dart';
 /// Prop keys are serialized to snake_case to match the `analytics_events`
 /// table's `props jsonb` column convention.
 @freezed
-class AnalyticsEvent with _$AnalyticsEvent {
+sealed class AnalyticsEvent with _$AnalyticsEvent {
   const AnalyticsEvent._();
 
   const factory AnalyticsEvent.onboardingCompleted({
@@ -87,78 +87,100 @@ class AnalyticsEvent with _$AnalyticsEvent {
   // the CASCADE delete on `auth.users`. See that function for details.
 
   /// Event name as stored in the `name` column of `analytics_events`.
-  String get name => map(
-    onboardingCompleted: (_) => 'onboarding_completed',
-    workoutStarted: (_) => 'workout_started',
-    workoutDiscarded: (_) => 'workout_discarded',
-    workoutFinished: (_) => 'workout_finished',
-    prCelebrationSeen: (_) => 'pr_celebration_seen',
-    weekPlanSaved: (_) => 'week_plan_saved',
-    weekComplete: (_) => 'week_complete',
-    addToPlanPromptResponded: (_) => 'add_to_plan_prompt_responded',
-  );
+  String get name => switch (this) {
+    _OnboardingCompleted() => 'onboarding_completed',
+    _WorkoutStarted() => 'workout_started',
+    _WorkoutDiscarded() => 'workout_discarded',
+    _WorkoutFinished() => 'workout_finished',
+    _PrCelebrationSeen() => 'pr_celebration_seen',
+    _WeekPlanSaved() => 'week_plan_saved',
+    _WeekComplete() => 'week_complete',
+    _AddToPlanPromptResponded() => 'add_to_plan_prompt_responded',
+  };
 
   /// Props as stored in the `props` jsonb column. Keys are snake_case.
   /// Values are primitive JSON types only (String, int, double, bool, List).
-  Map<String, Object?> get props => when(
-    onboardingCompleted: (fitnessLevel, trainingFrequency) => {
+  Map<String, Object?> get props => switch (this) {
+    _OnboardingCompleted(:final fitnessLevel, :final trainingFrequency) => {
       'fitness_level': fitnessLevel,
       'training_frequency': trainingFrequency,
     },
-    workoutStarted: (source, routineId, exerciseCount) => {
+    _WorkoutStarted(:final source, :final routineId, :final exerciseCount) => {
       'source': source,
       'routine_id': routineId,
       'exercise_count': exerciseCount,
     },
-    workoutDiscarded: (elapsed, completedSets, exerciseCount, source) => {
-      'elapsed_seconds': elapsed,
-      'completed_sets': completedSets,
-      'exercise_count': exerciseCount,
-      'source': source,
-    },
-    workoutFinished:
-        (
-          durationSeconds,
-          exerciseCount,
-          totalSets,
-          completedSets,
-          incompleteSetsSkipped,
-          hadPr,
-          source,
-          workoutNumber,
-        ) => {
-          'duration_seconds': durationSeconds,
-          'exercise_count': exerciseCount,
-          'total_sets': totalSets,
-          'completed_sets': completedSets,
-          'incomplete_sets_skipped': incompleteSetsSkipped,
-          'had_pr': hadPr,
-          'source': source,
-          'workout_number': workoutNumber,
-        },
-    prCelebrationSeen: (isFirstWorkout, prCount, recordTypes) => {
-      'is_first_workout': isFirstWorkout,
-      'pr_count': prCount,
-      'record_types': recordTypes,
-    },
-    weekPlanSaved: (routineCount, atSoftCap, usedAutofill, replacedExisting) =>
-        {
-          'routine_count': routineCount,
-          'at_soft_cap': atSoftCap,
-          'used_autofill': usedAutofill,
-          'replaced_existing': replacedExisting,
-        },
-    weekComplete: (sessionsCompleted, prCountThisWeek, planSize, weekNumber) =>
-        {
-          'sessions_completed': sessionsCompleted,
-          'pr_count_this_week': prCountThisWeek,
-          'plan_size': planSize,
-          'week_number': weekNumber,
-        },
-    addToPlanPromptResponded: (action, trigger, routineId) => {
-      'action': action,
-      'trigger': trigger,
-      'routine_id': routineId,
-    },
-  );
+    _WorkoutDiscarded(
+      :final elapsedSeconds,
+      :final completedSets,
+      :final exerciseCount,
+      :final source,
+    ) =>
+      {
+        'elapsed_seconds': elapsedSeconds,
+        'completed_sets': completedSets,
+        'exercise_count': exerciseCount,
+        'source': source,
+      },
+    _WorkoutFinished(
+      :final durationSeconds,
+      :final exerciseCount,
+      :final totalSets,
+      :final completedSets,
+      :final incompleteSetsSkipped,
+      :final hadPr,
+      :final source,
+      :final workoutNumber,
+    ) =>
+      {
+        'duration_seconds': durationSeconds,
+        'exercise_count': exerciseCount,
+        'total_sets': totalSets,
+        'completed_sets': completedSets,
+        'incomplete_sets_skipped': incompleteSetsSkipped,
+        'had_pr': hadPr,
+        'source': source,
+        'workout_number': workoutNumber,
+      },
+    _PrCelebrationSeen(
+      :final isFirstWorkout,
+      :final prCount,
+      :final recordTypes,
+    ) =>
+      {
+        'is_first_workout': isFirstWorkout,
+        'pr_count': prCount,
+        'record_types': recordTypes,
+      },
+    _WeekPlanSaved(
+      :final routineCount,
+      :final atSoftCap,
+      :final usedAutofill,
+      :final replacedExisting,
+    ) =>
+      {
+        'routine_count': routineCount,
+        'at_soft_cap': atSoftCap,
+        'used_autofill': usedAutofill,
+        'replaced_existing': replacedExisting,
+      },
+    _WeekComplete(
+      :final sessionsCompleted,
+      :final prCountThisWeek,
+      :final planSize,
+      :final weekNumber,
+    ) =>
+      {
+        'sessions_completed': sessionsCompleted,
+        'pr_count_this_week': prCountThisWeek,
+        'plan_size': planSize,
+        'week_number': weekNumber,
+      },
+    _AddToPlanPromptResponded(
+      :final action,
+      :final trigger,
+      :final routineId,
+    ) =>
+      {'action': action, 'trigger': trigger, 'routine_id': routineId},
+  };
 }
