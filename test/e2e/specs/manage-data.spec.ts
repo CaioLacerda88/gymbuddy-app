@@ -1,33 +1,18 @@
 /**
- * Manage Data full spec — delete history, reset all, and regression guards.
+ * Manage Data — consolidated E2E tests.
  *
- * Tests:
- *  1. MD-001 — Profile screen has a "Manage Data" row
- *  2. MD-002 — Tapping "Manage Data" navigates to the Manage Data screen
- *  3. MD-003 — Manage Data screen shows "Delete Workout History" tile with count
- *  4. MD-004 — Manage Data screen shows "Reset All Account Data" tile
- *  5. MD-005 — Cancel at first delete-history dialog leaves data intact
- *  6. MD-006 — Full delete-history confirmation flow clears history
- *  7. MD-007 — After deletion no error messages expose raw database table names
- *  8. MD-008 — Reset All: "Reset Account" button disabled until RESET is typed
- *  9. MD-009 — Cancel on Reset All modal leaves data intact
- * 10. MD-010 — Full Reset All flow clears workouts and PRs
- * 11. MD-011 (regression) — No raw DB table names visible in any error or
- *     SnackBar text after delete operations
- *
- * The delete-bug regression (MD-007 / MD-011) catches the specific failure mode
- * where the error handler surfaced the raw Supabase table name in a SnackBar,
- * e.g. "Failed to clear history: relation \"workouts\" does not exist".
- *
- * Uses the dedicated `fullManageData` test user.
- * The Flutter web app is served automatically by Playwright's webServer config
- * during local dev. In CI the FLUTTER_APP_URL env var is set by the workflow.
+ * Sources:
+ *   - smoke/manage-data.smoke.spec.ts  (throwaway user, 1 test)    -> @smoke
+ *   - full/manage-data.spec.ts         (fullManageData, 11 tests)  -> untagged
  */
 
 import { test, expect, type Page } from '@playwright/test';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+import path from 'path';
 import { flutterFill, navigateToTab } from '../helpers/app';
 import { login } from '../helpers/auth';
-import { NAV, WORKOUT, PROFILE, MANAGE_DATA, PR, HISTORY, HOME_STATS } from '../helpers/selectors';
+import { AUTH, NAV, WORKOUT, PROFILE, MANAGE_DATA, PR, HISTORY, HOME_STATS } from '../helpers/selectors';
 import {
   startEmptyWorkout,
   addExercise,
@@ -39,12 +24,92 @@ import {
 import { TEST_USERS } from '../fixtures/test-users';
 import { SEED_EXERCISES } from '../fixtures/test-exercises';
 
-const USER = TEST_USERS.fullManageData;
+dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
 
 // ---------------------------------------------------------------------------
-// Raw DB table names that must NEVER appear in visible page text.
-// This list is the regression guard — if error messages ever leak internal
-// Supabase/Postgres identifiers again, this array catches it.
+// Admin API helpers (used by smoke account deletion test)
+// ---------------------------------------------------------------------------
+
+function getAdminClient(): SupabaseClient {
+  const supabaseUrl = process.env['SUPABASE_URL'];
+  const serviceRoleKey = process.env['SUPABASE_SERVICE_ROLE_KEY'];
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error(
+      'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY — check test/e2e/.env.local',
+    );
+  }
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
+async function createThrowawayUser(supabase: SupabaseClient): Promise<{
+  userId: string;
+  email: string;
+  password: string;
+}> {
+  const ts = Date.now();
+  const email = `e2e-throwaway-delete-${ts}@test.local`;
+  const password = 'TestPassword123!';
+  const { data, error } = await supabase.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+  if (error || !data.user) {
+    throw new Error(`Failed to create throwaway user: ${error?.message}`);
+  }
+  return { userId: data.user.id, email, password };
+}
+
+async function seedWorkout(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<void> {
+  await supabase.from('workouts').insert({
+    user_id: userId,
+    name: 'Delete Test Workout',
+    started_at: new Date(Date.now() - 3600000).toISOString(),
+    finished_at: new Date(Date.now() - 1800000).toISOString(),
+    duration_seconds: 1800,
+  });
+}
+
+async function emergencyCleanup(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<void> {
+  try {
+    const { data: workouts } = await supabase
+      .from('workouts')
+      .select('id')
+      .eq('user_id', userId);
+    const workoutIds = (workouts ?? []).map((w) => w.id);
+    if (workoutIds.length > 0) {
+      const { data: wxs } = await supabase
+        .from('workout_exercises')
+        .select('id')
+        .in('workout_id', workoutIds);
+      const wxIds = (wxs ?? []).map((wx) => wx.id);
+      if (wxIds.length > 0) {
+        await supabase.from('sets').delete().in('workout_exercise_id', wxIds);
+        await supabase
+          .from('workout_exercises')
+          .delete()
+          .in('workout_id', workoutIds);
+      }
+      await supabase.from('personal_records').delete().eq('user_id', userId);
+      await supabase.from('workouts').delete().eq('user_id', userId);
+    }
+    await supabase.from('profiles').delete().eq('id', userId);
+    await supabase.auth.admin.deleteUser(userId);
+  } catch {
+    // Swallow — emergency only.
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Raw DB table names that must NEVER appear in visible page text (full suite).
 // ---------------------------------------------------------------------------
 const FORBIDDEN_TABLE_NAMES = [
   'workouts',
@@ -55,7 +120,7 @@ const FORBIDDEN_TABLE_NAMES = [
 ] as const;
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Full suite helpers
 // ---------------------------------------------------------------------------
 
 /**
@@ -87,7 +152,7 @@ async function doWorkoutAndReturnHome(page: Page): Promise<void> {
   await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
 }
 
-/** Navigate to Profile → Manage Data screen. */
+/** Navigate to Profile -> Manage Data screen. */
 async function openManageData(page: Page): Promise<void> {
   await navigateToTab(page, 'Profile');
   await expect(page.locator(PROFILE.manageData)).toBeVisible({ timeout: 10_000 });
@@ -134,19 +199,203 @@ async function assertNoTableNamesVisible(page: Page): Promise<void> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Spec
-// ---------------------------------------------------------------------------
+// =============================================================================
+// SMOKE — Account deletion (throwaway user)
+// =============================================================================
 
-test.describe('Manage Data — full suite', () => {
-  test.beforeEach(async ({ page }) => {
-    await login(page, USER.email, USER.password);
+test.describe('Account deletion', { tag: '@smoke' }, () => {
+  let supabase: SupabaseClient;
+  let userId: string;
+  let userEmail: string;
+  let userPassword: string;
+  // Track whether in-app deletion succeeded (to skip emergency cleanup).
+  let deletionCompletedInApp = false;
+
+  test.beforeAll(async () => {
+    supabase = getAdminClient();
+    const user = await createThrowawayUser(supabase);
+    userId = user.userId;
+    userEmail = user.email;
+    userPassword = user.password;
+
+    // Seed a workout to verify cascade deletion later.
+    await seedWorkout(supabase, userId);
+
+    // Upsert profile so the app routes to Home, not onboarding.
+    await supabase.from('profiles').upsert(
+      {
+        id: userId,
+        display_name: 'Delete Test User',
+        fitness_level: 'beginner',
+      },
+      { onConflict: 'id' },
+    );
+
+    console.log(
+      `[manage-data] Throwaway user created: ${userEmail} (${userId})`,
+    );
   });
 
-  // -------------------------------------------------------------------------
-  // MD-001 — Profile screen has a "Manage Data" row
-  // -------------------------------------------------------------------------
-  test('MD-001: Profile screen shows a Manage Data row in the DATA MANAGEMENT section', async ({
+  test.afterAll(async () => {
+    if (!deletionCompletedInApp) {
+      console.log(
+        `[manage-data] Emergency cleanup for ${userEmail} (in-app deletion did not complete)`,
+      );
+      await emergencyCleanup(supabase, userId);
+    }
+  });
+
+  test(
+    'should keep confirm disabled with partial string, enable with full DELETE, and verify deletion in backend',
+    async ({ page }) => {
+      // -- 1. Log in --
+      // Use the shared helper for the happy-path sign-in. The re-login attempt
+      // later in this test is kept raw because it's expected to fail and the
+      // helper would assert the happy path.
+      await login(page, userEmail, userPassword);
+
+      // -- 2. Navigate to Profile -> Manage Data --
+      await page.click(NAV.profileTab);
+      await page.waitForURL('**/profile**', { timeout: 15_000 });
+      await page.waitForTimeout(500);
+
+      await page.click(PROFILE.manageData);
+      await page.waitForURL('**/manage-data**', { timeout: 15_000 });
+      await expect(page.locator(MANAGE_DATA.heading)).toBeVisible({
+        timeout: 10_000,
+      });
+
+      // -- 3. Tap "Delete Account" tile --
+      // The tile is rendered as a button with aria-name combining title + subtitle.
+      // Use the subtitle as the unique selector to avoid ambiguity with the
+      // dialog's "Delete Account" button that appears later.
+      await page.locator('text=Permanently delete your account and all data').click();
+
+      // The full-screen dialog opens — verify by checking the dialog's heading.
+      await expect(
+        page.locator('role=heading[name="Delete Account"]'),
+      ).toBeVisible({ timeout: 5_000 });
+
+      // -- 4. Assert "Delete Account" button is initially DISABLED --
+      // GradientButton with null onPressed renders with disabled=true in semantics.
+      // The Playwright accessibility tree exposes this as role=button [disabled].
+      const confirmButton = page.locator('role=button[name="Delete Account"]').last();
+      await expect(confirmButton).toBeDisabled({ timeout: 5_000 });
+
+      // -- 5. Focus the "DELETE" TextField --
+      // The textbox has role=textbox with name matching the hintText "DELETE".
+      const deleteInput = page.locator('role=textbox[name="DELETE"]');
+      await expect(deleteInput).toBeVisible({ timeout: 5_000 });
+      await deleteInput.click();
+      // Wait for Flutter's native <input> proxy to appear.
+      await page.locator('input').last().waitFor({ state: 'attached', timeout: 5_000 });
+      await page.waitForTimeout(200);
+
+      // -- 6. Type "DELET" (one char short) -- button must stay disabled --
+      await page.keyboard.press('Control+a');
+      await page.keyboard.type('DELET', { delay: 30 });
+      await page.waitForTimeout(400);
+
+      await expect(confirmButton).toBeDisabled({ timeout: 3_000 });
+
+      // -- 7. Complete "DELETE" -- button must become enabled --
+      await page.keyboard.type('E', { delay: 30 });
+      await page.waitForTimeout(500);
+
+      await expect(confirmButton).toBeEnabled({ timeout: 5_000 });
+
+      // -- 8. Tap the enabled confirm button --
+      await confirmButton.click();
+
+      // -- 9. Assert redirect to /login --
+      // deleteAccount() -> Edge Function delete-user -> authNotifier signOut -> /login.
+      await page.waitForURL('**/login**', { timeout: 30_000 });
+      await expect(page.locator(AUTH.appTitle)).toBeVisible({ timeout: 10_000 });
+
+      // Mark deletion as completed so afterAll skips emergency cleanup.
+      deletionCompletedInApp = true;
+
+      // -- 10. Attempt re-login with deleted credentials -- must FAIL --
+      await page.click(AUTH.emailInput);
+      await page.locator('input').last().waitFor({ state: 'attached', timeout: 5_000 });
+      await page.waitForTimeout(200);
+      await page.keyboard.press('Control+a');
+      await page.keyboard.type(userEmail, { delay: 10 });
+
+      await page.click(AUTH.passwordInput);
+      await page.locator('input').last().waitFor({ state: 'attached', timeout: 5_000 });
+      await page.waitForTimeout(200);
+      await page.keyboard.press('Control+a');
+      await page.keyboard.type(userPassword, { delay: 10 });
+
+      await page.click(AUTH.loginButton);
+
+      // Should show an auth error — deleted user cannot log in.
+      await expect(page.locator(AUTH.errorMessage)).toBeVisible({
+        timeout: 10_000,
+      });
+
+      // Must NOT navigate to Home.
+      const isOnHome = await page
+        .locator(NAV.homeTab)
+        .isVisible({ timeout: 3_000 })
+        .catch(() => false);
+      expect(isOnHome, 'Should NOT navigate to home after re-login with deleted credentials').toBe(false);
+
+      // -- 11. Backend verification: user must be absent from auth --
+      // Use getUserById (O(1)) instead of listUsers to avoid a false-positive
+      // once the test DB grows beyond the page size. The Supabase admin SDK
+      // returns one of two shapes for a missing user depending on server
+      // behavior, so we accept EITHER:
+      //   - an AuthError with a 404-ish status (most common: 404 not found),
+      //   - or a success-shaped response with data.user === null.
+      const getUserResult = await supabase.auth.admin.getUserById(userId);
+      const userGone =
+        (getUserResult.error !== null &&
+          (getUserResult.error.status === undefined ||
+            getUserResult.error.status === 404 ||
+            getUserResult.error.status >= 400)) ||
+        getUserResult.data.user === null;
+      expect(
+        userGone,
+        `User ${userEmail} (${userId}) should not exist in auth.users after deletion. ` +
+          `getUserById returned: error=${JSON.stringify(getUserResult.error)} ` +
+          `data=${JSON.stringify(getUserResult.data)}`,
+      ).toBe(true);
+
+      // -- 12. Cascade verification: workouts must be gone --
+      const { data: workoutsAfterDelete } = await supabase
+        .from('workouts')
+        .select('id')
+        .eq('user_id', userId);
+      const remainingWorkouts = workoutsAfterDelete?.length ?? 0;
+      expect(
+        remainingWorkouts,
+        `Expected 0 workouts after cascade deletion, found ${remainingWorkouts}`,
+      ).toBe(0);
+
+      console.log(
+        `[manage-data] Verified: user ${userEmail} (${userId}) deleted from auth. ` +
+          `Cascade: 0 workouts remaining. Re-login correctly rejected.`,
+      );
+    },
+  );
+});
+
+// =============================================================================
+// FULL — Manage Data (fullManageData user)
+// =============================================================================
+
+test.describe('Manage Data', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(
+      page,
+      TEST_USERS.fullManageData.email,
+      TEST_USERS.fullManageData.password,
+    );
+  });
+
+  test('should show a Manage Data row in the DATA MANAGEMENT section on Profile screen (MD-001)', async ({
     page,
   }) => {
     await navigateToTab(page, 'Profile');
@@ -156,10 +405,7 @@ test.describe('Manage Data — full suite', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // MD-002 — Tapping "Manage Data" navigates to the Manage Data screen
-  // -------------------------------------------------------------------------
-  test('MD-002: tapping Manage Data row navigates to the Manage Data screen', async ({
+  test('should navigate to the Manage Data screen when tapping the row (MD-002)', async ({
     page,
   }) => {
     await openManageData(page);
@@ -173,13 +419,7 @@ test.describe('Manage Data — full suite', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // MD-003 — Delete Workout History tile shows workout count subtitle
-  //
-  // ManageDataScreen renders the subtitle as "$workoutCountText workouts will
-  // be removed". We verify the word "workouts" appears in the subtitle.
-  // -------------------------------------------------------------------------
-  test('MD-003: Delete Workout History tile shows a workout count subtitle', async ({
+  test('should show workout count subtitle on Delete Workout History tile (MD-003)', async ({
     page,
   }) => {
     await openManageData(page);
@@ -191,10 +431,7 @@ test.describe('Manage Data — full suite', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // MD-004 — Reset All Account Data tile is visible with "Removes everything" subtitle
-  // -------------------------------------------------------------------------
-  test('MD-004: Reset All Account Data tile is visible with danger subtitle', async ({
+  test('should show Reset All Account Data tile with danger subtitle (MD-004)', async ({
     page,
   }) => {
     await openManageData(page);
@@ -209,14 +446,7 @@ test.describe('Manage Data — full suite', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // MD-005 — Cancel at the first delete-history dialog leaves data intact
-  //
-  // The two-step dialog: first dialog has "Delete History" + "Cancel".
-  // Pressing Cancel must dismiss the dialog without deleting anything.
-  // We verify the history screen still shows a workout afterwards.
-  // -------------------------------------------------------------------------
-  test('MD-005: cancelling the first delete-history dialog leaves workout data intact', async ({
+  test('should leave workout data intact when cancelling first delete-history dialog (MD-005)', async ({
     page,
   }) => {
     // Log a workout so there is something to cancel-delete.
@@ -255,13 +485,7 @@ test.describe('Manage Data — full suite', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // MD-006 — Full delete-history flow clears the workout history
-  //
-  // Both confirmation dialogs are accepted. Afterwards the history screen must
-  // show the empty state and the manage-data subtitle must show 0 workouts.
-  // -------------------------------------------------------------------------
-  test('MD-006: confirming both delete-history dialogs clears all workout history', async ({
+  test('should clear all workout history when confirming both delete-history dialogs (MD-006)', async ({
     page,
   }) => {
     // Ensure at least one workout exists.
@@ -301,18 +525,7 @@ test.describe('Manage Data — full suite', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // MD-007 (regression) — No raw DB table names visible after delete-history
-  //
-  // This is the direct regression test for the production bug where error
-  // messages like 'Failed to clear history: relation "workouts" does not exist'
-  // were shown to users. We perform the delete flow and assert the entire
-  // visible DOM contains none of the forbidden patterns.
-  //
-  // Even if the operation itself succeeds, the test runs assertNoTableNamesVisible
-  // to catch any future regression where internal identifiers leak to the UI.
-  // -------------------------------------------------------------------------
-  test('MD-007 (regression): delete history does not expose raw database table names in the UI', async ({
+  test('should not expose raw database table names in the UI after delete history (MD-007)', async ({
     page,
   }) => {
     await doWorkoutAndReturnHome(page);
@@ -344,14 +557,7 @@ test.describe('Manage Data — full suite', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // MD-008 — Reset All: "Reset Account" button is disabled until RESET is typed
-  //
-  // _ResetAllDialogState enables the GradientButton only when
-  // _controller.text.trim().toUpperCase() == 'RESET'.
-  // When disabled, GradientButton receives onPressed: null.
-  // -------------------------------------------------------------------------
-  test('MD-008: Reset Account button is disabled until RESET is typed in the confirmation field', async ({
+  test('should keep Reset Account button disabled until RESET is typed in confirmation field (MD-008)', async ({
     page,
   }) => {
     await openManageData(page);
@@ -398,14 +604,7 @@ test.describe('Manage Data — full suite', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // MD-009 — Cancel on Reset All modal leaves data intact
-  //
-  // The _ResetAllDialog Cancel button calls Navigator.of(context).pop(false).
-  // The close (X) icon calls Navigator.of(context).pop(false) as well.
-  // Neither triggers the actual reset.
-  // -------------------------------------------------------------------------
-  test('MD-009: cancelling the Reset All modal leaves all data intact', async ({
+  test('should leave all data intact when cancelling the Reset All modal (MD-009)', async ({
     page,
   }) => {
     // Log a workout so there is data to preserve.
@@ -442,15 +641,7 @@ test.describe('Manage Data — full suite', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // MD-010 — Full Reset All flow clears workouts and PRs
-  //
-  // Types "RESET", confirms, and verifies:
-  //   - Success SnackBar "Account data reset" appears
-  //   - Workout history is now empty
-  //   - No DB table names are visible at any point (regression guard)
-  // -------------------------------------------------------------------------
-  test('MD-010: confirming Reset All clears all workout history and personal records', async ({
+  test('should clear all workout history and personal records when confirming Reset All (MD-010)', async ({
     page,
   }) => {
     // Create data to reset.
@@ -488,15 +679,7 @@ test.describe('Manage Data — full suite', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // MD-011 (regression) — No raw DB table names visible after Reset All
-  //
-  // Mirror of MD-007 but for the resetAllAccountData path.
-  // resetAllAccountData calls prRepo.clearAllRecords in addition to
-  // workoutRepo.clearHistory — two separate Supabase operations that could
-  // each leak a table name if either fails.
-  // -------------------------------------------------------------------------
-  test('MD-011 (regression): Reset All does not expose raw database table names in the UI', async ({
+  test('should not expose raw database table names in the UI after Reset All (MD-011)', async ({
     page,
   }) => {
     await doWorkoutAndReturnHome(page);

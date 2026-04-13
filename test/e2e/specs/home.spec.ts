@@ -1,5 +1,5 @@
 /**
- * Home screen and navigation full spec.
+ * Home screen and navigation spec — merged from full suite.
  *
  * Tests:
  *  1. All 4 bottom nav tabs are visible and tappable
@@ -44,21 +44,22 @@ import {
 import { TEST_USERS } from '../fixtures/test-users';
 import { SEED_EXERCISES } from '../fixtures/test-exercises';
 
-const USER = TEST_USERS.fullHome;
-
-test.describe('Home screen and navigation — full suite', () => {
+// ---------------------------------------------------------------------------
+// Full — home screen and navigation (no smoke equivalent)
+// ---------------------------------------------------------------------------
+test.describe('Home screen and navigation', () => {
   test.beforeEach(async ({ page }) => {
-    await login(page, USER.email, USER.password);
+    await login(page, TEST_USERS.fullHome.email, TEST_USERS.fullHome.password);
   });
 
-  test('all four bottom nav tabs are visible after login', async ({ page }) => {
+  test('should show all four bottom nav tabs after login', async ({ page }) => {
     await expect(page.locator(NAV.homeTab)).toBeVisible();
     await expect(page.locator(NAV.exercisesTab)).toBeVisible();
     await expect(page.locator(NAV.routinesTab)).toBeVisible();
     await expect(page.locator(NAV.profileTab)).toBeVisible();
   });
 
-  test('switching tabs updates the visible content heading', async ({
+  test('should update visible content heading when switching tabs', async ({
     page,
   }) => {
     // Exercises tab — wait for the URL to confirm navigation.
@@ -84,18 +85,18 @@ test.describe('Home screen and navigation — full suite', () => {
     });
   });
 
-  test('home tab shows the date and Start Empty Workout button', async ({ page }) => {
+  test('should show the date and Start Empty Workout button on home tab', async ({ page }) => {
     // The home screen displays a "THIS WEEK" section and the workout launcher.
     await expect(page.locator(WORKOUT.startEmpty)).toBeVisible({ timeout: 15_000 });
   });
 
-  test('home tab shows "Start Empty Workout" button', async ({ page }) => {
+  test('should show Start Empty Workout button on home tab', async ({ page }) => {
     await expect(page.locator(WORKOUT.startEmpty)).toBeVisible({
       timeout: 15_000,
     });
   });
 
-  test('home tab shows a routines section (STARTER or MY ROUTINES)', async ({
+  test('should show a routines section with starter or user routines on home tab', async ({
     page,
   }) => {
     // A new user sees starter routine cards; an active user sees their routines.
@@ -116,7 +117,7 @@ test.describe('Home screen and navigation — full suite', () => {
     expect(hasRoutineCard || hasStartEmpty).toBe(true);
   });
 
-  test('completing a workout updates the Last session stat cell on the home screen', async ({
+  test('should update Last session stat cell after completing a workout', async ({
     page,
   }) => {
     // Start and finish a minimal workout with one completed set.
@@ -148,7 +149,7 @@ test.describe('Home screen and navigation — full suite', () => {
     });
   });
 
-  test('tapping Last session stat cell navigates to the history screen', async ({
+  test('should navigate to history screen when tapping Last session stat cell', async ({
     page,
   }) => {
     // The Last session stat cell should be visible on the home screen.
@@ -164,13 +165,13 @@ test.describe('Home screen and navigation — full suite', () => {
     });
   });
 
-  test('profile tab shows the user email and Log Out button', async ({
+  test('should show user email and Log Out button on profile tab', async ({
     page,
   }) => {
     await navigateToTab(page, 'Profile');
 
     // The user's email is shown in the identity card.
-    await expect(page.locator(`text=${USER.email}`)).toBeVisible({
+    await expect(page.locator(`text=${TEST_USERS.fullHome.email}`)).toBeVisible({
       timeout: 10_000,
     });
 
@@ -180,7 +181,7 @@ test.describe('Home screen and navigation — full suite', () => {
     });
   });
 
-  test('profile weight unit toggle shows kg and lbs options', async ({
+  test('should show kg and lbs options in profile weight unit toggle', async ({
     page,
   }) => {
     await navigateToTab(page, 'Profile');
@@ -207,7 +208,7 @@ test.describe('Home screen and navigation — full suite', () => {
   //   "Last session: {value}" and "Week's volume: {value}"
   // Both are tappable and navigate to /home/history.
   // ---------------------------------------------------------------------------
-  test('HOME-STAT-001: Last session and Week\'s volume stat cells are visible on the home screen', async ({
+  test('should show Last session and Week\'s volume stat cells on home screen (HOME-STAT-001)', async ({
     page,
   }) => {
     // The stat cells are at the top of the home screen, below the date line.
@@ -226,7 +227,7 @@ test.describe('Home screen and navigation — full suite', () => {
   // on tap. After navigation the WorkoutHistoryScreen AppBar title "History"
   // must appear.
   // ---------------------------------------------------------------------------
-  test('HOME-STAT-002: tapping the Last session cell navigates to the history screen', async ({
+  test('should navigate to history screen when tapping Last session cell (HOME-STAT-002)', async ({
     page,
   }) => {
     // Wait for the cell to be visible.
@@ -246,7 +247,7 @@ test.describe('Home screen and navigation — full suite', () => {
   // on tap. After navigation the WorkoutHistoryScreen AppBar title "History"
   // must appear.
   // ---------------------------------------------------------------------------
-  test('HOME-STAT-003: tapping the Week\'s volume cell navigates to the history screen', async ({
+  test('should navigate to history screen when tapping Week\'s volume cell (HOME-STAT-003)', async ({
     page,
   }) => {
     await expect(page.locator(HOME_STATS.weekVolumeCell)).toBeVisible({
@@ -265,7 +266,7 @@ test.describe('Home screen and navigation — full suite', () => {
   // "Last session" cell is visible, reflecting the recent workout. The value
   // is dynamic ("Just now", "Today", etc.) so we just verify the cell is visible.
   // ---------------------------------------------------------------------------
-  test('HOME-STAT-004: Last session cell updates after completing a workout', async ({
+  test('should update Last session cell after completing a workout (HOME-STAT-004)', async ({
     page,
   }) => {
     // Complete a minimal workout.

@@ -50,7 +50,7 @@ export default defineConfig({
   projects: [
     {
       name: 'regression',
-      testMatch: /(?:smoke|full)\/.*\.spec\.ts$/,
+      testMatch: /specs\/.*\.spec\.ts$/,
       use: {
         actionTimeout: 15_000,
         navigationTimeout: 30_000,

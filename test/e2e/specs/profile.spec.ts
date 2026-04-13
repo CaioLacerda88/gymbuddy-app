@@ -1,8 +1,8 @@
 /**
- * Profile weekly goal smoke test.
+ * Profile weekly goal spec — merged from smoke suite.
  *
  * Tests changing the training frequency (weekly goal) from the Profile screen:
- *   - Login → navigate to Profile tab.
+ *   - Login -> navigate to Profile tab.
  *   - Find the "Weekly Goal" row showing "{n}x per week".
  *   - Tap it to open the frequency bottom sheet.
  *   - Select a different frequency chip.
@@ -22,11 +22,12 @@ import { navigateToTab } from '../helpers/app';
 import { PROFILE, PROFILE_WEEKLY_GOAL } from '../helpers/selectors';
 import { TEST_USERS } from '../fixtures/test-users';
 
-const USER = TEST_USERS.smokeProfileWeeklyGoal;
-
-test.describe('Smoke: Profile Weekly Goal', () => {
+// ---------------------------------------------------------------------------
+// Smoke — profile weekly goal
+// ---------------------------------------------------------------------------
+test.describe('Profile — weekly goal', { tag: '@smoke' }, () => {
   test.beforeEach(async ({ page }) => {
-    await login(page, USER.email, USER.password);
+    await login(page, TEST_USERS.smokeProfileWeeklyGoal.email, TEST_USERS.smokeProfileWeeklyGoal.password);
     await navigateToTab(page, 'Profile');
   });
 
@@ -36,7 +37,7 @@ test.describe('Smoke: Profile Weekly Goal', () => {
   // ProfileScreen renders a "Weekly Goal" titleMedium Text above the
   // _WeeklyGoalRow widget. The row shows "${frequency}x per week".
   // ---------------------------------------------------------------------------
-  test('Profile screen shows Weekly Goal section with frequency text', async ({
+  test('should show Weekly Goal section with frequency text on Profile screen', async ({
     page,
   }) => {
     await expect(page.locator(PROFILE.heading).first()).toBeVisible({ timeout: 10_000 });
@@ -55,7 +56,7 @@ test.describe('Smoke: Profile Weekly Goal', () => {
   // _WeeklyGoalRow is an InkWell that calls _showFrequencySheet on tap.
   // The sheet has title "Weekly Goal" and ChoiceChips: 2x, 3x, 4x, 5x, 6x.
   // ---------------------------------------------------------------------------
-  test('tapping Weekly Goal row opens the frequency selection sheet', async ({
+  test('should open frequency selection sheet when tapping Weekly Goal row', async ({
     page,
   }) => {
     await expect(page.locator(PROFILE_WEEKLY_GOAL.frequencyRow)).toBeVisible({
@@ -82,7 +83,7 @@ test.describe('Smoke: Profile Weekly Goal', () => {
   // If the current frequency is 3x, we change it to 4x and verify the row
   // text updates to "4x per week". Then we restore it to 3x.
   // ---------------------------------------------------------------------------
-  test('selecting a frequency chip updates the weekly goal row text', async ({
+  test('should update weekly goal row text when selecting a frequency chip', async ({
     page,
   }) => {
     await expect(page.locator(PROFILE_WEEKLY_GOAL.frequencyRow)).toBeVisible({
@@ -108,7 +109,7 @@ test.describe('Smoke: Profile Weekly Goal', () => {
       timeout: 10_000,
     });
 
-    // Select the new frequency chip (rendered as ChoiceChip → checkbox role).
+    // Select the new frequency chip (rendered as ChoiceChip -> checkbox role).
     // Use CSS selector to target the flt-semantics element directly, ensuring
     // Playwright sends a pointer click (not a checkbox toggle action).
     await page.locator(`role=checkbox[name="${newFreqChip}"]`).click();
@@ -149,7 +150,7 @@ test.describe('Smoke: Profile Weekly Goal', () => {
   // updateTrainingFrequency and pops the sheet. The displayed value should not
   // change but the sheet must close.
   // ---------------------------------------------------------------------------
-  test('selecting the current frequency closes the sheet without error', async ({
+  test('should close sheet without error when selecting the current frequency', async ({
     page,
   }) => {
     await expect(page.locator(PROFILE_WEEKLY_GOAL.frequencyRow)).toBeVisible({
@@ -170,7 +171,7 @@ test.describe('Smoke: Profile Weekly Goal', () => {
       timeout: 10_000,
     });
 
-    // Tap the currently selected chip (rendered as ChoiceChip → checkbox role).
+    // Tap the currently selected chip (rendered as ChoiceChip -> checkbox role).
     // Use CSS selector for consistent pointer click behavior.
     await page.locator(`role=checkbox[name="${currentChipText}"]`).click();
 

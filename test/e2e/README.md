@@ -48,14 +48,17 @@ All other configuration (app URL, test user emails) is handled automatically.
 ```bash
 cd test/e2e
 
-# Full regression suite (all tests — smoke + full)
+# Full regression suite (all tests)
 npx playwright test
 
-# Smoke tests only (faster subset)
-npx playwright test smoke/
+# Smoke tests only (faster subset, @smoke tagged)
+npx playwright test --grep @smoke
 
-# Full tests only
-npx playwright test full/
+# Regression-only tests (everything except smoke)
+npx playwright test --grep-invert @smoke
+
+# Single feature file
+npx playwright test specs/auth.spec.ts
 
 # With interactive UI (great for debugging)
 npx playwright test --ui
@@ -68,8 +71,8 @@ Or use the npm scripts:
 
 ```bash
 npm run test           # full regression suite
-npm run test:smoke     # smoke/ directory only
-npm run test:full      # full/ directory only
+npm run test:smoke     # @smoke tagged tests only
+npm run test:full      # non-smoke tests only
 npm run test:ui        # interactive UI mode
 ```
 
@@ -135,18 +138,18 @@ test/e2e/
 │   ├── app.ts                 # waitForAppReady, navigateToTab
 │   ├── auth.ts                # login, logout
 │   └── workout.ts             # startEmptyWorkout, addExercise, setWeight, setReps, completeSet, finishWorkout
-├── smoke/
-│   ├── auth.smoke.spec.ts
-│   ├── workout.smoke.spec.ts
-│   └── pr.smoke.spec.ts
-└── full/
-    ├── auth.full.spec.ts
-    ├── exercise-library.spec.ts
-    ├── home-navigation.spec.ts
+└── specs/                         # Feature-based test files (@smoke tagged for CI gate)
+    ├── auth.spec.ts
+    ├── crash-recovery.spec.ts
+    ├── exercises.spec.ts
+    ├── home.spec.ts
+    ├── manage-data.spec.ts
+    ├── onboarding.spec.ts
     ├── personal-records.spec.ts
+    ├── profile.spec.ts
     ├── routines.spec.ts
-    ├── workout-logging.spec.ts
-    └── crash-recovery.spec.ts
+    ├── weekly-plan.spec.ts
+    └── workouts.spec.ts
 ```
 
 ## Selector strategy

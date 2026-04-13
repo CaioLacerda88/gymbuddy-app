@@ -66,17 +66,17 @@ cd test/e2e && npm install && cd ../..
 ```bash
 cd test/e2e
 
-# Run full regression suite (all 147 tests)
+# Run full regression suite (all 145 tests)
 FLUTTER_APP_URL= npx playwright test --reporter=list
 
-# Quick smoke check only (61 tests)
-FLUTTER_APP_URL= npx playwright test smoke/ --reporter=list
+# Quick smoke check only (~68 tests tagged @smoke)
+FLUTTER_APP_URL= npx playwright test --grep @smoke --reporter=list
 
-# Run a single test file:
-FLUTTER_APP_URL= npx playwright test smoke/auth.smoke.spec.ts
+# Run a single feature file:
+FLUTTER_APP_URL= npx playwright test specs/auth.spec.ts
 
 # Run a specific test by line number:
-FLUTTER_APP_URL= npx playwright test "smoke/auth.smoke.spec.ts:16"
+FLUTTER_APP_URL= npx playwright test "specs/auth.spec.ts:16"
 ```
 
 **Key details:**

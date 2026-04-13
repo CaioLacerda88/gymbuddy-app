@@ -4,10 +4,10 @@
   "description": "Playwright e2e tests for GymBuddy Flutter web app",
   "scripts": {
     "test": "playwright test",
-    "test:smoke": "playwright test smoke/",
-    "test:full": "playwright test full/",
+    "test:smoke": "playwright test --grep @smoke",
+    "test:full": "playwright test --grep-invert @smoke",
     "test:ui": "playwright test --ui",
-    "test:smoke:ui": "playwright test smoke/ --ui",
+    "test:smoke:ui": "playwright test --grep @smoke --ui",
     "report": "playwright show-report"
   },
   "devDependencies": {

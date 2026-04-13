@@ -1,0 +1,310 @@
+/**
+ * Auth spec — merged from smoke and full suites.
+ *
+ * Smoke: critical login/logout journey (smokeAuth user).
+ * Full: edge cases beyond the happy-path — wrong password, non-existent email,
+ * empty field validation, mode toggle, duplicate signup, and full tab journey
+ * (fullAuth user).
+ *
+ * Uses dedicated test users created in global-setup.ts.
+ * The Flutter web app is served automatically by Playwright's webServer config
+ * during local dev. In CI the FLUTTER_APP_URL env var is set by the workflow.
+ */
+
+import { test, expect } from '@playwright/test';
+import { waitForAppReady, flutterFill } from '../helpers/app';
+import { login, logout } from '../helpers/auth';
+import { AUTH, NAV } from '../helpers/selectors';
+import { TEST_USERS } from '../fixtures/test-users';
+
+// ---------------------------------------------------------------------------
+// Smoke — critical login/logout journey
+// ---------------------------------------------------------------------------
+test.describe('Auth', { tag: '@smoke' }, () => {
+  test('should show login screen on first load', async ({ page }) => {
+    await page.goto('/');
+    await waitForAppReady(page);
+
+    // The login screen identifies itself with the "GymBuddy" title and
+    // "Welcome back" subtitle.
+    await expect(page.locator(AUTH.appTitle)).toBeVisible();
+    await expect(page.locator(AUTH.welcomeBack)).toBeVisible();
+
+    // Both form fields must be present.
+    await expect(page.locator(AUTH.emailInput)).toBeVisible();
+    await expect(page.locator(AUTH.passwordInput)).toBeVisible();
+
+    // The primary action button must be present and labelled LOG IN.
+    await expect(page.locator(AUTH.loginButton)).toBeVisible();
+  });
+
+  test('should land on home screen with bottom nav after valid login', async ({
+    page,
+  }) => {
+    await login(page, TEST_USERS.smokeAuth.email, TEST_USERS.smokeAuth.password);
+
+    // The shell scaffold renders the bottom NavigationBar on all main routes.
+    await expect(page.locator(NAV.homeTab)).toBeVisible();
+    await expect(page.locator(NAV.exercisesTab)).toBeVisible();
+    await expect(page.locator(NAV.routinesTab)).toBeVisible();
+    await expect(page.locator(NAV.profileTab)).toBeVisible();
+  });
+
+  test('should show error message on wrong password login', async ({ page }) => {
+    await page.goto('/');
+    await waitForAppReady(page);
+
+    await flutterFill(page, AUTH.emailInput, 'test@example.com');
+    await flutterFill(page, AUTH.passwordInput, 'definitely-wrong-password');
+    await page.click(AUTH.loginButton);
+
+    // The LoginScreen renders an inline error container on auth failure.
+    // The exact text comes from AuthErrorMessages.fromError — we just assert
+    // that some error text is rendered, not the exact wording.
+    await expect(page.locator(AUTH.errorMessage)).toBeVisible({
+      timeout: 10_000,
+    });
+  });
+
+  test('should return to login screen after logout', async ({ page }) => {
+    await login(page, TEST_USERS.smokeAuth.email, TEST_USERS.smokeAuth.password);
+    await logout(page);
+
+    // After logout the router redirects to /login.
+    await expect(page.locator(AUTH.appTitle)).toBeVisible();
+    await expect(page.locator(AUTH.loginButton)).toBeVisible();
+  });
+
+  test('should show success feedback for forgot password with valid email', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await waitForAppReady(page);
+
+    // Fill in a valid email address.
+    await flutterFill(page, AUTH.emailInput, TEST_USERS.smokeAuth.email);
+
+    // Click the forgot password button — opens a confirmation dialog.
+    await page.click(AUTH.forgotPasswordButton);
+
+    // Confirm the reset in the dialog.
+    const sendReset = page.locator(AUTH.sendResetEmailButton);
+    await expect(sendReset).toBeVisible({ timeout: 5_000 });
+    await sendReset.click();
+
+    // The login screen itself must still be visible after the reset (no unhandled crash).
+    await expect(page.locator(AUTH.appTitle)).toBeVisible({ timeout: 10_000 });
+
+    // The aria-live region may show either a success message ("password reset
+    // email sent") or a rate-limit error (429). Both are acceptable outcomes.
+    // Only fail if the text contains an unexpected error.
+    const hasLiveRegion = await page
+      .locator(AUTH.errorMessage)
+      .isVisible({ timeout: 3_000 })
+      .catch(() => false);
+
+    if (hasLiveRegion) {
+      const liveText = ((await page.locator(AUTH.errorMessage).textContent()) ?? '').toLowerCase().trim();
+      if (liveText.length > 0) {
+        const isSuccess = liveText.includes('reset') || liveText.includes('sent') || liveText.includes('inbox');
+        const isRateLimit = liveText.includes('rate limit');
+        // Both success and rate-limit are acceptable. Any other text is unexpected.
+        expect(isSuccess || isRateLimit).toBe(true);
+      }
+    }
+  });
+
+  test('should change button label and subtitle when toggling to sign-up mode', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await waitForAppReady(page);
+
+    // Initially in sign-in mode.
+    await expect(page.locator(AUTH.loginButton)).toBeVisible();
+
+    // Toggle to sign-up mode.
+    await page.click(AUTH.toggleToSignUp);
+
+    // Button should now read SIGN UP and subtitle should read "Create your
+    // account" — both are hard-coded strings in LoginScreen._isSignUp branch.
+    await expect(page.locator(AUTH.signUpButton)).toBeVisible();
+    await expect(page.locator('text=Create your account')).toBeVisible();
+
+    // Toggle back.
+    await page.click(AUTH.toggleToLogIn);
+    await expect(page.locator(AUTH.loginButton)).toBeVisible();
+    await expect(page.locator(AUTH.welcomeBack)).toBeVisible();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Full — edge cases beyond the happy-path smoke tests
+// ---------------------------------------------------------------------------
+test.describe('Auth — edge cases', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    await waitForAppReady(page);
+  });
+
+  test('should show error message for wrong password', async ({ page }) => {
+    await page.fill(AUTH.emailInput, TEST_USERS.fullAuth.email);
+    await page.fill(AUTH.passwordInput, 'definitely-wrong-password');
+    await page.click(AUTH.loginButton);
+
+    // The LoginScreen renders an inline error container on auth failure.
+    await expect(page.locator(AUTH.errorMessage)).toBeVisible({
+      timeout: 15_000,
+    });
+
+    // The error must not navigate away from the login screen.
+    await expect(page.locator(AUTH.appTitle)).toBeVisible();
+  });
+
+  test('should show error message for non-existent email login', async ({
+    page,
+  }) => {
+    await page.fill(AUTH.emailInput, 'no-such-user-xyz@test.local');
+    await page.fill(AUTH.passwordInput, 'AnyPassword123!');
+    await page.click(AUTH.loginButton);
+
+    await expect(page.locator(AUTH.errorMessage)).toBeVisible({
+      timeout: 15_000,
+    });
+
+    // Still on the login screen.
+    await expect(page.locator(AUTH.loginButton)).toBeVisible();
+  });
+
+  test('should show error when submitting with empty email and password', async ({
+    page,
+  }) => {
+    // Leave both fields blank and submit.
+    await page.click(AUTH.loginButton);
+
+    // Either inline validation text or the error alert must appear.
+    const hasError =
+      (await page
+        .locator(AUTH.errorMessage)
+        .isVisible({ timeout: 8_000 })
+        .catch(() => false)) ||
+      (await page
+        .locator('text=Email is required')
+        .isVisible({ timeout: 2_000 })
+        .catch(() => false)) ||
+      (await page
+        .locator('text=required')
+        .isVisible({ timeout: 2_000 })
+        .catch(() => false));
+
+    expect(hasError).toBe(true);
+    // Must remain on the login screen.
+    await expect(page.locator(AUTH.appTitle)).toBeVisible();
+  });
+
+  test('should show validation error for malformed email without @ (AUTH-006)', async ({
+    page,
+  }) => {
+    // Enter an email that is clearly malformed — no "@" symbol.
+    await page.fill(AUTH.emailInput, 'notanemail');
+    await page.fill(AUTH.passwordInput, 'AnyPassword123!');
+    await page.click(AUTH.loginButton);
+
+    // LoginScreen._validateEmail returns 'Enter a valid email' for this case.
+    // The error surfaces as inline field error text below the email input.
+    const hasValidationError =
+      (await page
+        .locator('text=Enter a valid email')
+        .isVisible({ timeout: 8_000 })
+        .catch(() => false)) ||
+      (await page
+        .locator('text=valid email')
+        .isVisible({ timeout: 2_000 })
+        .catch(() => false)) ||
+      (await page
+        .locator(AUTH.errorMessage)
+        .isVisible({ timeout: 2_000 })
+        .catch(() => false));
+
+    expect(hasValidationError).toBe(true);
+
+    // Must remain on the login screen — no navigation on validation error.
+    await expect(page.locator(AUTH.appTitle)).toBeVisible();
+    await expect(page.locator(AUTH.loginButton)).toBeVisible();
+  });
+
+  test('should toggle to sign-up mode and back to login mode', async ({ page }) => {
+    // Initially in login mode.
+    await expect(page.locator(AUTH.loginButton)).toBeVisible();
+    await expect(page.locator(AUTH.welcomeBack)).toBeVisible();
+
+    // Toggle to sign-up mode.
+    await page.click(AUTH.toggleToSignUp);
+
+    // Sign-up mode: SIGN UP button visible, "Create your account" subtitle.
+    await expect(page.locator(AUTH.signUpButton)).toBeVisible({
+      timeout: 5_000,
+    });
+    await expect(page.locator('text=Create your account')).toBeVisible();
+
+    // Toggle back to login mode.
+    await page.click(AUTH.toggleToLogIn);
+
+    await expect(page.locator(AUTH.loginButton)).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator(AUTH.welcomeBack)).toBeVisible();
+  });
+
+  test('should show error when signing up with already-registered email', async ({
+    page,
+  }) => {
+    // Switch to sign-up mode.
+    await page.click(AUTH.toggleToSignUp);
+    await expect(page.locator(AUTH.signUpButton)).toBeVisible({ timeout: 5_000 });
+
+    // Attempt to create an account with an email that already exists.
+    await page.fill(AUTH.emailInput, TEST_USERS.fullAuth.email);
+    await page.fill(AUTH.passwordInput, TEST_USERS.fullAuth.password);
+    await page.click(AUTH.signUpButton);
+
+    // Supabase returns a "User already registered" error that surfaces as an
+    // inline error message in LoginScreen.
+    await expect(page.locator(AUTH.errorMessage)).toBeVisible({
+      timeout: 15_000,
+    });
+  });
+
+  test('should complete full journey: login, navigate all tabs, logout, back on login', async ({
+    page,
+  }) => {
+    await login(page, TEST_USERS.fullAuth.email, TEST_USERS.fullAuth.password);
+
+    // All four bottom nav tabs must be visible after login.
+    await expect(page.locator(NAV.homeTab)).toBeVisible();
+    await expect(page.locator(NAV.exercisesTab)).toBeVisible();
+    await expect(page.locator(NAV.routinesTab)).toBeVisible();
+    await expect(page.locator(NAV.profileTab)).toBeVisible();
+
+    // Navigate through each tab and verify the heading/content loads.
+    await page.click(NAV.exercisesTab);
+    await expect(page.locator('text=Exercises')).toBeVisible({ timeout: 15_000 });
+
+    await page.click(NAV.routinesTab);
+    await expect(page.locator('text=Routines').first()).toBeVisible({ timeout: 15_000 });
+
+    await page.click(NAV.profileTab);
+    await expect(page.locator('text=Log Out')).toBeVisible({ timeout: 15_000 });
+
+    await page.click(NAV.homeTab);
+    // Home screen no longer shows "GymBuddy" title — verify with actual content.
+    await expect(page.locator('text=Start Empty Workout')).toBeVisible({ timeout: 15_000 });
+
+    // Logout returns to the login screen.
+    await logout(page);
+
+    await expect(page.locator(AUTH.appTitle)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(AUTH.loginButton)).toBeVisible();
+
+    // Bottom nav must not be visible after logout.
+    await expect(page.locator(NAV.homeTab)).not.toBeVisible();
+  });
+});

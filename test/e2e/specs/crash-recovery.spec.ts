@@ -1,17 +1,16 @@
 /**
- * Crash and session recovery full spec.
+ * Crash and session recovery spec — merged from full suite.
  *
  * Tests resilience of the active workout persistence layer (Hive local storage).
  * The app stores the active workout in Hive so it survives navigation away and
  * full page reloads.
  *
  * Tests:
- *  1. Start a workout → reload the page → resume banner is visible on home
- *  2. Tap resume banner → returns to the active workout screen with data intact
- *  3. Start a workout → navigate away via the URL bar → come back → banner present
- *  4. Finish button is not re-triggerable after the workout has been saved
- *     (only one workout entry is created even if Finish is tapped rapidly)
- *  5. HOME-004 (P0) — Resume banner disappears after finishing the workout
+ *  1. Start a workout -> reload the page -> resume banner is visible on home
+ *  2. Tap resume banner -> returns to the active workout screen with data intact
+ *  3. Start a workout -> navigate away via tabs -> come back -> banner present
+ *  4. HOME-004 (P0) — Resume banner disappears after finishing the workout
+ *  5. Rapid double-tap on Finish does not create duplicate workouts
  *
  * Simulation notes:
  *  - "Close browser tab" is simulated by calling page.reload() which clears JS
@@ -41,15 +40,16 @@ import {
 import { TEST_USERS } from '../fixtures/test-users';
 import { SEED_EXERCISES } from '../fixtures/test-exercises';
 
-const USER = TEST_USERS.fullCrash;
-
-test.describe('Crash and session recovery — full suite', () => {
+// ---------------------------------------------------------------------------
+// Full — crash and session recovery (no smoke equivalent)
+// ---------------------------------------------------------------------------
+test.describe('Crash and session recovery', () => {
 
   test.beforeEach(async ({ page }) => {
-    await login(page, USER.email, USER.password);
+    await login(page, TEST_USERS.fullCrash.email, TEST_USERS.fullCrash.password);
   });
 
-  test('active workout persists across a full page reload — resume banner appears', async ({
+  test('should persist active workout across a full page reload and show resume banner', async ({
     page,
   }) => {
     // Start a workout and add an exercise so there is meaningful state to persist.
@@ -117,7 +117,7 @@ test.describe('Crash and session recovery — full suite', () => {
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
   });
 
-  test('tapping resume banner returns to active workout with exercise data intact', async ({
+  test('should return to active workout with exercise data intact after tapping resume banner', async ({
     page,
   }) => {
     // Start a workout and add an exercise.
@@ -182,7 +182,7 @@ test.describe('Crash and session recovery — full suite', () => {
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
   });
 
-  test('navigating to another tab and back still shows the resume banner', async ({
+  test('should still show resume banner after navigating to another tab and back', async ({
     page,
   }) => {
     // Start a workout.
@@ -247,12 +247,7 @@ test.describe('Crash and session recovery — full suite', () => {
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
   });
 
-  // ---------------------------------------------------------------------------
-  // HOME-004 (P0) — Resume banner disappears after finishing the workout
-  // Start a workout, navigate away (banner appears), then return to the workout
-  // screen and finish it. Returning to home must show NO banner.
-  // ---------------------------------------------------------------------------
-  test('HOME-004: resume banner disappears from home after finishing the workout', async ({
+  test('should hide resume banner from home after finishing the workout (HOME-004)', async ({
     page,
   }) => {
     // Start a workout with one completed set so Finish succeeds cleanly.
@@ -307,7 +302,7 @@ test.describe('Crash and session recovery — full suite', () => {
     });
   });
 
-  test('rapid double-tap on Finish does not create duplicate workouts', async ({
+  test('should not create duplicate workouts on rapid double-tap of Finish', async ({
     page,
   }) => {
     // Complete a proper workout so we can verify only one is saved.
