@@ -129,7 +129,7 @@ test.describe.skip('Routine error handling smoke — BUG-003', () => {
       timeout: 10_000,
     });
     await page.click(EXERCISE_DETAIL.deleteButton);
-    await expect(page.locator(EXERCISE_DETAIL.deleteDialogTitle)).toBeVisible({
+    await expect(page.locator(EXERCISE_DETAIL.deleteDialogContent)).toBeVisible({
       timeout: 5_000,
     });
     await page.click(EXERCISE_DETAIL.deleteConfirmButton);

@@ -73,15 +73,16 @@ test.describe('Exercise detail bottom sheet — full suite', () => {
     // Open the exercise detail bottom sheet by tapping the exercise name.
     // The Semantics label is "Exercise: <name>. Tap for details. Long press to swap."
     const exerciseTap = page.locator(
-      `flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`,
+      `role=group[name*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`,
     );
     await expect(exerciseTap).toBeVisible({ timeout: 10_000 });
     await exerciseTap.click();
 
-    // Wait for the bottom sheet to open — the exercise name appears a second time.
-    await expect(
-      page.locator(`text=${SEED_EXERCISES.benchPress}`).nth(1),
-    ).toBeVisible({ timeout: 10_000 });
+    // Wait for the bottom sheet to open — the "ABOUT" section header appears
+    // only in the detail sheet, confirming it's open. Using .nth(1) on the
+    // exercise name fails because CanvasKit renders the workout card's name
+    // inside the group's accessible name, not as a standalone text node.
+    await expect(page.locator('text=ABOUT')).toBeVisible({ timeout: 10_000 });
 
     // The "FORM TIPS" section header must be present inside the sheet.
     // If form_tips is null/empty, this section is hidden — absence here means
@@ -137,21 +138,20 @@ test.describe('Exercise detail bottom sheet — full suite', () => {
     page,
   }) => {
     const exerciseTap = page.locator(
-      `flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`,
+      `role=group[name*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`,
     );
     await expect(exerciseTap).toBeVisible({ timeout: 10_000 });
     await exerciseTap.click();
 
-    // Wait for the sheet to open.
-    await expect(
-      page.locator(`text=${SEED_EXERCISES.benchPress}`).nth(1),
-    ).toBeVisible({ timeout: 10_000 });
+    // Wait for the sheet to open — the "ABOUT" header only appears in the sheet.
+    await expect(page.locator('text=ABOUT')).toBeVisible({ timeout: 10_000 });
 
-    // Muscle group chip — Chest.
-    await expect(page.locator('text=Chest')).toBeVisible({ timeout: 5_000 });
+    // Muscle group chip — Chest. Use .first() because CanvasKit renders
+    // "Chest" inside the ABOUT description text too (strict mode violation).
+    await expect(page.locator('text=Chest').first()).toBeVisible({ timeout: 5_000 });
 
-    // Equipment type chip — Barbell.
-    await expect(page.locator('text=Barbell')).toBeVisible({ timeout: 5_000 });
+    // Equipment type chip — Barbell. Same .first() rationale.
+    await expect(page.locator('text=Barbell').first()).toBeVisible({ timeout: 5_000 });
 
     // Dismiss.
     await page.keyboard.press('Escape');
@@ -171,14 +171,13 @@ test.describe('Exercise detail bottom sheet — full suite', () => {
   }) => {
     // Open the bottom sheet first.
     const exerciseTap = page.locator(
-      `flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`,
+      `role=group[name*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`,
     );
     await expect(exerciseTap).toBeVisible({ timeout: 10_000 });
     await exerciseTap.click();
 
-    await expect(
-      page.locator(`text=${SEED_EXERCISES.benchPress}`).nth(1),
-    ).toBeVisible({ timeout: 10_000 });
+    // Wait for the sheet to open — the "ABOUT" header only appears in the sheet.
+    await expect(page.locator('text=ABOUT')).toBeVisible({ timeout: 10_000 });
 
     // Look for a "View full details" or "See more" link inside the sheet that
     // navigates to the standalone detail page. If the sheet provides this link,
@@ -231,7 +230,7 @@ test.describe('Exercise detail bottom sheet — full suite', () => {
 
     // Open the detail sheet for Barbell Squat.
     const squatTap = page.locator(
-      `flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.squat}. Tap for details"]`,
+      `role=group[name*="Exercise: ${SEED_EXERCISES.squat}. Tap for details"]`,
     );
     await expect(squatTap).toBeVisible({ timeout: 10_000 });
     await squatTap.click();

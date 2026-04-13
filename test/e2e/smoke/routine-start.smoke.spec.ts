@@ -35,7 +35,7 @@ const PUSH_DAY = 'Push Day';
 
 // Semantics label for the Barbell Bench Press exercise card in the active workout.
 // The _ExerciseCard wraps the name in Semantics with this label pattern.
-const BENCH_PRESS_ARIA = 'flt-semantics[aria-label*="Exercise: Barbell Bench Press. Tap for details"]';
+const BENCH_PRESS_ARIA = 'role=group[name*="Exercise: Barbell Bench Press. Tap for details"]';
 
 test.describe('Routine start smoke', () => {
   test.beforeEach(async ({ page }) => {
@@ -102,7 +102,7 @@ test.describe('Routine start smoke', () => {
         await page.locator('text=Resume').click();
       } else {
         // Try tapping the active workout banner (em-dash separator in name).
-        const banner = page.locator('flt-semantics[aria-label*="Push Day"]');
+        const banner = page.locator('role=button[name*="Push Day"]');
         if (await banner.isVisible({ timeout: 5_000 }).catch(() => false)) {
           await banner.click();
         }
@@ -125,7 +125,7 @@ test.describe('Routine start smoke', () => {
     // If BUG-001 is present, the label becomes "Exercise: Exercise. Tap for details."
     // We detect this by looking for the specific fallback aria-label.
     const fallbackLabel = page.locator(
-      'flt-semantics[aria-label*="Exercise: Exercise. Tap for details"]',
+      'role=group[name*="Exercise: Exercise. Tap for details"]',
     );
     await expect(fallbackLabel).not.toBeVisible({ timeout: 3_000 });
 

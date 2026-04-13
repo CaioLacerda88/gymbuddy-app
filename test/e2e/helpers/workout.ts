@@ -156,6 +156,10 @@ export async function setReps(page: Page, value: string): Promise<void> {
 /**
  * Mark a set as completed by clicking its checkbox.
  *
+ * Flutter CanvasKit may consume the first click to activate the semantics
+ * overlay without forwarding the tap to the Checkbox widget. If the checkbox
+ * doesn't toggle after 2 seconds, we retry.
+ *
  * @param page - Playwright page.
  * @param setIndex - Zero-based index of the set row (defaults to 0, the first set).
  */
@@ -167,10 +171,34 @@ export async function completeSet(
   await expect(checkboxes.nth(setIndex)).toBeVisible({ timeout: 5_000 });
   await checkboxes.nth(setIndex).click();
 
-  // Wait for the checkbox to reflect the completed state.
-  await expect(page.locator(WORKOUT.setCompleted).nth(setIndex)).toBeVisible({
-    timeout: 5_000,
-  });
+  // Completing a set may trigger a rest timer overlay ("Tap anywhere to dismiss").
+  // Dismiss it immediately so it doesn't block subsequent assertions.
+  const restTimer = page.locator('role=progressbar[name*="Rest timer"]');
+  const hasRestTimer = await restTimer
+    .isVisible({ timeout: 2_000 })
+    .catch(() => false);
+  if (hasRestTimer) {
+    await restTimer.click({ force: true });
+    await restTimer.waitFor({ state: 'hidden', timeout: 3_000 }).catch(() => {});
+  }
+
+  // Flutter CanvasKit may consume the first click to activate the semantics
+  // overlay without forwarding the tap to the Checkbox widget. If the checkbox
+  // didn't toggle after 2 seconds, click again.
+  const completed = page.locator(WORKOUT.setCompleted);
+  const didToggle = await completed.nth(setIndex)
+    .isVisible({ timeout: 2_000 })
+    .catch(() => false);
+
+  if (!didToggle) {
+    // The checkbox may still be in "Mark set as done" state — retry.
+    const stillUnchecked = page.locator(WORKOUT.markSetDone);
+    if (await stillUnchecked.nth(setIndex).isVisible({ timeout: 1_000 }).catch(() => false)) {
+      await stillUnchecked.nth(setIndex).click();
+    }
+  }
+
+  await expect(completed.nth(setIndex)).toBeVisible({ timeout: 5_000 });
 }
 
 /**

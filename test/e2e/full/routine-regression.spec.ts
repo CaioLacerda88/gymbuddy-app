@@ -209,7 +209,7 @@ test.describe('Routine regressions — full suite', () => {
       timeout: 10_000,
     });
     await page.click(EXERCISE_DETAIL.deleteButton);
-    await expect(page.locator(EXERCISE_DETAIL.deleteDialogTitle)).toBeVisible({
+    await expect(page.locator(EXERCISE_DETAIL.deleteDialogContent)).toBeVisible({
       timeout: 5_000,
     });
     await page.click(EXERCISE_DETAIL.deleteConfirmButton);
@@ -253,7 +253,7 @@ test.describe('Routine regressions — full suite', () => {
       .isVisible({ timeout: 3_000 })
       .catch(() => false);
     const onHome = await page
-      .locator('text=GymBuddy')
+      .locator('text=Start Empty Workout')
       .isVisible({ timeout: 3_000 })
       .catch(() => false);
 
@@ -284,7 +284,7 @@ test.describe('Routine regressions — full suite', () => {
     // Flutter CanvasKit draws text to canvas — text= selectors fail for zero-dimension
     // flt-semantics elements; the aria-label from Semantics(label: ...) is reliable.
     await expect(
-      page.locator(`flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.squat}. Tap for details"]`),
+      page.locator(`role=group[name*="Exercise: ${SEED_EXERCISES.squat}. Tap for details"]`),
     ).toBeVisible({ timeout: 10_000 });
 
     // For barbell exercises, the default weight is 20 kg — not 0 kg.
@@ -338,7 +338,7 @@ test.describe('Routine regressions — full suite', () => {
     // Lateral Raise is a dumbbell exercise in Push Day.
     // Use aria-label selector — text= fails for zero-dimension CanvasKit elements.
     await expect(
-      page.locator('flt-semantics[aria-label*="Exercise: Lateral Raise. Tap for details"]'),
+      page.locator('role=group[name*="Exercise: Lateral Raise. Tap for details"]'),
     ).toBeVisible({ timeout: 10_000 });
 
     // At least one weight button must show a non-zero value.
@@ -382,10 +382,11 @@ test.describe('Routine regressions — full suite', () => {
 
     // Capture the first exercise name that is visible in the workout via aria-label.
     // Pull Day includes "Deadlift" and "Barbell Bent-Over Row" per seed.sql.
-    // Use flt-semantics[aria-label*=...] — text= selectors fail for zero-dimension
-    // CanvasKit elements where text is drawn onto canvas.
-    const deadliftAria = `flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.deadlift}. Tap for details"]`;
-    const bentRowAria = 'flt-semantics[aria-label*="Exercise: Barbell Bent-Over Row. Tap for details"]';
+    // Use role=button[name*=...] — text= selectors fail for zero-dimension
+    // CanvasKit elements where text is drawn onto canvas. Flutter 3.41.6+ uses
+    // AOM for accessible names, so role-based selectors are required.
+    const deadliftAria = `role=group[name*="Exercise: ${SEED_EXERCISES.deadlift}. Tap for details"]`;
+    const bentRowAria = 'role=group[name*="Exercise: Barbell Bent-Over Row. Tap for details"]';
 
     const deadliftVisible = await page
       .locator(deadliftAria)
@@ -420,7 +421,7 @@ test.describe('Routine regressions — full suite', () => {
       if (resumeVisible) {
         await page.locator('text=Resume').click();
       } else {
-        const banner = page.locator('flt-semantics[aria-label*="Pull Day"]');
+        const banner = page.locator('role=button[name*="Pull Day"]');
         if (await banner.isVisible({ timeout: 5_000 }).catch(() => false)) {
           await banner.click();
         }
@@ -432,7 +433,7 @@ test.describe('Routine regressions — full suite', () => {
 
     // KEY ASSERTION: the "Exercise" fallback must NOT appear as a card header.
     const fallbackLabel = page.locator(
-      'flt-semantics[aria-label*="Exercise: Exercise. Tap for details"]',
+      'role=group[name*="Exercise: Exercise. Tap for details"]',
     );
     await expect(fallbackLabel).not.toBeVisible({ timeout: 3_000 });
 

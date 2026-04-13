@@ -54,11 +54,11 @@ test.describe('Workout restore smoke — manual workout (BUG-001)', () => {
     await startEmptyWorkout(page);
     await addExercise(page, SEED_EXERCISES.benchPress);
 
-    // Confirm the exercise card is visible before reload via its Semantics aria-label.
+    // Confirm the exercise card is visible before reload via its accessible name.
     // Flutter CanvasKit draws text to canvas so text= selectors fail for zero-dimension
-    // flt-semantics elements. The _ExerciseCard Semantics label is unique and reliable.
+    // flt-semantics elements. The _ExerciseCard Semantics label (via AOM) is reliable.
     await expect(
-      page.locator(`flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`),
+      page.locator(`role=group[name*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`),
     ).toBeVisible({ timeout: 10_000 });
 
     // Simulate app restore by reloading (preserves IndexedDB/Hive state).
@@ -88,11 +88,11 @@ test.describe('Workout restore smoke — manual workout (BUG-001)', () => {
       } else {
         // Fall back to tapping the active workout banner if present.
         const bannerVisible = await page
-          .locator('flt-semantics[aria-label*="Workout"]')
+          .locator('role=button[name*="Workout"]')
           .isVisible({ timeout: 5_000 })
           .catch(() => false);
         if (bannerVisible) {
-          await page.locator('flt-semantics[aria-label*="Workout"]').first().click();
+          await page.locator('role=button[name*="Workout"]').first().click();
         }
       }
 
@@ -102,18 +102,18 @@ test.describe('Workout restore smoke — manual workout (BUG-001)', () => {
     }
 
     // KEY ASSERTION FOR BUG-001:
-    // The fallback aria-label "Exercise: Exercise. Tap for details." must NOT
+    // The fallback name "Exercise: Exercise. Tap for details." must NOT
     // be present. That pattern only appears when exercise was null on restore.
     const fallbackLabel = page.locator(
-      'flt-semantics[aria-label*="Exercise: Exercise. Tap for details"]',
+      'role=group[name*="Exercise: Exercise. Tap for details"]',
     );
     await expect(fallbackLabel).not.toBeVisible({ timeout: 3_000 });
 
     // The real exercise name must be visible as the card heading via its
-    // Semantics aria-label. text= selectors fail for CanvasKit zero-dimension
-    // flt-semantics elements — the aria-label selector is reliable.
+    // Semantics accessible name. text= selectors fail for CanvasKit zero-dimension
+    // flt-semantics elements — the role=button[name=...] selector is reliable.
     await expect(
-      page.locator(`flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`),
+      page.locator(`role=group[name*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`),
     ).toBeVisible({ timeout: 10_000 });
 
     // Clean up by discarding.
@@ -138,12 +138,12 @@ test.describe('Workout restore smoke — manual workout (BUG-001)', () => {
     await addExercise(page, SEED_EXERCISES.benchPress);
     await addExercise(page, SEED_EXERCISES.squat);
 
-    // Both exercise cards must be visible before reload via their Semantics aria-labels.
+    // Both exercise cards must be visible before reload via their Semantics accessible names.
     await expect(
-      page.locator(`flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`),
+      page.locator(`role=group[name*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`),
     ).toBeVisible({ timeout: 10_000 });
     await expect(
-      page.locator(`flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.squat}. Tap for details"]`),
+      page.locator(`role=group[name*="Exercise: ${SEED_EXERCISES.squat}. Tap for details"]`),
     ).toBeVisible({ timeout: 10_000 });
 
     // Reload to simulate restore.
@@ -167,11 +167,11 @@ test.describe('Workout restore smoke — manual workout (BUG-001)', () => {
         await page.locator('text=Resume').click();
       } else {
         const bannerVisible = await page
-          .locator('flt-semantics[aria-label*="Workout"]')
+          .locator('role=button[name*="Workout"]')
           .isVisible({ timeout: 5_000 })
           .catch(() => false);
         if (bannerVisible) {
-          await page.locator('flt-semantics[aria-label*="Workout"]').first().click();
+          await page.locator('role=button[name*="Workout"]').first().click();
         }
       }
 
@@ -180,18 +180,18 @@ test.describe('Workout restore smoke — manual workout (BUG-001)', () => {
       });
     }
 
-    // Neither card should show the "Exercise" fallback aria-label.
+    // Neither card should show the "Exercise" fallback accessible name.
     const fallbackLabel = page.locator(
-      'flt-semantics[aria-label*="Exercise: Exercise. Tap for details"]',
+      'role=group[name*="Exercise: Exercise. Tap for details"]',
     );
     await expect(fallbackLabel).not.toBeVisible({ timeout: 3_000 });
 
-    // Both real names must still be visible via their Semantics aria-labels.
+    // Both real names must still be visible via their Semantics accessible names.
     await expect(
-      page.locator(`flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`),
+      page.locator(`role=group[name*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`),
     ).toBeVisible({ timeout: 10_000 });
     await expect(
-      page.locator(`flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.squat}. Tap for details"]`),
+      page.locator(`role=group[name*="Exercise: ${SEED_EXERCISES.squat}. Tap for details"]`),
     ).toBeVisible({ timeout: 10_000 });
 
     // Clean up.

@@ -27,7 +27,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { flutterFill, navigateToTab } from '../helpers/app';
 import { login } from '../helpers/auth';
-import { NAV, WORKOUT, PROFILE, MANAGE_DATA, PR, HISTORY } from '../helpers/selectors';
+import { NAV, WORKOUT, PROFILE, MANAGE_DATA, PR, HISTORY, HOME_STATS } from '../helpers/selectors';
 import {
   startEmptyWorkout,
   addExercise,
@@ -103,11 +103,12 @@ async function openManageData(page: Page): Promise<void> {
  * message verbatim to the UI, this assertion catches it.
  */
 async function assertNoTableNamesVisible(page: Page): Promise<void> {
-  // Gather all accessible text from flt-semantics aria-labels (snackbars,
+  // Gather all accessible text from flt-semantics accessible names (snackbars,
   // dialogs, headings) and visible text nodes.
+  // Flutter 3.41.6+ uses AOM — try ariaLabel JS property first, then DOM attr.
   const visibleText = await page.evaluate(() => {
     const labels = Array.from(document.querySelectorAll('flt-semantics'))
-      .map((el) => el.getAttribute('aria-label') ?? '')
+      .map((el) => (el as any).ariaLabel ?? el.getAttribute('aria-label') ?? '')
       .join(' ');
     const bodyText = document.body.innerText ?? '';
     return (labels + ' ' + bodyText).toLowerCase();
@@ -241,8 +242,10 @@ test.describe('Manage Data — full suite', () => {
       timeout: 5_000,
     });
 
-    // Navigate to history and confirm data is still there.
-    await page.goto('/home/history');
+    // Navigate to history via SPA navigation (page.goto reloads the Flutter
+    // SPA and the router doesn't preserve the deep link).
+    await navigateToTab(page, 'Home');
+    await page.click(HOME_STATS.lastSessionCell);
     await expect(page.locator(HISTORY.heading)).toBeVisible({ timeout: 15_000 });
 
     // The history list must NOT show the empty state — at least one workout exists.
@@ -288,8 +291,9 @@ test.describe('Manage Data — full suite', () => {
     // No DB table names in visible text (regression check for the delete bug).
     await assertNoTableNamesVisible(page);
 
-    // Navigate to history and confirm the empty state is shown.
-    await page.goto('/home/history');
+    // Navigate to history via SPA navigation.
+    await navigateToTab(page, 'Home');
+    await page.click(HOME_STATS.lastSessionCell);
     await expect(page.locator(HISTORY.heading)).toBeVisible({ timeout: 15_000 });
     await expect(page.locator(HISTORY.emptyState)).toBeVisible({
       timeout: 10_000,
@@ -373,7 +377,7 @@ test.describe('Manage Data — full suite', () => {
     });
 
     // Type the wrong word — button must remain disabled.
-    await flutterFill(page, 'role=textbox', 'wrong');
+    await flutterFill(page, 'role=dialog >> role=textbox', 'wrong');
     await page.waitForTimeout(500); // debounce — no condition to wait for
     await page.click(MANAGE_DATA.resetButton, { force: true });
     await expect(page.locator('text=Reset Account Data')).toBeVisible({
@@ -382,7 +386,7 @@ test.describe('Manage Data — full suite', () => {
 
     // Type the correct word "RESET" — button must become enabled.
     // First clear the field using the Flutter fill helper.
-    await flutterFill(page, 'role=textbox', 'RESET');
+    await flutterFill(page, 'role=dialog >> role=textbox', 'RESET');
     await expect(page.locator(MANAGE_DATA.resetButton)).not.toHaveAttribute('aria-disabled', 'true', { timeout: 5_000 });
 
     // Now clicking the button should close the modal (pop(true)) and trigger
@@ -428,8 +432,9 @@ test.describe('Manage Data — full suite', () => {
       timeout: 5_000,
     });
 
-    // Navigate to history — the workout must still be there.
-    await page.goto('/home/history');
+    // Navigate to history via SPA navigation.
+    await navigateToTab(page, 'Home');
+    await page.click(HOME_STATS.lastSessionCell);
     await expect(page.locator(HISTORY.heading)).toBeVisible({ timeout: 15_000 });
     await expect(page.locator(HISTORY.emptyState)).not.toBeVisible({
       timeout: 5_000,
@@ -459,7 +464,7 @@ test.describe('Manage Data — full suite', () => {
     });
 
     // Type RESET to enable the confirm button.
-    await flutterFill(page, 'role=textbox', 'RESET');
+    await flutterFill(page, 'role=dialog >> role=textbox', 'RESET');
     await expect(page.locator(MANAGE_DATA.resetButton)).not.toHaveAttribute('aria-disabled', 'true', { timeout: 5_000 });
 
     // Click the now-enabled "Reset Account" button.
@@ -474,7 +479,8 @@ test.describe('Manage Data — full suite', () => {
     await assertNoTableNamesVisible(page);
 
     // Verify history is empty.
-    await page.goto('/home/history');
+    await navigateToTab(page, 'Home');
+    await page.click(HOME_STATS.lastSessionCell);
     await expect(page.locator(HISTORY.heading)).toBeVisible({ timeout: 15_000 });
     await expect(page.locator(HISTORY.emptyState)).toBeVisible({
       timeout: 10_000,
@@ -501,7 +507,7 @@ test.describe('Manage Data — full suite', () => {
       timeout: 8_000,
     });
 
-    await flutterFill(page, 'role=textbox', 'RESET');
+    await flutterFill(page, 'role=dialog >> role=textbox', 'RESET');
     await expect(page.locator(MANAGE_DATA.resetButton)).not.toHaveAttribute('aria-disabled', 'true', { timeout: 5_000 });
 
     await page.click(MANAGE_DATA.resetButton);

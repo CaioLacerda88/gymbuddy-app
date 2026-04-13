@@ -27,6 +27,7 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { waitForAppReady } from '../helpers/app';
 import { login } from '../helpers/auth';
 import { NAV, WORKOUT, PR, HOME } from '../helpers/selectors';
 import {
@@ -60,16 +61,11 @@ test.describe('Crash and session recovery — full suite', () => {
     // Simulate a browser crash / tab close by reloading the page.
     await page.reload();
 
-    // After reload the app re-initialises. The SplashScreen processes the
-    // persisted auth session and the workout state from Hive.
-    // We wait for the app to be ready and then the home screen to render.
-    await page.waitForFunction(
-      () => {
-        const text = document.body.innerText ?? '';
-        return text.includes('GymBuddy') || text.includes('Home');
-      },
-      { timeout: 30_000, polling: 500 },
-    );
+    // After reload the app re-initialises. waitForAppReady() re-enables the
+    // semantics tree and waits for auth to resolve. document.body.innerText
+    // is empty in CanvasKit (text drawn to canvas), so waitForFunction on
+    // innerText would never fire.
+    await waitForAppReady(page);
 
     // The resume banner appears at the top of the home screen when an active
     // workout exists. It shows the workout name and elapsed time.
@@ -114,20 +110,17 @@ test.describe('Crash and session recovery — full suite', () => {
     // Start a workout and add an exercise.
     await startEmptyWorkout(page);
     await addExercise(page, SEED_EXERCISES.squat);
-    await expect(page.locator(`text=${SEED_EXERCISES.squat}`)).toBeVisible({
-      timeout: 10_000,
-    });
+    // Flutter CanvasKit renders exercise names to canvas — no DOM text node.
+    // The name only appears in the exercise card group's accessible name.
+    await expect(
+      page.locator(`role=group[name*="Exercise: ${SEED_EXERCISES.squat}"]`),
+    ).toBeVisible({ timeout: 10_000 });
 
     // Reload to simulate crash.
     await page.reload();
 
-    await page.waitForFunction(
-      () => {
-        const text = document.body.innerText ?? '';
-        return text.includes('GymBuddy') || text.includes('Home');
-      },
-      { timeout: 30_000, polling: 500 },
-    );
+    // waitForAppReady re-enables semantics after reload and waits for auth.
+    await waitForAppReady(page);
 
     // If the resume banner is visible, tap it.
     const resumeBannerVisible = await page
@@ -145,9 +138,10 @@ test.describe('Crash and session recovery — full suite', () => {
     });
 
     // The exercise that was added before the reload must still be there.
-    await expect(page.locator(`text=${SEED_EXERCISES.squat}`)).toBeVisible({
-      timeout: 10_000,
-    });
+    // Flutter CanvasKit renders exercise names to canvas — no DOM text node.
+    await expect(
+      page.locator(`role=group[name*="Exercise: ${SEED_EXERCISES.squat}"]`),
+    ).toBeVisible({ timeout: 10_000 });
 
     // BUG-001 guard: the "Exercise" fallback must NOT appear as the card header.
     // If WorkoutExercise.exercise was excluded from toJson (the bug), then after
@@ -155,7 +149,7 @@ test.describe('Crash and session recovery — full suite', () => {
     // The Semantics label becomes "Exercise: Exercise. Tap for details." — we
     // assert that pattern is absent to explicitly guard against BUG-001.
     const fallbackLabel = page.locator(
-      'flt-semantics[aria-label*="Exercise: Exercise. Tap for details"]',
+      'role=group[name*="Exercise: Exercise. Tap for details"]',
     );
     await expect(fallbackLabel).not.toBeVisible({ timeout: 3_000 });
 
@@ -183,7 +177,9 @@ test.describe('Crash and session recovery — full suite', () => {
 
     // Return to Home.
     await page.click(NAV.homeTab);
-    await expect(page.locator('text=GymBuddy')).toBeVisible({
+    // Verify home screen content loaded (home screen no longer shows "GymBuddy"
+    // title — it uses a date-based header like "THIS WEEK").
+    await expect(page.locator('text=Start Empty Workout')).toBeVisible({
       timeout: 15_000,
     });
 
@@ -235,7 +231,7 @@ test.describe('Crash and session recovery — full suite', () => {
 
     // Navigate to Home — the active workout banner must appear in the shell.
     await page.click(NAV.homeTab);
-    await expect(page.locator('text=GymBuddy')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('text=Start Empty Workout')).toBeVisible({ timeout: 15_000 });
 
     // The _ActiveWorkoutBanner renders the workout name which starts with
     // "Workout \u2014". Verify it is present before finishing.
@@ -268,7 +264,7 @@ test.describe('Crash and session recovery — full suite', () => {
     // Return to home if not already there.
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
     await page.click(NAV.homeTab);
-    await expect(page.locator('text=GymBuddy')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('text=Start Empty Workout')).toBeVisible({ timeout: 15_000 });
 
     // The banner must no longer be visible — the workout is finished.
     await expect(page.locator(HOME.activeBanner)).not.toBeVisible({

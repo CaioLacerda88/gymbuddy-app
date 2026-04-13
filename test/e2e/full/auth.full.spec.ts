@@ -176,7 +176,8 @@ test.describe('Auth — edge cases', () => {
     await expect(page.locator('text=Log Out')).toBeVisible({ timeout: 15_000 });
 
     await page.click(NAV.homeTab);
-    await expect(page.locator('text=GymBuddy')).toBeVisible({ timeout: 15_000 });
+    // Home screen no longer shows "GymBuddy" title — verify with actual content.
+    await expect(page.locator('text=Start Empty Workout')).toBeVisible({ timeout: 15_000 });
 
     // Logout returns to the login screen.
     await logout(page);

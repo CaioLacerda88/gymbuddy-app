@@ -1,20 +1,25 @@
 /**
  * Centralized selectors for GymBuddy Flutter web.
  *
- * Flutter web emits flt-semantics elements with ARIA attributes from Semantics
- * widgets. Standard Playwright selectors target these accessibility nodes.
+ * Flutter 3.41.6+ uses the Accessibility Object Model (AOM) for accessible
+ * names instead of setting `aria-label` as a DOM attribute on flt-semantics
+ * elements. This means CSS selectors like `flt-semantics[aria-label="X"]`
+ * return 0 matches. Instead, use Playwright role-based selectors like
+ * `role=button[name="X"]` which query the browser accessibility tree.
  *
- * Where Semantics labels exist in the Dart code they are noted below.
- * Where no Semantics label was added, we fall back to visible text content.
+ * Exceptions (still use DOM attributes):
+ *   - Native <input> elements retain `aria-label` (e.g., AUTH.emailInput)
+ *   - `aria-live` attributes are still set as DOM attributes
+ *   - `role` is still set as a DOM attribute on flt-semantics elements
  *
- * Semantics labels found in the source:
- *   - _MuscleGroupButton:  '[aria-label="<name> muscle group filter"]'
- *   - _SearchBar:          '[aria-label="Search exercises"]'
- *   - _EquipmentFilter:    '[aria-label="<name> equipment filter"]'
- *   - _ExerciseCard:       '[aria-label="Exercise: <name>"]'
- *   - _CreateExerciseFab:  '[aria-label="Create new exercise"]'
- *   - _TappableImage:      '[aria-label="<name> start position"]' / "end position"
- *   - Delete button:       '[aria-label="Delete exercise"]'
+ * Semantics labels found in the source (use role= selectors to match):
+ *   - _MuscleGroupButton:  'role=button[name="<name> muscle group filter"]'
+ *   - _SearchBar:          'role=textbox[name="Search exercises"]'
+ *   - _EquipmentFilter:    'role=checkbox[name="<name>"]'
+ *   - _ExerciseCard:       'role=button[name="Exercise: <name>"]'
+ *   - _CreateExerciseFab:  'role=button[name="Create new exercise"]'
+ *   - _TappableImage:      'role=img[name="<name> start position"]' / "end position"
+ *   - Delete button:       'role=button[name="Delete exercise"]'
  */
 
 // ---------------------------------------------------------------------------
@@ -28,10 +33,10 @@ export const AUTH = {
   emailInput: '[aria-label="Email"]',
   /** AppTextField with label "Password" */
   passwordInput: '[aria-label="Password"]',
-  /** AppButton label "LOG IN" */
-  loginButton: 'flt-semantics[aria-label="LOG IN"]',
-  /** AppButton label "SIGN UP" */
-  signUpButton: 'flt-semantics[aria-label="SIGN UP"]',
+  /** AppButton label "LOG IN" — nth=0 avoids strict-mode on nested flt-semantics */
+  loginButton: 'role=button[name="LOG IN"] >> nth=0',
+  /** AppButton label "SIGN UP" — nth=0 avoids strict-mode on nested flt-semantics */
+  signUpButton: 'role=button[name="SIGN UP"] >> nth=0',
   /** TextButton "Don't have an account? Sign up" */
   toggleToSignUp: "text=Don't have an account? Sign up",
   /** TextButton "Already have an account? Log in" */
@@ -76,14 +81,15 @@ export const ONBOARDING = {
 
 // ---------------------------------------------------------------------------
 // Shell / Bottom Navigation
-// NavigationDestination labels are used as aria-label by Flutter's semantics.
+// NavigationDestination labels are exposed as accessible names via AOM.
+// Use role=tab selectors to match them in the accessibility tree.
 // Tabs: Home, Exercises, Routines, Profile.
 // ---------------------------------------------------------------------------
 export const NAV = {
-  homeTab: 'flt-semantics[aria-label="Home"]',
-  exercisesTab: 'flt-semantics[aria-label="Exercises"]',
-  routinesTab: 'flt-semantics[aria-label="Routines"]',
-  profileTab: 'flt-semantics[aria-label="Profile"]',
+  homeTab: 'role=tab[name="Home"]',
+  exercisesTab: 'role=tab[name="Exercises"]',
+  routinesTab: 'role=tab[name="Routines"]',
+  profileTab: 'role=tab[name="Profile"]',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -124,10 +130,12 @@ export const EXERCISE_DETAIL = {
   customBadge: 'text=Custom exercise',
   /** Delete button — case-insensitive match for "Delete Exercise" / "Delete exercise" */
   deleteButton: 'role=button[name=/delete exercise/i]',
-  /** Confirmation dialog title */
-  deleteDialogTitle: 'text=Delete Exercise',
-  /** Confirm delete action in dialog — exact match to avoid "Delete Exercise" collision */
-  deleteConfirmButton: 'text="Delete"',
+  /** Confirmation dialog content — unique to the dialog, avoids collision with
+   *  "Delete Exercise" button text which also matches 'text=Delete Exercise' */
+  deleteDialogContent: 'text=Are you sure you want to delete',
+  /** Confirm delete action in the dialog — scoped to alertdialog to avoid
+   *  matching the "Delete Exercise" button on the detail screen itself */
+  deleteConfirmButton: 'role=alertdialog >> role=button[name="Delete"]',
   /** Cancel delete action in dialog */
   deleteCancelButton: 'text=Cancel',
   /** Coming-soon placeholder text */
@@ -159,11 +167,11 @@ export const WORKOUT = {
   /** "Add Set" button within an exercise card */
   addSetButton: 'text=Add Set',
   /** Checkbox to mark a set as done — unchecked state */
-  markSetDone: 'flt-semantics[aria-label="Mark set as done"]',
+  markSetDone: 'role=checkbox[name="Mark set as done"]',
   /** Checkbox to mark a set as done — checked state */
-  setCompleted: 'flt-semantics[aria-label="Set completed"]',
+  setCompleted: 'role=checkbox[name="Set completed"]',
   /** Close / discard icon button in the AppBar — Semantics label "Discard workout" */
-  discardButton: 'flt-semantics[aria-label="Discard workout"]',
+  discardButton: 'role=button[name="Discard workout"]',
   /** "Discard" confirm button inside the DiscardWorkoutDialog */
   discardConfirmButton: 'role=button[name="Discard"]',
   /** "Keep Going" button in the finish confirmation dialog (cancels finish) */
@@ -173,17 +181,19 @@ export const WORKOUT = {
   /** Tappable reps value that opens the reps entry dialog */
   enterRepsDialog: 'text=Enter reps',
   /** Optional notes input on the active workout screen */
-  notesInput: 'flt-semantics[aria-label="Workout notes"]',
+  notesInput: 'role=textbox[name="Workout notes"]',
   /**
    * Exercise name tappable area inside an exercise card during an active workout.
    *
    * _ExerciseCard wraps the exercise name in a Semantics with the label:
    *   "Exercise: <name>. Tap for details. Long press to swap."
+   * Flutter 3.41.6+ renders this as role=group (not role=button) because the
+   * parent Semantics node merges children into a group container.
    * We match on the "Tap for details" substring to target the tappable region
    * regardless of exercise name.
    */
   exerciseDetailTap: (name: string) =>
-    `flt-semantics[aria-label*="Exercise: ${name}. Tap for details"]`,
+    `role=group[name*="Exercise: ${name}. Tap for details"]`,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -208,7 +218,7 @@ export const HOME = {
    * "Workout \u2014" (em-dash). Matching on this prefix is reliable because
    * no other text on the home screen contains an em-dash.
    */
-  activeBanner: 'flt-semantics[aria-label*="Workout \u2014"]',
+  activeBanner: 'role=button[name*="Workout \u2014"]',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -274,7 +284,7 @@ export const CREATE_ROUTINE = {
 // ---------------------------------------------------------------------------
 export const HISTORY = {
   /** Page heading */
-  heading: 'text=History',
+  heading: 'role=heading[name="History"]',
   /** Empty state message when no workouts have been logged */
   emptyState: 'text=No workouts yet',
   /** CTA in empty state */
@@ -346,7 +356,7 @@ export const MANAGE_DATA = {
    * Close / cancel icon button in the Reset Account full-screen dialog.
    * The IconButton has tooltip: 'Cancel'.
    */
-  resetCancelButton: 'flt-semantics[aria-label="Cancel"]',
+  resetCancelButton: 'role=button[name="Cancel"]',
   /** SnackBar confirmation after successful history deletion */
   historyCleared: 'text=Workout history cleared',
   /** SnackBar confirmation after successful reset */
@@ -403,7 +413,7 @@ export const WEEKLY_PLAN = {
    * Wrapped in Semantics(label: 'More options') — renders as role="group"
    * with aria-label="More options". The child button has no aria-label itself.
    */
-  overflowMenuButton: 'flt-semantics[aria-label="More options"]',
+  overflowMenuButton: 'role=button[name="More options"]',
   /**
    * "Clear Week" option in the PopupMenuButton overflow menu.
    * PopupMenuItem renders as role="menuitem" with aria-label="Clear Week".
@@ -570,7 +580,7 @@ export const PROFILE_WEEKLY_GOAL = {
 // ---------------------------------------------------------------------------
 export const HOME_STATS = {
   /** "Last session" contextual stat cell — Semantics label "Last session: {value}" */
-  lastSessionCell: 'flt-semantics[aria-label*="Last session:"]',
+  lastSessionCell: 'role=button[name*="Last session"]',
   /** "Week's volume" contextual stat cell — Semantics label "Week's volume: {value}" */
-  weekVolumeCell: 'flt-semantics[aria-label*="Week\'s volume:"]',
+  weekVolumeCell: 'role=button[name*="Week\'s volume"]',
 } as const;

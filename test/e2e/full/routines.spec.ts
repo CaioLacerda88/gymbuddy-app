@@ -97,7 +97,7 @@ test.describe('Routines — full suite', () => {
       .catch(() => false);
 
     if (!isVisible) {
-      const overflow = page.locator('[aria-label="More options"]');
+      const overflow = page.locator('role=button[name="More options"]');
       if (await overflow.isVisible({ timeout: 3_000 }).catch(() => false)) {
         await overflow.click();
       }
@@ -129,7 +129,8 @@ test.describe('Routines — full suite', () => {
 
     // Navigate from Home tab.
     await page.click(NAV.homeTab);
-    await expect(page.locator('text=GymBuddy')).toBeVisible({ timeout: 15_000 });
+    // Home screen no longer shows "GymBuddy" title — verify with actual content.
+    await expect(page.locator('text=Start Empty Workout')).toBeVisible({ timeout: 15_000 });
 
     await page.click(NAV.routinesTab);
     await expect(page.locator(ROUTINE.heading).first()).toBeVisible({ timeout: 15_000 });

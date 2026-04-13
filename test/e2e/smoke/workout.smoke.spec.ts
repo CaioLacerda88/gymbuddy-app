@@ -206,7 +206,7 @@ test.describe('Workout smoke', () => {
 
     if (!isDirectlyVisible) {
       // Try the overflow / back action to expose discard.
-      const overflowMenu = page.locator('[aria-label="More options"]');
+      const overflowMenu = page.locator('role=button[name="More options"]');
       if (
         await overflowMenu.isVisible({ timeout: 3_000 }).catch(() => false)
       ) {

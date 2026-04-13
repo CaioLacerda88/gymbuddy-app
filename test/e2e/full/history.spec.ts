@@ -15,7 +15,7 @@
 
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth';
-import { HISTORY } from '../helpers/selectors';
+import { HISTORY, HOME_STATS } from '../helpers/selectors';
 import { TEST_USERS } from '../fixtures/test-users';
 
 const USER = TEST_USERS.fullHistory;
@@ -38,10 +38,13 @@ test.describe('Workout history — full suite', () => {
   test('HIST-005: history screen shows empty state for a user with no completed workouts', async ({
     page,
   }) => {
-    // Navigate to the history screen via the "View All" link if it exists,
-    // or directly via the URL. A fresh user has no workouts, so "View All"
-    // will not be shown on the home screen — we use direct navigation.
-    await page.goto('/home/history');
+    // Navigate to the history screen via the Last session stat cell on Home.
+    // page.goto('/home/history') reloads the Flutter SPA and the router doesn't
+    // preserve the deep link — use SPA navigation instead.
+    await expect(page.locator(HOME_STATS.lastSessionCell)).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.click(HOME_STATS.lastSessionCell);
 
     // The history screen AppBar title confirms we are on the right screen.
     await expect(page.locator(HISTORY.heading)).toBeVisible({ timeout: 15_000 });

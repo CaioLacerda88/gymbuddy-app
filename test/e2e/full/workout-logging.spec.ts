@@ -74,12 +74,14 @@ test.describe('Workout logging — full suite', () => {
     await addExercise(page, SEED_EXERCISES.squat);
 
     // Both exercise names must appear as card headings.
+    // Flutter CanvasKit renders exercise names to canvas — no DOM text node.
+    // The name only appears in the exercise card group's accessible name.
     await expect(
-      page.locator(`text=${SEED_EXERCISES.benchPress}`),
+      page.locator(`role=group[name*="Exercise: ${SEED_EXERCISES.benchPress}"]`),
     ).toBeVisible({ timeout: 10_000 });
-    await expect(page.locator(`text=${SEED_EXERCISES.squat}`)).toBeVisible({
-      timeout: 10_000,
-    });
+    await expect(
+      page.locator(`role=group[name*="Exercise: ${SEED_EXERCISES.squat}"]`),
+    ).toBeVisible({ timeout: 10_000 });
 
     // Discard to clean up.
     await page.locator(WORKOUT.discardButton).click();
@@ -250,7 +252,7 @@ test.describe('Workout logging — full suite', () => {
       .catch(() => false);
 
     if (!isVisible) {
-      const overflow = page.locator('[aria-label="More options"]');
+      const overflow = page.locator('role=button[name="More options"]');
       if (
         await overflow.isVisible({ timeout: 3_000 }).catch(() => false)
       ) {
@@ -278,7 +280,7 @@ test.describe('Workout logging — full suite', () => {
     await startEmptyWorkout(page);
 
     // The AppBar title uses an em-dash (U+2014) separator: "Workout — Day Mon DD"
-    const appBarTitle = page.locator('flt-semantics[aria-label*="Workout \u2014"]');
+    const appBarTitle = page.locator('role=heading[name*="Workout \u2014"]');
     await expect(appBarTitle).toBeVisible({ timeout: 10_000 });
 
     // Discard to clean up.
@@ -326,24 +328,19 @@ test.describe('Workout logging — full suite', () => {
 
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
 
-    // Navigate to the history screen to verify the saved value.
-    // Tap the Last session stat cell, or fall back to direct navigation.
-    const statsVisible = await page
-      .locator(HOME_STATS.lastSessionCell)
-      .isVisible({ timeout: 5_000 })
-      .catch(() => false);
-
-    if (statsVisible) {
-      await page.click(HOME_STATS.lastSessionCell);
-    } else {
-      await page.goto('/home/history');
-    }
+    // Navigate to history via the Last session stat cell (SPA navigation).
+    // page.goto('/home/history') reloads the Flutter SPA and the router
+    // doesn't preserve the deep link.
+    await expect(page.locator(HOME_STATS.lastSessionCell)).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.click(HOME_STATS.lastSessionCell);
 
     // The history screen must be visible.
     await expect(page.locator(HISTORY.heading)).toBeVisible({ timeout: 15_000 });
 
     // Tap the most recent workout card to open its detail.
-    const firstHistoryCard = page.locator('[aria-label*="Workout"]').first();
+    const firstHistoryCard = page.locator('role=button[name*="Workout"]').first();
     await expect(firstHistoryCard).toBeVisible({ timeout: 10_000 });
     await firstHistoryCard.click();
 
@@ -367,18 +364,16 @@ test.describe('Workout logging — full suite', () => {
     // The exercise name is wrapped in a tappable Semantics area with
     // label "Exercise: <name>. Tap for details. Long press to swap."
     const exerciseTap = page.locator(
-      `flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`,
+      `role=group[name*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`,
     );
     await expect(exerciseTap).toBeVisible({ timeout: 10_000 });
     await exerciseTap.click();
 
-    // The bottom sheet must appear. The exercise name is the first text rendered
-    // inside the sheet at headlineMedium size.
-    // We wait for a second instance of the exercise name (the card heading is
-    // always visible; the sheet adds a second one).
-    await expect(
-      page.locator(`text=${SEED_EXERCISES.benchPress}`).nth(1),
-    ).toBeVisible({ timeout: 10_000 });
+    // The bottom sheet must appear. The "ABOUT" section header only appears
+    // in the detail sheet, confirming it's open. Using .nth(1) on the exercise
+    // name fails because CanvasKit renders the card's name inside the group's
+    // accessible name, not as a standalone text node.
+    await expect(page.locator('text=ABOUT')).toBeVisible({ timeout: 10_000 });
 
     // Clean up — dismiss the sheet by pressing Escape, then discard the workout.
     await page.keyboard.press('Escape');
@@ -405,19 +400,17 @@ test.describe('Workout logging — full suite', () => {
     await addExercise(page, SEED_EXERCISES.benchPress);
 
     const exerciseTap = page.locator(
-      `flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`,
+      `role=group[name*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`,
     );
     await expect(exerciseTap).toBeVisible({ timeout: 10_000 });
     await exerciseTap.click();
 
-    // The sheet must show the exercise name (second occurrence — first is the card).
-    await expect(
-      page.locator(`text=${SEED_EXERCISES.benchPress}`).nth(1),
-    ).toBeVisible({ timeout: 10_000 });
+    // The sheet must show the "ABOUT" section — confirms the sheet is open.
+    await expect(page.locator('text=ABOUT')).toBeVisible({ timeout: 10_000 });
 
     // The muscle group chip must appear. Barbell Bench Press → Chest.
-    // _SheetChip renders the muscle group's displayName as a Text widget.
-    await expect(page.locator('text=Chest')).toBeVisible({ timeout: 5_000 });
+    // Use .first() — CanvasKit renders "Chest" in the ABOUT text too.
+    await expect(page.locator('text=Chest').first()).toBeVisible({ timeout: 5_000 });
 
     // Dismiss.
     await page.keyboard.press('Escape');
@@ -447,14 +440,17 @@ test.describe('Workout logging — full suite', () => {
     // Note the workout is now in progress — the elapsed timer is in the AppBar.
     // Open the detail sheet.
     const exerciseTap = page.locator(
-      `flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.squat}. Tap for details"]`,
+      `role=group[name*="Exercise: ${SEED_EXERCISES.squat}. Tap for details"]`,
     );
     await expect(exerciseTap).toBeVisible({ timeout: 10_000 });
     await exerciseTap.click();
 
-    // Sheet is open — exercise name appears a second time.
+    // Sheet is open — verify via the exercise name text in the sheet heading.
+    // Squat doesn't have ABOUT/FORM TIPS sections, so check the name directly.
+    // The card renders the name inside the group's accessible label (not standalone),
+    // so `text=Barbell Squat` only matches the sheet heading.
     await expect(
-      page.locator(`text=${SEED_EXERCISES.squat}`).nth(1),
+      page.locator(`text=${SEED_EXERCISES.squat}`),
     ).toBeVisible({ timeout: 10_000 });
 
     // Dismiss the sheet by pressing Escape.
@@ -505,14 +501,13 @@ test.describe('Workout logging — full suite', () => {
 
     // Open the exercise detail sheet.
     const exerciseTap = page.locator(
-      `flt-semantics[aria-label*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`,
+      `role=group[name*="Exercise: ${SEED_EXERCISES.benchPress}. Tap for details"]`,
     );
     await expect(exerciseTap).toBeVisible({ timeout: 10_000 });
     await exerciseTap.click();
 
-    await expect(
-      page.locator(`text=${SEED_EXERCISES.benchPress}`).nth(1),
-    ).toBeVisible({ timeout: 10_000 });
+    // Sheet is open — the "ABOUT" section confirms it.
+    await expect(page.locator('text=ABOUT')).toBeVisible({ timeout: 10_000 });
 
     // Dismiss the sheet.
     await page.keyboard.press('Escape');
