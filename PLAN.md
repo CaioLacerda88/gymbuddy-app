@@ -38,6 +38,7 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 13a-PR5 | Observability: Sentry crash reporting + first-party analytics_events (B2 + B3) | DONE | #46 |
 | 13a-PR6 | Bulk Dependency Upgrade + Toolchain Refresh (Riverpod 3, GoRouter 17, Freezed 3) | DONE | #49 |
 | 13a-PR7 | Close local CI Android build gap (`make ci` runs `flutter build apk --debug`) | DONE | #47 |
+| 13a-PR8 | E2E overhaul: Flutter 3.41.6 AOM selectors, bug fixes, restructure to feature files | DONE | #50 |
 | 13c | UX Polish & Athletic Brutalism Redesign | PLANNED | - |
 | 13 | Production Readiness (Sprint A DONE; PR6+PR7 merged, Sprint B retention next) | IN PROGRESS | - |
 | 14 | Offline Support | TODO | - |
@@ -330,6 +331,15 @@ Migration: supabase/migrations/00011_create_weekly_plans.sql
 - Rewrote `exercise-library.smoke.spec.ts` to standard infra (removed hardcoded `test.skip`, uses `smokeExercise` user).
 - Added Dart semantics labels (`tooltip: 'Create routine'`, `Semantics(label: 'More options')`) for Playwright selectors.
 - **Result:** 58 passed, 2 skipped (expected), 0 failures, 6.1 min runtime. Key files: `global-setup.ts`, `global-teardown.ts`, `playwright.config.ts`, `selectors.ts`, `e2e.yml`.
+
+## 13a-PR8: E2E Overhaul — AOM Selectors, Bug Fixes, Feature-Based Restructure (DONE — PR #50)
+
+- **Flutter 3.41.6 AOM migration:** Replaced all `flt-semantics[aria-label="..."]` CSS selectors with `role=TYPE[name*="..."]` Playwright selectors. Flutter no longer sets `aria-label` as DOM attributes — accessible names are communicated via the browser's Accessibility Object Model.
+- **App bug fixes:** Exercise delete navigation (captured GoRouter before async gap, `router.go('/exercises')` instead of `context.pop()`). RLS policy `exercises_select_own_deleted` for soft-delete visibility. Hive saves awaited in `ActiveWorkoutNotifier` (prevent data loss on web reload).
+- **Strict mode fixes:** `.first()` / `.last()` on SnackBar text and search input locators where Flutter renders dual DOM elements.
+- **Restructure:** Flattened `smoke/` (16 files) + `full/` (11 files) into `specs/` (11 feature-based files). Replaced directory-based organization with Playwright `{ tag: '@smoke' }` on describe blocks. Standardized naming: `test('should ...')`, bug IDs parenthesized.
+- **Removed:** 2 tests for unimplemented RECENT RECORDS feature. Unskipped 6 previously-skipped tests (delete nav, EX-003, BUG-003 smoke + full).
+- **Result:** 145 passed, 0 failed, 0 skipped. 994 unit/widget tests. Key files: `specs/*.spec.ts`, `helpers/selectors.ts`, `playwright.config.ts`, `exercise_detail_screen.dart`, `active_workout_notifier.dart`, `supabase/migrations/00017_fix_exercise_soft_delete_rls.sql`.
 
 ---
 
@@ -1434,11 +1444,11 @@ Confetti, streak flames/emoji, badge walls, multiple progress bars on home, leve
 
 ---
 
-## QA Status (as of 2026-04-08)
+## QA Status (as of 2026-04-13)
 
 > Full manual QA plan: `tasks/manual-qa-testplan.md` (89 cases, 29 automated).
 
-**All Critical and High bugs resolved** (52+ items across PRs #24-#32). See git history for full audit trails.
+**All Critical and High bugs resolved** (52+ items across PRs #24-#32, plus PR #50 E2E overhaul). See git history for full audit trails.
 
 ### Open
 
@@ -1457,29 +1467,35 @@ Edit custom exercises, per-exercise notes in workout, RPE tracking (widget exist
 ### CI Pipeline (GitHub Actions)
 
 - `ci.yml`: 3 parallel jobs — `analyze` (format + lint + secret scan), `test` (flutter test --coverage), `build` (APK + web). Gate job `ci` depends on all three.
-- `e2e.yml`: Flutter web build -> Playwright. Smoke on PRs (<3 min), full on merge (<10 min).
+- `e2e.yml`: Flutter web build -> Playwright. Full regression on every PR (~16 min, 145 tests).
 - `release.yml`: `v*` tags -> split APKs -> GitHub Release.
 
 ### Test Layers
 
-- **Unit** (`flutter_test` + `mocktail`): Models, repositories, business logic, providers. Target 80%+ on business logic.
+- **Unit** (`flutter_test` + `mocktail`): Models, repositories, business logic, providers. Target 80%+ on business logic. **994 tests.**
 - **Widget** (`flutter_test`): Screen states (loading/data/error/empty), interactions, form validation, conditional UI.
-- **E2E** (Playwright on Flutter web): Critical journeys — auth, workout, PRs, routines, crash recovery. `flt-semantics[aria-label="..."]` selectors.
+- **E2E** (Playwright on Flutter web): Critical journeys — auth, exercises, workouts, routines, PRs, home, crash recovery, manage data, weekly plan, onboarding, profile. **145 tests (61 @smoke, 84 regression).**
 
 ### E2E Structure
 
 ```
 test/e2e/
   playwright.config.ts, global-setup.ts, global-teardown.ts
-  helpers/  auth.ts, workout.ts, navigation.ts, selectors.ts
+  helpers/  auth.ts, app.ts, workout.ts, selectors.ts
   fixtures/ test-users.ts, test-exercises.ts
-  smoke/    auth, workout, pr, routine-start, workout-restore, exercise-form-tips, routine-error,
-            weekly-plan, onboarding, routine-management, pr-display, weekly-plan-review, profile-weekly-goal
-  full/     auth, exercise-library, workout-logging, routines, personal-records,
-            home-navigation, crash-recovery, routine-regression, exercise-detail-sheet, manage-data
+  specs/    auth, exercises, workouts, routines, home, crash-recovery,
+            personal-records, profile, manage-data, weekly-plan, onboarding
 ```
 
-Test users created via Supabase Admin API in `global-setup.ts`. Unique user per test — parallel-safe.
+**Organization:** Feature-based files in `specs/`. Smoke tests tagged with `{ tag: '@smoke' }` on their describe blocks. Run `--grep @smoke` for quick CI gate, no filter for full regression.
+
+**Selectors:** `role=TYPE[name*="..."]` selectors (Playwright accessibility protocol). Flutter 3.41.6 uses AOM — `aria-label` is no longer a DOM attribute on most elements. All selectors centralized in `helpers/selectors.ts`.
+
+**Naming convention:** `test.describe('Feature Name')` + `test('should ...')`. Bug IDs parenthesized at end: `test('should show error snackbar (BUG-003)')`.
+
+**User isolation:** Unique test user per describe block, created in `global-setup.ts` via Supabase Admin API. No shared mutable state between test files. Inline `TEST_USERS.xxx` in `beforeEach` (no `const USER` aliases).
+
+**Adding new E2E tests:** Place in the appropriate feature file in `specs/`. Tag with `{ tag: '@smoke' }` if it should run in the quick CI gate. Add a new test user in `fixtures/test-users.ts` + `global-setup.ts` if the test needs isolated state.
 
 ---
 
