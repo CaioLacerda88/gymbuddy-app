@@ -302,51 +302,56 @@ class _ActiveWorkoutBanner extends ConsumerWidget {
     final theme = Theme.of(context);
     final elapsed = ref.watch(elapsedTimerProvider(state.workout.startedAt));
 
-    return GestureDetector(
-      onTap: () => context.go('/workout/active'),
-      child: Container(
-        height: 56,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: theme.colorScheme.primary,
-          border: Border(
-            top: BorderSide(
-              color: theme.colorScheme.onPrimary.withValues(alpha: 0.3),
-              width: 2,
+    return Semantics(
+      button: true,
+      label: 'Active workout: ${state.workout.name}',
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: () => context.go('/workout/active'),
+        child: Container(
+          height: 56,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primary,
+            border: Border(
+              top: BorderSide(
+                color: theme.colorScheme.onPrimary.withValues(alpha: 0.3),
+                width: 2,
+              ),
             ),
           ),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
-          children: [
-            Icon(
-              Icons.fitness_center,
-              color: theme.colorScheme.onPrimary,
-              size: 20,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                state.workout.name,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: theme.colorScheme.onPrimary,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              Icon(
+                Icons.fitness_center,
+                color: theme.colorScheme.onPrimary,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  state.workout.name,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: theme.colorScheme.onPrimary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
-            ),
-            Text(
-              elapsed.when(
-                data: _formatElapsed,
-                loading: () => '...',
-                error: (_, _) => '',
+              Text(
+                elapsed.when(
+                  data: _formatElapsed,
+                  loading: () => '...',
+                  error: (_, _) => '',
+                ),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onPrimary.withValues(alpha: 0.8),
+                ),
               ),
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onPrimary.withValues(alpha: 0.8),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Icon(Icons.chevron_right, color: theme.colorScheme.onPrimary),
-          ],
+              const SizedBox(width: 8),
+              Icon(Icons.chevron_right, color: theme.colorScheme.onPrimary),
+            ],
+          ),
         ),
       ),
     );

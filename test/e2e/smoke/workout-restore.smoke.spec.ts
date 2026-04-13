@@ -21,19 +21,14 @@
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth';
 import { waitForAppReady } from '../helpers/app';
-import { NAV, WORKOUT } from '../helpers/selectors';
+import { NAV, WORKOUT, HOME } from '../helpers/selectors';
 import { startEmptyWorkout, addExercise } from '../helpers/workout';
 import { TEST_USERS } from '../fixtures/test-users';
 import { SEED_EXERCISES } from '../fixtures/test-exercises';
 
 const USER = TEST_USERS.smokeWorkoutRestore;
 
-// Skip workout-restore tests: Hive (IndexedDB) persistence across page.reload()
-// is unreliable on GitHub Actions VMs. IndexedDB writes may not flush before
-// the reload completes. These tests pass locally but flake consistently on CI.
-// BUG-001 regression is also guarded by unit tests and the routine-start smoke
-// test (which does not reload the page).
-test.describe.skip('Workout restore smoke — manual workout (BUG-001)', () => {
+test.describe('Workout restore smoke — manual workout (BUG-001)', () => {
   test.beforeEach(async ({ page }) => {
     await login(page, USER.email, USER.password);
   });
@@ -76,28 +71,27 @@ test.describe.skip('Workout restore smoke — manual workout (BUG-001)', () => {
     await waitForAppReady(page);
 
     // If the active workout screen was not re-entered automatically, navigate
-    // back via the resume banner.
+    // back via the active workout banner or resume link.
     const finishVisible = await page
       .locator(WORKOUT.finishButton)
       .isVisible({ timeout: 5_000 })
       .catch(() => false);
 
     if (!finishVisible) {
-      const resumeVisible = await page
-        .locator('text=Resume')
+      const activeBannerVisible = await page
+        .locator(HOME.activeBanner)
         .isVisible({ timeout: 10_000 })
         .catch(() => false);
 
-      if (resumeVisible) {
-        await page.locator('text=Resume').click();
+      if (activeBannerVisible) {
+        await page.locator(HOME.activeBanner).click();
       } else {
-        // Fall back to tapping the active workout banner if present.
-        const bannerVisible = await page
-          .locator('role=button[name*="Workout"]')
+        const resumeVisible = await page
+          .locator('text=Resume')
           .isVisible({ timeout: 5_000 })
           .catch(() => false);
-        if (bannerVisible) {
-          await page.locator('role=button[name*="Workout"]').first().click();
+        if (resumeVisible) {
+          await page.locator('text=Resume').click();
         }
       }
 
@@ -163,20 +157,20 @@ test.describe.skip('Workout restore smoke — manual workout (BUG-001)', () => {
       .catch(() => false);
 
     if (!finishVisible) {
-      const resumeVisible = await page
-        .locator('text=Resume')
+      const activeBannerVisible = await page
+        .locator(HOME.activeBanner)
         .isVisible({ timeout: 10_000 })
         .catch(() => false);
 
-      if (resumeVisible) {
-        await page.locator('text=Resume').click();
+      if (activeBannerVisible) {
+        await page.locator(HOME.activeBanner).click();
       } else {
-        const bannerVisible = await page
-          .locator('role=button[name*="Workout"]')
+        const resumeVisible = await page
+          .locator('text=Resume')
           .isVisible({ timeout: 5_000 })
           .catch(() => false);
-        if (bannerVisible) {
-          await page.locator('role=button[name*="Workout"]').first().click();
+        if (resumeVisible) {
+          await page.locator('text=Resume').click();
         }
       }
 

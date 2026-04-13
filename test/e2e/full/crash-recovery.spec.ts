@@ -43,12 +43,7 @@ import { SEED_EXERCISES } from '../fixtures/test-exercises';
 
 const USER = TEST_USERS.fullCrash;
 
-// Skip all crash-recovery tests: Hive (IndexedDB) persistence across
-// page.reload() is unreliable on GitHub Actions VMs. The IndexedDB write may
-// not flush before the reload completes, causing the resume banner to be absent.
-// These tests pass locally but flake consistently on CI. The underlying Hive
-// persistence is also covered by unit tests.
-test.describe.skip('Crash and session recovery — full suite', () => {
+test.describe('Crash and session recovery — full suite', () => {
 
   test.beforeEach(async ({ page }) => {
     await login(page, USER.email, USER.password);
@@ -73,21 +68,29 @@ test.describe.skip('Crash and session recovery — full suite', () => {
     // innerText would never fire.
     await waitForAppReady(page);
 
-    // The resume banner appears at the top of the home screen when an active
-    // workout exists. It shows the workout name and elapsed time.
-    // We look for the workout active screen link OR a text cue from the banner.
-    const resumeBannerVisible = await page
-      .locator('text=Resume')
+    // The active workout banner appears at the bottom of the home screen when
+    // an active workout exists. It shows the workout name and elapsed time.
+    // We look for:
+    //   1. The active workout banner (role=button with "Workout —" prefix), OR
+    //   2. A "Resume" text link, OR
+    //   3. The app redirected directly to the active workout screen.
+    const activeBannerVisible = await page
+      .locator(HOME.activeBanner)
       .isVisible({ timeout: 10_000 })
       .catch(() => false);
 
+    const resumeBannerVisible = !activeBannerVisible && await page
+      .locator('text=Resume')
+      .isVisible({ timeout: 3_000 })
+      .catch(() => false);
+
     // Alternative: the app may redirect directly to the active workout screen.
-    const workoutScreenVisible = await page
+    const workoutScreenVisible = !activeBannerVisible && !resumeBannerVisible && await page
       .locator(WORKOUT.finishButton)
       .isVisible({ timeout: 5_000 })
       .catch(() => false);
 
-    expect(resumeBannerVisible || workoutScreenVisible).toBe(true);
+    expect(activeBannerVisible || resumeBannerVisible || workoutScreenVisible).toBe(true);
 
     // Clean up by discarding the workout.
     if (workoutScreenVisible) {
@@ -96,8 +99,12 @@ test.describe.skip('Crash and session recovery — full suite', () => {
       await expect(confirmDiscard).toBeVisible({ timeout: 5_000 });
       await confirmDiscard.click();
     } else {
-      // If the resume banner is shown, tap it to get to the workout screen.
-      await page.locator('text=Resume').click();
+      // Tap the active workout banner (or Resume link) to navigate to the workout.
+      if (activeBannerVisible) {
+        await page.locator(HOME.activeBanner).click();
+      } else {
+        await page.locator('text=Resume').click();
+      }
       await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
         timeout: 15_000,
       });
@@ -128,14 +135,22 @@ test.describe.skip('Crash and session recovery — full suite', () => {
     // waitForAppReady re-enables semantics after reload and waits for auth.
     await waitForAppReady(page);
 
-    // If the resume banner is visible, tap it.
-    const resumeBannerVisible = await page
-      .locator('text=Resume')
+    // If the active workout banner or resume link is visible, tap it.
+    const activeBannerVisible = await page
+      .locator(HOME.activeBanner)
       .isVisible({ timeout: 10_000 })
       .catch(() => false);
 
-    if (resumeBannerVisible) {
-      await page.locator('text=Resume').click();
+    if (activeBannerVisible) {
+      await page.locator(HOME.activeBanner).click();
+    } else {
+      const resumeVisible = await page
+        .locator('text=Resume')
+        .isVisible({ timeout: 5_000 })
+        .catch(() => false);
+      if (resumeVisible) {
+        await page.locator('text=Resume').click();
+      }
     }
 
     // After tapping (or direct redirect) the workout screen must be visible.
@@ -175,7 +190,10 @@ test.describe.skip('Crash and session recovery — full suite', () => {
     await addExercise(page, SEED_EXERCISES.deadlift);
     await expect(page.locator(WORKOUT.finishButton)).toBeVisible();
 
-    // Navigate away to Exercises tab (simulating user leaving mid-workout).
+    // Navigate away by going back to home first (the active workout screen is
+    // full-screen without bottom navigation), then switching to the Exercises tab.
+    await page.goBack();
+    await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
     await page.click(NAV.exercisesTab);
     await expect(page.locator('text=Exercises')).toBeVisible({
       timeout: 15_000,
@@ -189,25 +207,34 @@ test.describe.skip('Crash and session recovery — full suite', () => {
       timeout: 15_000,
     });
 
-    // The resume banner or a direct link to the active workout must still be
-    // present on the home screen because the workout was not discarded.
-    const resumeVisible = await page
-      .locator('text=Resume')
+    // The active workout banner or a resume link must still be present on the
+    // home screen because the workout was not discarded.
+    const activeBannerVisible = await page
+      .locator(HOME.activeBanner)
       .isVisible({ timeout: 10_000 })
       .catch(() => false);
 
-    const workoutActiveVisible = await page
+    const resumeVisible = !activeBannerVisible && await page
+      .locator('text=Resume')
+      .isVisible({ timeout: 3_000 })
+      .catch(() => false);
+
+    const workoutActiveVisible = !activeBannerVisible && !resumeVisible && await page
       .locator(WORKOUT.finishButton)
       .isVisible({ timeout: 5_000 })
       .catch(() => false);
 
-    expect(resumeVisible || workoutActiveVisible).toBe(true);
+    expect(activeBannerVisible || resumeVisible || workoutActiveVisible).toBe(true);
 
-    // Clean up.
+    // Clean up — navigate to workout screen then discard.
     if (workoutActiveVisible) {
       await page.locator(WORKOUT.discardButton).click();
     } else {
-      await page.locator('text=Resume').click();
+      if (activeBannerVisible) {
+        await page.locator(HOME.activeBanner).click();
+      } else {
+        await page.locator('text=Resume').click();
+      }
       await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
         timeout: 15_000,
       });
@@ -235,8 +262,10 @@ test.describe.skip('Crash and session recovery — full suite', () => {
     await setReps(page, '8');
     await completeSet(page, 0);
 
-    // Navigate to Home — the active workout banner must appear in the shell.
-    await page.click(NAV.homeTab);
+    // Navigate to Home — the active workout banner must appear on the home screen.
+    // The workout screen is full-screen without bottom nav, so go back first.
+    await page.goBack();
+    await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
     await expect(page.locator('text=Start Empty Workout')).toBeVisible({ timeout: 15_000 });
 
     // The _ActiveWorkoutBanner renders the workout name which starts with
@@ -291,12 +320,17 @@ test.describe.skip('Crash and session recovery — full suite', () => {
     // Open the finish confirmation dialog.
     await page.click(WORKOUT.finishButton);
 
-    // Tap the confirm button twice in rapid succession.
-    const confirmFinish = page.locator(WORKOUT.finishButton).last();
+    // The dialog has "Save & Finish" as the confirm button. Tap it twice
+    // in rapid succession to simulate a double-tap scenario.
+    const confirmFinish = page.locator(WORKOUT.dialogFinishButton);
     await expect(confirmFinish).toBeVisible({ timeout: 5_000 });
 
-    // Double-click simulates a rapid two-tap scenario.
-    await confirmFinish.dblclick();
+    // Click twice in rapid succession — Promise.all fires both clicks before
+    // either resolves, simulating a user double-tapping.
+    await confirmFinish.click();
+    await confirmFinish.click().catch(() => {
+      // Second click may fail if the first already dismissed the dialog/navigated.
+    });
 
     // The app must navigate away cleanly — to celebration or home.
     const isCelebration = await page

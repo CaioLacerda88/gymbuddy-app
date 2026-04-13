@@ -214,11 +214,12 @@ export const HOME = {
   /**
    * Active workout banner in the shell bottom bar — shown when an active
    * workout is in progress on any tab. _ActiveWorkoutBanner (app_router.dart)
-   * renders the auto-generated workout name which always starts with
-   * "Workout \u2014" (em-dash). Matching on this prefix is reliable because
-   * no other text on the home screen contains an em-dash.
+   * wraps the banner in Semantics(button: true, label: 'Active workout: <name>').
+   * The prefix "Active workout:" is stable regardless of whether the workout
+   * was started from a routine (name = routine name) or manually (name =
+   * "Workout \u2014 <date>").
    */
-  activeBanner: 'role=button[name*="Workout \u2014"]',
+  activeBanner: 'role=button[name*="Active workout:"]',
 } as const;
 
 // ---------------------------------------------------------------------------

@@ -25,7 +25,7 @@
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth';
 import { navigateToTab, waitForAppReady } from '../helpers/app';
-import { NAV, ROUTINE, WORKOUT } from '../helpers/selectors';
+import { NAV, ROUTINE, WORKOUT, HOME } from '../helpers/selectors';
 import { TEST_USERS } from '../fixtures/test-users';
 
 const USER = TEST_USERS.smokeRoutineStart;
@@ -54,10 +54,7 @@ test.describe('Routine start smoke', () => {
   // This test is deliberately in the SMOKE suite because the bug is P0 — it
   // must be caught on every CI run, not just the full suite.
   // ---------------------------------------------------------------------------
-  // Skip: Hive (IndexedDB) persistence across page.reload() is unreliable on
-  // CI (GitHub Actions VMs). IndexedDB writes may not flush before the reload.
-  // BUG-001 regression is also guarded by unit tests.
-  test.skip('BUG-001: exercise name is preserved (not "Exercise" fallback) after page reload', async ({
+  test('BUG-001: exercise name is preserved (not "Exercise" fallback) after page reload', async ({
     page,
   }) => {
     // Start a workout from the Push Day routine.
@@ -95,19 +92,28 @@ test.describe('Routine start smoke', () => {
       .catch(() => false);
 
     if (!finishVisible) {
-      // The resume banner or a "Resume" link should be on the home screen.
-      const resumeVisible = await page
-        .locator('text=Resume')
+      // The active workout banner (bottom bar) or "Resume" link should be on
+      // the home screen. The banner shows the workout name with em-dash prefix.
+      const activeBannerVisible = await page
+        .locator(HOME.activeBanner)
         .isVisible({ timeout: 10_000 })
         .catch(() => false);
 
-      if (resumeVisible) {
-        await page.locator('text=Resume').click();
+      if (activeBannerVisible) {
+        await page.locator(HOME.activeBanner).click();
       } else {
-        // Try tapping the active workout banner (em-dash separator in name).
-        const banner = page.locator('role=button[name*="Push Day"]');
-        if (await banner.isVisible({ timeout: 5_000 }).catch(() => false)) {
-          await banner.click();
+        const resumeVisible = await page
+          .locator('text=Resume')
+          .isVisible({ timeout: 5_000 })
+          .catch(() => false);
+        if (resumeVisible) {
+          await page.locator('text=Resume').click();
+        } else {
+          // Try tapping the active workout banner by routine name.
+          const banner = page.locator('role=button[name*="Push Day"]');
+          if (await banner.isVisible({ timeout: 5_000 }).catch(() => false)) {
+            await banner.click();
+          }
         }
       }
 

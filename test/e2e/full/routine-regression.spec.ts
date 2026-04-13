@@ -38,6 +38,7 @@ import {
   EXERCISE_LIST,
   EXERCISE_DETAIL,
   CREATE_EXERCISE,
+  HOME,
 } from '../helpers/selectors';
 import { TEST_USERS } from '../fixtures/test-users';
 import { SEED_EXERCISES } from '../fixtures/test-exercises';
@@ -382,10 +383,7 @@ test.describe('Routine regressions — full suite', () => {
   // Full suite companion to the smoke test. Uses Pull Day so it exercises a
   // different code path than the smoke test (which uses Push Day).
   // ---------------------------------------------------------------------------
-  // Skip: Hive (IndexedDB) persistence across page.reload() is unreliable on
-  // CI (GitHub Actions VMs). IndexedDB writes may not flush before the reload.
-  // BUG-001 regression is also guarded by unit tests.
-  test.skip('BUG-001: exercise names survive page reload when started from a routine', async ({
+  test('BUG-001: exercise names survive page reload when started from a routine', async ({
     page,
   }) => {
     await page.locator(ROUTINE.routineName('Pull Day')).first().click();
@@ -428,16 +426,24 @@ test.describe('Routine regressions — full suite', () => {
       .catch(() => false);
 
     if (!finishVisible) {
-      const resumeVisible = await page
-        .locator('text=Resume')
+      const activeBannerVisible = await page
+        .locator(HOME.activeBanner)
         .isVisible({ timeout: 10_000 })
         .catch(() => false);
-      if (resumeVisible) {
-        await page.locator('text=Resume').click();
+      if (activeBannerVisible) {
+        await page.locator(HOME.activeBanner).click();
       } else {
-        const banner = page.locator('role=button[name*="Pull Day"]');
-        if (await banner.isVisible({ timeout: 5_000 }).catch(() => false)) {
-          await banner.click();
+        const resumeVisible = await page
+          .locator('text=Resume')
+          .isVisible({ timeout: 5_000 })
+          .catch(() => false);
+        if (resumeVisible) {
+          await page.locator('text=Resume').click();
+        } else {
+          const banner = page.locator('role=button[name*="Pull Day"]');
+          if (await banner.isVisible({ timeout: 5_000 }).catch(() => false)) {
+            await banner.click();
+          }
         }
       }
       await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
