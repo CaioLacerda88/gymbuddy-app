@@ -182,7 +182,11 @@ test.describe('Workout logging — full suite', () => {
 
     // The dialog should warn about incomplete sets.
     // The warning text follows the pattern "You have N incomplete set(s)".
-    const dialog = page.locator('[role="dialog"]');
+    // Flutter's showDialog + AlertDialog renders as role="alertdialog" via AOM.
+    // Playwright's role= selector uses exact role matching — role=dialog does NOT
+    // match alertdialog. Use role=alertdialog directly, with a fallback to check
+    // for the dialog content text.
+    const dialog = page.locator('role=alertdialog').or(page.locator('role=dialog'));
     await expect(dialog).toBeVisible({ timeout: 8_000 });
 
     const hasIncompleteWarning =
@@ -224,16 +228,15 @@ test.describe('Workout logging — full suite', () => {
     await finishWorkout(page);
 
     // App must navigate to either the PR celebration screen or home.
-    const isCelebration = await page
+    // Check both simultaneously to avoid sequential timeouts on CI.
+    const celebrationScreen = page
       .locator(PR.firstWorkoutHeading)
-      .isVisible({ timeout: 15_000 })
-      .catch(() => false);
-    const isNewPR = await page
-      .locator(PR.newPRHeading)
-      .isVisible({ timeout: 3_000 })
+      .or(page.locator(PR.newPRHeading));
+    const onCelebration = await celebrationScreen
+      .isVisible({ timeout: 20_000 })
       .catch(() => false);
 
-    if (isCelebration || isNewPR) {
+    if (onCelebration) {
       await page.click(PR.continueButton);
     }
 
@@ -312,17 +315,16 @@ test.describe('Workout logging — full suite', () => {
     await completeSet(page, 0);
     await finishWorkout(page);
 
-    // Dismiss PR celebration if shown.
-    const isCelebration = await page
+    // Dismiss PR celebration if shown — check both simultaneously to avoid
+    // sequential timeouts on CI.
+    const celebrationScreen2 = page
       .locator(PR.firstWorkoutHeading)
-      .isVisible({ timeout: 15_000 })
-      .catch(() => false);
-    const isNewPR = await page
-      .locator(PR.newPRHeading)
-      .isVisible({ timeout: isCelebration ? 0 : 3_000 })
+      .or(page.locator(PR.newPRHeading));
+    const onCelebration2 = await celebrationScreen2
+      .isVisible({ timeout: 20_000 })
       .catch(() => false);
 
-    if (isCelebration || isNewPR) {
+    if (onCelebration2) {
       await page.click(PR.continueButton);
     }
 

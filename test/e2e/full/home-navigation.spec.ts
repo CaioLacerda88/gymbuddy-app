@@ -127,17 +127,16 @@ test.describe('Home screen and navigation — full suite', () => {
     await completeSet(page, 0);
     await finishWorkout(page);
 
-    // Dismiss celebration if shown.
-    const isCelebration = await page
+    // Dismiss celebration if shown — check both screens simultaneously to avoid
+    // sequential timeouts that waste time on CI.
+    const celebrationScreen = page
       .locator(PR.firstWorkoutHeading)
-      .isVisible({ timeout: 15_000 })
-      .catch(() => false);
-    const isNewPR = await page
-      .locator(PR.newPRHeading)
-      .isVisible({ timeout: isCelebration ? 0 : 3_000 })
+      .or(page.locator(PR.newPRHeading));
+    const onCelebration = await celebrationScreen
+      .isVisible({ timeout: 20_000 })
       .catch(() => false);
 
-    if (isCelebration || isNewPR) {
+    if (onCelebration) {
       await page.click(PR.continueButton);
     }
 
@@ -277,16 +276,15 @@ test.describe('Home screen and navigation — full suite', () => {
     await completeSet(page, 0);
     await finishWorkout(page);
 
-    // Dismiss PR celebration if shown.
-    const isCelebration = await page
+    // Dismiss PR celebration if shown — check both simultaneously to avoid
+    // sequential timeouts on CI.
+    const celebrationScreen2 = page
       .locator(PR.firstWorkoutHeading)
-      .isVisible({ timeout: 15_000 })
+      .or(page.locator(PR.newPRHeading));
+    const onCelebration2 = await celebrationScreen2
+      .isVisible({ timeout: 20_000 })
       .catch(() => false);
-    const isNewPR = await page
-      .locator(PR.newPRHeading)
-      .isVisible({ timeout: isCelebration ? 0 : 3_000 })
-      .catch(() => false);
-    if (isCelebration || isNewPR) {
+    if (onCelebration2) {
       await page.click(PR.continueButton);
     }
 

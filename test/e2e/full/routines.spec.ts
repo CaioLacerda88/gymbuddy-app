@@ -75,9 +75,11 @@ test.describe('Routines — full suite', () => {
     });
 
     // Push Day contains "Barbell Bench Press" per seed.sql.
-    await expect(page.locator('text=Barbell Bench Press')).toBeVisible({
-      timeout: 10_000,
-    });
+    // On the active workout screen, exercise names are part of the group's
+    // accessible name (not standalone text nodes). Use the WORKOUT selector.
+    await expect(
+      page.locator(WORKOUT.exerciseDetailTap('Barbell Bench Press')),
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test('discard a routine-started workout returns to home', async ({ page }) => {

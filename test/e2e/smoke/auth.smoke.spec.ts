@@ -91,20 +91,21 @@ test.describe('Auth smoke', () => {
     // The login screen itself must still be visible after the reset (no unhandled crash).
     await expect(page.locator(AUTH.appTitle)).toBeVisible({ timeout: 10_000 });
 
-    // No error alert should have appeared.
-    const hasError = await page
+    // The aria-live region may show either a success message ("password reset
+    // email sent") or a rate-limit error (429). Both are acceptable outcomes.
+    // Only fail if the text contains an unexpected error.
+    const hasLiveRegion = await page
       .locator(AUTH.errorMessage)
       .isVisible({ timeout: 3_000 })
       .catch(() => false);
 
-    // Rate-limit (429) is the only acceptable error response here since we
-    // may call this endpoint multiple times in test runs. Any other error
-    // should fail this test. The aria-live selector may match empty elements
-    // (e.g. SnackBar placeholders), so only assert on non-empty text.
-    if (hasError) {
-      const errorText = (await page.locator(AUTH.errorMessage).textContent()) ?? '';
-      if (errorText.trim().length > 0) {
-        expect(errorText.toLowerCase()).toContain('rate limit');
+    if (hasLiveRegion) {
+      const liveText = ((await page.locator(AUTH.errorMessage).textContent()) ?? '').toLowerCase().trim();
+      if (liveText.length > 0) {
+        const isSuccess = liveText.includes('reset') || liveText.includes('sent') || liveText.includes('inbox');
+        const isRateLimit = liveText.includes('rate limit');
+        // Both success and rate-limit are acceptable. Any other text is unexpected.
+        expect(isSuccess || isRateLimit).toBe(true);
       }
     }
   });

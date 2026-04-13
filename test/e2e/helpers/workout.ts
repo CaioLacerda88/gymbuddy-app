@@ -168,37 +168,119 @@ export async function completeSet(
   setIndex: number = 0,
 ): Promise<void> {
   const checkboxes = page.locator(WORKOUT.markSetDone);
-  await expect(checkboxes.nth(setIndex)).toBeVisible({ timeout: 5_000 });
-  await checkboxes.nth(setIndex).click();
-
-  // Completing a set may trigger a rest timer overlay ("Tap anywhere to dismiss").
-  // Dismiss it immediately so it doesn't block subsequent assertions.
-  const restTimer = page.locator('role=progressbar[name*="Rest timer"]');
-  const hasRestTimer = await restTimer
-    .isVisible({ timeout: 2_000 })
-    .catch(() => false);
-  if (hasRestTimer) {
-    await restTimer.click({ force: true });
-    await restTimer.waitFor({ state: 'hidden', timeout: 3_000 }).catch(() => {});
-  }
-
-  // Flutter CanvasKit may consume the first click to activate the semantics
-  // overlay without forwarding the tap to the Checkbox widget. If the checkbox
-  // didn't toggle after 2 seconds, click again.
   const completed = page.locator(WORKOUT.setCompleted);
-  const didToggle = await completed.nth(setIndex)
-    .isVisible({ timeout: 2_000 })
-    .catch(() => false);
+  const restTimer = page.locator('role=progressbar[name*="Rest timer"]');
 
-  if (!didToggle) {
-    // The checkbox may still be in "Mark set as done" state — retry.
-    const stillUnchecked = page.locator(WORKOUT.markSetDone);
-    if (await stillUnchecked.nth(setIndex).isVisible({ timeout: 1_000 }).catch(() => false)) {
-      await stillUnchecked.nth(setIndex).click();
+  await expect(checkboxes.nth(setIndex)).toBeVisible({ timeout: 5_000 });
+
+  // Helper: dismiss the rest timer overlay if visible. The overlay covers the
+  // entire screen and intercepts all clicks, so we must dismiss it before any
+  // subsequent interaction.
+  //
+  // Flutter CanvasKit renders the rest timer as a GestureDetector with "tap
+  // anywhere to dismiss". Playwright's locator.click() may not reliably trigger
+  // Flutter's gesture detector on the overlay. Use page.mouse.click() on the
+  // viewport center for a raw pointer event that Flutter processes as a tap.
+  async function dismissRestTimer(): Promise<void> {
+    const visible = await restTimer.isVisible({ timeout: 3_000 }).catch(() => false);
+    if (!visible) return;
+
+    // Strategy 1: Click "Skip" button if visible — most reliable dismissal.
+    // Use .first() to avoid strict-mode failures (nested flt-semantics may
+    // duplicate the button in the accessibility tree).
+    const skipButton = page.locator('role=button[name*="Skip"]').first();
+    const hasSkip = await skipButton.isVisible({ timeout: 1_000 }).catch(() => false);
+    if (hasSkip) {
+      await skipButton.click();
+      await restTimer.waitFor({ state: 'hidden', timeout: 5_000 }).catch(() => {});
+    }
+
+    // Strategy 2: If Skip didn't work, tap the center of the viewport.
+    // Flutter's GestureDetector wrapping the rest timer overlay responds to
+    // taps anywhere on screen. A raw mouse click bypasses Playwright's element
+    // targeting and sends the event directly to the browser.
+    const stillVisible = await restTimer.isVisible({ timeout: 500 }).catch(() => false);
+    if (stillVisible) {
+      const viewport = page.viewportSize() ?? { width: 1280, height: 720 };
+      await page.mouse.click(viewport.width / 2, viewport.height / 2);
+      await restTimer.waitFor({ state: 'hidden', timeout: 5_000 }).catch(() => {});
+    }
+
+    // Strategy 3: Last resort — press Escape key.
+    const finalCheck = await restTimer.isVisible({ timeout: 500 }).catch(() => false);
+    if (finalCheck) {
+      await page.keyboard.press('Escape');
+      await restTimer.waitFor({ state: 'hidden', timeout: 3_000 }).catch(() => {});
     }
   }
 
-  await expect(completed.nth(setIndex)).toBeVisible({ timeout: 5_000 });
+  // Helper: check if the set already transitioned to the completed state.
+  // Uses .or() to check both the nth "Set completed" checkbox AND a single
+  // "Set completed" (when there's only one completed set on screen, nth(0)).
+  async function isSetCompleted(): Promise<boolean> {
+    return completed.nth(setIndex)
+      .isVisible({ timeout: 2_000 })
+      .catch(() => false);
+  }
+
+  // Attempt 1: Click the checkbox. The rest timer may appear after the click.
+  await checkboxes.nth(setIndex).click();
+
+  // Wait a moment for the rest timer to potentially appear, then dismiss it.
+  // The rest timer animation starts ~200ms after the checkbox click.
+  await page.waitForTimeout(500);
+  await dismissRestTimer();
+
+  // Check if the set is now completed.
+  let didToggle = await isSetCompleted();
+
+  // Attempt 2: Flutter CanvasKit may consume the first click to activate the
+  // semantics overlay without forwarding the tap. Wait briefly for the overlay
+  // to settle, then retry with a proper click sequence.
+  if (!didToggle) {
+    // Always dismiss the rest timer first — it may have appeared since last check.
+    await dismissRestTimer();
+
+    const stillUnchecked = await checkboxes.nth(setIndex)
+      .isVisible({ timeout: 1_000 })
+      .catch(() => false);
+    if (stillUnchecked) {
+      // Small delay to let the semantics overlay fully activate after the first click.
+      await page.waitForTimeout(500);
+      await checkboxes.nth(setIndex).click({ timeout: 5_000 }).catch(() => {});
+      await page.waitForTimeout(500);
+      await dismissRestTimer();
+      didToggle = await isSetCompleted();
+    } else {
+      // Checkbox is gone (toggled) but "Set completed" wasn't visible — maybe
+      // the rest timer overlay was covering it. Dismiss again and re-check.
+      await dismissRestTimer();
+      didToggle = await isSetCompleted();
+    }
+  }
+
+  // Attempt 3: Use page.mouse for a raw pointer event that bypasses Playwright's
+  // element targeting. This is more reliable for Flutter CanvasKit's semantics overlay.
+  if (!didToggle) {
+    await dismissRestTimer();
+    const stillUnchecked = await checkboxes.nth(setIndex)
+      .isVisible({ timeout: 1_000 })
+      .catch(() => false);
+    if (stillUnchecked) {
+      const box = await checkboxes.nth(setIndex).boundingBox();
+      if (box) {
+        await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+        await page.waitForTimeout(500);
+        await dismissRestTimer();
+      }
+    } else {
+      // Checkbox toggled but completion state wasn't detected — rest timer
+      // might still be obscuring the view.
+      await dismissRestTimer();
+    }
+  }
+
+  await expect(completed.nth(setIndex)).toBeVisible({ timeout: 10_000 });
 }
 
 /**
@@ -209,10 +291,20 @@ export async function completeSet(
  * from the active workout screen (to the PR celebration or Home).
  */
 export async function finishWorkout(page: Page): Promise<void> {
+  // Dismiss any lingering rest timer overlay that could intercept the click.
+  const restTimer = page.locator('role=progressbar[name*="Rest timer"]');
+  const hasRestTimer = await restTimer
+    .isVisible({ timeout: 1_000 })
+    .catch(() => false);
+  if (hasRestTimer) {
+    await restTimer.click({ force: true });
+    await restTimer.waitFor({ state: 'hidden', timeout: 5_000 }).catch(() => {});
+  }
+
   await page.click(WORKOUT.finishButton);
 
   // Confirmation dialog appears — click the "Save & Finish" action button.
   const dialogFinish = page.locator(WORKOUT.dialogFinishButton);
-  await expect(dialogFinish).toBeVisible({ timeout: 5_000 });
+  await expect(dialogFinish).toBeVisible({ timeout: 8_000 });
   await dialogFinish.click();
 }

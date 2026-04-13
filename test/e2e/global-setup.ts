@@ -413,6 +413,56 @@ async function globalSetup(): Promise<void> {
     );
   }
 
+  // ── Clean workout data for users that depend on fresh state ───────────
+  // Some test suites (personal-records, manage-data, crash-recovery, etc.)
+  // depend on the user starting with no prior workouts. If the user already
+  // exists from a prior run, accumulated workout data causes test failures.
+  // Delete workouts, workout_exercises, sets, and personal_records for these
+  // users so each test run starts clean.
+  const freshStateUsers = [
+    'e2e-full-pr@test.local',
+    'e2e-full-manage-data@test.local',
+    'e2e-full-crash@test.local',
+    'e2e-full-home@test.local',
+    'e2e-full-workout@test.local',
+    'e2e-smoke-workout@test.local',
+    'e2e-smoke-pr@test.local',
+  ];
+
+  for (const email of freshStateUsers) {
+    const userId = await getUserId(supabase, email);
+    if (!userId) continue;
+
+    // Delete in dependency order: sets → workout_exercises → personal_records → workouts
+    const { data: workouts } = await supabase
+      .from('workouts')
+      .select('id')
+      .eq('user_id', userId);
+
+    if (workouts && workouts.length > 0) {
+      const workoutIds = workouts.map((w: { id: string }) => w.id);
+
+      // Delete sets via workout_exercises
+      const { data: wxs } = await supabase
+        .from('workout_exercises')
+        .select('id')
+        .in('workout_id', workoutIds);
+
+      if (wxs && wxs.length > 0) {
+        const wxIds = wxs.map((wx: { id: string }) => wx.id);
+        await supabase.from('sets').delete().in('workout_exercise_id', wxIds);
+      }
+
+      await supabase.from('workout_exercises').delete().in('workout_id', workoutIds);
+      await supabase.from('workouts').delete().in('id', workoutIds);
+    }
+
+    // Delete personal records
+    await supabase.from('personal_records').delete().eq('user_id', userId);
+
+    console.log(`[global-setup] Cleaned workout data for ${email}`);
+  }
+
   // ── Ensure profile rows exist for tests that need them ────────────────
   // Some tests (e.g., profile-weekly-goal) require an existing profile row
   // in the `profiles` table. Users created via auth.admin.createUser do NOT

@@ -70,16 +70,17 @@ async function doWorkoutAndReturnHome(page: Page): Promise<void> {
   await completeSet(page, 0);
   await finishWorkout(page);
 
-  const isCelebration = await page
+  // Check for either celebration screen simultaneously to avoid sequential
+  // timeouts that waste time on CI.
+  const celebrationScreen = page
     .locator(PR.firstWorkoutHeading)
-    .isVisible({ timeout: 15_000 })
-    .catch(() => false);
-  const isNewPR = await page
-    .locator(PR.newPRHeading)
-    .isVisible({ timeout: isCelebration ? 0 : 3_000 })
+    .or(page.locator(PR.newPRHeading));
+
+  const onCelebration = await celebrationScreen
+    .isVisible({ timeout: 20_000 })
     .catch(() => false);
 
-  if (isCelebration || isNewPR) {
+  if (onCelebration) {
     await page.click(PR.continueButton);
   }
 
