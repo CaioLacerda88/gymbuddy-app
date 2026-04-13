@@ -43,7 +43,7 @@ test.describe('Exercise library — full suite', () => {
   test('exercise list loads with seeded exercises', async ({ page }) => {
     // The heading and filter controls must be present.
     await expect(page.locator(EXERCISE_LIST.heading)).toBeVisible();
-    await expect(page.locator(EXERCISE_LIST.searchInput)).toBeVisible();
+    await expect(page.locator(EXERCISE_LIST.searchInput).last()).toBeVisible();
     await expect(page.locator(EXERCISE_LIST.allMuscleGroupFilter)).toBeVisible();
     await expect(page.locator(EXERCISE_LIST.createFab)).toBeVisible();
 
@@ -136,7 +136,7 @@ test.describe('Exercise library — full suite', () => {
     const chestCount = await chestCards.count();
 
     // Then add a text search on top.
-    await page.fill(EXERCISE_LIST.searchInput, 'incline');
+    await flutterFill(page, EXERCISE_LIST.searchInput, 'incline');
     await page.waitForTimeout(600);
 
     const combinedCount = await chestCards.count();
@@ -245,7 +245,7 @@ test.describe('Exercise library — full suite', () => {
 
     // Search for the new exercise — the virtualized list may not have it in
     // the viewport after returning from the create screen.
-    await page.fill(EXERCISE_LIST.searchInput, customName);
+    await flutterFill(page, EXERCISE_LIST.searchInput, customName);
     await page.waitForTimeout(600);
 
     // The new exercise must appear in the filtered list.
@@ -254,10 +254,7 @@ test.describe('Exercise library — full suite', () => {
     ).toBeVisible({ timeout: 10_000 });
   });
 
-  // Skip: App bug — context.pop() after async delete doesn't navigate back
-  // to the list reliably. The delete succeeds but the detail screen stays
-  // visible. This is an app-level navigation bug, not a test issue.
-  test.skip('delete a custom exercise and verify it is removed from the list', async ({
+  test('delete a custom exercise and verify it is removed from the list', async ({
     page,
   }) => {
     const customName = `E2E Delete Target ${Date.now()}`;
@@ -276,7 +273,7 @@ test.describe('Exercise library — full suite', () => {
     await expect(page.locator(EXERCISE_LIST.heading)).toBeVisible({
       timeout: 15_000,
     });
-    await page.fill(EXERCISE_LIST.searchInput, customName);
+    await flutterFill(page, EXERCISE_LIST.searchInput, customName);
     await page.waitForTimeout(600);
     const card = page.locator(EXERCISE_LIST.exerciseCard(customName));
     await expect(card).toBeVisible({ timeout: 10_000 });
@@ -300,7 +297,7 @@ test.describe('Exercise library — full suite', () => {
     await expect(page.locator(EXERCISE_DETAIL.appBarTitle)).not.toBeVisible({
       timeout: 15_000,
     });
-    await expect(page.locator(EXERCISE_LIST.searchInput)).toBeVisible({
+    await expect(page.locator(EXERCISE_LIST.searchInput).last()).toBeVisible({
       timeout: 10_000,
     });
 
@@ -338,10 +335,7 @@ test.describe('Exercise library — full suite', () => {
   // Extends the delete test: after deletion, searching for the deleted name
   // must return zero results.
   // ---------------------------------------------------------------------------
-  // Skip: App bug — context.pop() after async delete doesn't navigate back
-  // to the list reliably. Same root cause as the delete test above. The delete
-  // succeeds but the detail screen stays visible on CI.
-  test.skip('EX-003: deleted exercise does not appear in search results', async ({
+  test('EX-003: deleted exercise does not appear in search results', async ({
     page,
   }) => {
     const customName = `E2E SoftDel ${Date.now()}`;
@@ -360,7 +354,7 @@ test.describe('Exercise library — full suite', () => {
     });
 
     // Search for the exercise — virtualized list may not have it in viewport.
-    await page.fill(EXERCISE_LIST.searchInput, customName);
+    await flutterFill(page, EXERCISE_LIST.searchInput, customName);
     await page.waitForTimeout(600);
 
     // Verify it exists in the list before deletion.
@@ -384,12 +378,12 @@ test.describe('Exercise library — full suite', () => {
     await expect(page.locator(EXERCISE_DETAIL.appBarTitle)).not.toBeVisible({
       timeout: 15_000,
     });
-    await expect(page.locator(EXERCISE_LIST.searchInput)).toBeVisible({
+    await expect(page.locator(EXERCISE_LIST.searchInput).last()).toBeVisible({
       timeout: 10_000,
     });
 
     // Now search for the deleted exercise name — must return zero results.
-    await page.fill(EXERCISE_LIST.searchInput, customName);
+    await flutterFill(page, EXERCISE_LIST.searchInput, customName);
     // Allow the 300 ms debounce to fire plus a safety buffer.
     await page.waitForTimeout(700);
 
@@ -430,7 +424,7 @@ test.describe('Exercise library — full suite', () => {
       .catch(() => false);
 
     if (!emptyStateVisible) {
-      await page.fill(EXERCISE_LIST.searchInput, 'ZZZnoResultsXXX');
+      await flutterFill(page, EXERCISE_LIST.searchInput, 'ZZZnoResultsXXX');
       await page.waitForTimeout(700);
     }
 
@@ -479,14 +473,14 @@ test.describe('Exercise library — full suite', () => {
     });
 
     // Search for the new exercise — virtualized list may not have it in viewport.
-    await page.fill(EXERCISE_LIST.searchInput, uniqueName);
+    await flutterFill(page, EXERCISE_LIST.searchInput, uniqueName);
     await page.waitForTimeout(600);
     await expect(
       page.locator(EXERCISE_LIST.exerciseCard(uniqueName)),
     ).toBeVisible({ timeout: 10_000 });
 
     // Clear search before second creation attempt.
-    await page.fill(EXERCISE_LIST.searchInput, '');
+    await flutterFill(page, EXERCISE_LIST.searchInput, '');
     await page.waitForTimeout(600);
 
     // Second creation with the same name — must show a validation error.

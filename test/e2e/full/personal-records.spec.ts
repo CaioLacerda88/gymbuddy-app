@@ -5,9 +5,7 @@
  *  1. First completed workout shows "First Workout Complete!" celebration
  *  2. Second workout with HIGHER weight triggers "NEW PR" for max weight
  *  3. Second workout with MORE reps (same weight) triggers "NEW PR"
- *  4. Home screen shows "RECENT RECORDS" section after a PR is set
- *  5. RECENT RECORDS section shows the exercise name
- *  6. Multiple exercises in one workout each generate their own PR entries
+ *  4. Multiple exercises in one workout each generate their own PR entries
  *
  * Notes:
  *  - The first workout is always a baseline — it shows "First Workout Complete!",
@@ -182,67 +180,6 @@ test.describe('Personal records — full suite', () => {
     }
 
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
-  });
-
-  // Skip: The "RECENT RECORDS" section was designed (Step 8 spec) but never
-  // implemented in HomeScreen. The widget test explicitly asserts
-  // `find.text('RECENT RECORDS'), findsNothing`. This E2E test will always
-  // fail until the feature is built.
-  test.skip('home screen shows RECENT RECORDS section after a PR is set', async ({
-    page,
-  }) => {
-    // Use Deadlift to isolate state.
-    await doWorkout(page, SEED_EXERCISES.deadlift, '100', '3');
-    await dismissCelebration(page);
-
-    await doWorkout(page, SEED_EXERCISES.deadlift, '120', '3');
-
-    const isNewPR = await page
-      .locator(PR.newPRHeading)
-      .isVisible({ timeout: 20_000 })
-      .catch(() => false);
-    if (isNewPR) {
-      await page.click(PR.continueButton);
-    }
-
-    await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
-
-    // The home screen must show the RECENT RECORDS section.
-    await expect(page.locator(PR.recentRecordsSection)).toBeVisible({
-      timeout: 10_000,
-    });
-  });
-
-  // Skip: Same as above — "RECENT RECORDS" section is not implemented in
-  // HomeScreen. This test depends on that section being visible to check for
-  // the exercise name within it.
-  test.skip('RECENT RECORDS section shows the exercise name after a PR', async ({
-    page,
-  }) => {
-    // Workout A — Barbell Curl baseline.
-    await doWorkout(page, 'Barbell Curl', '30', '8');
-    await dismissCelebration(page);
-
-    // Workout B — heavier Barbell Curl → PR.
-    await doWorkout(page, 'Barbell Curl', '40', '8');
-
-    const isNewPR = await page
-      .locator(PR.newPRHeading)
-      .isVisible({ timeout: 20_000 })
-      .catch(() => false);
-    if (isNewPR) {
-      await page.click(PR.continueButton);
-    }
-
-    await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator(PR.recentRecordsSection)).toBeVisible({
-      timeout: 10_000,
-    });
-
-    // The exercise name must appear in the records list on the home screen.
-    await expect(page.locator('text=Barbell Curl')).toBeVisible({
-      timeout: 10_000,
-    });
   });
 
   test('two exercises in one workout each get their own PR detection', async ({

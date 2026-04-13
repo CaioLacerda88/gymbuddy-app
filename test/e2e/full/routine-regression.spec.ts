@@ -139,11 +139,7 @@ test.describe('Routine regressions — full suite', () => {
   // Note: steps 1-2 require navigating to Exercises to create/delete the exercise
   // and back to Routines to test the routine start.
   // ---------------------------------------------------------------------------
-  // Skip: App bug — context.pop() after async delete doesn't navigate back
-  // to the list reliably. The delete succeeds on some runs but the detail screen
-  // stays visible on others. This is the same app-level navigation bug as RC-G
-  // (exercise-library delete tests). BUG-003 logic is verified by unit tests.
-  test.skip('BUG-003: starting a routine whose only exercise was deleted shows error snackbar', async ({
+  test('BUG-003: starting a routine whose only exercise was deleted shows error snackbar', async ({
     page,
   }) => {
     const uniqueSuffix = Date.now();
@@ -240,8 +236,10 @@ test.describe('Routine regressions — full suite', () => {
     // Step 5-6: The snackbar with the error message must appear.
     // The start action filters out the soft-deleted exercise → exercises is empty
     // → shows SnackBar("Could not load exercises. Please try again.").
+    // Use .first() because Flutter renders both <flt-announcement-polite> (a11y)
+    // and a <span> (visual) for SnackBar text — strict mode requires one element.
     await expect(
-      page.locator('text=Could not load exercises'),
+      page.locator('text=Could not load exercises').first(),
     ).toBeVisible({ timeout: 10_000 });
 
     // Step 7: The app must NOT have navigated to the active workout screen.

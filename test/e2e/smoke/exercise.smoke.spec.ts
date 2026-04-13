@@ -45,7 +45,7 @@ test.describe('Exercise smoke', () => {
     // The page heading and search input must be present.
     // Use first() because "Exercises" text also appears in the bottom nav tab.
     await expect(page.locator(EXERCISE_LIST.heading).first()).toBeVisible();
-    await expect(page.locator(EXERCISE_LIST.searchInput)).toBeVisible();
+    await expect(page.locator(EXERCISE_LIST.searchInput).last()).toBeVisible();
 
     // The muscle group "All" filter chip is always rendered.
     await expect(

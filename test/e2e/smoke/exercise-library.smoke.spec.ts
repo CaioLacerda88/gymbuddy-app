@@ -9,7 +9,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { navigateToTab } from '../helpers/app';
+import { flutterFill, navigateToTab } from '../helpers/app';
 import { login } from '../helpers/auth';
 import { EXERCISE_LIST, EXERCISE_DETAIL } from '../helpers/selectors';
 import { TEST_USERS } from '../fixtures/test-users';
@@ -26,7 +26,7 @@ test.describe('Exercise library smoke', () => {
     page,
   }) => {
     await expect(page.locator(EXERCISE_LIST.heading).first()).toBeVisible();
-    await expect(page.locator(EXERCISE_LIST.searchInput)).toBeVisible();
+    await expect(page.locator(EXERCISE_LIST.searchInput).last()).toBeVisible();
 
     // The "All" muscle group filter is always present.
     await expect(
@@ -84,7 +84,7 @@ test.describe('Exercise library smoke', () => {
     await expect(cards.first()).toBeVisible({ timeout: 10_000 });
 
     // Type a partial name. "bench" matches multiple seed exercises.
-    await page.fill(EXERCISE_LIST.searchInput, 'bench');
+    await flutterFill(page, EXERCISE_LIST.searchInput, 'bench');
 
     // Wait for the 300 ms debounce in _onSearchChanged.
     await page.waitForTimeout(500);

@@ -227,10 +227,15 @@ export async function flutterFill(
   // Select all existing content (if any) so typing replaces it.
   await page.keyboard.press('Control+a');
 
-  // Type the value using real key events — the browser routes these to the
-  // focused native <input>, which fires real input events that Flutter
-  // processes correctly (unlike fill() which uses synthetic events).
-  await page.keyboard.type(value, { delay: 10 });
+  if (value === '') {
+    // Clear the field by deleting the selection.
+    await page.keyboard.press('Backspace');
+  } else {
+    // Type the value using real key events — the browser routes these to the
+    // focused native <input>, which fires real input events that Flutter
+    // processes correctly (unlike fill() which uses synthetic events).
+    await page.keyboard.type(value, { delay: 10 });
+  }
 }
 
 /**

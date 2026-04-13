@@ -77,7 +77,7 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
         workout: workout,
         exercises: const [],
       );
-      _saveToHive(activeState);
+      await _saveToHive(activeState);
       _trackWorkoutEvent(
         event: const AnalyticsEvent.workoutStarted(
           source: 'empty',
@@ -157,7 +157,7 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
         exercises: exercises,
         routineId: config.routineId,
       );
-      _saveToHive(activeState);
+      await _saveToHive(activeState);
       // TODO post-PR: differentiate planned_bucket when config exposes the flag
       _trackWorkoutEvent(
         event: AnalyticsEvent.workoutStarted(
@@ -176,13 +176,13 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
   }
 
   /// Rename the active workout in-memory and persist to Hive.
-  void renameWorkout(String name) {
+  Future<void> renameWorkout(String name) async {
     final current = state.value;
     if (current == null) return;
     state = AsyncData(
       current.copyWith(workout: current.workout.copyWith(name: name)),
     );
-    _saveToHive(state.value!);
+    await _saveToHive(state.value!);
   }
 
   String _generateWorkoutName() {
@@ -214,7 +214,7 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
   }
 
   /// Add an exercise to the active workout.
-  void addExercise(Exercise exercise) {
+  Future<void> addExercise(Exercise exercise) async {
     final current = state.value;
     if (current == null) return;
 
@@ -233,11 +233,11 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
       ],
     );
     state = AsyncData(newState);
-    _saveToHive(newState);
+    await _saveToHive(newState);
   }
 
   /// Remove an exercise and reorder remaining exercises.
-  void removeExercise(String workoutExerciseId) {
+  Future<void> removeExercise(String workoutExerciseId) async {
     final current = state.value;
     if (current == null) return;
 
@@ -256,18 +256,18 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
 
     final newState = current.copyWith(exercises: reordered);
     state = AsyncData(newState);
-    _saveToHive(newState);
+    await _saveToHive(newState);
   }
 
   /// Add a new empty set to an exercise.
   ///
   /// Optional [defaultWeight] and [defaultReps] pre-fill the new set
   /// (e.g. from the previous workout session).
-  void addSet(
+  Future<void> addSet(
     String workoutExerciseId, {
     double? defaultWeight,
     int? defaultReps,
-  }) {
+  }) async {
     final current = state.value;
     if (current == null) return;
 
@@ -290,11 +290,11 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
       }).toList(),
     );
     state = AsyncData(newState);
-    _saveToHive(newState);
+    await _saveToHive(newState);
   }
 
   /// Update fields on a specific set.
-  void updateSet(
+  Future<void> updateSet(
     String workoutExerciseId,
     String setId, {
     double? weight,
@@ -302,7 +302,7 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
     int? rpe,
     SetType? setType,
     String? notes,
-  }) {
+  }) async {
     final current = state.value;
     if (current == null) return;
 
@@ -325,11 +325,11 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
       }).toList(),
     );
     state = AsyncData(newState);
-    _saveToHive(newState);
+    await _saveToHive(newState);
   }
 
   /// Toggle the completion status of a set.
-  void completeSet(String workoutExerciseId, String setId) {
+  Future<void> completeSet(String workoutExerciseId, String setId) async {
     final current = state.value;
     if (current == null) return;
 
@@ -346,11 +346,11 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
       }).toList(),
     );
     state = AsyncData(newState);
-    _saveToHive(newState);
+    await _saveToHive(newState);
   }
 
   /// Delete a set and renumber the remaining sets.
-  void deleteSet(String workoutExerciseId, String setId) {
+  Future<void> deleteSet(String workoutExerciseId, String setId) async {
     final current = state.value;
     if (current == null) return;
 
@@ -367,14 +367,17 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
       }).toList(),
     );
     state = AsyncData(newState);
-    _saveToHive(newState);
+    await _saveToHive(newState);
   }
 
   /// Restore a previously deleted set at its original position.
   ///
   /// Inserts the [deletedSet] back into the exercise's set list and
   /// renumbers all sets sequentially. Used for undo-delete functionality.
-  void restoreSet(String workoutExerciseId, ExerciseSet deletedSet) {
+  Future<void> restoreSet(
+    String workoutExerciseId,
+    ExerciseSet deletedSet,
+  ) async {
     final current = state.value;
     if (current == null) return;
 
@@ -396,11 +399,11 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
       }).toList(),
     );
     state = AsyncData(newState);
-    _saveToHive(newState);
+    await _saveToHive(newState);
   }
 
   /// Copy weight and reps from the previous set into the given set.
-  void copyLastSet(String workoutExerciseId, String setId) {
+  Future<void> copyLastSet(String workoutExerciseId, String setId) async {
     final current = state.value;
     if (current == null) return;
 
@@ -427,11 +430,11 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
       }).toList(),
     );
     state = AsyncData(newState);
-    _saveToHive(newState);
+    await _saveToHive(newState);
   }
 
   /// Fill all incomplete sets after the last completed set with its values.
-  void fillRemainingSets(String workoutExerciseId) {
+  Future<void> fillRemainingSets(String workoutExerciseId) async {
     final current = state.value;
     if (current == null) return;
 
@@ -466,13 +469,13 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
       }).toList(),
     );
     state = AsyncData(newState);
-    _saveToHive(newState);
+    await _saveToHive(newState);
   }
 
   /// Reorder an exercise by swapping it with its neighbour.
   ///
   /// [direction] must be -1 (move up) or +1 (move down).
-  void reorderExercise(String workoutExerciseId, int direction) {
+  Future<void> reorderExercise(String workoutExerciseId, int direction) async {
     assert(direction == -1 || direction == 1, 'direction must be -1 or 1');
     final current = state.value;
     if (current == null) return;
@@ -498,11 +501,14 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
 
     final newState = current.copyWith(exercises: exercises);
     state = AsyncData(newState);
-    _saveToHive(newState);
+    await _saveToHive(newState);
   }
 
   /// Replace the exercise on a [WorkoutExercise] while keeping all sets.
-  void swapExercise(String workoutExerciseId, Exercise newExercise) {
+  Future<void> swapExercise(
+    String workoutExerciseId,
+    Exercise newExercise,
+  ) async {
     final current = state.value;
     if (current == null) return;
 
@@ -519,7 +525,7 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
       }).toList(),
     );
     state = AsyncData(newState);
-    _saveToHive(newState);
+    await _saveToHive(newState);
   }
 
   /// Discard the active workout (deletes from server and clears local state).
@@ -701,17 +707,20 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
     return prResult;
   }
 
-  /// Persist the current state to Hive (fire-and-forget).
-  void _saveToHive(ActiveWorkoutState activeState) {
-    unawaited(
-      _localStorage.saveActiveWorkout(activeState).catchError((Object e) {
-        log(
-          'Failed to persist workout to Hive: $e',
-          name: 'ActiveWorkoutNotifier',
-          level: 900,
-        );
-      }),
-    );
+  /// Persist the current state to Hive.
+  ///
+  /// Awaited so IndexedDB (web) flushes before the next state update,
+  /// preventing data loss on page reload.
+  Future<void> _saveToHive(ActiveWorkoutState activeState) async {
+    try {
+      await _localStorage.saveActiveWorkout(activeState);
+    } catch (e) {
+      log(
+        'Failed to persist workout to Hive: $e',
+        name: 'ActiveWorkoutNotifier',
+        level: 900,
+      );
+    }
   }
 
   /// Fire-and-forget insert of a product analytics event plus a matching
