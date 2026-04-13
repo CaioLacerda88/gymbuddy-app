@@ -281,7 +281,7 @@ test.describe('Manage Data — full suite', () => {
     await page.click(MANAGE_DATA.yesDeleteButton);
 
     // The success SnackBar must appear.
-    await expect(page.locator(MANAGE_DATA.historyCleared)).toBeVisible({
+    await expect(page.locator(MANAGE_DATA.historyCleared).first()).toBeVisible({
       timeout: 10_000,
     });
 
@@ -328,7 +328,7 @@ test.describe('Manage Data — full suite', () => {
     // Wait for either success SnackBar or for the dialog to close.
     // Then immediately check for forbidden identifiers — the bug manifested
     // as a SnackBar appearing with the table name in the message.
-    await page.waitForTimeout(2_000);
+    await expect(page.locator(MANAGE_DATA.historyCleared).first()).toBeVisible({ timeout: 10_000 });
 
     await assertNoTableNamesVisible(page);
 
@@ -374,7 +374,7 @@ test.describe('Manage Data — full suite', () => {
 
     // Type the wrong word — button must remain disabled.
     await flutterFill(page, 'role=textbox', 'wrong');
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(500); // debounce — no condition to wait for
     await page.click(MANAGE_DATA.resetButton, { force: true });
     await expect(page.locator('text=Reset Account Data')).toBeVisible({
       timeout: 3_000,
@@ -383,7 +383,7 @@ test.describe('Manage Data — full suite', () => {
     // Type the correct word "RESET" — button must become enabled.
     // First clear the field using the Flutter fill helper.
     await flutterFill(page, 'role=textbox', 'RESET');
-    await page.waitForTimeout(500);
+    await expect(page.locator(MANAGE_DATA.resetButton)).not.toHaveAttribute('aria-disabled', 'true', { timeout: 5_000 });
 
     // Now clicking the button should close the modal (pop(true)) and trigger
     // the reset. We close by clicking Cancel instead to avoid side effects.
@@ -460,13 +460,13 @@ test.describe('Manage Data — full suite', () => {
 
     // Type RESET to enable the confirm button.
     await flutterFill(page, 'role=textbox', 'RESET');
-    await page.waitForTimeout(500);
+    await expect(page.locator(MANAGE_DATA.resetButton)).not.toHaveAttribute('aria-disabled', 'true', { timeout: 5_000 });
 
     // Click the now-enabled "Reset Account" button.
     await page.click(MANAGE_DATA.resetButton);
 
     // The success SnackBar must appear.
-    await expect(page.locator(MANAGE_DATA.accountReset)).toBeVisible({
+    await expect(page.locator(MANAGE_DATA.accountReset).first()).toBeVisible({
       timeout: 10_000,
     });
 
@@ -502,12 +502,12 @@ test.describe('Manage Data — full suite', () => {
     });
 
     await flutterFill(page, 'role=textbox', 'RESET');
-    await page.waitForTimeout(500);
+    await expect(page.locator(MANAGE_DATA.resetButton)).not.toHaveAttribute('aria-disabled', 'true', { timeout: 5_000 });
 
     await page.click(MANAGE_DATA.resetButton);
 
-    // Wait for the operation to complete (success or error).
-    await page.waitForTimeout(3_000);
+    // Wait for the success SnackBar to confirm the operation completed.
+    await expect(page.locator(MANAGE_DATA.accountReset).first()).toBeVisible({ timeout: 10_000 });
 
     // Check the full visible DOM for any forbidden identifiers.
     await assertNoTableNamesVisible(page);

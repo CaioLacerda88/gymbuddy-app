@@ -119,7 +119,7 @@ test.describe('Smoke: Profile Weekly Goal', () => {
     });
 
     // Wait for the async profile update to propagate to the UI.
-    await page.waitForTimeout(1_000);
+    await page.waitForTimeout(500);
 
     // The row should now show the new frequency.
     await expect(

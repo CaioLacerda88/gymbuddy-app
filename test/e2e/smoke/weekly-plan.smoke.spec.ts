@@ -105,7 +105,7 @@ test.describe('Smoke: Weekly Plan', () => {
     // Navigate via hash — page.goto('/plan/week') returns 404 from the
     // Python file server which has no SPA fallback routing.
     await page.evaluate(() => { window.location.hash = '#/plan/week'; });
-    await page.waitForTimeout(2_000);
+    await page.waitForURL('**/plan/week**', { timeout: 10_000 });
 
     await expect(page.locator(WEEKLY_PLAN.planManagementTitle)).toBeVisible({
       timeout: 15_000,
@@ -130,7 +130,7 @@ test.describe('Smoke: Weekly Plan', () => {
         if (dialogShown) {
           await clearConfirm.click();
           // After clearing, context.pop() navigates away — navigate back via hash.
-          await page.waitForTimeout(1_000);
+          await page.waitForURL('**/home**', { timeout: 10_000 });
           await page.evaluate(() => { window.location.hash = '#/plan/week'; });
           await page.waitForTimeout(2_000);
         }
@@ -191,7 +191,7 @@ test.describe('Smoke: Weekly Plan', () => {
     // Navigate via hash — page.goto('/plan/week') returns 404 from the
     // Python file server which has no SPA fallback routing.
     await page.evaluate(() => { window.location.hash = '#/plan/week'; });
-    await page.waitForTimeout(2_000);
+    await page.waitForURL('**/plan/week**', { timeout: 10_000 });
     await expect(page.locator(WEEKLY_PLAN.planManagementTitle)).toBeVisible({
       timeout: 15_000,
     });
@@ -246,7 +246,7 @@ test.describe('Smoke: Weekly Plan', () => {
     // Navigate via hash — page.goto('/plan/week') returns 404 from the
     // Python file server which has no SPA fallback routing.
     await page.evaluate(() => { window.location.hash = '#/plan/week'; });
-    await page.waitForTimeout(2_000);
+    await page.waitForURL('**/plan/week**', { timeout: 10_000 });
     await expect(page.locator(WEEKLY_PLAN.planManagementTitle)).toBeVisible({
       timeout: 15_000,
     });
@@ -292,8 +292,8 @@ test.describe('Smoke: Weekly Plan', () => {
     await page.locator(WEEKLY_PLAN.clearConfirmButton).click();
 
     // After clearing, we pop back to home or re-navigate.
-    // Allow some time for navigation.
-    await page.waitForTimeout(1_000);
+    // Wait for navigation to settle.
+    await page.waitForURL('**/home**', { timeout: 10_000 }).catch(() => {});
 
     // Navigate to Home.
     await navigateToTab(page, 'Home');

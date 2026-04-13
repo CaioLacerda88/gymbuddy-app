@@ -145,8 +145,8 @@ export async function waitForAppReady(page: Page): Promise<void> {
     );
   }
 
-  // 4. Brief pause for the destination screen to populate its semantics tree.
-  await page.waitForTimeout(500);
+  // 4. Wait for the destination screen to populate its semantics tree.
+  await page.locator('flt-semantics').first().waitFor({ state: 'visible', timeout: 5_000 });
 }
 
 /**
@@ -184,8 +184,8 @@ export async function navigateToTab(
   // content, not aria-label attributes (which is what the nav tabs use).
   await page.waitForURL(`**/${urlSegmentMap[tabName]}**`, { timeout: 15_000 });
 
-  // Brief pause for destination screen semantics tree to populate.
-  await page.waitForTimeout(300);
+  // Wait for destination screen semantics tree to populate.
+  await page.locator('flt-semantics').first().waitFor({ state: 'visible', timeout: 5_000 });
 }
 
 /**

@@ -122,7 +122,7 @@ test.describe('Exercise detail bottom sheet — full suite', () => {
 
     // Dismiss the sheet.
     await page.keyboard.press('Escape');
-    await page.waitForTimeout(500);
+    await expect(page.locator(WORKOUT.finishButton)).toBeVisible({ timeout: 5_000 });
   });
 
   // ---------------------------------------------------------------------------
@@ -155,7 +155,7 @@ test.describe('Exercise detail bottom sheet — full suite', () => {
 
     // Dismiss.
     await page.keyboard.press('Escape');
-    await page.waitForTimeout(500);
+    await expect(page.locator(WORKOUT.finishButton)).toBeVisible({ timeout: 5_000 });
   });
 
   // ---------------------------------------------------------------------------
@@ -211,7 +211,7 @@ test.describe('Exercise detail bottom sheet — full suite', () => {
       // Sheet does not expose a full-detail link — dismiss and accept the test
       // as having covered the sheet path only.
       await page.keyboard.press('Escape');
-      await page.waitForTimeout(500);
+      await expect(page.locator(WORKOUT.finishButton)).toBeVisible({ timeout: 5_000 });
     }
   });
 
@@ -247,6 +247,6 @@ test.describe('Exercise detail bottom sheet — full suite', () => {
 
     // Dismiss.
     await page.keyboard.press('Escape');
-    await page.waitForTimeout(500);
+    await expect(page.locator(WORKOUT.finishButton)).toBeVisible({ timeout: 5_000 });
   });
 });

@@ -170,7 +170,7 @@ test.describe('Auth — edge cases', () => {
     await expect(page.locator('text=Exercises')).toBeVisible({ timeout: 15_000 });
 
     await page.click(NAV.routinesTab);
-    await expect(page.locator('text=Routines')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('text=Routines').first()).toBeVisible({ timeout: 15_000 });
 
     await page.click(NAV.profileTab);
     await expect(page.locator('text=Log Out')).toBeVisible({ timeout: 15_000 });

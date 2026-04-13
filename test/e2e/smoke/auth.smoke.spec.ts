@@ -88,11 +88,8 @@ test.describe('Auth smoke', () => {
     await expect(sendReset).toBeVisible({ timeout: 5_000 });
     await sendReset.click();
 
-    // Wait for the async reset request to complete.
-    await page.waitForTimeout(2_000);
-
-    // The login screen itself must still be visible (no unhandled crash).
-    await expect(page.locator(AUTH.appTitle)).toBeVisible({ timeout: 5_000 });
+    // The login screen itself must still be visible after the reset (no unhandled crash).
+    await expect(page.locator(AUTH.appTitle)).toBeVisible({ timeout: 10_000 });
 
     // No error alert should have appeared.
     const hasError = await page

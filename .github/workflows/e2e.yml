@@ -13,7 +13,7 @@ concurrency:
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
@@ -137,10 +137,7 @@ jobs:
 
       - name: Serve Flutter web app
         run: |
-          # http-server is multi-threaded and serves ALL files including dotfiles (.env).
-          # npx serve -s hides dotfiles, causing dotenv.load() to fail.
-          # -c-1 disables caching so the latest .env is always served.
-          npx http-server build/web -p 8080 -c-1 --silent &
+          node test/e2e/static-server.cjs build/web 8080 &
           npx wait-on http://localhost:8080 --timeout 30000
 
       - name: Install Playwright dependencies
@@ -157,13 +154,7 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      - name: Run Playwright smoke tests (PR)
-        if: github.event_name == 'pull_request'
-        working-directory: test/e2e
-        run: npx playwright test --project=smoke --reporter=line
-
-      - name: Run Playwright full test suite (push to main)
-        if: github.event_name == 'push'
+      - name: Run Playwright tests
         working-directory: test/e2e
         run: npx playwright test --reporter=line
 

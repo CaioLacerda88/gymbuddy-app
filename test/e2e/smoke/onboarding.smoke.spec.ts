@@ -50,7 +50,7 @@ test.describe('Smoke: Onboarding', () => {
     // onboarding route is reachable (useful for visual regression).
     // Navigate via hash to avoid a full CanvasKit reload.
     await page.evaluate(() => { window.location.hash = '#/onboarding'; });
-    await page.waitForTimeout(2_000);
+    await page.waitForURL(/\/(onboarding|home)/, { timeout: 10_000 });
 
     // Either we land on onboarding or are redirected to home.
     const isOnOnboarding = page.url().includes('/onboarding');
@@ -85,7 +85,7 @@ test.describe('Smoke: Onboarding', () => {
     await login(page, USER.email, USER.password);
     // Navigate via hash to avoid a full CanvasKit reload.
     await page.evaluate(() => { window.location.hash = '#/onboarding'; });
-    await page.waitForTimeout(2_000);
+    await page.waitForURL(/\/(onboarding|home)/, { timeout: 10_000 });
 
     const isOnOnboarding = page.url().includes('/onboarding');
     if (!isOnOnboarding) {
@@ -124,7 +124,7 @@ test.describe('Smoke: Onboarding', () => {
     await login(page, USER.email, USER.password);
     // Navigate via hash to avoid a full CanvasKit reload.
     await page.evaluate(() => { window.location.hash = '#/onboarding'; });
-    await page.waitForTimeout(2_000);
+    await page.waitForURL(/\/(onboarding|home)/, { timeout: 10_000 });
 
     const isOnOnboarding = page.url().includes('/onboarding');
     if (!isOnOnboarding) {
@@ -164,7 +164,7 @@ test.describe('Smoke: Onboarding', () => {
     await login(page, USER.email, USER.password);
     // Navigate via hash to avoid a full CanvasKit reload.
     await page.evaluate(() => { window.location.hash = '#/onboarding'; });
-    await page.waitForTimeout(2_000);
+    await page.waitForURL(/\/(onboarding|home)/, { timeout: 10_000 });
 
     const isOnOnboarding = page.url().includes('/onboarding');
     if (!isOnOnboarding) {

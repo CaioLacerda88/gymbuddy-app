@@ -226,8 +226,6 @@ test.describe('Routine regressions — full suite', () => {
     await navigateToTab(page, 'Routines');
 
     // The routine may appear in MY ROUTINES section.
-    await page.waitForTimeout(500);
-
     const myRoutineCard = page
       .locator(ROUTINE.routineName(routineName))
       .first();
@@ -251,6 +249,7 @@ test.describe('Routine regressions — full suite', () => {
     // as we did not land on the active workout screen).
     const onRoutines = await page
       .locator(ROUTINE.heading)
+      .first()
       .isVisible({ timeout: 3_000 })
       .catch(() => false);
     const onHome = await page
