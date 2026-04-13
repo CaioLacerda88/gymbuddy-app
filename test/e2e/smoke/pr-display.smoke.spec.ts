@@ -64,7 +64,7 @@ test.describe('Smoke: PR Display', () => {
     // The home screen redesign (Step 12.2b) replaced the Records stat card
     // with contextual stats, so we use hash-based navigation instead.
     await page.evaluate(() => { window.location.hash = '#/records'; });
-    await page.waitForTimeout(2_000);
+    await page.waitForURL('**/records**', { timeout: 10_000 });
 
     // PRListScreen AppBar title.
     await expect(page.locator(PR_DISPLAY.screenTitle)).toBeVisible({
@@ -86,7 +86,7 @@ test.describe('Smoke: PR Display', () => {
     // Cannot use page.goto('/records') — the Python file server returns 404
     // for SPA routes. Use hash navigation instead.
     await page.evaluate(() => { window.location.hash = '#/records'; });
-    await page.waitForTimeout(2_000);
+    await page.waitForURL('**/records**', { timeout: 10_000 });
 
     await expect(page.locator(PR_DISPLAY.screenTitle)).toBeVisible({
       timeout: 15_000,
@@ -183,7 +183,7 @@ test.describe('Smoke: PR Display', () => {
     // recordsStatCard selector no longer matches. Use hash navigation instead
     // (page.goto would 404 on the Python file server with no SPA fallback).
     await page.evaluate(() => { window.location.hash = '#/records'; });
-    await page.waitForTimeout(2_000);
+    await page.waitForURL('**/records**', { timeout: 10_000 });
     await expect(page.locator(PR_DISPLAY.screenTitle)).toBeVisible({
       timeout: 15_000,
     });

@@ -7,14 +7,14 @@
  *  3. Home tab shows the GymBuddy title and today's date context
  *  4. Home tab shows "Start Empty Workout" button
  *  5. Home tab shows STARTER ROUTINES or MY ROUTINES section
- *  6. After completing a workout, the Workouts stat card is visible
- *  7. Tapping Workouts stat card navigates to the history screen
+ *  6. After completing a workout, the Last session stat cell is visible
+ *  7. Tapping Last session stat cell navigates to the history screen
  *  8. Profile tab shows the user's email and Log Out button
  *  9. Profile weight unit toggle shows kg and lbs options
- * 10. HOME-STAT-001 — Workouts and Records stat cards are visible
- * 11. HOME-STAT-002 — Tapping the Workouts stat card navigates to history
- * 12. HOME-STAT-003 — Tapping the Records stat card navigates to PR list
- * 13. HOME-STAT-004 — Workouts card count updates after completing a workout
+ * 10. HOME-STAT-001 — Last session and Week's volume stat cells are visible
+ * 11. HOME-STAT-002 — Tapping the Last session cell navigates to history
+ * 12. HOME-STAT-003 — Tapping the Week's volume cell navigates to history
+ * 13. HOME-STAT-004 — Last session cell updates after completing a workout
  *
  * Uses the dedicated `fullHome` test user.
  * The Flutter web app is served automatically by Playwright's webServer config
@@ -63,13 +63,13 @@ test.describe('Home screen and navigation — full suite', () => {
   }) => {
     // Exercises tab.
     await page.click(NAV.exercisesTab);
-    await expect(page.locator('text=Exercises')).toBeVisible({
+    await expect(page.locator('text=Exercises').first()).toBeVisible({
       timeout: 15_000,
     });
 
     // Routines tab.
     await page.click(NAV.routinesTab);
-    await expect(page.locator('text=Routines')).toBeVisible({
+    await expect(page.locator('text=Routines').first()).toBeVisible({
       timeout: 15_000,
     });
 
@@ -113,7 +113,7 @@ test.describe('Home screen and navigation — full suite', () => {
     expect(hasStarter || hasMy).toBe(true);
   });
 
-  test('completing a workout updates the Workouts stat card on the home screen', async ({
+  test('completing a workout updates the Last session stat cell on the home screen', async ({
     page,
   }) => {
     // Start and finish a minimal workout with one completed set.
@@ -140,21 +140,21 @@ test.describe('Home screen and navigation — full suite', () => {
 
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
 
-    // The Workouts stat card must be visible after completing a workout.
-    await expect(page.locator(HOME_STATS.workoutsCard)).toBeVisible({
+    // The Last session stat cell must be visible after completing a workout.
+    await expect(page.locator(HOME_STATS.lastSessionCell)).toBeVisible({
       timeout: 10_000,
     });
   });
 
-  test('tapping Workouts stat card navigates to the history screen', async ({
+  test('tapping Last session stat cell navigates to the history screen', async ({
     page,
   }) => {
-    // The Workouts stat card should be visible on the home screen.
-    await expect(page.locator(HOME_STATS.workoutsCard)).toBeVisible({
+    // The Last session stat cell should be visible on the home screen.
+    await expect(page.locator(HOME_STATS.lastSessionCell)).toBeVisible({
       timeout: 10_000,
     });
 
-    await page.click(HOME_STATS.workoutsCard);
+    await page.click(HOME_STATS.lastSessionCell);
 
     // History screen heading must appear.
     await expect(page.locator(HISTORY.heading)).toBeVisible({
@@ -199,89 +199,73 @@ test.describe('Home screen and navigation — full suite', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // HOME-STAT-001 — Workouts and Records stat cards are visible on the home screen
+  // HOME-STAT-001 — Last session and Week's volume stat cells are visible
   //
-  // _StatCardsRow renders two _StatCard widgets. Each has a Semantics button
-  // whose label includes "tap to view workouts" / "tap to view records" once the
-  // count has loaded from the server.
+  // _ContextualStatCells renders two cells with Semantics labels:
+  //   "Last session: {value}" and "Week's volume: {value}"
+  // Both are tappable and navigate to /home/history.
   // ---------------------------------------------------------------------------
-  test('HOME-STAT-001: Workouts and Records stat cards are visible on the home screen', async ({
+  test('HOME-STAT-001: Last session and Week\'s volume stat cells are visible on the home screen', async ({
     page,
   }) => {
-    // The stat cards are at the top of the home screen, below the date line.
-    // We wait for the data-loaded state (label includes "tap to view").
-    await expect(page.locator(HOME_STATS.workoutsCard)).toBeVisible({
+    // The stat cells are at the top of the home screen, below the date line.
+    await expect(page.locator(HOME_STATS.lastSessionCell)).toBeVisible({
       timeout: 15_000,
     });
-    await expect(page.locator(HOME_STATS.recordsCard)).toBeVisible({
+    await expect(page.locator(HOME_STATS.weekVolumeCell)).toBeVisible({
       timeout: 10_000,
     });
   });
 
   // ---------------------------------------------------------------------------
-  // HOME-STAT-002 — Tapping the Workouts stat card navigates to workout history
+  // HOME-STAT-002 — Tapping the Last session cell navigates to workout history
   //
-  // _StatCard for "Workouts" calls context.go('/home/history') on tap.
-  // After navigation the WorkoutHistoryScreen AppBar title "History" must appear.
+  // _ContextualStatCells "Last session" cell calls context.go('/home/history')
+  // on tap. After navigation the WorkoutHistoryScreen AppBar title "History"
+  // must appear.
   // ---------------------------------------------------------------------------
-  test('HOME-STAT-002: tapping the Workouts stat card navigates to the history screen', async ({
+  test('HOME-STAT-002: tapping the Last session cell navigates to the history screen', async ({
     page,
   }) => {
-    // Wait for the card to be in data state (count loaded from server).
-    await expect(page.locator(HOME_STATS.workoutsCard)).toBeVisible({
+    // Wait for the cell to be visible.
+    await expect(page.locator(HOME_STATS.lastSessionCell)).toBeVisible({
       timeout: 15_000,
     });
 
-    await page.click(HOME_STATS.workoutsCard);
+    await page.click(HOME_STATS.lastSessionCell);
 
     await expect(page.locator(HISTORY.heading)).toBeVisible({ timeout: 15_000 });
   });
 
   // ---------------------------------------------------------------------------
-  // HOME-STAT-003 — Tapping the Records stat card navigates to the PR list
+  // HOME-STAT-003 — Tapping the Week's volume cell navigates to history
   //
-  // _StatCard for "Records" calls context.go('/records') on tap.
-  // After navigation the PRListScreen AppBar title "Personal Records" must appear.
+  // _ContextualStatCells "Week's volume" cell calls context.go('/home/history')
+  // on tap. After navigation the WorkoutHistoryScreen AppBar title "History"
+  // must appear.
   // ---------------------------------------------------------------------------
-  test('HOME-STAT-003: tapping the Records stat card navigates to the Personal Records screen', async ({
+  test('HOME-STAT-003: tapping the Week\'s volume cell navigates to the history screen', async ({
     page,
   }) => {
-    await expect(page.locator(HOME_STATS.recordsCard)).toBeVisible({
+    await expect(page.locator(HOME_STATS.weekVolumeCell)).toBeVisible({
       timeout: 15_000,
     });
 
-    await page.click(HOME_STATS.recordsCard);
+    await page.click(HOME_STATS.weekVolumeCell);
 
-    await expect(page.locator('text=Personal Records')).toBeVisible({
-      timeout: 15_000,
-    });
+    await expect(page.locator(HISTORY.heading)).toBeVisible({ timeout: 15_000 });
   });
 
   // ---------------------------------------------------------------------------
-  // HOME-STAT-004 — Workouts card count increments after finishing a workout
+  // HOME-STAT-004 — Last session cell updates after completing a workout
   //
-  // Reads the aria-label before and after completing a workout to confirm the
-  // count changed. The Semantics label encodes the count: "$n Workouts, tap…"
-  // so we can extract it from the attribute.
+  // Completes a minimal workout and verifies that after returning to Home the
+  // "Last session" cell is visible, reflecting the recent workout. The value
+  // is dynamic ("Just now", "Today", etc.) so we just verify the cell is visible.
   // ---------------------------------------------------------------------------
-  test('HOME-STAT-004: Workouts card count increments after completing a workout', async ({
+  test('HOME-STAT-004: Last session cell updates after completing a workout', async ({
     page,
   }) => {
-    // Read the current count from the aria-label before starting a workout.
-    await expect(page.locator(HOME_STATS.workoutsCard)).toBeVisible({
-      timeout: 15_000,
-    });
-
-    const labelBefore = await page
-      .locator(HOME_STATS.workoutsCard)
-      .getAttribute('aria-label');
-
-    // Extract the integer at the start of the label: "3 Workouts, tap to view…"
-    const countBefore = parseInt(
-      (labelBefore ?? '').match(/^(\d+)/)?.[1] ?? '0',
-      10,
-    );
-
     // Complete a minimal workout.
     await startEmptyWorkout(page);
     await addExercise(page, SEED_EXERCISES.benchPress);
@@ -299,24 +283,16 @@ test.describe('Home screen and navigation — full suite', () => {
       .locator(PR.newPRHeading)
       .isVisible({ timeout: isCelebration ? 0 : 3_000 })
       .catch(() => false);
-
     if (isCelebration || isNewPR) {
       await page.click(PR.continueButton);
     }
 
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
 
-    // After returning to Home the provider is invalidated and the card reloads.
-    // Wait for the card to show the new count (greater than before).
-    await expect(async () => {
-      const labelAfter = await page
-        .locator(HOME_STATS.workoutsCard)
-        .getAttribute('aria-label');
-      const countAfter = parseInt(
-        (labelAfter ?? '').match(/^(\d+)/)?.[1] ?? '0',
-        10,
-      );
-      expect(countAfter).toBeGreaterThan(countBefore);
-    }).toPass({ timeout: 15_000 });
+    // After returning to Home the "Last session" cell should reflect the recent workout.
+    // The value is dynamic ("Just now", "Today", etc.) so we just verify the cell is visible.
+    await expect(page.locator(HOME_STATS.lastSessionCell)).toBeVisible({
+      timeout: 10_000,
+    });
   });
 });

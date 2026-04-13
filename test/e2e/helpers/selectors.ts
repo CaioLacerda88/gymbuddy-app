@@ -341,7 +341,7 @@ export const MANAGE_DATA = {
    * "Reset Account" GradientButton inside the Reset Account dialog.
    * Match on visible text.
    */
-  resetButton: 'text=Reset Account',
+  resetButton: 'role=button[name="Reset Account"]',
   /**
    * Close / cancel icon button in the Reset Account full-screen dialog.
    * The IconButton has tooltip: 'Cancel'.
@@ -532,11 +532,6 @@ export const PR_DISPLAY = {
    * This selector targets any button that has text content (exercise name).
    */
   exerciseRecordCard: 'flt-semantics[role="button"]',
-  /**
-   * Records stat card on home screen that navigates to /records.
-   * HOME_STATS.recordsCard matches the aria-label pattern.
-   */
-  recordsStatCard: 'flt-semantics[aria-label*="tap to view records"]',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -574,16 +569,8 @@ export const PROFILE_WEEKLY_GOAL = {
 // Home stat cards — _StatCardsRow in HomeScreen
 // ---------------------------------------------------------------------------
 export const HOME_STATS = {
-  /**
-   * Workouts stat card — Semantics label pattern:
-   *   "$count Workouts, tap to view workouts"  (when data loaded)
-   *   "Workouts loading"                        (while loading)
-   * We match on the substring "tap to view workouts" to target the data state.
-   */
-  workoutsCard: 'flt-semantics[aria-label*="tap to view workouts"]',
-  /**
-   * Records stat card — Semantics label pattern:
-   *   "$count Records, tap to view records"
-   */
-  recordsCard: 'flt-semantics[aria-label*="tap to view records"]',
+  /** "Last session" contextual stat cell — Semantics label "Last session: {value}" */
+  lastSessionCell: 'flt-semantics[aria-label*="Last session:"]',
+  /** "Week's volume" contextual stat cell — Semantics label "Week's volume: {value}" */
+  weekVolumeCell: 'flt-semantics[aria-label*="Week\'s volume:"]',
 } as const;

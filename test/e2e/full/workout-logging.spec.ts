@@ -169,7 +169,13 @@ test.describe('Workout logging — full suite', () => {
     await startEmptyWorkout(page);
     await addExercise(page, SEED_EXERCISES.benchPress);
 
-    // Do NOT complete any sets — tap Finish Workout directly.
+    // Add a second set so we have 2 sets total.
+    await page.click(WORKOUT.addSetButton);
+
+    // Complete set 0 to enable the Finish button (onPressed requires _hasCompletedSet).
+    await completeSet(page, 0);
+
+    // Leave set 1 incomplete — tap Finish Workout.
     await page.click(WORKOUT.finishButton);
 
     // The dialog should warn about incomplete sets.
@@ -321,14 +327,14 @@ test.describe('Workout logging — full suite', () => {
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
 
     // Navigate to the history screen to verify the saved value.
-    // Tap the Workouts stat card, or fall back to direct navigation.
+    // Tap the Last session stat cell, or fall back to direct navigation.
     const statsVisible = await page
-      .locator(HOME_STATS.workoutsCard)
+      .locator(HOME_STATS.lastSessionCell)
       .isVisible({ timeout: 5_000 })
       .catch(() => false);
 
     if (statsVisible) {
-      await page.click(HOME_STATS.workoutsCard);
+      await page.click(HOME_STATS.lastSessionCell);
     } else {
       await page.goto('/home/history');
     }
@@ -376,7 +382,7 @@ test.describe('Workout logging — full suite', () => {
 
     // Clean up — dismiss the sheet by pressing Escape, then discard the workout.
     await page.keyboard.press('Escape');
-    await page.waitForTimeout(500);
+    await expect(page.locator(WORKOUT.finishButton)).toBeVisible({ timeout: 5_000 });
 
     await page.locator(WORKOUT.discardButton).click();
     const confirmDiscard = page.locator(WORKOUT.discardConfirmButton);
@@ -415,7 +421,7 @@ test.describe('Workout logging — full suite', () => {
 
     // Dismiss.
     await page.keyboard.press('Escape');
-    await page.waitForTimeout(500);
+    await expect(page.locator(WORKOUT.finishButton)).toBeVisible({ timeout: 5_000 });
 
     // Discard workout.
     await page.locator(WORKOUT.discardButton).click();
@@ -453,7 +459,6 @@ test.describe('Workout logging — full suite', () => {
 
     // Dismiss the sheet by pressing Escape.
     await page.keyboard.press('Escape');
-    await page.waitForTimeout(500);
 
     // The workout screen must still be active.
     await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
@@ -511,7 +516,7 @@ test.describe('Workout logging — full suite', () => {
 
     // Dismiss the sheet.
     await page.keyboard.press('Escape');
-    await page.waitForTimeout(500);
+    await expect(page.locator(WORKOUT.finishButton)).toBeVisible({ timeout: 5_000 });
 
     // The completed set checkbox must still be in the completed state.
     await expect(page.locator(WORKOUT.setCompleted).nth(0)).toBeVisible({

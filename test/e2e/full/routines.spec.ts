@@ -33,7 +33,7 @@ test.describe('Routines — full suite', () => {
   test('routines tab shows the STARTER ROUTINES section heading', async ({
     page,
   }) => {
-    await expect(page.locator(ROUTINE.heading)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(ROUTINE.heading).first()).toBeVisible({ timeout: 15_000 });
     await expect(page.locator(ROUTINE.starterRoutinesSection)).toBeVisible({
       timeout: 10_000,
     });
@@ -47,7 +47,7 @@ test.describe('Routines — full suite', () => {
     });
 
     for (const name of STARTER_ROUTINES) {
-      await expect(page.locator(ROUTINE.routineName(name))).toBeVisible({
+      await expect(page.locator(ROUTINE.routineName(name)).first()).toBeVisible({
         timeout: 10_000,
       });
     }
@@ -61,7 +61,7 @@ test.describe('Routines — full suite', () => {
     });
 
     // Tap "Push Day" — the first starter routine in seed order.
-    await page.click(ROUTINE.routineName('Push Day'));
+    await page.locator(ROUTINE.routineName('Push Day')).first().click();
 
     // The active workout screen identifies itself by the Finish Workout button.
     await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
@@ -70,7 +70,7 @@ test.describe('Routines — full suite', () => {
 
     // The routine pre-fills exercises. At least one Add Set button must appear,
     // confirming exercise cards were rendered.
-    await expect(page.locator(WORKOUT.addSetButton)).toBeVisible({
+    await expect(page.locator(WORKOUT.addSetButton).first()).toBeVisible({
       timeout: 10_000,
     });
 
@@ -85,7 +85,7 @@ test.describe('Routines — full suite', () => {
       timeout: 10_000,
     });
 
-    await page.click(ROUTINE.routineName('Push Day'));
+    await page.locator(ROUTINE.routineName('Push Day')).first().click();
     await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
       timeout: 20_000,
     });
@@ -122,7 +122,7 @@ test.describe('Routines — full suite', () => {
     await expect(page.locator('text=Exercises')).toBeVisible({ timeout: 15_000 });
 
     await page.click(NAV.routinesTab);
-    await expect(page.locator(ROUTINE.heading)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(ROUTINE.heading).first()).toBeVisible({ timeout: 15_000 });
     await expect(page.locator(ROUTINE.starterRoutinesSection)).toBeVisible({
       timeout: 10_000,
     });
@@ -132,6 +132,6 @@ test.describe('Routines — full suite', () => {
     await expect(page.locator('text=GymBuddy')).toBeVisible({ timeout: 15_000 });
 
     await page.click(NAV.routinesTab);
-    await expect(page.locator(ROUTINE.heading)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(ROUTINE.heading).first()).toBeVisible({ timeout: 15_000 });
   });
 });
