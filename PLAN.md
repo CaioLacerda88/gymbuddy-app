@@ -39,7 +39,7 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 13a-PR6 | Bulk Dependency Upgrade + Toolchain Refresh (Riverpod 3, GoRouter 17, Freezed 3) | DONE | #49 |
 | 13a-PR7 | Close local CI Android build gap (`make ci` runs `flutter build apk --debug`) | DONE | #47 |
 | 13a-PR8 | E2E overhaul: Flutter 3.41.6 AOM selectors, bug fixes, restructure to feature files | DONE | #50 |
-| 13 | Production Readiness (Sprint A DONE; PR6+PR7 merged, Sprint B retention next) | IN PROGRESS | - |
+| 13 | Launch — last phase before Play Store (Sprint B Retention + Sprint C Resilience remaining) | IN PROGRESS | - |
 | 14 | Offline Support | TODO | - |
 | 15 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
 | 16 | Gamification Advanced (Quests, Stats Panel) | TODO | - |
@@ -56,7 +56,7 @@ Read only what you need:
 | Step 12: Weekly Training Plan | Implementing Step 12 |
 | Step 12.2: Home Redesign + Bug Fixes | Implementing Step 12.2 |
 | Step 12.3: UX Polish & Content Expansion | Implementing Step 12.3 |
-| Phase 13: Production Readiness | Preparing for Play Store |
+| Phase 13: Launch | Final work before Play Store submission |
 | Phase 14: Offline Support | Implementing offline-first workout capture |
 | Phase 15-16: Gamification | Implementing RPG system |
 | QA Status | Doing QA or review |
@@ -542,149 +542,72 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 
 ---
 
-## Phase 13: Production Readiness
+## Phase 13: Launch
 
-> Adapted from PROD-READINESS.md. Everything needed to ship on Google Play.
-> Updated 2026-04-09 with PO + UX review findings after Step 12.3 completion.
+> Final phase before Play Store submission. Everything after this (Phase 14 Offline Support, Phase 15-16 Gamification) is post-launch.
+> Structure: **Sprint A — Store Blockers** (complete) → **Toolchain Bridge** (complete) → **Sprint B — Retention** (next) → **Sprint C — Resilience** → submit.
 
-### 13a: Store Blockers (must fix before submission)
+### Completed
+
+**Sprint A — Store blockers**
+- PR #42: Account deletion, volume unit display, OAuth deep link
+- PR #43: Release signing, branding strings, privacy policy + ToS
+- PR #44: Sprint A QA follow-ups (legal polish, PWA theme, live delete E2E)
+- PR #45: Wakelock during active workout
+- PR #46: Observability — Sentry crash reporting (PII-scrubbed) + first-party `analytics_events` table with 8 ratified events
+
+**Toolchain bridge**
+- PR #47: `make ci` gained `flutter build apk --debug --no-shrink` to catch native plugin breakage pre-push
+- PR #49: Bulk dependency upgrade — Riverpod 3, GoRouter 17, Freezed 3 (34 deps swept, 994/994 tests pass, APK/Web size unchanged)
+- PR #50: E2E overhaul — Flutter 3.41.6 AOM selectors, feature-based restructure (11 spec files, 145 tests with @smoke tags), exercise soft-delete RLS fix
+- PR #51: Phase 13c removed from plan (Athletic Brutalism redesign conflicted with RPG gamification direction)
+
+### Remaining — Sprint B: Retention (~5-6 days, PO-refined 2026-04-13)
+
+Order is deliberate: visible trust fixes → shortest standalone → content foundation → highest-retention feature on clean foundations.
+
+| Slot | ID | Item | Effort | Rationale |
+|------|----|------|--------|-----------|
+| 1 | P4 | Exercise images fix (404s) | 3-4h | Broken images on every tile. Migrate from GitHub URLs to Supabase Storage or CDN. Unblocks P9 visually. |
+| 2 | P8 | New-user empty-state CTA + beginner routine recommendation | 2-3h | First-run users currently hit a dead end. CTA points to a routine produced in P9. |
+| 3 | P9 | Exercise description + form_tips standard (absorbs P2) | 1.5 days | Backfills 32 content-less exercises from migration `00014` AND ships the 150+ library expansion in one PR. No exercise ships without description + form_tips. PR adds the CLAUDE.md convention: exercise-insert migrations must pair with a descriptions migration. |
+| 4 | P1 | Progress charts per exercise | 2-3 days | #1 retention driver. `fl_chart` line chart of weight-over-time per exercise. Handles zero/one-data-point states without crash. |
+
+**P2** (count-only library expansion) is absorbed into P9 — shipping 150 exercises with 50+ empty detail sheets is worse UX than today's 92 with 60% coverage.
+
+### Remaining — Sprint C: Resilience (~3-4 days)
 
 | ID | Item | Effort | Notes |
 |----|------|--------|-------|
-| ~~B1~~ | ~~Release signing~~ | DONE (#43) | `build.gradle.kts` reads `key.properties` via `rootProject.file()`, signs release with configured keystore, falls back to debug when absent. `key.properties.example` template + `.gitignore` covers `*.jks`/`*.keystore`/`*.p12`. User generates keystore post-merge. |
-| ~~B2~~ | ~~Crash reporting~~ | DONE (#46) | `sentry_flutter 9.16.1` wired via `runZonedGuarded` + `SentryFlutter.init` in `main.dart`. Empty-DSN skips init (dev/test safe). Strict PII scrubbing: `sendDefaultPii: false`, `tracesSampleRate: 0.0`, `beforeSend` sets `SentryUser(id: ...)` only + `scrubEventPii()` walks message/exception/stack frame contextLine for emails, `beforeBreadcrumb` drops any crumb whose data values contain `@`. `BaseRepository.mapException` captures unexpected errors. `SentryNavigatorObserver` wired into GoRouter with UUID → `:id` sanitizer. Auth + workout-lifecycle breadcrumbs (transition name + workout_id only, no weights/notes). Profile → Privacy → "Send crash reports" toggle (defaults ON, Hive-backed via `crashReportsEnabledProvider`) gates `SentryReport`; flipping OFF clears breadcrumbs. 22 new unit tests covering the scrubbers and opt-out. |
-| ~~B3~~ | ~~Analytics (basic events)~~ | DONE (#46) | First-party `public.analytics_events` table (migration `20260410_analytics_events.sql`) — `(id, user_id fk auth.users cascade, name, props jsonb, platform, app_version, created_at)`, RLS insert-own-only, no SELECT policy. Thin `AnalyticsRepository` (fire-and-forget, swallows errors via `unawaited`). Typed Freezed union `AnalyticsEvent` — **8 ratified events** wired at call sites: `onboarding_completed`, `workout_started`, `workout_discarded`, `workout_finished`, `pr_celebration_seen`, `week_plan_saved` (debounced to one event per edit session, flushed on dispose), `week_complete` (fires on `!wasAllComplete && isNowAllComplete`), `add_to_plan_prompt_responded`. `week_number` computed client-side via `computeWeekNumberSinceSignup` (null createdAt → event SKIPPED). Deferred `account_deleted` event → dedicated `public.account_deletion_events` audit table, written by `delete-user` Edge Function **before** the CASCADE DELETE (CASCADE-safe, anonymous `user_uuid` text column, no FK). 9th event `workout_started.had_active_workout_conflict` prop deferred pending follow-up PR. Privacy policy (`assets/legal/` + `docs/`) updated with Sentry + analytics disclosure. |
-| ~~B4~~ | ~~Privacy Policy & ToS~~ | DONE (#43) | `assets/legal/privacy_policy.md` + `terms_of_service.md` rendered in-app via `flutter_markdown_plus`, mirrored to `docs/` for GitHub Pages at `https://caiolacerda88.github.io/gymbuddy-app/`. New `/privacy-policy` + `/terms-of-service` routes (public-route allowlist). Linked from Profile LEGAL section + login footer. User must enable Pages + review draft text post-merge. |
-| ~~B5~~ | ~~Account deletion~~ | DONE (#42) | Edge Function `delete-user` + AuthRepository.deleteAccount + Manage Data UI with type-DELETE confirmation. Cascade via existing FKs. |
-| B6 | ProGuard/R8 optimization | 2-3h | No minify/shrink today (19.7MB → ~12-14MB). Need keep rules for Supabase + Hive reflection |
-| ~~B7~~ | ~~Offline workout save & retry~~ | ~~1-2 days~~ | **Superseded by Phase 14 (Offline Support).** Original scope was sync-worker only; Phase 14 is broader (read cache, sync service, PR reconciliation, UX indicators). |
+| B6 | ProGuard/R8 optimization | 2-3h | No minify/shrink today (19.7MB → ~12-14MB target). Needs keep rules for Supabase + Hive reflection. |
+| W3 | Stale workout timeout UX | 2-3h | When `startedAt` >6h ago on app open, show "Workout from [date] still open — Resume or Discard?" modal. |
+| W3b | Input length limits (TextField + server CHECK) | 1-2h | Prevents DB bloat and UI overflow on long free-text inputs. |
+| W6 | Direct Supabase access in UI (bypass repo pattern) | 30min | Cleanup of residual `supabase.from()` calls outside repositories. |
+| W8 | HomeScreen `SingleChildScrollView` → `CustomScrollView` | 2-3h | Performance fix for long history lists. |
 
-### 13b: Product Gaps (blocks retention, not submission)
+### Deferred to v1.1+
 
-| ID | Item | Effort | Notes |
-|----|------|--------|-------|
-| P1 | Progress charts per exercise | 2-3 days | **#1 retention driver.** Line chart: weight over time. `fl_chart` or `syncfusion_flutter_charts`. Query sets+workouts by exercise_id. Without this, no "am I getting stronger?" feedback loop. |
-| P2 | Exercise library expansion to 150+ | 1 day | Currently ~92. Users lose confidence when searches return 2-3 results. Priority: compound movements, isolation staples, sport-specific |
-| ~~P3~~ | ~~Forgot password flow~~ | ~~done~~ | ~~Already implemented in `login_screen.dart:92-115`~~ |
-| P4 | Exercise images fix (QA-005) | 3-4h | GitHub URLs return 404. Migrate to Supabase Storage or CDN. Broken images signal abandoned product. |
-| P5 | 1RM estimation | 2-3h | Epley formula. Display on exercise detail + PR cards |
-| P6 | App branding | DONE (#43) | Strings done: AndroidManifest label, `web/manifest.json`, `web/index.html` → "GymBuddy". **Icon DEFERRED to post-gamification phase** — pixel-RPG-meets-gym direction will be revisited then. |
-| ~~P7~~ | ~~Volume unit display~~ | DONE (#42) | `formatVolume()` takes weightUnit; threaded through home_screen + workout_detail_screen (per-set rows + totals). |
-| P8 | New-user empty-state CTA | 2-3h | When no workouts logged and no plan: show "Start your first workout" hero + beginner routine recommendation on home screen. Currently drops user at empty state with no guidance. **(PO finding)** |
+- **P5** — 1RM estimation (Epley formula on exercise detail + PR cards)
+- **W4** — Push notifications (workout reminders)
+- **W5** — Data export (CSV/JSON)
+- **W7** — Supabase free-tier monitoring (ongoing ops task, not a ship gate)
+- **App icon redesign** — awaits post-launch direction decision
 
-### 13d: Warnings (fix before or shortly after launch)
+### Out of Scope for Phase 13
 
-| ID | Item | Effort |
-|----|------|--------|
-| ~~W1~~ | ~~OAuth deep link registration~~ | DONE (#42) — AndroidManifest intent-filter for `io.supabase.gymbuddy` |
-| ~~W2~~ | ~~Wakelock during active workout~~ | DONE (#45) — `wakelock_plus` enables on ActiveWorkoutBody mount, disables on dispose; errors swallowed for unsupported platforms; 3 widget tests via platform-interface override |
-| W3 | Stale workout timeout UX | 2-3h | When `startedAt` >6h ago on app open, show prominent modal: "Workout from [date] still open — Resume or Discard?" (deferred from Step 12.3) |
-| W3b | Input length limits (TextField + server CHECK) | 1-2h |
-| W4 | Push notifications (workout reminders) | 1-2 days |
-| W5 | Data export (CSV/JSON) | 3-4h |
-| W6 | Direct Supabase access in UI (bypass repo pattern) | 30min |
-| W7 | Supabase free tier monitoring (500MB DB, upgrade at 500 DAU) | - |
-| W8 | HomeScreen `SingleChildScrollView` → `CustomScrollView` | 2-3h |
+- **Gamification (Phase 15-16).** No XP, levels, streaks, quests, or badges land in Phase 13 — the format is still being decided. Code written in this phase must remain scalable to a future gamification layer (clean data/UI separation, no hard-coded assumptions that would block later hooks), but no gamification features ship here.
+- **Offline (Phase 14).** The original B7 scope ("offline workout save & retry") is superseded by the broader Phase 14 work.
+- **iOS.** Android-first; iOS deferred.
 
-### Suggested Sprint Order
+### Exit Criteria — Ready to Submit to Play Store
 
-**Sprint A — Store-ready: COMPLETE.** ~~B5~~ ~~P7~~ ~~W1~~ (PR #42), ~~B1~~ ~~B4~~ ~~P6~~ (PR #43, icon deferred), ~~QA follow-ups~~ (PR #44), ~~W2 wakelock~~ (PR #45), ~~B2 Sentry + B3 analytics~~ (PR #46).
-**Sprint A → B bridge — Tech debt sweep:** PR 6 — Bulk dependency upgrade + toolchain refresh (Riverpod 3, GoRouter 17, Freezed 3). PR 7 — Close local CI Android build gap (`make ci` adds `flutter build apk --debug`). Both land before Sprint B retention work so P1 (charts) can pull in `fl_chart` against the modern toolchain and the new Makefile gate catches Android plugin breakage pre-push.
-**Sprint B (1 week) — Retention:** P1, P2, P4, P8
-**Sprint C (1 week) — Resilience:** B6, W3, W3b, W6, W8 (B7 promoted to Phase 14)
-**Deferred to v1.1:** P5 (1RM), W4 (push notifications), W5 (CSV export)
-
-> **PO strategic note:** Consider shipping Phase 15a (XP overlay + level badge) alongside launch for competitive differentiation vs Strong/Hevy. Without it, GymBuddy is a feature-subset of established competitors.
-
----
-
-## Phase 13a PR 6: Bulk Dependency Upgrade + Toolchain Refresh (DONE — #49)
-
-Swept 34 dependencies to current stable. 45 files changed, 994/994 tests pass, APK/Web size unchanged.
-
-- **Riverpod 2→3**: `.valueOrNull`→`.value` (20 files), `StateProvider` to legacy import (4), `Override` type to misc import (7 tests)
-- **Freezed 2→3**: `sealed` AnalyticsEvent union + `abstract` for 15 data classes; `.map()`/`.when()` rewritten to Dart 3 switch expressions
-- **GoRouter 13→17, flutter_dotenv 5→6**: clean bumps, no source changes
-- **Theme**: `AppBarTheme`→`AppBarThemeData`, `InputDecorationTheme`→`InputDecorationThemeData`
-- **Removed** unused `hive_generator`; **pinned** `package_info_plus` 9.0.1 (10.x needs newer SDK)
-- **Key decision**: codegen toolchain + Freezed + Riverpod forced into single mega-commit (transitive dep graph)
-
----
-
-## Phase 13a PR 7: Close local CI Android build gap
-
-> **Status:** PLANNED. Tooling/process fix surfaced by the `sentry_flutter 8 → 9` upgrade on PR #46. Single-line Makefile change + a CLAUDE.md docs update. Independent of PR 6 — can ship before, after, or in parallel.
-
-### Finding
-
-`make ci` currently runs `format + analyze + gen + test`. It does **not** run any Android build step. The `sentry_flutter 8 → 9` upgrade on the PR 5 branch (PR #46) hit a Kotlin language-version compile error inside the bumped plugin's native Android code. `dart analyze` and `flutter test` are entirely Dart-side checks — they cannot detect Gradle/Kotlin/Java compile failures in plugin native code. The break only surfaced on GitHub Actions' `build` job, which means we pushed a broken branch and burned CI cycles to discover it.
-
-This applies to any plugin with native Android code (`sentry_flutter`, `hive`, `cached_network_image`, `flutter_dotenv`, `package_info_plus`, `wakelock_plus`, anything FFI-based) — every dep upgrade that touches such a plugin can re-trigger the same class of failure.
-
-### Fix options considered
-
-1. **(Recommended) Add `flutter build apk --debug --no-shrink` to `make ci`.** Adds ~3 minutes to the local gate. Catches the failure before push every time. Downside: slower local iteration loop — `make ci` is no longer instant.
-2. Add a separate `make ci-android` target invoked only when `pubspec.yaml` or `android/` files changed. Conditional gate, faster default path, but requires git-aware tooling and is more complex to maintain.
-3. Keep `make ci` fast and document in `CLAUDE.md` that `flutter build apk --debug` MUST be run when `pubspec.yaml` or `android/` files change. Discipline-based — already failed us once on PR #46.
-
-### Decision
-
-**Option 1.** The 3-minute cost is the price of catching native plugin failures pre-push deterministically. Discipline-based gates have proven unreliable in this codebase.
-
-### Implementation (single tiny PR)
-
-**Files to touch:**
-
-- `Makefile` — add `flutter build apk --debug --no-shrink` as the **last** step of the `ci` target (after `test`, so a unit test failure short-circuits before the slow build runs).
-- `CLAUDE.md` — update the "Commands" section so the `make ci` line accurately reflects `format + analyze + gen + test + android-debug-build`. Add a one-line note that `make ci` now takes ~3-5 minutes due to the Android build step.
-
-**Suggested Makefile diff (illustrative — implementer may adjust target ordering for parallelism):**
-
-```makefile
-ci: format analyze gen test build-android-debug
-
-build-android-debug:
-	flutter build apk --debug --no-shrink
-```
-
-**`--no-shrink` rationale:** the goal is "does Gradle/Kotlin compile cleanly", not "does R8 shrink correctly". Skipping shrink saves ~30s per run. R8 shrinking is exercised by the `release` build job in CI's `build.yml`, so we don't lose coverage.
-
-### Acceptance criteria
-
-- [ ] `make ci` includes a step that runs `flutter build apk --debug --no-shrink`
-- [ ] `make ci` fails with a non-zero exit code if the Android debug APK build fails
-- [ ] **Verification by deliberate breakage:** temporarily inject a Gradle syntax error in `android/app/build.gradle.kts`, run `make ci`, confirm it goes red on the new step. Revert the breakage. Re-run `make ci`, confirm it goes green. (Capture the red/green output in the PR body.)
-- [ ] `CLAUDE.md` Commands section updated to reflect the new gate scope
-- [ ] CI pipeline (`ci.yml`) is **NOT** modified — this PR only changes the local gate. CI's existing `build` job already covers this on the remote, so no parallel work is needed there.
-- [ ] Wall-clock time for `make ci` post-change is documented in the PR body (expected: ~3-5 min, up from ~1-2 min)
-
-### Testing strategy
-
-This is a one-line Makefile change. The 7-gate strategy from PR 6 does not apply. Verification is:
-
-1. Run `make ci` on a clean checkout — must pass
-2. Inject a deliberate Gradle break (e.g., `applicationId "broken syntax"`), run `make ci` — must red on the new step
-3. Revert the break, run `make ci` again — must green
-4. Capture and paste both runs into the PR body as evidence
-
-### Out of scope
-
-- No CI workflow changes (`ci.yml` stays as-is)
-- No iOS build added (no Mac CI runner; iOS deferred per project scope)
-- No release-build added to `make ci` (too slow for local; CI handles it)
-- No conditional build logic based on changed files (rejected as Option 2 above)
-- No new tests — this is a Makefile change
-
-### Time estimate
-
-**0.5-1 agent-hour.** Single-line Makefile edit + verification by breakage + CLAUDE.md doc update + PR write-up.
-
-### Sequencing relative to PR 6
-
-PR 7 is **independent** of PR 6 — the Makefile change has zero overlap with the dep upgrade. Recommended order:
-
-- **Ship PR 7 FIRST** (it's a 1-hour PR that protects PR 6). With the new `make ci` gate in place, PR 6's commits each get an Android build check before push, catching native plugin breakage from `flutter_dotenv 5→6`, `riverpod 2→3`, etc., at the local gate.
-- Alternative: ship PR 6 first if the user prioritizes the dep sweep — but then PR 6's commits skip the Android build pre-push gate and rely on GitHub Actions to catch any plugin breakage.
+1. `SELECT COUNT(*) FROM exercises WHERE is_default = true AND (description IS NULL OR form_tips IS NULL)` returns `0` on hosted Supabase
+2. Zero image 404s on default exercise tiles (QA walkthrough against production storage)
+3. New user sign-up → home shows "Start your first workout" CTA with beginner routine, not a blank list (E2E verified)
+4. Any exercise with ≥2 logged sets shows a weight-over-time chart; zero/single-data-point states handled without crash (unit + QA)
+5. All Sprint C items merged
+6. APK size reduced via R8 (19.7MB → ~12-14MB target, documented in PR body)
+7. Full CI green, 145/145 E2E pass, no critical open bugs in QA Status
 
 ---
 
