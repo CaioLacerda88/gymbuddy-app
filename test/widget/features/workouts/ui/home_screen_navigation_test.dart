@@ -22,6 +22,8 @@ import 'package:gymbuddy_app/features/workouts/providers/workout_history_provide
 import 'package:gymbuddy_app/features/workouts/providers/workout_providers.dart';
 import 'package:gymbuddy_app/features/workouts/ui/home_screen.dart';
 
+import '../../../../fixtures/test_factories.dart';
+
 // ---------------------------------------------------------------------------
 // Stubs
 // ---------------------------------------------------------------------------
@@ -35,10 +37,24 @@ class _EmptyRoutineNotifier extends AsyncNotifier<List<Routine>>
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _EmptyHistoryNotifier extends AsyncNotifier<List<Workout>>
+/// History notifier that returns a single completed workout so the
+/// contextual stat cells render (the P8 hide-when-empty guard collapses the
+/// row when lastSession == null AND weekVolume == 0).
+class _SingleWorkoutHistoryNotifier extends AsyncNotifier<List<Workout>>
     implements WorkoutHistoryNotifier {
   @override
-  Future<List<Workout>> build() async => [];
+  Future<List<Workout>> build() async {
+    final yesterday = DateTime.now().subtract(const Duration(days: 1));
+    return [
+      Workout.fromJson(
+        TestWorkoutFactory.create(
+          id: 'wk-001',
+          name: 'Push Day',
+          finishedAt: yesterday.toIso8601String(),
+        ),
+      ),
+    ];
+  }
 
   @override
   bool get hasMore => false;
@@ -107,11 +123,14 @@ Widget _buildTestApp() {
   return ProviderScope(
     overrides: [
       routineListProvider.overrideWith(() => _EmptyRoutineNotifier()),
-      workoutHistoryProvider.overrideWith(() => _EmptyHistoryNotifier()),
+      workoutHistoryProvider.overrideWith(
+        () => _SingleWorkoutHistoryNotifier(),
+      ),
       activeWorkoutProvider.overrideWith(() => _NullActiveWorkoutNotifier()),
       weeklyPlanProvider.overrideWith(() => _NullWeeklyPlanNotifier()),
       weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
       weekVolumeProvider.overrideWith((ref) => Future.value(0)),
+      workoutCountProvider.overrideWith((ref) => Future.value(1)),
       profileProvider.overrideWith(() => _ProfileNotifier()),
     ],
     child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),

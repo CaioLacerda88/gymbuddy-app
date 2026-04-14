@@ -154,6 +154,17 @@ class _ContextualStatCells extends ConsumerWidget {
     final weekVolume = ref.watch(weekVolumeProvider);
     final weightUnit = ref.watch(profileProvider).value?.weightUnit ?? 'kg';
 
+    // Hide both cells for brand-new users who have nothing to show yet.
+    // Only collapse when weekVolume has actually resolved — during initial
+    // load we retain the current placeholder behavior so the row doesn't
+    // flash in after the first frame once data arrives.
+    final weekVolumeValue = weekVolume.value;
+    if (lastSession == null &&
+        weekVolumeValue != null &&
+        weekVolumeValue == 0) {
+      return const SizedBox.shrink();
+    }
+
     final lastValue = lastSession != null
         ? '${lastSession.relativeDate} \u2014 ${lastSession.name}'
         : 'No workouts yet';

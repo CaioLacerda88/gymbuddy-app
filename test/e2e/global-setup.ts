@@ -37,6 +37,8 @@ const TEST_USERS = [
   'e2e-smoke-routine-mgmt@test.local',
   'e2e-smoke-weekly-plan-review@test.local',
   'e2e-smoke-profile-goal@test.local',
+  // First-workout beginner CTA (P8) — fresh user with zero workouts
+  'e2e-smoke-first-workout@test.local',
   // Full suite users (one per spec file)
   'e2e-full-auth@test.local',
   'e2e-full-exercises@test.local',
@@ -64,6 +66,49 @@ async function getUserId(
   const { data: listData } = await supabase.auth.admin.listUsers();
   const user = listData?.users?.find((u) => u.email === email);
   return user?.id ?? null;
+}
+
+/**
+ * Seed a single minimal completed workout for a user.
+ *
+ * P8 introduced a new-user CTA that replaces the "Plan your week" empty state
+ * when `workoutCount == 0`. Some weekly-plan tests still assume the empty state
+ * shows "Plan your week", so we seed one workout for those users to push
+ * `workoutCount` above 0. This preserves the test semantics (weekly plan
+ * feature is tested for "already-onboarded" users, not brand-new ones).
+ *
+ * Idempotent: checks for an existing workout named 'E2E Warmup Workout'.
+ */
+async function seedMinimalWorkout(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<void> {
+  const { data: existing } = await supabase
+    .from('workouts')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('name', 'E2E Warmup Workout')
+    .maybeSingle();
+
+  if (existing) return;
+
+  const now = new Date();
+  const startedAt = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+  const finishedAt = new Date(now.getTime() - 90 * 60 * 1000);
+
+  const { error } = await supabase.from('workouts').insert({
+    user_id: userId,
+    name: 'E2E Warmup Workout',
+    started_at: startedAt.toISOString(),
+    finished_at: finishedAt.toISOString(),
+    duration_seconds: 1800,
+  });
+
+  if (error) {
+    console.log(
+      `[global-setup] Warning: could not seed minimal workout for ${userId}: ${error.message}`,
+    );
+  }
 }
 
 /**
@@ -427,6 +472,8 @@ async function globalSetup(): Promise<void> {
     'e2e-full-workout@test.local',
     'e2e-smoke-workout@test.local',
     'e2e-smoke-pr@test.local',
+    // P8 beginner CTA requires zero workouts for the CTA to render
+    'e2e-smoke-first-workout@test.local',
   ];
 
   for (const email of freshStateUsers) {
@@ -460,6 +507,9 @@ async function globalSetup(): Promise<void> {
     // Delete personal records
     await supabase.from('personal_records').delete().eq('user_id', userId);
 
+    // Delete weekly plans (P8 CTA requires plan == null || plan.routines.isEmpty)
+    await supabase.from('weekly_plans').delete().eq('user_id', userId);
+
     console.log(`[global-setup] Cleaned workout data for ${email}`);
   }
 
@@ -471,6 +521,9 @@ async function globalSetup(): Promise<void> {
   const profileUsers = [
     'e2e-smoke-profile-goal@test.local',
     'e2e-smoke-exercise@test.local',
+    // P8 first-workout user needs a profile row (otherwise router redirects
+    // to /onboarding, not /home where the beginner CTA is shown).
+    'e2e-smoke-first-workout@test.local',
   ];
 
   // Delete profile rows for users that need to test onboarding (fresh state).
@@ -533,6 +586,32 @@ async function globalSetup(): Promise<void> {
   );
   if (weeklyPlanUserId) {
     await seedWeeklyPlanReviewData(supabase, weeklyPlanUserId);
+  }
+
+  // Seed a minimal workout for users whose tests rely on the "Plan your week"
+  // empty state. P8 replaces that state with a beginner CTA when
+  // workoutCount == 0, so we push workoutCount above 0 for these users.
+  // Also applies to fullHistory (uses history empty-state assertions that
+  // don't depend on stat cells, but tests expect the user to be able to
+  // navigate from Home without the beginner CTA intercepting).
+  const warmupWorkoutUsers = [
+    'e2e-smoke-weekly-plan@test.local',
+  ];
+  for (const email of warmupWorkoutUsers) {
+    const uid = await getUserId(supabase, email);
+    if (!uid) continue;
+    // Ensure a profile row exists so the router doesn't bounce to onboarding.
+    await supabase
+      .from('profiles')
+      .upsert(
+        {
+          id: uid,
+          display_name: 'Weekly Plan Tester',
+          fitness_level: 'intermediate',
+        },
+        { onConflict: 'id' },
+      );
+    await seedMinimalWorkout(supabase, uid);
   }
 
   console.log('[global-setup] Done.');

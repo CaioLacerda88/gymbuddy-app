@@ -16,6 +16,7 @@ import 'package:gymbuddy_app/features/routines/providers/notifiers/routine_list_
 import 'package:gymbuddy_app/features/weekly_plan/data/models/weekly_plan.dart';
 import 'package:gymbuddy_app/features/weekly_plan/providers/weekly_plan_provider.dart';
 import 'package:gymbuddy_app/features/weekly_plan/ui/widgets/week_bucket_section.dart';
+import 'package:gymbuddy_app/features/workouts/providers/workout_history_providers.dart';
 
 // ---------------------------------------------------------------------------
 // Stubs
@@ -129,6 +130,8 @@ Widget _build({
   WeeklyPlan? plan,
   List<Routine> routines = const [],
   bool needsConfirmation = false,
+  int workoutCount =
+      1, // default > 0 so beginner CTA is suppressed in most tests
 }) {
   return ProviderScope(
     overrides: [
@@ -137,6 +140,7 @@ Widget _build({
       weeklyPlanNeedsConfirmationProvider.overrideWith(
         (ref) => needsConfirmation,
       ),
+      workoutCountProvider.overrideWith((ref) => Future.value(workoutCount)),
     ],
     child: MaterialApp(
       theme: AppTheme.dark,
@@ -204,6 +208,7 @@ void main() {
               () => _RoutineListStub([_routine()]),
             ),
             weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
+            workoutCountProvider.overrideWith((ref) => Future.value(1)),
           ],
           child: MaterialApp(
             theme: AppTheme.dark,
@@ -607,6 +612,7 @@ void main() {
               () => _RoutineListStub([_routine(id: 'r-001', name: 'Push Day')]),
             ),
             weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
+            workoutCountProvider.overrideWith((ref) => Future.value(1)),
           ],
           child: MaterialApp(
             theme: AppTheme.dark,
@@ -641,6 +647,7 @@ void main() {
               () => _RoutineListStub([_routine()]),
             ),
             weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
+            workoutCountProvider.overrideWith((ref) => Future.value(1)),
           ],
           child: MaterialApp(
             theme: AppTheme.dark,
@@ -656,6 +663,88 @@ void main() {
       stub.complete();
       await tester.pumpAndSettle();
     });
+  });
+
+  group('WeekBucketSection — first-run beginner CTA (P8)', () {
+    testWidgets(
+      'renders beginner CTA when plan is null, workoutCount is 0, and a default routine exists',
+      (tester) async {
+        await tester.pumpWidget(
+          _build(
+            plan: null,
+            routines: [
+              Routine(
+                id: 'r-fb',
+                name: 'Full Body',
+                isDefault: true,
+                exercises: const [],
+                createdAt: DateTime(2026),
+              ),
+            ],
+            workoutCount: 0,
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.text('YOUR FIRST WORKOUT'), findsOneWidget);
+        // "Plan your week" fallback must not show alongside the CTA.
+        expect(find.textContaining('Plan your week'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'renders Plan-your-week fallback (not CTA) when workoutCount > 0',
+      (tester) async {
+        await tester.pumpWidget(
+          _build(
+            plan: null,
+            routines: [
+              Routine(
+                id: 'r-fb',
+                name: 'Full Body',
+                isDefault: true,
+                exercises: const [],
+                createdAt: DateTime(2026),
+              ),
+            ],
+            workoutCount: 3,
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.text('YOUR FIRST WORKOUT'), findsNothing);
+        expect(find.textContaining('Plan your week'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'renders nothing when workoutCount is 0 but no defaults are available',
+      (tester) async {
+        await tester.pumpWidget(
+          _build(
+            plan: null,
+            routines: [
+              Routine(
+                id: 'r-user',
+                userId: 'user-001',
+                name: 'My Routine',
+                isDefault: false,
+                exercises: const [],
+                createdAt: DateTime(2026),
+              ),
+            ],
+            workoutCount: 0,
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.text('YOUR FIRST WORKOUT'), findsNothing);
+        expect(find.textContaining('Plan your week'), findsNothing);
+      },
+    );
   });
 
   group('WeekBucketSection — confirmation banner', () {
@@ -708,6 +797,7 @@ void main() {
             ),
             // Use a real StateProvider so the Confirm button can mutate it.
             weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => true),
+            workoutCountProvider.overrideWith((ref) => Future.value(1)),
           ],
           child: MaterialApp(
             theme: AppTheme.dark,
