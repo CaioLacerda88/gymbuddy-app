@@ -861,13 +861,13 @@ test.describe('Workout history', () => {
   test('should show empty state for a user with no completed workouts (HIST-005)', async ({
     page,
   }) => {
-    // Navigate to the history screen via the Last session stat cell on Home.
-    // page.goto('/home/history') reloads the Flutter SPA and the router doesn't
-    // preserve the deep link — use SPA navigation instead.
-    await expect(page.locator(HOME_STATS.lastSessionCell)).toBeVisible({
-      timeout: 10_000,
+    // Navigate to the history screen. Since P8 hides the Last session stat
+    // cell when lastSession == null && weekVolume == 0 (the new-user empty
+    // state), we cannot tap that cell here. Navigate via SPA hash routing
+    // instead — page.goto() would reload the Flutter SPA and lose state.
+    await page.evaluate(() => {
+      window.location.hash = '#/home/history';
     });
-    await page.click(HOME_STATS.lastSessionCell);
 
     // The history screen AppBar title confirms we are on the right screen.
     await expect(page.locator(HISTORY.heading)).toBeVisible({ timeout: 15_000 });

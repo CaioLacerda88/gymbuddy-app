@@ -104,6 +104,10 @@ Widget buildTestWidget({
       weeklyPlanProvider.overrideWith(() => _NullWeeklyPlanNotifier()),
       weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
       weekVolumeProvider.overrideWith((ref) => Future.value(weekVolume)),
+      // Match the beginner-CTA contract: no workouts => 0, otherwise non-zero.
+      workoutCountProvider.overrideWith(
+        (ref) => Future.value(historyWorkouts.length),
+      ),
       profileProvider.overrideWith(() => _ProfileNotifier()),
     ],
     child: MaterialApp(
@@ -119,13 +123,23 @@ Widget buildTestWidget({
 
 void main() {
   group('HomeScreen contextual stat cells', () {
-    testWidgets('renders two ContextualStatCell widgets', (tester) async {
+    testWidgets('renders two ContextualStatCell widgets when data is present', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(800, 2000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(buildTestWidget());
+      // Provide a finished workout so the row is not collapsed by the
+      // hide-when-empty guard introduced in P8.
+      await tester.pumpWidget(
+        buildTestWidget(
+          historyWorkouts: [
+            makeWorkout(finishedAt: DateTime.now().toIso8601String()),
+          ],
+        ),
+      );
       await tester.pump();
       await tester.pump();
 
@@ -175,7 +189,52 @@ void main() {
       expect(find.textContaining('this week'), findsOneWidget);
     });
 
-    testWidgets('shows "No workouts yet" when history is empty', (
+    testWidgets(
+      'shows "No volume yet" placeholder when a workout exists but volume is 0',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        // One finished workout from last week → lastSession is non-null but
+        // this week's volume is still 0. The row must stay visible.
+        final lastWeek = DateTime.now().subtract(const Duration(days: 10));
+        await tester.pumpWidget(
+          buildTestWidget(
+            historyWorkouts: [
+              makeWorkout(finishedAt: lastWeek.toIso8601String()),
+            ],
+            weekVolume: 0,
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.textContaining('No volume yet'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'hides both cells when history is empty AND weekVolume is 0 (P8)',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(buildTestWidget(weekVolume: 0));
+        await tester.pump();
+        await tester.pump();
+
+        // Neither stat cell renders when the user has nothing to show.
+        expect(find.byType(ContextualStatCell), findsNothing);
+        expect(find.text('Last session'), findsNothing);
+        expect(find.text("Week's volume"), findsNothing);
+      },
+    );
+
+    testWidgets('shows cells when lastSession is null but volume > 0 (P8)', (
       tester,
     ) async {
       tester.view.physicalSize = const Size(800, 2000);
@@ -183,24 +242,13 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpWidget(buildTestWidget(weekVolume: 1500));
       await tester.pump();
       await tester.pump();
 
+      // Row must render when volume > 0 even without a prior session.
+      expect(find.byType(ContextualStatCell), findsNWidgets(2));
       expect(find.textContaining('No workouts yet'), findsOneWidget);
-    });
-
-    testWidgets('shows "No volume yet" when volume is 0', (tester) async {
-      tester.view.physicalSize = const Size(800, 2000);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      await tester.pumpWidget(buildTestWidget(weekVolume: 0));
-      await tester.pump();
-      await tester.pump();
-
-      expect(find.textContaining('No volume yet'), findsOneWidget);
     });
 
     testWidgets('last session shows "Today" for same-day workout', (
@@ -231,7 +279,13 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpWidget(
+        buildTestWidget(
+          historyWorkouts: [
+            makeWorkout(finishedAt: DateTime.now().toIso8601String()),
+          ],
+        ),
+      );
       await tester.pump();
       await tester.pump();
 
@@ -245,7 +299,13 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpWidget(
+        buildTestWidget(
+          historyWorkouts: [
+            makeWorkout(finishedAt: DateTime.now().toIso8601String()),
+          ],
+        ),
+      );
       await tester.pump();
       await tester.pump();
 

@@ -68,7 +68,15 @@ final workoutHistoryProvider =
 ///
 /// Uses a server-side `COUNT(*)` query rather than the paginated list length,
 /// so it returns the real total regardless of page size.
+///
+/// `ref.keepAlive()` prevents Riverpod from disposing the provider when the
+/// last listener unsubscribes — the count is watched from multiple screens
+/// (Home's beginner CTA guard, Profile, Manage Data) and navigating between
+/// them would otherwise re-issue the `COUNT(*)` query on every push/pop.
+/// Explicit `ref.invalidate(workoutCountProvider)` calls (on workout save,
+/// data reset) still force a fresh fetch regardless of keepAlive.
 final workoutCountProvider = FutureProvider<int>((ref) {
+  ref.keepAlive();
   final userId = ref.read(authRepositoryProvider).currentUser?.id;
   if (userId == null) return 0;
   final repo = ref.watch(workoutRepositoryProvider);

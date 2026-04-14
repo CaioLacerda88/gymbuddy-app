@@ -7,10 +7,12 @@ import '../../../profile/providers/profile_providers.dart';
 import '../../../routines/models/routine.dart';
 import '../../../routines/providers/notifiers/routine_list_notifier.dart';
 import '../../../routines/ui/start_routine_action.dart';
+import '../../../workouts/providers/workout_history_providers.dart';
 import '../../data/models/weekly_plan.dart';
 import '../../providers/suggested_next_provider.dart';
 import '../../providers/week_review_stats_provider.dart';
 import '../../providers/weekly_plan_provider.dart';
+import '../../utils/routine_duration_estimator.dart';
 import 'routine_chip.dart';
 import 'week_review_section.dart';
 
@@ -45,8 +47,33 @@ class WeekBucketSection extends ConsumerWidget {
     final routineMap = <String, Routine>{for (final r in routines) r.id: r};
     final nameMap = <String, String>{for (final r in routines) r.id: r.name};
 
-    // No plan set yet — show "Plan your week" CTA.
+    // No plan set yet — decide between beginner CTA and "Plan your week" CTA.
     if (plan == null || plan.routines.isEmpty) {
+      // Brand-new users (zero finished workouts) get a one-tap beginner CTA
+      // that jumps straight into a Full Body workout, bypassing the "plan
+      // your week" configuration step which is paradox-of-choice for someone
+      // who has never lifted. Once they log their first workout the CTA
+      // disappears and the normal "Plan your week" prompt returns.
+      final workoutCountAsync = ref.watch(workoutCountProvider);
+      // Wait for a committed value before deciding between the beginner CTA
+      // and the "Plan your week" fallback. Without this guard the CTA flashes
+      // the wrong branch during the 200-600ms cold-start window (value is
+      // null → count != 0 → _EmptyBucketState), and on transient errors the
+      // CTA would never render that session.
+      if (!workoutCountAsync.hasValue) return const SizedBox.shrink();
+      final workoutCount = workoutCountAsync.value!;
+      if (workoutCount == 0) {
+        final beginnerRoutine = _pickBeginnerRoutine(routines);
+        if (beginnerRoutine != null) {
+          return _BeginnerRoutineCta(
+            routine: beginnerRoutine,
+            onTap: () => startRoutineWorkout(context, ref, beginnerRoutine),
+          );
+        }
+        // No defaults to suggest — don't fall back to "Plan your week"
+        // either; render nothing so the screen stays calm.
+        return const SizedBox.shrink();
+      }
       return _EmptyBucketState(hasRoutines: routines.isNotEmpty);
     }
 
@@ -79,6 +106,23 @@ class WeekBucketSection extends ConsumerWidget {
 
   void _startNewWeek(BuildContext context, WidgetRef ref) {
     context.push('/plan/week');
+  }
+
+  /// Selects the routine to recommend to a brand-new user.
+  ///
+  /// Prefers the default routine named "Full Body" (total-body beginner
+  /// program seeded by `supabase/seed.sql`). Falls back to the first default
+  /// routine by alphabetical name (deterministic across reloads) when Full
+  /// Body is missing. Returns null when no default routines exist — caller
+  /// should render nothing rather than show a broken card.
+  static Routine? _pickBeginnerRoutine(List<Routine> routines) {
+    final defaults = routines.where((r) => r.isDefault).toList();
+    if (defaults.isEmpty) return null;
+    for (final r in defaults) {
+      if (r.name == 'Full Body') return r;
+    }
+    defaults.sort((a, b) => a.name.compareTo(b.name));
+    return defaults.first;
   }
 }
 
@@ -302,6 +346,98 @@ class _SuggestedNextCard extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// First-run CTA: a single recommended beginner workout with a one-tap entry
+/// into an active workout. Shown instead of the "Plan your week" prompt when
+/// the user has not yet logged any workouts and at least one default routine
+/// is available.
+///
+/// Taller (80dp) than [_SuggestedNextCard] (56dp) because it is the primary
+/// CTA for a brand-new user, and carries three lines of content: a label,
+/// the routine name headline, and a short stats line.
+class _BeginnerRoutineCta extends StatelessWidget {
+  const _BeginnerRoutineCta({required this.routine, required this.onTap});
+
+  final Routine routine;
+  final VoidCallback onTap;
+
+  static const _primaryGreen = Color(0xFF00E676);
+  static const _cardColor = Color(0xFF232340);
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final mutedColor = theme.colorScheme.onSurface.withValues(alpha: 0.55);
+    // Derive the duration estimate from the routine's set_configs so Push/Pull
+    // Day, Leg Day, etc. show honest numbers — not just "~45 min" pinned to
+    // Full Body. See `estimateRoutineDurationMinutes` for the heuristic.
+    final durationMin = estimateRoutineDurationMinutes(routine);
+    final stats =
+        '${routine.exercises.length} exercises \u00B7 ~$durationMin min';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Material(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(kRadiusMd),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(kRadiusMd),
+          onTap: onTap,
+          child: Container(
+            height: 80,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(kRadiusMd),
+              border: const Border(
+                left: BorderSide(color: _primaryGreen, width: 4),
+              ),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'YOUR FIRST WORKOUT',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: mutedColor,
+                          letterSpacing: 1.2,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        routine.name,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: theme.colorScheme.onSurface,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        stats,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: mutedColor,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Icon(Icons.play_arrow, color: _primaryGreen, size: 28),
+              ],
+            ),
           ),
         ),
       ),

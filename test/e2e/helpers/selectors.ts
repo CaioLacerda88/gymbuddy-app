@@ -596,3 +596,24 @@ export const HOME_STATS = {
   /** "Week's volume" contextual stat cell — Semantics label "Week's volume: {value}" */
   weekVolumeCell: 'role=button[name*="Week\'s volume"]',
 } as const;
+
+// ---------------------------------------------------------------------------
+// First-run beginner routine CTA — _BeginnerRoutineCta in WeekBucketSection (P8).
+//
+// Rendered when plan is null or empty AND workoutCount == 0 AND a default
+// routine exists. Shows "YOUR FIRST WORKOUT" label, routine name headline,
+// and a stats line ("N exercises · ~45 min"). Tapping the card starts an
+// active workout for the recommended routine.
+//
+// Flutter merges the Column into a single tappable InkWell, so the card's
+// accessible name concatenates child text. Matching on the "YOUR FIRST
+// WORKOUT" substring is the most stable selector.
+// ---------------------------------------------------------------------------
+export const FIRST_WORKOUT_CTA = {
+  /** The "YOUR FIRST WORKOUT" label text — unique to the beginner CTA */
+  label: 'text=YOUR FIRST WORKOUT',
+  /** The whole card tap target — InkWell with merged semantics */
+  card: 'role=button[name*="YOUR FIRST WORKOUT"]',
+  /** Routine name displayed as the headline — parameterized for flexibility */
+  routineName: (name: string) => `text=${name}`,
+} as const;

@@ -32,6 +32,7 @@ import {
   HISTORY,
   PROFILE,
   ROUTINE,
+  FIRST_WORKOUT_CTA,
 } from '../helpers/selectors';
 import {
   startEmptyWorkout,
@@ -295,6 +296,69 @@ test.describe('Home screen and navigation', () => {
     // The value is dynamic ("Just now", "Today", etc.) so we just verify the cell is visible.
     await expect(page.locator(HOME_STATS.lastSessionCell)).toBeVisible({
       timeout: 10_000,
+    });
+  });
+});
+
+// =============================================================================
+// P8 — New-user empty-state CTA (beginner routine recommendation)
+//
+// A brand-new account with zero finished workouts and no active weekly plan
+// should see a "YOUR FIRST WORKOUT" card recommending the Full Body default
+// routine. Tapping the card must start an active workout and navigate to
+// /workout/active.
+//
+// Uses the dedicated `smokeFirstWorkout` user which global-setup provisions
+// with: (a) a profile row (so router does not redirect to /onboarding),
+// (b) no workouts, (c) no weekly plan.
+// =============================================================================
+test.describe('First workout CTA (P8)', { tag: '@smoke' }, () => {
+  test.beforeEach(async ({ page }) => {
+    await login(
+      page,
+      TEST_USERS.smokeFirstWorkout.email,
+      TEST_USERS.smokeFirstWorkout.password,
+    );
+    await navigateToTab(page, 'Home');
+  });
+
+  test('should show YOUR FIRST WORKOUT card for a brand-new user', async ({
+    page,
+  }) => {
+    await expect(page.locator(FIRST_WORKOUT_CTA.label)).toBeVisible({
+      timeout: 15_000,
+    });
+  });
+
+  test('should recommend the Full Body default routine', async ({ page }) => {
+    // The headline is the routine name. The default pick prefers "Full Body"
+    // over other seeded defaults (Push Day, Pull Day, Leg Day).
+    await expect(page.locator(FIRST_WORKOUT_CTA.label)).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(
+      page.locator(FIRST_WORKOUT_CTA.routineName('Full Body')).first(),
+    ).toBeVisible({ timeout: 10_000 });
+  });
+
+  test('should navigate to /workout/active when tapping the card', async ({
+    page,
+  }) => {
+    // Wait for the card to render before tapping.
+    await expect(page.locator(FIRST_WORKOUT_CTA.label)).toBeVisible({
+      timeout: 15_000,
+    });
+
+    // Tap the card's label (any child of the merged InkWell works).
+    await page.locator(FIRST_WORKOUT_CTA.label).click();
+
+    // Router pushes /workout/active with the Full Body routine loaded.
+    await page.waitForURL('**/workout/active**', { timeout: 15_000 });
+
+    // The active workout screen shows the Finish Workout action in the
+    // persistent bottom bar.
+    await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
+      timeout: 15_000,
     });
   });
 });

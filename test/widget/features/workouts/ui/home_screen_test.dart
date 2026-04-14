@@ -183,6 +183,11 @@ Widget buildTestWidget({
       ),
       weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
       weekVolumeProvider.overrideWith((ref) => Future.value(weekVolume)),
+      // Derived from historyWorkouts so beginner-CTA logic matches intent
+      // across the suite: no workouts -> count 0 (triggers CTA if defaults
+      // present), otherwise non-zero. Avoids leaking into the empty-plan
+      // branch when a test intentionally seeds history.
+      workoutCountProvider.overrideWith((ref) => Future.value(workouts.length)),
       profileProvider.overrideWith(
         () => hasProfile ? _ProfileNotifier() : _NullProfileNotifier(),
       ),
@@ -371,33 +376,70 @@ void main() {
       expect(find.textContaining('this week'), findsOneWidget);
     });
 
-    testWidgets('shows "No workouts yet" when history is empty', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(800, 2000);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+    testWidgets(
+      'shows "No workouts yet" placeholder when history empty but weekVolume > 0',
+      (tester) async {
+        // Covers an edge state where a user has no finished workouts in
+        // history but the week-volume provider still returns > 0 (e.g., stale
+        // cache). Under the P8 hide-when-empty rule the row must remain
+        // visible because weekVolume > 0 is signal.
+        tester.view.physicalSize = const Size(800, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(buildTestWidget());
-      await tester.pump();
-      await tester.pump();
+        await tester.pumpWidget(buildTestWidget(weekVolume: 1500));
+        await tester.pump();
+        await tester.pump();
 
-      expect(find.textContaining('No workouts yet'), findsOneWidget);
-    });
+        expect(find.textContaining('No workouts yet'), findsOneWidget);
+      },
+    );
 
-    testWidgets('shows "No volume yet" when week volume is 0', (tester) async {
-      tester.view.physicalSize = const Size(800, 2000);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+    testWidgets(
+      'shows "No volume yet" placeholder when volume is 0 but lastSession exists',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(buildTestWidget(weekVolume: 0));
-      await tester.pump();
-      await tester.pump();
+        // A workout from 10 days ago → lastSession is non-null but this
+        // week's volume is still 0. Row must render.
+        final tenDaysAgo = DateTime.now().subtract(const Duration(days: 10));
+        await tester.pumpWidget(
+          buildTestWidget(
+            historyWorkouts: [
+              makeWorkout(finishedAt: tenDaysAgo.toIso8601String()),
+            ],
+            weekVolume: 0,
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
 
-      expect(find.textContaining('No volume yet'), findsOneWidget);
-    });
+        expect(find.textContaining('No volume yet'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'hides both stat cells when history is empty AND weekVolume is 0 (P8)',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(buildTestWidget(weekVolume: 0));
+        await tester.pump();
+        await tester.pump();
+
+        // Neither placeholder nor labels appear — the row is collapsed.
+        expect(find.byType(ContextualStatCell), findsNothing);
+        expect(find.text('Last session'), findsNothing);
+        expect(find.text("Week's volume"), findsNothing);
+      },
+    );
 
     testWidgets('onboarding CTA shown when no routines at all', (tester) async {
       await tester.pumpWidget(

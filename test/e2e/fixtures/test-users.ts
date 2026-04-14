@@ -73,6 +73,12 @@ export const TEST_USERS = {
     email: 'e2e-smoke-profile-goal@test.local',
     password: 'TestPassword123!',
   },
+  // First-workout beginner CTA (P8) — fresh user with zero workouts, verifies
+  // the new-user empty-state card is visible and tap navigates to /workout/active.
+  smokeFirstWorkout: {
+    email: 'e2e-smoke-first-workout@test.local',
+    password: 'TestPassword123!',
+  },
 
   // -------------------------------------------------------------------------
   // Full suite users (one per spec file)

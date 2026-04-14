@@ -35,6 +35,7 @@ void main() {
             weeklyPlanProvider.overrideWith(() => _NullWeeklyPlanNotifier()),
             weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
             weekVolumeProvider.overrideWith((ref) => Future.value(0)),
+            workoutCountProvider.overrideWith((ref) => Future.value(0)),
             profileProvider.overrideWith(() => _ProfileNotifier()),
           ],
           child: MaterialApp(
@@ -71,6 +72,7 @@ void main() {
               weeklyPlanProvider.overrideWith(() => _NullWeeklyPlanNotifier()),
               weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
               weekVolumeProvider.overrideWith((ref) => Future.value(0)),
+              workoutCountProvider.overrideWith((ref) => Future.value(0)),
               profileProvider.overrideWith(() => _ProfileNotifier()),
             ],
             child: MaterialApp(
@@ -115,6 +117,7 @@ void main() {
               weeklyPlanProvider.overrideWith(() => _NullWeeklyPlanNotifier()),
               weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
               weekVolumeProvider.overrideWith((ref) => Future.value(0)),
+              workoutCountProvider.overrideWith((ref) => Future.value(0)),
               profileProvider.overrideWith(() => _ProfileNotifier()),
             ],
             child: MaterialApp(
@@ -150,6 +153,7 @@ void main() {
             weeklyPlanProvider.overrideWith(() => _ActiveWeeklyPlanNotifier()),
             weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
             weekVolumeProvider.overrideWith((ref) => Future.value(0)),
+            workoutCountProvider.overrideWith((ref) => Future.value(0)),
             profileProvider.overrideWith(() => _ProfileNotifier()),
           ],
           child: MaterialApp(
