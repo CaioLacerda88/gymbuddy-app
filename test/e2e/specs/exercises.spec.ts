@@ -928,6 +928,88 @@ test.describe('Exercise library', () => {
       timeout: 5_000,
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // P4 regression — Exercise image rendering from Supabase Storage
+  //
+  // Migration 00018 replaced broken GitHub raw URLs with Supabase Storage URLs
+  // (https://{project}.supabase.co/storage/v1/object/public/exercise-media/...)
+  // for all ~59 default exercises. This test guards against a regression where
+  // the DB rows revert to broken URLs or the storage bucket becomes unavailable,
+  // which would cause CachedNetworkImage to silently fall back to the icon
+  // placeholder — images appear "missing" to the user with no error thrown.
+  //
+  // Assertion strategy:
+  //   Flutter web (CanvasKit) renders everything to <canvas> — CachedNetworkImage
+  //   does NOT produce <img> DOM elements. Instead we intercept network requests:
+  //   1. Use page.waitForResponse to capture the start and end image responses
+  //      concurrently with navigating to the detail screen.
+  //   2. Assert both semantic role=img nodes are visible — confirms _ExerciseImageRow
+  //      rendered (i.e., image URLs are non-null in the DB row).
+  //   3. Assert both captured responses returned HTTP 200 (not 404).
+  //      CachedNetworkImage silently falls back to the icon placeholder on 404 —
+  //      only the network status check surfaces this regression.
+  // ---------------------------------------------------------------------------
+  test('should render start and end images for default exercises (P4 regression)', async ({
+    page,
+  }) => {
+    // Register waitForResponse promises BEFORE tapping the exercise card so we
+    // don't miss responses that arrive before we register the listener.
+    // barbell_bench_press_start.jpg and barbell_bench_press_end.jpg are the
+    // expected filenames produced by the sanitization in migration 00018.
+    const startImageResponsePromise = page.waitForResponse(
+      (resp) =>
+        resp.url().includes('exercise-media') && resp.url().includes('_start'),
+      { timeout: 20_000 },
+    );
+    const endImageResponsePromise = page.waitForResponse(
+      (resp) =>
+        resp.url().includes('exercise-media') && resp.url().includes('_end'),
+      { timeout: 20_000 },
+    );
+
+    // Search for Barbell Bench Press — it is guaranteed to have both
+    // image_start_url and image_end_url set by migration 00018.
+    await flutterFillByInput(page, 'Search exercises', SEED_EXERCISES.benchPress);
+
+    const card = page
+      .locator(EXERCISE_LIST.exerciseCard(SEED_EXERCISES.benchPress))
+      .first();
+    await expect(card).toBeVisible({ timeout: 10_000 });
+    await card.click();
+
+    // Wait for the detail screen to load.
+    await expect(page.locator(EXERCISE_DETAIL.appBarTitle)).toBeVisible({
+      timeout: 10_000,
+    });
+
+    // The semantic image roles must be present — confirms _ExerciseImageRow
+    // rendered both _TappableImage widgets (i.e., image URLs are non-null in the DB).
+    // If either is absent, the DB row is missing the URL — data regression.
+    await expect(
+      page.locator(EXERCISE_DETAIL.startImage(SEED_EXERCISES.benchPress)).first(),
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.locator(EXERCISE_DETAIL.endImage(SEED_EXERCISES.benchPress)).first(),
+    ).toBeVisible({ timeout: 5_000 });
+
+    // Assert both image requests completed with HTTP 200. The predicates above
+    // match on URL only so a 404 resolves the promise and is surfaced by the
+    // explicit status check below (rather than as a generic 20 s timeout).
+    const [startResp, endResp] = await Promise.all([
+      startImageResponsePromise,
+      endImageResponsePromise,
+    ]);
+
+    expect(
+      startResp.status(),
+      `Start image returned ${startResp.status()} for URL: ${startResp.url()}`,
+    ).toBe(200);
+    expect(
+      endResp.status(),
+      `End image returned ${endResp.status()} for URL: ${endResp.url()}`,
+    ).toBe(200);
+  });
 });
 
 // =============================================================================
