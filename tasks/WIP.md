@@ -12,27 +12,27 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ### Track A — Migrations (content)
 
-- [ ] Create `supabase/migrations/00019_expand_exercise_library.sql` inserting 58 new default exercises (idempotent, follows 00014 pattern)
-  - [ ] 6 chest, 9 back, 14 legs, 7 shoulders, 10 arms, 12 core = 58
-  - [ ] No cardio, no "Cable Fly", no "Pistol Squat", no Olympic lifts
-- [ ] Create `supabase/migrations/00020_seed_exercise_content_p9.sql` with 89 `UPDATE` statements
-  - [ ] 31 backfills for 00014 exercises (including 5 cardio)
-  - [ ] 58 updates for the new exercises from 00019
-  - [ ] Voice matches 00010 exactly; 15-25 word descriptions; 4 bullets form_tips; no medical vocabulary
-  - [ ] Upright Row special-case tip: shoulder-impingement warning
-  - [ ] Idempotent UPDATEs, single-quote escaping
-- [ ] Apply migrations to local Supabase (`npx supabase db reset`) and verify:
-  - [ ] `SELECT COUNT(*) FROM exercises WHERE is_default = true` == 150
-  - [ ] `WHERE is_default = true AND description IS NULL` == 0
-  - [ ] `WHERE is_default = true AND form_tips IS NULL` == 0
-- [ ] Commit: `feat(exercises): expand library to 150 and seed all descriptions/form_tips (P9 Track A)`
+- [x] Create `supabase/migrations/00019_expand_exercise_library.sql` inserting 58 new default exercises (idempotent, follows 00014 pattern)
+  - [x] 6 chest, 9 back, 14 legs, 7 shoulders, 10 arms, 12 core = 58
+  - [x] No cardio, no "Cable Fly", no "Pistol Squat", no Olympic lifts
+- [x] Create `supabase/migrations/00020_seed_exercise_content_p9.sql` with 89 `UPDATE` statements
+  - [x] 31 backfills for 00014 exercises (including 5 cardio)
+  - [x] 58 updates for the new exercises from 00019
+  - [x] Voice matches 00010 exactly; 15-25 word descriptions; 4 bullets form_tips; no medical vocabulary
+  - [x] Upright Row special-case tip: shoulder-impingement warning
+  - [x] Idempotent UPDATEs, single-quote escaping
+- [x] Apply migrations to local Supabase (`npx supabase db reset`) and verify (via distinct-name counts because pre-existing seed.sql introduces duplicates on local reset only; production `db push` never runs seed.sql):
+  - [x] `SELECT COUNT(DISTINCT name) FROM exercises WHERE is_default = true` == 150
+  - [x] `WHERE is_default = true AND description IS NULL` == 0 (after dedup of seed.sql duplicates)
+  - [x] `WHERE is_default = true AND form_tips IS NULL` == 0 (after dedup)
+- [x] Commit: `feat(exercises): expand library to 150 and seed all descriptions/form_tips (P9 Track A)`
 
 ### Track B — Governance (CI guard + CLAUDE.md rule)
 
-- [ ] Create `scripts/check_exercise_content_pairing.sh` (POSIX-compatible, ~20-30 lines)
-- [ ] Wire into `.github/workflows/ci.yml` as fast-failing step `exercise-content-pairing-check`
-- [ ] Add pairing-rule subsection to `CLAUDE.md`
-- [ ] Self-test: runs clean on P9 migrations; exits 1 on synthetic unpaired case
+- [x] Create `scripts/check_exercise_content_pairing.sh` (POSIX-compatible)
+- [x] Wire into `.github/workflows/ci.yml` as fast-failing job `exercise-content-pairing-check` upstream of analyze/test/build
+- [x] Add pairing-rule subsection to `CLAUDE.md`
+- [x] Self-test: runs clean on P9 migrations; exits 1 on synthetic unpaired case (verified with branch-based synthetic)
 - [ ] Commit: `ci(exercises): enforce description+form_tips pairing for default-exercise migrations (P9 Track B)`
 
 ### Track C — Detail-sheet hierarchy fix

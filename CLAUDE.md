@@ -35,6 +35,12 @@ flutter run -d chrome        # run on Chrome (for Playwright e2e)
 - Commit format: `feat|fix|refactor|test|docs|ci|chore(scope): description`
 - Scopes: `auth`, `exercises`, `workouts`, `progress`, `profile`, `core`, `theme`, `ci`
 
+### Exercise content pairing rule
+
+Any migration that inserts `is_default = true` exercises MUST be paired with a migration that populates `description` and `form_tips` for every inserted row (either the same file or a sibling migration in the same PR). No default exercise ships with NULL content.
+
+CI enforces this via `scripts/check_exercise_content_pairing.sh`. Violation fails the pipeline.
+
 ## Testing
 
 - Structure: `test/unit/`, `test/widget/`, `test/e2e/`, `test/fixtures/`
