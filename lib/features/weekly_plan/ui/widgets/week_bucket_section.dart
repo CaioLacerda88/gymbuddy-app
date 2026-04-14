@@ -12,6 +12,7 @@ import '../../data/models/weekly_plan.dart';
 import '../../providers/suggested_next_provider.dart';
 import '../../providers/week_review_stats_provider.dart';
 import '../../providers/weekly_plan_provider.dart';
+import '../../utils/routine_duration_estimator.dart';
 import 'routine_chip.dart';
 import 'week_review_section.dart';
 
@@ -54,7 +55,13 @@ class WeekBucketSection extends ConsumerWidget {
       // who has never lifted. Once they log their first workout the CTA
       // disappears and the normal "Plan your week" prompt returns.
       final workoutCountAsync = ref.watch(workoutCountProvider);
-      final workoutCount = workoutCountAsync.value;
+      // Wait for a committed value before deciding between the beginner CTA
+      // and the "Plan your week" fallback. Without this guard the CTA flashes
+      // the wrong branch during the 200-600ms cold-start window (value is
+      // null → count != 0 → _EmptyBucketState), and on transient errors the
+      // CTA would never render that session.
+      if (!workoutCountAsync.hasValue) return const SizedBox.shrink();
+      final workoutCount = workoutCountAsync.value!;
       if (workoutCount == 0) {
         final beginnerRoutine = _pickBeginnerRoutine(routines);
         if (beginnerRoutine != null) {
@@ -367,11 +374,12 @@ class _BeginnerRoutineCta extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final mutedColor = theme.colorScheme.onSurface.withValues(alpha: 0.55);
-    // The "~45 min" estimate is pinned to Full Body for now; computing a real
-    // duration per routine is scope creep (P8 is first-run CTA, not per-routine
-    // analytics). If we ever ship more recommended routines we can derive this
-    // from total sets × rest_seconds.
-    final stats = '${routine.exercises.length} exercises \u00B7 ~45 min';
+    // Derive the duration estimate from the routine's set_configs so Push/Pull
+    // Day, Leg Day, etc. show honest numbers — not just "~45 min" pinned to
+    // Full Body. See `estimateRoutineDurationMinutes` for the heuristic.
+    final durationMin = estimateRoutineDurationMinutes(routine);
+    final stats =
+        '${routine.exercises.length} exercises \u00B7 ~$durationMin min';
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Material(

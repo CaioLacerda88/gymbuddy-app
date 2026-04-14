@@ -158,10 +158,17 @@ class _ContextualStatCells extends ConsumerWidget {
     // Only collapse when weekVolume has actually resolved — during initial
     // load we retain the current placeholder behavior so the row doesn't
     // flash in after the first frame once data arrives.
+    //
+    // Use a near-zero threshold rather than exact float equality: the
+    // provider currently returns 0.0 from an explicit empty-sum path, but
+    // if that ever changes (e.g. weight*reps summing over a zeroed-out
+    // set producing a floating-point epsilon), strict == 0 would either
+    // leave an ugly "0 kg this week" cell visible or hide incorrectly on
+    // rounding drift.
     final weekVolumeValue = weekVolume.value;
     if (lastSession == null &&
         weekVolumeValue != null &&
-        weekVolumeValue == 0) {
+        weekVolumeValue < 0.001) {
       return const SizedBox.shrink();
     }
 

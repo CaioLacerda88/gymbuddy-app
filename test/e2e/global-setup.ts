@@ -590,14 +590,13 @@ async function globalSetup(): Promise<void> {
 
   // Seed a minimal workout for users whose tests rely on the "Plan your week"
   // empty state. P8 replaces that state with a beginner CTA when
-  // workoutCount == 0, so we push workoutCount above 0 for these users.
-  // Also applies to fullHistory (uses history empty-state assertions that
-  // don't depend on stat cells, but tests expect the user to be able to
-  // navigate from Home without the beginner CTA intercepting).
-  const warmupWorkoutUsers = [
+  // workoutCount == 0, so we push workoutCount above 0 for these users so the
+  // Home screen renders the legacy planning prompt and the tests can navigate
+  // past it without the beginner CTA intercepting.
+  const usersNeedingSeededWorkoutForP8 = [
     'e2e-smoke-weekly-plan@test.local',
   ];
-  for (const email of warmupWorkoutUsers) {
+  for (const email of usersNeedingSeededWorkoutForP8) {
     const uid = await getUserId(supabase, email);
     if (!uid) continue;
     // Ensure a profile row exists so the router doesn't bounce to onboarding.

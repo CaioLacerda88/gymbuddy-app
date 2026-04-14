@@ -59,10 +59,17 @@ class _RoutineListStub extends AsyncNotifier<List<Routine>>
 // Factories
 // ---------------------------------------------------------------------------
 
+/// Builds a default routine with realistic set_configs.
+///
+/// Each exercise gets 3 sets at the given rest (default 120s) so the duration
+/// estimator renders a meaningful "~N min" instead of collapsing to the
+/// fallback branch.
 Routine _defaultRoutine({
   required String id,
   required String name,
   int exerciseCount = 6,
+  int restSeconds = 120,
+  int setsPerExercise = 3,
 }) {
   return Routine(
     id: id,
@@ -70,7 +77,13 @@ Routine _defaultRoutine({
     isDefault: true,
     exercises: List.generate(
       exerciseCount,
-      (i) => RoutineExercise(exerciseId: 'ex-$id-$i', setConfigs: const []),
+      (i) => RoutineExercise(
+        exerciseId: 'ex-$id-$i',
+        setConfigs: List.generate(
+          setsPerExercise,
+          (_) => RoutineSetConfig(targetReps: 5, restSeconds: restSeconds),
+        ),
+      ),
     ),
     createdAt: DateTime(2026),
   );
@@ -134,6 +147,7 @@ void main() {
     testWidgets('renders stats line with exercise count and duration', (
       tester,
     ) async {
+      // 6 exercises × 3 sets × (120s rest + 30s work) = 2700s = 45 min.
       await tester.pumpWidget(
         _build(
           routines: [

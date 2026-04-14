@@ -666,28 +666,39 @@ void main() {
   });
 
   group('WeekBucketSection — first-run beginner CTA (P8)', () {
+    // Realistic Full Body routine mirroring supabase/seed.sql — 6 exercises
+    // × 3 sets each with varied rests. Used so the rendered stats line
+    // ("6 exercises · ~55 min") exercises the real duration estimator rather
+    // than the empty-routine degenerate case.
+    Routine buildSeedFullBody() {
+      RoutineExercise ex(int restSeconds) => RoutineExercise(
+        exerciseId: 'e-$restSeconds',
+        setConfigs: List.generate(
+          3,
+          (_) => RoutineSetConfig(targetReps: 5, restSeconds: restSeconds),
+        ),
+      );
+      return Routine(
+        id: 'r-fb',
+        name: 'Full Body',
+        isDefault: true,
+        exercises: [ex(240), ex(180), ex(180), ex(180), ex(60), ex(60)],
+        createdAt: DateTime(2026),
+      );
+    }
+
     testWidgets(
       'renders beginner CTA when plan is null, workoutCount is 0, and a default routine exists',
       (tester) async {
         await tester.pumpWidget(
-          _build(
-            plan: null,
-            routines: [
-              Routine(
-                id: 'r-fb',
-                name: 'Full Body',
-                isDefault: true,
-                exercises: const [],
-                createdAt: DateTime(2026),
-              ),
-            ],
-            workoutCount: 0,
-          ),
+          _build(plan: null, routines: [buildSeedFullBody()], workoutCount: 0),
         );
         await tester.pump();
         await tester.pump();
 
         expect(find.text('YOUR FIRST WORKOUT'), findsOneWidget);
+        // Stats line should reflect real set_configs, not a hardcoded "~45 min".
+        expect(find.text('6 exercises \u00B7 ~55 min'), findsOneWidget);
         // "Plan your week" fallback must not show alongside the CTA.
         expect(find.textContaining('Plan your week'), findsNothing);
       },
@@ -743,6 +754,51 @@ void main() {
 
         expect(find.text('YOUR FIRST WORKOUT'), findsNothing);
         expect(find.textContaining('Plan your week'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'renders nothing while workoutCountProvider is loading (no CTA/empty-state flash)',
+      (tester) async {
+        // Unresolved future: provider stays in AsyncLoading.
+        final completer = Completer<int>();
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              weeklyPlanProvider.overrideWith(() => _WeeklyPlanStub(null)),
+              routineListProvider.overrideWith(
+                () => _RoutineListStub([
+                  Routine(
+                    id: 'r-fb',
+                    name: 'Full Body',
+                    isDefault: true,
+                    exercises: const [],
+                    createdAt: DateTime(2026),
+                  ),
+                ]),
+              ),
+              weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
+              workoutCountProvider.overrideWith((ref) => completer.future),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.dark,
+              home: const Scaffold(body: WeekBucketSection()),
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        // Neither the beginner CTA nor the "Plan your week" fallback must
+        // appear while the count is still resolving — otherwise cold-start
+        // flashes the wrong branch for 200-600ms.
+        expect(find.text('YOUR FIRST WORKOUT'), findsNothing);
+        expect(find.textContaining('Plan your week'), findsNothing);
+
+        // Settle the pending future so the test teardown does not dangle.
+        completer.complete(0);
+        await tester.pumpAndSettle();
       },
     );
   });
