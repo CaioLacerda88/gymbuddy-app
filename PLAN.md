@@ -573,17 +573,17 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
   - `workoutCountProvider` now `ref.keepAlive()`-guarded to avoid repeated COUNT queries on nav push/pop; `ref.invalidate()` on workout finish still forces refresh.
   - Tests: +6 Flutter (1 widget for loading-state guard, 5 unit for duration estimator), +3 Playwright smoke (`First workout CTA (P8)` describe block in `home.spec.ts`). New `smokeFirstWorkout` e2e user. `usersNeedingSeededWorkoutForP8` array added so existing weekly-plan tests retain their "Plan your week" assertion.
   - Follow-up: EX-003 search-input `flutterFill` flake tracked in #56 (pre-existing, unrelated).
+- PR #58: P9 Exercise content standard + library expansion. Backfilled 31 content-less exercises from migration `00014` (migration `00020`) and shipped 58 new default exercises (migration `00019`) to reach **150 default exercises, 100% covered by `description` + `form_tips`** — Phase 13 Exit Criterion #1 now MET on hosted Supabase. Voice matches 00010: imperative second-person, 15-25-word descriptions, 4-bullet form tips; Upright Row carries a shoulder-impingement warning as a special case.
+  - **Governance:** New `scripts/check_exercise_content_pairing.sh` is a row-level CI guard — any PR that INSERTs exercises must UPDATE `description` + `form_tips` for *every* inserted name in the same PR, or the build fails (wired ahead of analyze/test/build in `ci.yml`). CLAUDE.md now carries the convention verbatim. Rewritten from an initial set-level check to per-name matching after reviewer pushback — partial compliance silently passing was the real risk.
+  - **UI polish (shipped alongside content):** Exercise detail sheet reordered to name → custom label → description → chips → images → FORM TIPS → PRs → delete (the "Created [date]" line was dropped). Form-tip bullets switched from `check_circle_outline` to a 6dp primary-color dot; body prose raised to full `onSurface` opacity. Browse list got a 3dp primary-color left accent on non-default (user-created) exercise cards; `ExerciseImage` now propagates `memCacheHeight`/`memCacheWidth` so height-only callers (detail sheet) stop decoding full-res images.
+  - **Absorbs P2** — count-only library expansion was rejected in favor of shipping 150 exercises with complete content rather than 150 with 50+ empty detail sheets.
+  - Tests: 1030 Flutter pass, new `test/fixtures/test_finders.dart` helper (`findBulletDots()`) shared across three widget tests. All 6 reviewer findings (2 Important + 4 Nits) fixed in the same cycle per "no deferring" policy.
 
-### Remaining — Sprint B: Retention (~3.5-4 days, updated 2026-04-14)
-
-Order is deliberate: content foundation → highest-retention feature on clean foundations.
+### Remaining — Sprint B: Retention (~2-3 days, updated 2026-04-14)
 
 | Slot | ID | Item | Effort | Rationale |
 |------|----|------|--------|-----------|
-| 1 | P9 | Exercise description + form_tips standard (absorbs P2) | 1.5 days | Backfills 32 content-less exercises from migration `00014` AND ships the 150+ library expansion in one PR. No exercise ships without description + form_tips. PR adds the CLAUDE.md convention: exercise-insert migrations must pair with a descriptions migration. |
-| 2 | P1 | Progress charts per exercise | 2-3 days | #1 retention driver. `fl_chart` line chart of weight-over-time per exercise. Handles zero/one-data-point states without crash. |
-
-**P2** (count-only library expansion) is absorbed into P9 — shipping 150 exercises with 50+ empty detail sheets is worse UX than today's 92 with 60% coverage.
+| 1 | P1 | Progress charts per exercise | 2-3 days | #1 retention driver. `fl_chart` line chart of weight-over-time per exercise. Handles zero/one-data-point states without crash. |
 
 ### Remaining — Sprint C: Resilience (~3-4 days)
 
@@ -611,7 +611,7 @@ Order is deliberate: content foundation → highest-retention feature on clean f
 
 ### Exit Criteria — Ready to Submit to Play Store
 
-1. `SELECT COUNT(*) FROM exercises WHERE is_default = true AND (description IS NULL OR form_tips IS NULL)` returns `0` on hosted Supabase
+1. ✅ `SELECT COUNT(*) FROM exercises WHERE is_default = true AND (description IS NULL OR form_tips IS NULL)` returns `0` on hosted Supabase (met by PR #58 — 150/150 covered)
 2. Zero image 404s on default exercise tiles (QA walkthrough against production storage)
 3. New user sign-up → home shows "Start your first workout" CTA with beginner routine, not a blank list (E2E verified)
 4. Any exercise with ≥2 logged sets shows a weight-over-time chart; zero/single-data-point states handled without crash (unit + QA)
