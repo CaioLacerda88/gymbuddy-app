@@ -959,23 +959,18 @@ test.describe('Exercise library', () => {
     // expected filenames produced by the sanitization in migration 00018.
     const startImageResponsePromise = page.waitForResponse(
       (resp) =>
-        resp.url().includes('exercise-media') &&
-        resp.url().includes('_start') &&
-        resp.status() < 400,
+        resp.url().includes('exercise-media') && resp.url().includes('_start'),
       { timeout: 20_000 },
     );
     const endImageResponsePromise = page.waitForResponse(
       (resp) =>
-        resp.url().includes('exercise-media') &&
-        resp.url().includes('_end') &&
-        resp.status() < 400,
+        resp.url().includes('exercise-media') && resp.url().includes('_end'),
       { timeout: 20_000 },
     );
 
     // Search for Barbell Bench Press — it is guaranteed to have both
     // image_start_url and image_end_url set by migration 00018.
     await flutterFillByInput(page, 'Search exercises', SEED_EXERCISES.benchPress);
-    await page.waitForTimeout(800);
 
     const card = page
       .locator(EXERCISE_LIST.exerciseCard(SEED_EXERCISES.benchPress))
@@ -998,9 +993,9 @@ test.describe('Exercise library', () => {
       page.locator(EXERCISE_DETAIL.endImage(SEED_EXERCISES.benchPress)).first(),
     ).toBeVisible({ timeout: 5_000 });
 
-    // Assert both image requests completed with HTTP 200.
-    // waitForResponse will reject (timeout) if the status predicate (< 400)
-    // never matches — which surfaces a 404 or network error as a test failure.
+    // Assert both image requests completed with HTTP 200. The predicates above
+    // match on URL only so a 404 resolves the promise and is surfaced by the
+    // explicit status check below (rather than as a generic 20 s timeout).
     const [startResp, endResp] = await Promise.all([
       startImageResponsePromise,
       endImageResponsePromise,

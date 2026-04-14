@@ -291,7 +291,7 @@ Future<int?> _headObjectSize(
   if (res.statusCode == 200) {
     return res.contentLength >= 0 ? res.contentLength : null;
   }
-  if (res.statusCode == 400 || res.statusCode == 404) {
+  if (res.statusCode == 404) {
     return null;
   }
   throw StateError('HEAD $objectName returned ${res.statusCode}');
