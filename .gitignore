@@ -82,3 +82,8 @@ flutter_01.log
 flutter_02.log
 qa-screenshots/
 .playwright-mcp/
+
+# Tools — image staging + cached catalogs (not part of source)
+tools/.staging_images/
+tools/.exercises_catalog.json
+tools/_find_matches.js
