@@ -140,6 +140,17 @@ export const EXERCISE_DETAIL = {
   deleteCancelButton: 'text=Cancel',
   /** Coming-soon placeholder text */
   prPlaceholder: 'text=Personal records & workout history coming soon',
+  /**
+   * Start-position image for a named exercise in _ExerciseImageRow.
+   * _TappableImage wraps the image in Semantics(label: '${name} start position', image: true).
+   * Flutter 3.41.6+ exposes this as role=img with the computed accessible name.
+   */
+  startImage: (name: string) => `role=img[name*="${name} start position"]`,
+  /**
+   * End-position image for a named exercise in _ExerciseImageRow.
+   * _TappableImage wraps the image in Semantics(label: '${name} end position', image: true).
+   */
+  endImage: (name: string) => `role=img[name*="${name} end position"]`,
 } as const;
 
 // ---------------------------------------------------------------------------
