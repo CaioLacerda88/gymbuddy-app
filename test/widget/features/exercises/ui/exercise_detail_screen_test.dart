@@ -509,5 +509,88 @@ void main() {
 
       expect(find.text('Custom exercise'), findsNothing);
     });
+
+    testWidgets(
+      'no orphan 16dp gap between title and chips when description is null '
+      '(P9 review fix)',
+      (tester) async {
+        // Render the null-description layout in a fresh ProviderScope and
+        // measure the vertical distance between the title and the chip row.
+        // The ExerciseDescriptionSection collapses to SizedBox.shrink when
+        // description is null, so the only thing that should sit between
+        // the title and the chips is Flutter's natural column spacing —
+        // there should be NO 16 dp orphan spacer.
+        //
+        // The pre-fix layout had an unconditional SizedBox(height: 16)
+        // between the description section and the chip Wrap. With that
+        // spacer in place, the null-desc gap would include 16 dp of
+        // unexplained whitespace. We assert an upper bound small enough to
+        // catch that regression.
+        final withoutDesc = Exercise.fromJson(
+          TestExerciseFactory.create(name: 'Paired Press', description: null),
+        );
+        when(
+          () => mockRepo.getExerciseById('exercise-001'),
+        ).thenAnswer((_) async => withoutDesc);
+
+        await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
+        await pumpAndResolve(tester);
+
+        final titleBottom = tester.getBottomLeft(find.text('Paired Press')).dy;
+        final chipTop = tester.getTopLeft(find.text('Chest')).dy;
+        final gap = chipTop - titleBottom;
+
+        // With Flutter's default line-height metrics, the gap between the
+        // text baseline bottom and the next sibling widget's visual top is
+        // a small amount of typographic descender padding. An unguarded
+        // SizedBox(16) would add a clear 16 dp. Allow a generous ceiling
+        // that still catches a regression of that magnitude.
+        expect(
+          gap,
+          lessThan(16),
+          reason:
+              'Null-description layout must not inject a 16 dp orphan '
+              'spacer between the title and the chip row. Measured gap '
+              'was $gap dp. If this test fails at exactly or above 16 dp, '
+              'the P9 review fix for the orphan SizedBox regressed.',
+        );
+      },
+    );
+
+    testWidgets(
+      'description adds vertical space between title and chips when present',
+      (tester) async {
+        // Companion to the above: when description IS set, the ABOUT
+        // section (with its internal 24 dp top padding, label, and body
+        // text) must visibly push the chip row further down the layout.
+        final withDesc = Exercise.fromJson(
+          TestExerciseFactory.create(
+            name: 'Paired Press',
+            description: 'A compound push movement that loads the chest.',
+          ),
+        );
+        when(
+          () => mockRepo.getExerciseById('exercise-001'),
+        ).thenAnswer((_) async => withDesc);
+
+        await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
+        await pumpAndResolve(tester);
+
+        final titleBottom = tester.getBottomLeft(find.text('Paired Press')).dy;
+        final chipTop = tester.getTopLeft(find.text('Chest')).dy;
+        final gap = chipTop - titleBottom;
+
+        // The ABOUT section contributes at least the 24 dp internal top
+        // gap plus the label and body text — comfortably above 40 dp.
+        expect(
+          gap,
+          greaterThan(40),
+          reason:
+              'Description-present layout must render the ABOUT section '
+              'between the title and the chip row, producing a large '
+              'vertical gap. Measured gap was $gap dp.',
+        );
+      },
+    );
   });
 }

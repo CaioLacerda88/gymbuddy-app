@@ -163,7 +163,15 @@ class _ExerciseDetailBody extends ConsumerWidget {
             ),
           ],
           ExerciseDescriptionSection(description: exercise.description),
-          const SizedBox(height: 16),
+          // P9 review fix: only render the spacer when the section above it
+          // actually rendered something. ExerciseDescriptionSection collapses
+          // to SizedBox.shrink() when description is null/empty, but this
+          // SizedBox(16) would still paint — leaving 16 dp of orphan
+          // whitespace between the title block and the chips on most
+          // user-created custom exercises.
+          if (exercise.description != null &&
+              exercise.description!.trim().isNotEmpty)
+            const SizedBox(height: 16),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -457,32 +465,38 @@ class _TappableImage extends StatelessWidget {
   ) {
     showDialog<void>(
       context: context,
-      builder: (ctx) => Scaffold(
-        backgroundColor: Theme.of(ctx).colorScheme.scrim,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          leading: IconButton(
-            icon: const Icon(Icons.close_rounded, color: Colors.white),
-            onPressed: () => Navigator.of(ctx).pop(),
-            tooltip: 'Close',
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        return Scaffold(
+          backgroundColor: theme.colorScheme.scrim,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            leading: IconButton(
+              icon: Icon(
+                Icons.close_rounded,
+                color: theme.colorScheme.onSurface,
+              ),
+              onPressed: () => Navigator.of(ctx).pop(),
+              tooltip: 'Close',
+            ),
           ),
-        ),
-        body: GestureDetector(
-          onTap: () => Navigator.of(ctx).pop(),
-          behavior: HitTestBehavior.opaque,
-          child: Center(
-            child: Semantics(
-              label: label,
-              image: true,
-              child: ExerciseImage(
-                imageUrl: imageUrl,
-                fallbackIcon: fallbackIcon,
-                fit: BoxFit.contain,
+          body: GestureDetector(
+            onTap: () => Navigator.of(ctx).pop(),
+            behavior: HitTestBehavior.opaque,
+            child: Center(
+              child: Semantics(
+                label: label,
+                image: true,
+                child: ExerciseImage(
+                  imageUrl: imageUrl,
+                  fallbackIcon: fallbackIcon,
+                  fit: BoxFit.contain,
+                ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
