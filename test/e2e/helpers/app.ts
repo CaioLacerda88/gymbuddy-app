@@ -116,9 +116,13 @@ export async function waitForAppReady(page: Page): Promise<void> {
     try {
       snapshot = await page.evaluate(() => {
         // Check both light DOM and shadow DOM for flt-semantics elements.
+        // Flutter 3.41.6+ uses AOM — accessible names are set via the
+        // ariaLabel JS property, not as a DOM attribute. Try both.
+        const getLabel = (el: Element) =>
+          (el as any).ariaLabel ?? el.getAttribute('aria-label') ?? '';
         const lightEls = document.querySelectorAll('flt-semantics');
         const labels = Array.from(lightEls)
-          .map((el) => el.getAttribute('aria-label'))
+          .map(getLabel)
           .filter(Boolean);
 
         // Also check inside flutter-view shadow root.
@@ -127,7 +131,7 @@ export async function waitForAppReady(page: Page): Promise<void> {
           const shadowEls = flutterView.shadowRoot.querySelectorAll('flt-semantics');
           labels.push(
             ...Array.from(shadowEls)
-              .map((el) => el.getAttribute('aria-label'))
+              .map(getLabel)
               .filter(Boolean),
           );
         }
@@ -145,8 +149,8 @@ export async function waitForAppReady(page: Page): Promise<void> {
     );
   }
 
-  // 4. Brief pause for the destination screen to populate its semantics tree.
-  await page.waitForTimeout(500);
+  // 4. Wait for the destination screen to populate its semantics tree.
+  await page.locator('flt-semantics').first().waitFor({ state: 'visible', timeout: 5_000 });
 }
 
 /**
@@ -184,8 +188,8 @@ export async function navigateToTab(
   // content, not aria-label attributes (which is what the nav tabs use).
   await page.waitForURL(`**/${urlSegmentMap[tabName]}**`, { timeout: 15_000 });
 
-  // Brief pause for destination screen semantics tree to populate.
-  await page.waitForTimeout(300);
+  // Wait for destination screen semantics tree to populate.
+  await page.locator('flt-semantics').first().waitFor({ state: 'visible', timeout: 5_000 });
 }
 
 /**
@@ -209,7 +213,10 @@ export async function flutterFill(
   value: string,
 ): Promise<void> {
   // Click the semantics element to focus the Flutter TextField.
-  await page.click(selector);
+  // Flutter 3.41.6 exposes a hidden native <input> proxy with role=textbox,
+  // which may match the selector. Using .last() targets the visible semantics
+  // overlay (rendered after the proxy in DOM order) rather than the invisible proxy.
+  await page.locator(selector).last().click({ timeout: 15_000 });
 
   // Wait for Flutter's native <input> proxy to appear — this confirms the
   // text editing connection is established and the field is ready for input.
@@ -220,10 +227,15 @@ export async function flutterFill(
   // Select all existing content (if any) so typing replaces it.
   await page.keyboard.press('Control+a');
 
-  // Type the value using real key events — the browser routes these to the
-  // focused native <input>, which fires real input events that Flutter
-  // processes correctly (unlike fill() which uses synthetic events).
-  await page.keyboard.type(value, { delay: 10 });
+  if (value === '') {
+    // Clear the field by deleting the selection.
+    await page.keyboard.press('Backspace');
+  } else {
+    // Type the value using real key events — the browser routes these to the
+    // focused native <input>, which fires real input events that Flutter
+    // processes correctly (unlike fill() which uses synthetic events).
+    await page.keyboard.type(value, { delay: 10 });
+  }
 }
 
 /**

@@ -10,11 +10,14 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   analyze:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
@@ -26,7 +29,7 @@ jobs:
           cache-key: flutter-${{ runner.os }}-3.41.6
 
       - name: Cache Flutter pub packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.pub-cache
@@ -53,7 +56,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: analyze
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
@@ -65,7 +68,7 @@ jobs:
           cache-key: flutter-${{ runner.os }}-3.41.6
 
       - name: Cache Flutter pub packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.pub-cache
@@ -89,7 +92,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: analyze
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
@@ -101,7 +104,7 @@ jobs:
           cache-key: flutter-${{ runner.os }}-3.41.6
 
       - name: Cache Flutter pub packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.pub-cache
@@ -151,7 +154,7 @@ jobs:
   #     SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
   #     SUPABASE_SERVICE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_KEY }}
   #   steps:
-  #     - uses: actions/checkout@v4
+  #     - uses: actions/checkout@v6
   #     - uses: supabase/setup-cli@v1
   #     - name: Run RLS tests
   #       run: supabase test db

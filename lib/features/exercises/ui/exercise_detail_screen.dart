@@ -11,7 +11,7 @@ import '../../personal_records/providers/pr_providers.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../models/exercise.dart';
 import '../providers/exercise_providers.dart'
-    show deleteExercise, exerciseByIdProvider;
+    show exerciseByIdProvider, exerciseListProvider, exerciseRepositoryProvider;
 
 class ExerciseDetailScreen extends ConsumerStatefulWidget {
   const ExerciseDetailScreen({super.key, required this.exerciseId});
@@ -29,6 +29,12 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
   Future<void> _deleteExercise(Exercise exercise) async {
     final userId = exercise.userId;
     if (userId == null) return;
+
+    // Capture the GoRouter before any async gap. GoRouter.of(context) reads
+    // the router from the widget tree — it works as long as the widget is
+    // mounted. We capture it now so we can navigate even if a later rebuild
+    // makes the BuildContext stale.
+    final router = GoRouter.of(context);
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -63,8 +69,18 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
     setState(() => _isDeleting = true);
 
     try {
-      await deleteExercise(ref, exercise.id, userId: userId);
-      if (mounted) context.pop();
+      final repo = ref.read(exerciseRepositoryProvider);
+      await repo.softDeleteExercise(exercise.id, userId: userId);
+
+      // Navigate first, then invalidate. This ensures the route change is
+      // queued before provider invalidation triggers widget rebuilds that
+      // would try to re-fetch the now-deleted exercise.
+      router.go('/exercises');
+
+      // Invalidate caches so the exercise list on the destination screen
+      // reflects the deletion.
+      ref.invalidate(exerciseByIdProvider(exercise.id));
+      ref.invalidate(exerciseListProvider);
     } on AppException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(

@@ -1,9 +1,9 @@
 /**
- * Onboarding smoke test.
+ * Onboarding spec — merged from smoke suite.
  *
  * Tests the 2-page onboarding flow that appears for new users after sign-up:
- *   Page 1: Welcome ("Track every rep, every time") → GET STARTED
- *   Page 2: Profile setup (display name + fitness level + frequency) → LET'S GO
+ *   Page 1: Welcome ("Track every rep, every time") -> GET STARTED
+ *   Page 2: Profile setup (display name + fitness level + frequency) -> LET'S GO
  *
  * NOTE: This test requires a fresh account that has never completed onboarding.
  * The `smokeOnboarding` user is provisioned by global-setup with no profile row,
@@ -30,9 +30,10 @@ import { waitForAppReady, flutterFill } from '../helpers/app';
 import { NAV, ONBOARDING, ONBOARDING_FLOW } from '../helpers/selectors';
 import { TEST_USERS } from '../fixtures/test-users';
 
-const USER = TEST_USERS.smokeOnboarding;
-
-test.describe('Smoke: Onboarding', () => {
+// ---------------------------------------------------------------------------
+// Smoke — onboarding flow
+// ---------------------------------------------------------------------------
+test.describe('Onboarding', { tag: '@smoke' }, () => {
   // ---------------------------------------------------------------------------
   // Test 1: Onboarding Page 1 renders correctly.
   //
@@ -40,17 +41,17 @@ test.describe('Smoke: Onboarding', () => {
   // This confirms the widget tree is correct even if the auth redirect guard
   // would normally skip onboarding for an already-onboarded user.
   // ---------------------------------------------------------------------------
-  test('onboarding page 1 shows welcome content and GET STARTED button', async ({
+  test('should show welcome content and GET STARTED button on page 1', async ({
     page,
   }) => {
-    await login(page, USER.email, USER.password);
+    await login(page, TEST_USERS.smokeOnboarding.email, TEST_USERS.smokeOnboarding.password);
 
     // Navigate directly to onboarding. The guard may redirect authenticated
     // users with a profile to /home, in which case this test asserts the
     // onboarding route is reachable (useful for visual regression).
     // Navigate via hash to avoid a full CanvasKit reload.
     await page.evaluate(() => { window.location.hash = '#/onboarding'; });
-    await page.waitForTimeout(2_000);
+    await page.waitForURL(/\/(onboarding|home)/, { timeout: 10_000 });
 
     // Either we land on onboarding or are redirected to home.
     const isOnOnboarding = page.url().includes('/onboarding');
@@ -81,11 +82,11 @@ test.describe('Smoke: Onboarding', () => {
   //
   // TODO: Requires a fresh user (no profile row). See infrastructure note above.
   // ---------------------------------------------------------------------------
-  test('GET STARTED advances to profile setup page', async ({ page }) => {
-    await login(page, USER.email, USER.password);
+  test('should advance to profile setup page after tapping GET STARTED', async ({ page }) => {
+    await login(page, TEST_USERS.smokeOnboarding.email, TEST_USERS.smokeOnboarding.password);
     // Navigate via hash to avoid a full CanvasKit reload.
     await page.evaluate(() => { window.location.hash = '#/onboarding'; });
-    await page.waitForTimeout(2_000);
+    await page.waitForURL(/\/(onboarding|home)/, { timeout: 10_000 });
 
     const isOnOnboarding = page.url().includes('/onboarding');
     if (!isOnOnboarding) {
@@ -115,16 +116,16 @@ test.describe('Smoke: Onboarding', () => {
   // Test 3: Complete onboarding — fill name, select frequency, tap LET'S GO.
   //
   // TODO: Requires a fresh user (no profile row). See infrastructure note above.
-  // Full flow: Page 1 → GET STARTED → fill name → choose frequency → LET'S GO
-  // → assert redirect to /home.
+  // Full flow: Page 1 -> GET STARTED -> fill name -> choose frequency -> LET'S GO
+  // -> assert redirect to /home.
   // ---------------------------------------------------------------------------
-  test("completing onboarding with a name and frequency redirects to /home", async ({
+  test('should redirect to /home after completing onboarding with name and frequency', async ({
     page,
   }) => {
-    await login(page, USER.email, USER.password);
+    await login(page, TEST_USERS.smokeOnboarding.email, TEST_USERS.smokeOnboarding.password);
     // Navigate via hash to avoid a full CanvasKit reload.
     await page.evaluate(() => { window.location.hash = '#/onboarding'; });
-    await page.waitForTimeout(2_000);
+    await page.waitForURL(/\/(onboarding|home)/, { timeout: 10_000 });
 
     const isOnOnboarding = page.url().includes('/onboarding');
     if (!isOnOnboarding) {
@@ -133,7 +134,7 @@ test.describe('Smoke: Onboarding', () => {
       return;
     }
 
-    // Page 1 → Page 2.
+    // Page 1 -> Page 2.
     await page.locator(ONBOARDING.getStartedButton).click();
     await expect(page.locator(ONBOARDING_FLOW.profileSetupHeadline)).toBeVisible({
       timeout: 10_000,
@@ -158,13 +159,13 @@ test.describe('Smoke: Onboarding', () => {
   //
   // TODO: Requires a fresh user (no profile row). See infrastructure note above.
   // ---------------------------------------------------------------------------
-  test('Back button on profile setup page returns to welcome page', async ({
+  test('should return to welcome page when tapping Back on profile setup page', async ({
     page,
   }) => {
-    await login(page, USER.email, USER.password);
+    await login(page, TEST_USERS.smokeOnboarding.email, TEST_USERS.smokeOnboarding.password);
     // Navigate via hash to avoid a full CanvasKit reload.
     await page.evaluate(() => { window.location.hash = '#/onboarding'; });
-    await page.waitForTimeout(2_000);
+    await page.waitForURL(/\/(onboarding|home)/, { timeout: 10_000 });
 
     const isOnOnboarding = page.url().includes('/onboarding');
     if (!isOnOnboarding) {

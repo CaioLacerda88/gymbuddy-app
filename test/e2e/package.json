@@ -4,15 +4,14 @@
   "description": "Playwright e2e tests for GymBuddy Flutter web app",
   "scripts": {
     "test": "playwright test",
-    "test:smoke": "playwright test --project=smoke",
-    "test:full": "playwright test --project=full",
+    "test:smoke": "playwright test --grep @smoke",
+    "test:full": "playwright test --grep-invert @smoke",
     "test:ui": "playwright test --ui",
-    "test:smoke:ui": "playwright test --project=smoke --ui",
+    "test:smoke:ui": "playwright test --grep @smoke --ui",
     "report": "playwright show-report"
   },
   "devDependencies": {
-    "@playwright/test": "^1.44.0",
-    "http-server": "^14.1.1"
+    "@playwright/test": "^1.44.0"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.43.4",

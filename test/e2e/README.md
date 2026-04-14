@@ -1,6 +1,6 @@
 # GymBuddy E2E Tests (Playwright)
 
-Smoke and full end-to-end tests for the GymBuddy Flutter web app.
+End-to-end regression tests for the GymBuddy Flutter web app.
 
 ## Prerequisites
 
@@ -48,14 +48,20 @@ All other configuration (app URL, test user emails) is handled automatically.
 ```bash
 cd test/e2e
 
-# Smoke tests only (fast, ~2 min)
-npx playwright test --project=smoke
-
-# All tests
+# Full regression suite (all tests)
 npx playwright test
 
+# Smoke tests only (faster subset, @smoke tagged)
+npx playwright test --grep @smoke
+
+# Regression-only tests (everything except smoke)
+npx playwright test --grep-invert @smoke
+
+# Single feature file
+npx playwright test specs/auth.spec.ts
+
 # With interactive UI (great for debugging)
-npx playwright test --project=smoke --ui
+npx playwright test --ui
 
 # Show the HTML report after a run
 npx playwright show-report
@@ -64,25 +70,26 @@ npx playwright show-report
 Or use the npm scripts:
 
 ```bash
-npm run test:smoke
-npm run test:full
-npm run test:ui
+npm run test           # full regression suite
+npm run test:smoke     # @smoke tagged tests only
+npm run test:full      # non-smoke tests only
+npm run test:ui        # interactive UI mode
 ```
 
 ## Port configuration
 
 | Environment  | How the server is started            | Port |
 |--------------|--------------------------------------|------|
-| Local dev    | Playwright `webServer` auto-start    | 4200 |
-| CI           | Workflow step (`npx serve`), `FLUTTER_APP_URL` env var set | 8080 |
+| Local dev    | Playwright `webServer` auto-start (`static-server.cjs`) | 4200 |
+| CI           | Workflow step (`static-server.cjs`), `FLUTTER_APP_URL` env var set | 8080 |
 
 To use a custom port or a dev server locally, set `FLUTTER_APP_URL` in your
 shell before running Playwright and start the server yourself:
 
 ```bash
 export FLUTTER_APP_URL=http://localhost:9000
-npx serve -s ../../build/web -l 9000 &
-cd test/e2e && npx playwright test --project=smoke
+node static-server.cjs ../../build/web 9000 &
+cd test/e2e && npx playwright test
 ```
 
 When `FLUTTER_APP_URL` is set, Playwright skips the `webServer` auto-start.
@@ -131,18 +138,18 @@ test/e2e/
 │   ├── app.ts                 # waitForAppReady, navigateToTab
 │   ├── auth.ts                # login, logout
 │   └── workout.ts             # startEmptyWorkout, addExercise, setWeight, setReps, completeSet, finishWorkout
-├── smoke/
-│   ├── auth.smoke.spec.ts
-│   ├── workout.smoke.spec.ts
-│   └── pr.smoke.spec.ts
-└── full/
-    ├── auth.full.spec.ts
-    ├── exercise-library.spec.ts
-    ├── home-navigation.spec.ts
+└── specs/                         # Feature-based test files (@smoke tagged for CI gate)
+    ├── auth.spec.ts
+    ├── crash-recovery.spec.ts
+    ├── exercises.spec.ts
+    ├── home.spec.ts
+    ├── manage-data.spec.ts
+    ├── onboarding.spec.ts
     ├── personal-records.spec.ts
+    ├── profile.spec.ts
     ├── routines.spec.ts
-    ├── workout-logging.spec.ts
-    └── crash-recovery.spec.ts
+    ├── weekly-plan.spec.ts
+    └── workouts.spec.ts
 ```
 
 ## Selector strategy

@@ -1,0 +1,710 @@
+/**
+ * Manage Data — consolidated E2E tests.
+ *
+ * Sources:
+ *   - smoke/manage-data.smoke.spec.ts  (throwaway user, 1 test)    -> @smoke
+ *   - full/manage-data.spec.ts         (fullManageData, 11 tests)  -> untagged
+ */
+
+import { test, expect, type Page } from '@playwright/test';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+import path from 'path';
+import { flutterFill, navigateToTab } from '../helpers/app';
+import { login } from '../helpers/auth';
+import { AUTH, NAV, WORKOUT, PROFILE, MANAGE_DATA, PR, HISTORY, HOME_STATS } from '../helpers/selectors';
+import {
+  startEmptyWorkout,
+  addExercise,
+  setWeight,
+  setReps,
+  completeSet,
+  finishWorkout,
+} from '../helpers/workout';
+import { TEST_USERS } from '../fixtures/test-users';
+import { SEED_EXERCISES } from '../fixtures/test-exercises';
+
+dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
+
+// ---------------------------------------------------------------------------
+// Admin API helpers (used by smoke account deletion test)
+// ---------------------------------------------------------------------------
+
+function getAdminClient(): SupabaseClient {
+  const supabaseUrl = process.env['SUPABASE_URL'];
+  const serviceRoleKey = process.env['SUPABASE_SERVICE_ROLE_KEY'];
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error(
+      'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY — check test/e2e/.env.local',
+    );
+  }
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
+async function createThrowawayUser(supabase: SupabaseClient): Promise<{
+  userId: string;
+  email: string;
+  password: string;
+}> {
+  const ts = Date.now();
+  const email = `e2e-throwaway-delete-${ts}@test.local`;
+  const password = 'TestPassword123!';
+  const { data, error } = await supabase.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+  if (error || !data.user) {
+    throw new Error(`Failed to create throwaway user: ${error?.message}`);
+  }
+  return { userId: data.user.id, email, password };
+}
+
+async function seedWorkout(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<void> {
+  await supabase.from('workouts').insert({
+    user_id: userId,
+    name: 'Delete Test Workout',
+    started_at: new Date(Date.now() - 3600000).toISOString(),
+    finished_at: new Date(Date.now() - 1800000).toISOString(),
+    duration_seconds: 1800,
+  });
+}
+
+async function emergencyCleanup(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<void> {
+  try {
+    const { data: workouts } = await supabase
+      .from('workouts')
+      .select('id')
+      .eq('user_id', userId);
+    const workoutIds = (workouts ?? []).map((w) => w.id);
+    if (workoutIds.length > 0) {
+      const { data: wxs } = await supabase
+        .from('workout_exercises')
+        .select('id')
+        .in('workout_id', workoutIds);
+      const wxIds = (wxs ?? []).map((wx) => wx.id);
+      if (wxIds.length > 0) {
+        await supabase.from('sets').delete().in('workout_exercise_id', wxIds);
+        await supabase
+          .from('workout_exercises')
+          .delete()
+          .in('workout_id', workoutIds);
+      }
+      await supabase.from('personal_records').delete().eq('user_id', userId);
+      await supabase.from('workouts').delete().eq('user_id', userId);
+    }
+    await supabase.from('profiles').delete().eq('id', userId);
+    await supabase.auth.admin.deleteUser(userId);
+  } catch {
+    // Swallow — emergency only.
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Raw DB table names that must NEVER appear in visible page text (full suite).
+// ---------------------------------------------------------------------------
+const FORBIDDEN_TABLE_NAMES = [
+  'workouts',
+  'workout_exercises',
+  'sets',
+  'personal_records',
+  'profiles',
+] as const;
+
+// ---------------------------------------------------------------------------
+// Full suite helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Complete a single-exercise workout with one set so there is data to delete.
+ * Dismisses the PR celebration if shown.
+ */
+async function doWorkoutAndReturnHome(page: Page): Promise<void> {
+  await startEmptyWorkout(page);
+  await addExercise(page, SEED_EXERCISES.benchPress);
+  await setWeight(page, '60');
+  await setReps(page, '5');
+  await completeSet(page, 0);
+  await finishWorkout(page);
+
+  // Check for either celebration screen simultaneously to avoid sequential
+  // timeouts that waste time on CI.
+  const celebrationScreen = page
+    .locator(PR.firstWorkoutHeading)
+    .or(page.locator(PR.newPRHeading));
+
+  const onCelebration = await celebrationScreen
+    .isVisible({ timeout: 20_000 })
+    .catch(() => false);
+
+  if (onCelebration) {
+    await page.click(PR.continueButton);
+  }
+
+  await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
+}
+
+/** Navigate to Profile -> Manage Data screen. */
+async function openManageData(page: Page): Promise<void> {
+  await navigateToTab(page, 'Profile');
+  await expect(page.locator(PROFILE.manageData)).toBeVisible({ timeout: 10_000 });
+  await page.click(PROFILE.manageData);
+  await expect(page.locator(MANAGE_DATA.heading)).toBeVisible({ timeout: 15_000 });
+}
+
+/**
+ * Assert that no currently visible page text contains any of the forbidden
+ * database table names. Checks all flt-semantics aria-labels and text nodes.
+ *
+ * This is the regression guard for the delete bug: if Supabase returns an
+ * error like 'relation "workouts" does not exist' and the app forwards that
+ * message verbatim to the UI, this assertion catches it.
+ */
+async function assertNoTableNamesVisible(page: Page): Promise<void> {
+  // Gather all accessible text from flt-semantics accessible names (snackbars,
+  // dialogs, headings) and visible text nodes.
+  // Flutter 3.41.6+ uses AOM — try ariaLabel JS property first, then DOM attr.
+  const visibleText = await page.evaluate(() => {
+    const labels = Array.from(document.querySelectorAll('flt-semantics'))
+      .map((el) => (el as any).ariaLabel ?? el.getAttribute('aria-label') ?? '')
+      .join(' ');
+    const bodyText = document.body.innerText ?? '';
+    return (labels + ' ' + bodyText).toLowerCase();
+  });
+
+  for (const tableName of FORBIDDEN_TABLE_NAMES) {
+    // We only care if the table name appears in a context that looks like an
+    // error. A table name in normal data (e.g. the word "sets" in "3 sets")
+    // could be a false positive. We check for the table name surrounded by
+    // quotes or preceded by "relation" which is a Postgres error pattern.
+    const dangerPatterns = [
+      `relation "${tableName}"`,
+      `table "${tableName}"`,
+      `"${tableName}"`,
+    ];
+    for (const pattern of dangerPatterns) {
+      expect(
+        visibleText,
+        `Found forbidden DB identifier "${pattern}" in visible page text`,
+      ).not.toContain(pattern);
+    }
+  }
+}
+
+// =============================================================================
+// SMOKE — Account deletion (throwaway user)
+// =============================================================================
+
+test.describe('Account deletion', { tag: '@smoke' }, () => {
+  let supabase: SupabaseClient;
+  let userId: string;
+  let userEmail: string;
+  let userPassword: string;
+  // Track whether in-app deletion succeeded (to skip emergency cleanup).
+  let deletionCompletedInApp = false;
+
+  test.beforeAll(async () => {
+    supabase = getAdminClient();
+    const user = await createThrowawayUser(supabase);
+    userId = user.userId;
+    userEmail = user.email;
+    userPassword = user.password;
+
+    // Seed a workout to verify cascade deletion later.
+    await seedWorkout(supabase, userId);
+
+    // Upsert profile so the app routes to Home, not onboarding.
+    await supabase.from('profiles').upsert(
+      {
+        id: userId,
+        display_name: 'Delete Test User',
+        fitness_level: 'beginner',
+      },
+      { onConflict: 'id' },
+    );
+
+    console.log(
+      `[manage-data] Throwaway user created: ${userEmail} (${userId})`,
+    );
+  });
+
+  test.afterAll(async () => {
+    if (!deletionCompletedInApp) {
+      console.log(
+        `[manage-data] Emergency cleanup for ${userEmail} (in-app deletion did not complete)`,
+      );
+      await emergencyCleanup(supabase, userId);
+    }
+  });
+
+  test(
+    'should keep confirm disabled with partial string, enable with full DELETE, and verify deletion in backend',
+    async ({ page }) => {
+      // -- 1. Log in --
+      // Use the shared helper for the happy-path sign-in. The re-login attempt
+      // later in this test is kept raw because it's expected to fail and the
+      // helper would assert the happy path.
+      await login(page, userEmail, userPassword);
+
+      // -- 2. Navigate to Profile -> Manage Data --
+      await page.click(NAV.profileTab);
+      await page.waitForURL('**/profile**', { timeout: 15_000 });
+      await page.waitForTimeout(500);
+
+      await page.click(PROFILE.manageData);
+      await page.waitForURL('**/manage-data**', { timeout: 15_000 });
+      await expect(page.locator(MANAGE_DATA.heading)).toBeVisible({
+        timeout: 10_000,
+      });
+
+      // -- 3. Tap "Delete Account" tile --
+      // The tile is rendered as a button with aria-name combining title + subtitle.
+      // Use the subtitle as the unique selector to avoid ambiguity with the
+      // dialog's "Delete Account" button that appears later.
+      await page.locator('text=Permanently delete your account and all data').click();
+
+      // The full-screen dialog opens — verify by checking the dialog's heading.
+      await expect(
+        page.locator('role=heading[name="Delete Account"]'),
+      ).toBeVisible({ timeout: 5_000 });
+
+      // -- 4. Assert "Delete Account" button is initially DISABLED --
+      // GradientButton with null onPressed renders with disabled=true in semantics.
+      // The Playwright accessibility tree exposes this as role=button [disabled].
+      const confirmButton = page.locator('role=button[name="Delete Account"]').last();
+      await expect(confirmButton).toBeDisabled({ timeout: 5_000 });
+
+      // -- 5. Focus the "DELETE" TextField --
+      // The textbox has role=textbox with name matching the hintText "DELETE".
+      const deleteInput = page.locator('role=textbox[name="DELETE"]');
+      await expect(deleteInput).toBeVisible({ timeout: 5_000 });
+      await deleteInput.click();
+      // Wait for Flutter's native <input> proxy to appear.
+      await page.locator('input').last().waitFor({ state: 'attached', timeout: 5_000 });
+      await page.waitForTimeout(200);
+
+      // -- 6. Type "DELET" (one char short) -- button must stay disabled --
+      await page.keyboard.press('Control+a');
+      await page.keyboard.type('DELET', { delay: 30 });
+      await page.waitForTimeout(400);
+
+      await expect(confirmButton).toBeDisabled({ timeout: 3_000 });
+
+      // -- 7. Complete "DELETE" -- button must become enabled --
+      await page.keyboard.type('E', { delay: 30 });
+      await page.waitForTimeout(500);
+
+      await expect(confirmButton).toBeEnabled({ timeout: 5_000 });
+
+      // -- 8. Tap the enabled confirm button --
+      await confirmButton.click();
+
+      // -- 9. Assert redirect to /login --
+      // deleteAccount() -> Edge Function delete-user -> authNotifier signOut -> /login.
+      await page.waitForURL('**/login**', { timeout: 30_000 });
+      await expect(page.locator(AUTH.appTitle)).toBeVisible({ timeout: 10_000 });
+
+      // Mark deletion as completed so afterAll skips emergency cleanup.
+      deletionCompletedInApp = true;
+
+      // -- 10. Attempt re-login with deleted credentials -- must FAIL --
+      await page.click(AUTH.emailInput);
+      await page.locator('input').last().waitFor({ state: 'attached', timeout: 5_000 });
+      await page.waitForTimeout(200);
+      await page.keyboard.press('Control+a');
+      await page.keyboard.type(userEmail, { delay: 10 });
+
+      await page.click(AUTH.passwordInput);
+      await page.locator('input').last().waitFor({ state: 'attached', timeout: 5_000 });
+      await page.waitForTimeout(200);
+      await page.keyboard.press('Control+a');
+      await page.keyboard.type(userPassword, { delay: 10 });
+
+      await page.click(AUTH.loginButton);
+
+      // Should show an auth error — deleted user cannot log in.
+      await expect(page.locator(AUTH.errorMessage)).toBeVisible({
+        timeout: 10_000,
+      });
+
+      // Must NOT navigate to Home.
+      const isOnHome = await page
+        .locator(NAV.homeTab)
+        .isVisible({ timeout: 3_000 })
+        .catch(() => false);
+      expect(isOnHome, 'Should NOT navigate to home after re-login with deleted credentials').toBe(false);
+
+      // -- 11. Backend verification: user must be absent from auth --
+      // Use getUserById (O(1)) instead of listUsers to avoid a false-positive
+      // once the test DB grows beyond the page size. The Supabase admin SDK
+      // returns one of two shapes for a missing user depending on server
+      // behavior, so we accept EITHER:
+      //   - an AuthError with a 404-ish status (most common: 404 not found),
+      //   - or a success-shaped response with data.user === null.
+      const getUserResult = await supabase.auth.admin.getUserById(userId);
+      const userGone =
+        (getUserResult.error !== null &&
+          (getUserResult.error.status === undefined ||
+            getUserResult.error.status === 404 ||
+            getUserResult.error.status >= 400)) ||
+        getUserResult.data.user === null;
+      expect(
+        userGone,
+        `User ${userEmail} (${userId}) should not exist in auth.users after deletion. ` +
+          `getUserById returned: error=${JSON.stringify(getUserResult.error)} ` +
+          `data=${JSON.stringify(getUserResult.data)}`,
+      ).toBe(true);
+
+      // -- 12. Cascade verification: workouts must be gone --
+      const { data: workoutsAfterDelete } = await supabase
+        .from('workouts')
+        .select('id')
+        .eq('user_id', userId);
+      const remainingWorkouts = workoutsAfterDelete?.length ?? 0;
+      expect(
+        remainingWorkouts,
+        `Expected 0 workouts after cascade deletion, found ${remainingWorkouts}`,
+      ).toBe(0);
+
+      console.log(
+        `[manage-data] Verified: user ${userEmail} (${userId}) deleted from auth. ` +
+          `Cascade: 0 workouts remaining. Re-login correctly rejected.`,
+      );
+    },
+  );
+});
+
+// =============================================================================
+// FULL — Manage Data (fullManageData user)
+// =============================================================================
+
+test.describe('Manage Data', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(
+      page,
+      TEST_USERS.fullManageData.email,
+      TEST_USERS.fullManageData.password,
+    );
+  });
+
+  test('should show a Manage Data row in the DATA MANAGEMENT section on Profile screen (MD-001)', async ({
+    page,
+  }) => {
+    await navigateToTab(page, 'Profile');
+
+    await expect(page.locator(PROFILE.manageData)).toBeVisible({
+      timeout: 10_000,
+    });
+  });
+
+  test('should navigate to the Manage Data screen when tapping the row (MD-002)', async ({
+    page,
+  }) => {
+    await openManageData(page);
+
+    // Both main sections must be visible on the screen.
+    await expect(page.locator(MANAGE_DATA.deleteHistory)).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.locator(MANAGE_DATA.resetAll)).toBeVisible({
+      timeout: 5_000,
+    });
+  });
+
+  test('should show workout count subtitle on Delete Workout History tile (MD-003)', async ({
+    page,
+  }) => {
+    await openManageData(page);
+
+    // The subtitle text "N workouts will be removed" (or "... workouts")
+    // must appear on screen.
+    await expect(page.locator('text=/workouts will be removed/')).toBeVisible({
+      timeout: 10_000,
+    });
+  });
+
+  test('should show Reset All Account Data tile with danger subtitle (MD-004)', async ({
+    page,
+  }) => {
+    await openManageData(page);
+
+    await expect(page.locator(MANAGE_DATA.resetAll)).toBeVisible({
+      timeout: 10_000,
+    });
+
+    // The subtitle "Removes everything. Permanent." must accompany the tile.
+    await expect(page.locator('text=Removes everything')).toBeVisible({
+      timeout: 5_000,
+    });
+  });
+
+  test('should leave workout data intact when cancelling first delete-history dialog (MD-005)', async ({
+    page,
+  }) => {
+    // Log a workout so there is something to cancel-delete.
+    await doWorkoutAndReturnHome(page);
+
+    await openManageData(page);
+
+    // Open the delete history flow.
+    await page.click(MANAGE_DATA.deleteHistory);
+
+    // The first dialog must appear.
+    await expect(
+      page.locator('text=Delete all workout history?'),
+    ).toBeVisible({ timeout: 8_000 });
+
+    // Cancel — do NOT proceed.
+    await page.click('text=Cancel');
+
+    // The dialog must dismiss and we should still be on the Manage Data screen.
+    await expect(
+      page.locator('text=Delete all workout history?'),
+    ).not.toBeVisible({ timeout: 5_000 });
+    await expect(page.locator(MANAGE_DATA.heading)).toBeVisible({
+      timeout: 5_000,
+    });
+
+    // Navigate to history via SPA navigation (page.goto reloads the Flutter
+    // SPA and the router doesn't preserve the deep link).
+    await navigateToTab(page, 'Home');
+    await page.click(HOME_STATS.lastSessionCell);
+    await expect(page.locator(HISTORY.heading)).toBeVisible({ timeout: 15_000 });
+
+    // The history list must NOT show the empty state — at least one workout exists.
+    await expect(page.locator(HISTORY.emptyState)).not.toBeVisible({
+      timeout: 5_000,
+    });
+  });
+
+  test('should clear all workout history when confirming both delete-history dialogs (MD-006)', async ({
+    page,
+  }) => {
+    // Ensure at least one workout exists.
+    await doWorkoutAndReturnHome(page);
+
+    await openManageData(page);
+
+    // Tap the tile to start the flow.
+    await page.click(MANAGE_DATA.deleteHistory);
+
+    // First dialog — confirm.
+    await expect(
+      page.locator('text=Delete all workout history?'),
+    ).toBeVisible({ timeout: 8_000 });
+    await page.click(MANAGE_DATA.deleteHistoryConfirmButton);
+
+    // Second dialog — confirm.
+    await expect(page.locator('text=Are you sure?')).toBeVisible({
+      timeout: 8_000,
+    });
+    await page.click(MANAGE_DATA.yesDeleteButton);
+
+    // The success SnackBar must appear.
+    await expect(page.locator(MANAGE_DATA.historyCleared).first()).toBeVisible({
+      timeout: 10_000,
+    });
+
+    // No DB table names in visible text (regression check for the delete bug).
+    await assertNoTableNamesVisible(page);
+
+    // Navigate to history via SPA navigation.
+    await navigateToTab(page, 'Home');
+    await page.click(HOME_STATS.lastSessionCell);
+    await expect(page.locator(HISTORY.heading)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(HISTORY.emptyState)).toBeVisible({
+      timeout: 10_000,
+    });
+  });
+
+  test('should not expose raw database table names in the UI after delete history (MD-007)', async ({
+    page,
+  }) => {
+    await doWorkoutAndReturnHome(page);
+    await openManageData(page);
+
+    await page.click(MANAGE_DATA.deleteHistory);
+
+    await expect(
+      page.locator('text=Delete all workout history?'),
+    ).toBeVisible({ timeout: 8_000 });
+    await page.click(MANAGE_DATA.deleteHistoryConfirmButton);
+
+    await expect(page.locator('text=Are you sure?')).toBeVisible({
+      timeout: 8_000,
+    });
+    await page.click(MANAGE_DATA.yesDeleteButton);
+
+    // Wait for either success SnackBar or for the dialog to close.
+    // Then immediately check for forbidden identifiers — the bug manifested
+    // as a SnackBar appearing with the table name in the message.
+    await expect(page.locator(MANAGE_DATA.historyCleared).first()).toBeVisible({ timeout: 10_000 });
+
+    await assertNoTableNamesVisible(page);
+
+    // Also assert there is no generic error SnackBar that could carry an
+    // internal message (belt-and-suspenders).
+    await expect(page.locator('text=Failed to clear history')).not.toBeVisible({
+      timeout: 3_000,
+    });
+  });
+
+  test('should keep Reset Account button disabled until RESET is typed in confirmation field (MD-008)', async ({
+    page,
+  }) => {
+    await openManageData(page);
+
+    // Open the Reset All modal.
+    await page.click(MANAGE_DATA.resetAll);
+
+    // The full-screen modal must appear (AppBar shows "Reset Account Data").
+    await expect(page.locator('text=Reset Account Data')).toBeVisible({
+      timeout: 8_000,
+    });
+
+    // The "Reset Account" button must be present but disabled (not tappable).
+    // Flutter renders a disabled GradientButton with onPressed: null.
+    // We verify the button exists but clicking it does NOT close the dialog.
+    await expect(page.locator(MANAGE_DATA.resetButton)).toBeVisible({
+      timeout: 5_000,
+    });
+
+    // The modal stays open after clicking the disabled button.
+    await page.click(MANAGE_DATA.resetButton, { force: true });
+    await expect(page.locator('text=Reset Account Data')).toBeVisible({
+      timeout: 3_000,
+    });
+
+    // Type the wrong word — button must remain disabled.
+    await flutterFill(page, 'role=dialog >> role=textbox', 'wrong');
+    await page.waitForTimeout(500); // debounce — no condition to wait for
+    await page.click(MANAGE_DATA.resetButton, { force: true });
+    await expect(page.locator('text=Reset Account Data')).toBeVisible({
+      timeout: 3_000,
+    });
+
+    // Type the correct word "RESET" — button must become enabled.
+    // First clear the field using the Flutter fill helper.
+    await flutterFill(page, 'role=dialog >> role=textbox', 'RESET');
+    await expect(page.locator(MANAGE_DATA.resetButton)).not.toHaveAttribute('aria-disabled', 'true', { timeout: 5_000 });
+
+    // Now clicking the button should close the modal (pop(true)) and trigger
+    // the reset. We close by clicking Cancel instead to avoid side effects.
+    await page.click(MANAGE_DATA.resetCancelButton);
+    await expect(page.locator('text=Reset Account Data')).not.toBeVisible({
+      timeout: 5_000,
+    });
+  });
+
+  test('should leave all data intact when cancelling the Reset All modal (MD-009)', async ({
+    page,
+  }) => {
+    // Log a workout so there is data to preserve.
+    await doWorkoutAndReturnHome(page);
+
+    await openManageData(page);
+
+    await page.click(MANAGE_DATA.resetAll);
+
+    // Modal must open.
+    await expect(page.locator('text=Reset Account Data')).toBeVisible({
+      timeout: 8_000,
+    });
+
+    // Cancel via the X button in the AppBar.
+    await page.click(MANAGE_DATA.resetCancelButton);
+
+    // Modal must close.
+    await expect(page.locator('text=Reset Account Data')).not.toBeVisible({
+      timeout: 5_000,
+    });
+
+    // We must still be on the Manage Data screen.
+    await expect(page.locator(MANAGE_DATA.heading)).toBeVisible({
+      timeout: 5_000,
+    });
+
+    // Navigate to history via SPA navigation.
+    await navigateToTab(page, 'Home');
+    await page.click(HOME_STATS.lastSessionCell);
+    await expect(page.locator(HISTORY.heading)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(HISTORY.emptyState)).not.toBeVisible({
+      timeout: 5_000,
+    });
+  });
+
+  test('should clear all workout history and personal records when confirming Reset All (MD-010)', async ({
+    page,
+  }) => {
+    // Create data to reset.
+    await doWorkoutAndReturnHome(page);
+
+    await openManageData(page);
+
+    await page.click(MANAGE_DATA.resetAll);
+
+    await expect(page.locator('text=Reset Account Data')).toBeVisible({
+      timeout: 8_000,
+    });
+
+    // Type RESET to enable the confirm button.
+    await flutterFill(page, 'role=dialog >> role=textbox', 'RESET');
+    await expect(page.locator(MANAGE_DATA.resetButton)).not.toHaveAttribute('aria-disabled', 'true', { timeout: 5_000 });
+
+    // Click the now-enabled "Reset Account" button.
+    await page.click(MANAGE_DATA.resetButton);
+
+    // The success SnackBar must appear.
+    await expect(page.locator(MANAGE_DATA.accountReset).first()).toBeVisible({
+      timeout: 10_000,
+    });
+
+    // Regression guard: no table names visible.
+    await assertNoTableNamesVisible(page);
+
+    // Verify history is empty.
+    await navigateToTab(page, 'Home');
+    await page.click(HOME_STATS.lastSessionCell);
+    await expect(page.locator(HISTORY.heading)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(HISTORY.emptyState)).toBeVisible({
+      timeout: 10_000,
+    });
+  });
+
+  test('should not expose raw database table names in the UI after Reset All (MD-011)', async ({
+    page,
+  }) => {
+    await doWorkoutAndReturnHome(page);
+    await openManageData(page);
+
+    await page.click(MANAGE_DATA.resetAll);
+
+    await expect(page.locator('text=Reset Account Data')).toBeVisible({
+      timeout: 8_000,
+    });
+
+    await flutterFill(page, 'role=dialog >> role=textbox', 'RESET');
+    await expect(page.locator(MANAGE_DATA.resetButton)).not.toHaveAttribute('aria-disabled', 'true', { timeout: 5_000 });
+
+    await page.click(MANAGE_DATA.resetButton);
+
+    // Wait for the success SnackBar to confirm the operation completed.
+    await expect(page.locator(MANAGE_DATA.accountReset).first()).toBeVisible({ timeout: 10_000 });
+
+    // Check the full visible DOM for any forbidden identifiers.
+    await assertNoTableNamesVisible(page);
+
+    // Assert no "Failed to reset data" SnackBar appeared.
+    await expect(page.locator('text=Failed to reset data')).not.toBeVisible({
+      timeout: 3_000,
+    });
+  });
+});
