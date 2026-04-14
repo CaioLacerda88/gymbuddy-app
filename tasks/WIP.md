@@ -33,7 +33,7 @@ Active work being done by agents. Each section is removed once the branch is mer
 - [x] Wire into `.github/workflows/ci.yml` as fast-failing job `exercise-content-pairing-check` upstream of analyze/test/build
 - [x] Add pairing-rule subsection to `CLAUDE.md`
 - [x] Self-test: runs clean on P9 migrations; exits 1 on synthetic unpaired case (verified with branch-based synthetic)
-- [ ] Commit: `ci(exercises): enforce description+form_tips pairing for default-exercise migrations (P9 Track B)`
+- [x] Commit: `ci(exercises): enforce description+form_tips pairing for default-exercise migrations (P9 Track B)` — b3fcdfe
 
 ### Track C — Detail-sheet hierarchy fix
 
@@ -47,7 +47,8 @@ Active work being done by agents. Each section is removed once the branch is mer
 - [x] Update widget tests in `test/widget/shared/widgets/exercise_info_sections_test.dart` (replace check-circle assertions + full-opacity checks)
 - [x] Update widget tests in `test/widget/features/exercises/ui/exercise_detail_screen_test.dart` (hierarchy + no Created date; 5 new tests)
 - [x] Local widget test run: 38/38 pass
-- [ ] Commit: `refactor(exercises): tighten detail-sheet hierarchy and form-tip visuals (P9 Track C)`
+- [x] Commit: `refactor(exercises): tighten detail-sheet hierarchy and form-tip visuals (P9 Track C)` — d407fd4
+- [x] Follow-up: update 2 stale test files (detail-sheet + literal-newline) that still asserted `check_circle_outline` — 45ae2b9
 
 ### Track D — Browse polish
 
@@ -57,10 +58,13 @@ Active work being done by agents. Each section is removed once the branch is mer
 - [x] Widget test: `ExerciseImage` forwards `memCacheHeight` when only height is given, and both when both are given
 - [x] Run `dart format` + `dart analyze --fatal-infos` on Track D files (0 issues)
 - [x] Run widget tests for Track D files (19/19 pass)
-- [ ] Commit: `feat(exercises): custom-exercise left-accent and image-cache tightening (P9 Track D)`
+- [x] Commit: `feat(exercises): custom-exercise left-accent and image-cache tightening (P9 Track D)` — 9e9e2f0
 
 ### Final verification
 
-- [ ] `make ci` — full pipeline green
-- [ ] Three SQL checks re-run against local Supabase, output pasted into PR body by orchestrator
-- [ ] Summary to orchestrator with commits / counts / files changed
+- [x] Full local pipeline green: `dart format` (0 changed) + `dart run build_runner build` (0 outputs) + `dart analyze --fatal-infos` (0 issues) + `flutter test` (1030 tests pass) + `flutter build apk --debug` (success)
+- [x] Three SQL checks re-run against local Supabase (after `npx supabase db reset`):
+  - `SELECT COUNT(DISTINCT name) FROM exercises WHERE is_default = true AND deleted_at IS NULL` → **150**
+  - `SELECT COUNT(*) FROM exercises WHERE is_default = true AND description IS NULL AND deleted_at IS NULL` → **0**
+  - `SELECT COUNT(*) FROM exercises WHERE is_default = true AND form_tips IS NULL AND deleted_at IS NULL` → **0**
+- [x] Summary to orchestrator: commits c652801 (Track A), b3fcdfe (Track B), d407fd4 (Track C), 9e9e2f0 (Track D), 45ae2b9 (test follow-up)
