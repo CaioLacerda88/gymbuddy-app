@@ -567,16 +567,21 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
   - New artifacts: `tools/exercise_image_mapping.json` (audit trail with curation notes), `tools/fix_exercise_images.dart` (idempotent uploader kept in-repo for re-runs).
   - E2E regression asserts HTTP 200 on bucket fetches — `CachedNetworkImage` silently falls back to a muscle-group icon, so presence-only `<img>` checks would miss the failure mode.
   - Closes QA-005. Remaining ~32 NULL-URL exercises from migration `00014` are handled by P9 (content + images ship together).
+- PR #55: P8 First-run empty-state CTA. Replaces the "Plan your week" dead-end for zero-workout users with a single beginner-routine hero card in the THIS WEEK slot (Full Body default; alphabetical fallback; `SizedBox.shrink` when no defaults). Tap jumps straight into active workout via existing `startRoutineWorkout()`. `_ContextualStatCells` now hide when both values are empty instead of showing "No workouts yet / No volume yet".
+  - Gated on `workoutCount == 0` (not a one-shot first-launch flag) so the CTA persists across sessions until the first workout is logged — the critical gotcha for fitness apps where most signups don't lift in session 1.
+  - New pure `estimateRoutineDurationMinutes()` util in `lib/features/weekly_plan/utils/` replaces the original hardcoded "~45 min" — now accurate across all seeded routines (Full Body ≈ 55 min).
+  - `workoutCountProvider` now `ref.keepAlive()`-guarded to avoid repeated COUNT queries on nav push/pop; `ref.invalidate()` on workout finish still forces refresh.
+  - Tests: +6 Flutter (1 widget for loading-state guard, 5 unit for duration estimator), +3 Playwright smoke (`First workout CTA (P8)` describe block in `home.spec.ts`). New `smokeFirstWorkout` e2e user. `usersNeedingSeededWorkoutForP8` array added so existing weekly-plan tests retain their "Plan your week" assertion.
+  - Follow-up: EX-003 search-input `flutterFill` flake tracked in #56 (pre-existing, unrelated).
 
-### Remaining — Sprint B: Retention (~4-5 days, PO-refined 2026-04-13)
+### Remaining — Sprint B: Retention (~3.5-4 days, updated 2026-04-14)
 
-Order is deliberate: shortest standalone → content foundation → highest-retention feature on clean foundations.
+Order is deliberate: content foundation → highest-retention feature on clean foundations.
 
 | Slot | ID | Item | Effort | Rationale |
 |------|----|------|--------|-----------|
-| 1 | P8 | New-user empty-state CTA + beginner routine recommendation | 2-3h | First-run users currently hit a dead end. CTA points to a routine produced in P9. |
-| 2 | P9 | Exercise description + form_tips standard (absorbs P2) | 1.5 days | Backfills 32 content-less exercises from migration `00014` AND ships the 150+ library expansion in one PR. No exercise ships without description + form_tips. PR adds the CLAUDE.md convention: exercise-insert migrations must pair with a descriptions migration. |
-| 3 | P1 | Progress charts per exercise | 2-3 days | #1 retention driver. `fl_chart` line chart of weight-over-time per exercise. Handles zero/one-data-point states without crash. |
+| 1 | P9 | Exercise description + form_tips standard (absorbs P2) | 1.5 days | Backfills 32 content-less exercises from migration `00014` AND ships the 150+ library expansion in one PR. No exercise ships without description + form_tips. PR adds the CLAUDE.md convention: exercise-insert migrations must pair with a descriptions migration. |
+| 2 | P1 | Progress charts per exercise | 2-3 days | #1 retention driver. `fl_chart` line chart of weight-over-time per exercise. Handles zero/one-data-point states without crash. |
 
 **P2** (count-only library expansion) is absorbed into P9 — shipping 150 exercises with 50+ empty detail sheets is worse UX than today's 92 with 60% coverage.
 
