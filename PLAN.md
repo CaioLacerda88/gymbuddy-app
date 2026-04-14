@@ -562,16 +562,21 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 - PR #50: E2E overhaul — Flutter 3.41.6 AOM selectors, feature-based restructure (11 spec files, 145 tests with @smoke tags), exercise soft-delete RLS fix
 - PR #51: Phase 13c removed from plan (Athletic Brutalism redesign conflicted with RPG gamification direction)
 
-### Remaining — Sprint B: Retention (~5-6 days, PO-refined 2026-04-13)
+**Sprint B — Retention (in progress)**
+- PR #53: P4 Exercise images fix — rehosted 59 default exercise images from third-party GitHub to our own `exercise-media` Supabase Storage bucket (migration `00018`). Root cause of prior 404s: migration `00004` seeded fabricated folder paths that never matched the source catalog.
+  - New artifacts: `tools/exercise_image_mapping.json` (audit trail with curation notes), `tools/fix_exercise_images.dart` (idempotent uploader kept in-repo for re-runs).
+  - E2E regression asserts HTTP 200 on bucket fetches — `CachedNetworkImage` silently falls back to a muscle-group icon, so presence-only `<img>` checks would miss the failure mode.
+  - Closes QA-005. Remaining ~32 NULL-URL exercises from migration `00014` are handled by P9 (content + images ship together).
 
-Order is deliberate: visible trust fixes → shortest standalone → content foundation → highest-retention feature on clean foundations.
+### Remaining — Sprint B: Retention (~4-5 days, PO-refined 2026-04-13)
+
+Order is deliberate: shortest standalone → content foundation → highest-retention feature on clean foundations.
 
 | Slot | ID | Item | Effort | Rationale |
 |------|----|------|--------|-----------|
-| 1 | P4 | Exercise images fix (404s) | 3-4h | Broken images on every tile. Migrate from GitHub URLs to Supabase Storage or CDN. Unblocks P9 visually. |
-| 2 | P8 | New-user empty-state CTA + beginner routine recommendation | 2-3h | First-run users currently hit a dead end. CTA points to a routine produced in P9. |
-| 3 | P9 | Exercise description + form_tips standard (absorbs P2) | 1.5 days | Backfills 32 content-less exercises from migration `00014` AND ships the 150+ library expansion in one PR. No exercise ships without description + form_tips. PR adds the CLAUDE.md convention: exercise-insert migrations must pair with a descriptions migration. |
-| 4 | P1 | Progress charts per exercise | 2-3 days | #1 retention driver. `fl_chart` line chart of weight-over-time per exercise. Handles zero/one-data-point states without crash. |
+| 1 | P8 | New-user empty-state CTA + beginner routine recommendation | 2-3h | First-run users currently hit a dead end. CTA points to a routine produced in P9. |
+| 2 | P9 | Exercise description + form_tips standard (absorbs P2) | 1.5 days | Backfills 32 content-less exercises from migration `00014` AND ships the 150+ library expansion in one PR. No exercise ships without description + form_tips. PR adds the CLAUDE.md convention: exercise-insert migrations must pair with a descriptions migration. |
+| 3 | P1 | Progress charts per exercise | 2-3 days | #1 retention driver. `fl_chart` line chart of weight-over-time per exercise. Handles zero/one-data-point states without crash. |
 
 **P2** (count-only library expansion) is absorbed into P9 — shipping 150 exercises with 50+ empty detail sheets is worse UX than today's 92 with 60% coverage.
 
@@ -854,13 +859,11 @@ Confetti, streak flames/emoji, badge walls, multiple progress bars on home, leve
 
 > Full manual QA plan: `tasks/manual-qa-testplan.md` (89 cases, 29 automated).
 
-**All Critical and High bugs resolved** (52+ items across PRs #24-#32, plus PR #50 E2E overhaul). See git history for full audit trails.
+**All Critical and High bugs resolved** (52+ items across PRs #24-#32, plus PR #50 E2E overhaul and PR #53 exercise image rehost). See git history for full audit trails.
 
 ### Open
 
-| ID | Severity | Issue | Notes |
-|----|----------|-------|-------|
-| QA-005 | High | Exercise image URLs return 404 from GitHub | DEFERRED to Phase 13 (P4). Fallback icon works |
+No open Critical/High bugs. (QA-005 resolved in PR #53 — exercise images rehosted to Supabase Storage.)
 
 ### Feature Gaps (v1.1+)
 
