@@ -29,6 +29,18 @@ class ExerciseImage extends StatelessWidget {
       return _fallback(theme);
     }
 
+    // P9: constrain BOTH axes to the rendered pixel size so a 56dp list
+    // thumbnail never decodes a 1200x800 JPEG at full resolution. Without
+    // memCacheHeight, images passed only a height constraint (as the detail
+    // sheet does) decoded at source resolution and stuffed the image cache
+    // after a fast scroll through 150 exercises. One axis is enough —
+    // CachedNetworkImage preserves aspect ratio from whichever dimension is
+    // bounded — but supplying both prevents over-allocation when a caller
+    // sets only one side.
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final memCacheW = width != null ? (width! * dpr).round() : null;
+    final memCacheH = height != null ? (height! * dpr).round() : null;
+
     return ClipRRect(
       borderRadius: borderRadius,
       child: CachedNetworkImage(
@@ -36,9 +48,8 @@ class ExerciseImage extends StatelessWidget {
         width: width,
         height: height,
         fit: fit,
-        memCacheWidth: width != null
-            ? (width! * MediaQuery.devicePixelRatioOf(context)).round()
-            : null,
+        memCacheWidth: memCacheW,
+        memCacheHeight: memCacheH,
         placeholder: (context, url) => _loading(theme),
         errorWidget: (context, url, error) => _fallback(theme),
         fadeInDuration: const Duration(milliseconds: 200),

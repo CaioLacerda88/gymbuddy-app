@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../../core/exceptions/app_exception.dart';
 import '../../../shared/widgets/exercise_image.dart';
@@ -140,15 +139,39 @@ class _ExerciseDetailBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
-    final dateFormat = DateFormat.yMMMMd();
 
+    // P9 hierarchy: name -> [custom label] -> description -> chips -> images
+    // -> form tips -> PRs -> delete. "Created <date>" was dropped — it was a
+    // data-model leak with no user value. The custom-exercise label moves up
+    // from below chips to just under the title so non-default exercises are
+    // identified before users scan the content.
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(exercise.name, style: theme.textTheme.headlineLarge),
-          const SizedBox(height: 16),
+          if (!exercise.isDefault) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Custom exercise',
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: primary.withValues(alpha: 0.8),
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+          ExerciseDescriptionSection(description: exercise.description),
+          // P9 review fix: only render the spacer when the section above it
+          // actually rendered something. ExerciseDescriptionSection collapses
+          // to SizedBox.shrink() when description is null/empty, but this
+          // SizedBox(16) would still paint — leaving 16 dp of orphan
+          // whitespace between the title block and the chips on most
+          // user-created custom exercises.
+          if (exercise.description != null &&
+              exercise.description!.trim().isNotEmpty)
+            const SizedBox(height: 16),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -168,24 +191,6 @@ class _ExerciseDetailBody extends ConsumerWidget {
             const SizedBox(height: 16),
             _ExerciseImageRow(exercise: exercise),
           ],
-          const SizedBox(height: 16),
-          Text(
-            'Created ${dateFormat.format(exercise.createdAt)}',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-            ),
-          ),
-          if (!exercise.isDefault) ...[
-            const SizedBox(height: 8),
-            Text(
-              'Custom exercise',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: primary.withValues(alpha: 0.8),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-          ExerciseDescriptionSection(description: exercise.description),
           ExerciseFormTipsSection(formTips: exercise.formTips),
           const SizedBox(height: 24),
           _PRSection(
@@ -460,32 +465,38 @@ class _TappableImage extends StatelessWidget {
   ) {
     showDialog<void>(
       context: context,
-      builder: (ctx) => Scaffold(
-        backgroundColor: Theme.of(ctx).colorScheme.scrim,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          leading: IconButton(
-            icon: const Icon(Icons.close_rounded, color: Colors.white),
-            onPressed: () => Navigator.of(ctx).pop(),
-            tooltip: 'Close',
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        return Scaffold(
+          backgroundColor: theme.colorScheme.scrim,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            leading: IconButton(
+              icon: Icon(
+                Icons.close_rounded,
+                color: theme.colorScheme.onSurface,
+              ),
+              onPressed: () => Navigator.of(ctx).pop(),
+              tooltip: 'Close',
+            ),
           ),
-        ),
-        body: GestureDetector(
-          onTap: () => Navigator.of(ctx).pop(),
-          behavior: HitTestBehavior.opaque,
-          child: Center(
-            child: Semantics(
-              label: label,
-              image: true,
-              child: ExerciseImage(
-                imageUrl: imageUrl,
-                fallbackIcon: fallbackIcon,
-                fit: BoxFit.contain,
+          body: GestureDetector(
+            onTap: () => Navigator.of(ctx).pop(),
+            behavior: HitTestBehavior.opaque,
+            child: Center(
+              child: Semantics(
+                label: label,
+                image: true,
+                child: ExerciseImage(
+                  imageUrl: imageUrl,
+                  fallbackIcon: fallbackIcon,
+                  fit: BoxFit.contain,
+                ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

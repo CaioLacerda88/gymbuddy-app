@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
 import 'package:gymbuddy_app/shared/widgets/exercise_info_sections.dart';
 
+import '../../../fixtures/test_finders.dart';
+
 Widget buildTestWidget(Widget child) {
   return MaterialApp(
     theme: AppTheme.dark,
@@ -94,18 +96,41 @@ void main() {
       expect(find.text('FORM TIPS'), findsOneWidget);
     });
 
-    testWidgets('renders check_circle_outline icons for each tip', (
+    testWidgets(
+      'renders a circular bullet for each tip (not a check_circle icon)',
+      (tester) async {
+        await tester.pumpWidget(
+          buildTestWidget(
+            const ExerciseFormTipsSection(
+              formTips: 'Keep bar close\nHinge at hips\nSqueeze glutes',
+            ),
+          ),
+        );
+
+        expect(findBulletDots(), findsNWidgets(3));
+        // P9: the old check_circle_outline icon is gone — the bullet is a
+        // neutral dot, not a "done" checkmark.
+        expect(find.byIcon(Icons.check_circle_outline), findsNothing);
+      },
+    );
+
+    testWidgets('bullet uses the primary color at full opacity', (
       tester,
     ) async {
       await tester.pumpWidget(
-        buildTestWidget(
-          const ExerciseFormTipsSection(
-            formTips: 'Keep bar close\nHinge at hips\nSqueeze glutes',
-          ),
-        ),
+        buildTestWidget(const ExerciseFormTipsSection(formTips: 'Single tip')),
       );
 
-      expect(find.byIcon(Icons.check_circle_outline), findsNWidgets(3));
+      final bullets = tester.widgetList<Container>(findBulletDots()).toList();
+      expect(bullets, hasLength(1));
+
+      final decoration = bullets.single.decoration! as BoxDecoration;
+      final expectedPrimary = AppTheme.dark.colorScheme.primary;
+      expect(decoration.color, expectedPrimary);
+      // Flutter 3.x stores alpha as a Float64 channel. Future normalisation
+      // changes could return 0.9999... instead of a precise 1.0, so we match
+      // the tolerant pattern used in exercise_image_test.dart.
+      expect(decoration.color!.a, closeTo(1.0, 0.001));
     });
 
     testWidgets('splits on newlines and renders each tip separately', (
@@ -134,8 +159,8 @@ void main() {
 
       expect(find.text('First tip'), findsOneWidget);
       expect(find.text('Second tip'), findsOneWidget);
-      // Only 2 icons — empty lines not rendered.
-      expect(find.byIcon(Icons.check_circle_outline), findsNWidgets(2));
+      // Only 2 bullets — empty lines not rendered.
+      expect(findBulletDots(), findsNWidgets(2));
     });
 
     testWidgets('trims whitespace from individual tips', (tester) async {
@@ -159,7 +184,7 @@ void main() {
       );
 
       expect(find.text('FORM TIPS'), findsNothing);
-      expect(find.byIcon(Icons.check_circle_outline), findsNothing);
+      expect(findBulletDots(), findsNothing);
     });
 
     testWidgets('returns SizedBox.shrink when formTips is empty string', (
@@ -180,7 +205,7 @@ void main() {
         );
 
         expect(find.text('FORM TIPS'), findsNothing);
-        expect(find.byIcon(Icons.check_circle_outline), findsNothing);
+        expect(findBulletDots(), findsNothing);
       },
     );
 
@@ -193,7 +218,38 @@ void main() {
 
       expect(find.text('FORM TIPS'), findsOneWidget);
       expect(find.text('Only one tip'), findsOneWidget);
-      expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
+      expect(findBulletDots(), findsOneWidget);
+    });
+
+    testWidgets('tip text renders at full opacity (not muted)', (tester) async {
+      await tester.pumpWidget(
+        buildTestWidget(
+          const ExerciseFormTipsSection(formTips: 'Full opacity tip'),
+        ),
+      );
+
+      final textWidget = tester.widget<Text>(find.text('Full opacity tip'));
+      final resolvedColor = textWidget.style?.color;
+      expect(resolvedColor, isNotNull);
+      expect(resolvedColor!.a, closeTo(1.0, 0.001));
+    });
+  });
+
+  group('ExerciseDescriptionSection opacity', () {
+    testWidgets('description text renders at full opacity (not muted)', (
+      tester,
+    ) async {
+      const bodyText = 'The description must read as primary content.';
+      await tester.pumpWidget(
+        buildTestWidget(
+          const ExerciseDescriptionSection(description: bodyText),
+        ),
+      );
+
+      final textWidget = tester.widget<Text>(find.text(bodyText));
+      final resolvedColor = textWidget.style?.color;
+      expect(resolvedColor, isNotNull);
+      expect(resolvedColor!.a, closeTo(1.0, 0.001));
     });
   });
 }

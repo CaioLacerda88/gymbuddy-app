@@ -15,6 +15,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
 import 'package:gymbuddy_app/shared/widgets/exercise_info_sections.dart';
 
+import '../../../fixtures/test_finders.dart';
+
 Widget _build(Widget child) {
   return MaterialApp(
     theme: AppTheme.dark,
@@ -75,21 +77,22 @@ void main() {
       },
     );
 
-    testWidgets('form tips with literal \\n show three bullet icons (not one)', (
+    testWidgets('form tips with literal \\n show three bullet dots (not one)', (
       tester,
     ) async {
       await tester.pumpWidget(
         _build(const ExerciseFormTipsSection(formTips: kDbFormTips)),
       );
 
-      // BUG-002: With database content there should be 3 icons (one per tip).
-      // Currently only 1 icon appears because the entire string is one "tip".
+      // BUG-002: With database content there should be 3 bullets (one per tip).
+      // Currently only 1 appears if the entire string is treated as one "tip".
+      // P9 replaced the check_circle_outline icon with a 6x6 circular Container.
       expect(
-        find.byIcon(Icons.check_circle_outline),
+        findBulletDots(),
         findsNWidgets(3),
         reason:
-            'BUG-002: three tips should each render a check_circle_outline icon. '
-            'Currently one icon appears because the string is not split.',
+            'BUG-002: three tips should each render a bullet dot. '
+            'Currently one appears if the string is not split.',
       );
     });
 
@@ -107,7 +110,7 @@ void main() {
         // trim because it contains backslash chars).
         // This test documents the expected final behavior post-fix.
         expect(find.text('FORM TIPS'), findsNothing);
-        expect(find.byIcon(Icons.check_circle_outline), findsNothing);
+        expect(findBulletDots(), findsNothing);
       },
     );
 
@@ -126,7 +129,7 @@ void main() {
         expect(find.text('Tip one'), findsOneWidget);
         expect(find.text('Tip two'), findsOneWidget);
         expect(find.text('Tip three'), findsOneWidget);
-        expect(find.byIcon(Icons.check_circle_outline), findsNWidgets(3));
+        expect(findBulletDots(), findsNWidgets(3));
       },
     );
   });

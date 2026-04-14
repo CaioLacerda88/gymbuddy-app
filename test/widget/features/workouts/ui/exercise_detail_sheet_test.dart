@@ -16,6 +16,8 @@ import 'package:gymbuddy_app/features/workouts/models/workout_exercise.dart';
 import 'package:gymbuddy_app/features/workouts/providers/workout_providers.dart';
 import 'package:gymbuddy_app/features/workouts/ui/active_workout_screen.dart';
 
+import '../../../../fixtures/test_finders.dart';
+
 // ---------------------------------------------------------------------------
 // Test exercise data
 // ---------------------------------------------------------------------------
@@ -271,7 +273,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('FORM TIPS'), findsOneWidget);
-      expect(find.byIcon(Icons.check_circle_outline), findsNWidgets(3));
+      // P9: form-tip bullets are 6x6 circular Containers in primary, not
+      // check_circle_outline icons.
+      expect(findBulletDots(), findsNWidgets(3));
       expect(find.text('Arch the back slightly'), findsOneWidget);
       expect(find.text('Keep feet flat on the floor'), findsOneWidget);
       expect(find.text('Control the descent'), findsOneWidget);

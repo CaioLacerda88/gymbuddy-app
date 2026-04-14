@@ -387,4 +387,210 @@ void main() {
       },
     );
   });
+
+  group('ExerciseDetailScreen P9 hierarchy', () {
+    testWidgets('Created <date> line is no longer rendered', (tester) async {
+      final exercise = Exercise.fromJson(
+        TestExerciseFactory.create(
+          createdAt: '2026-02-15T10:00:00Z',
+          description: 'Primary body copy.',
+        ),
+      );
+      when(
+        () => mockRepo.getExerciseById('exercise-001'),
+      ).thenAnswer((_) async => exercise);
+
+      await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
+      await pumpAndResolve(tester);
+
+      // The pre-P9 detail body rendered "Created February 15, 2026" above
+      // the description. After P9 that line is gone from the main flow.
+      expect(
+        find.textContaining('Created '),
+        findsNothing,
+        reason: 'P9 dropped the Created <date> line from the detail body.',
+      );
+    });
+
+    testWidgets(
+      'description renders above muscle/equipment chips (P9 reorder)',
+      (tester) async {
+        final exercise = Exercise.fromJson(
+          TestExerciseFactory.create(
+            description: 'The description goes before the chips.',
+          ),
+        );
+        when(
+          () => mockRepo.getExerciseById('exercise-001'),
+        ).thenAnswer((_) async => exercise);
+
+        await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
+        await pumpAndResolve(tester);
+
+        final descTopLeft = tester.getTopLeft(
+          find.byType(ExerciseDescriptionSection),
+        );
+        // Find the muscle-group chip by its display label.
+        final chipTopLeft = tester.getTopLeft(find.text('Chest'));
+
+        expect(
+          descTopLeft.dy,
+          lessThan(chipTopLeft.dy),
+          reason: 'Description section must sit above the chip row.',
+        );
+      },
+    );
+
+    testWidgets('form tips section renders below the chip row', (tester) async {
+      final exercise = Exercise.fromJson(
+        TestExerciseFactory.create(
+          description: 'Primary body copy.',
+          formTips: 'Tip one\nTip two',
+        ),
+      );
+      when(
+        () => mockRepo.getExerciseById('exercise-001'),
+      ).thenAnswer((_) async => exercise);
+
+      await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
+      await pumpAndResolve(tester);
+
+      final formTipsTopLeft = tester.getTopLeft(
+        find.byType(ExerciseFormTipsSection),
+      );
+      final chipTopLeft = tester.getTopLeft(find.text('Chest'));
+
+      expect(
+        formTipsTopLeft.dy,
+        greaterThan(chipTopLeft.dy),
+        reason: 'Form tips section must sit below the chip row.',
+      );
+    });
+
+    testWidgets(
+      'custom exercise shows "Custom exercise" label directly under title',
+      (tester) async {
+        final exercise = Exercise.fromJson(
+          TestExerciseFactory.create(
+            name: 'My Home Press',
+            isDefault: false,
+            userId: 'user-001',
+          ),
+        );
+        when(
+          () => mockRepo.getExerciseById('exercise-001'),
+        ).thenAnswer((_) async => exercise);
+
+        await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
+        await pumpAndResolve(tester);
+
+        expect(find.text('Custom exercise'), findsOneWidget);
+
+        final titleTopLeft = tester.getTopLeft(find.text('My Home Press'));
+        final labelTopLeft = tester.getTopLeft(find.text('Custom exercise'));
+
+        expect(labelTopLeft.dy, greaterThan(titleTopLeft.dy));
+        // And the label sits above the description/chip area.
+        final chipTopLeft = tester.getTopLeft(find.text('Chest'));
+        expect(labelTopLeft.dy, lessThan(chipTopLeft.dy));
+      },
+    );
+
+    testWidgets('default exercise omits the "Custom exercise" label', (
+      tester,
+    ) async {
+      final exercise = Exercise.fromJson(TestExerciseFactory.create());
+      when(
+        () => mockRepo.getExerciseById('exercise-001'),
+      ).thenAnswer((_) async => exercise);
+
+      await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
+      await pumpAndResolve(tester);
+
+      expect(find.text('Custom exercise'), findsNothing);
+    });
+
+    testWidgets(
+      'no orphan 16dp gap between title and chips when description is null '
+      '(P9 review fix)',
+      (tester) async {
+        // Render the null-description layout in a fresh ProviderScope and
+        // measure the vertical distance between the title and the chip row.
+        // The ExerciseDescriptionSection collapses to SizedBox.shrink when
+        // description is null, so the only thing that should sit between
+        // the title and the chips is Flutter's natural column spacing —
+        // there should be NO 16 dp orphan spacer.
+        //
+        // The pre-fix layout had an unconditional SizedBox(height: 16)
+        // between the description section and the chip Wrap. With that
+        // spacer in place, the null-desc gap would include 16 dp of
+        // unexplained whitespace. We assert an upper bound small enough to
+        // catch that regression.
+        final withoutDesc = Exercise.fromJson(
+          TestExerciseFactory.create(name: 'Paired Press', description: null),
+        );
+        when(
+          () => mockRepo.getExerciseById('exercise-001'),
+        ).thenAnswer((_) async => withoutDesc);
+
+        await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
+        await pumpAndResolve(tester);
+
+        final titleBottom = tester.getBottomLeft(find.text('Paired Press')).dy;
+        final chipTop = tester.getTopLeft(find.text('Chest')).dy;
+        final gap = chipTop - titleBottom;
+
+        // With Flutter's default line-height metrics, the gap between the
+        // text baseline bottom and the next sibling widget's visual top is
+        // a small amount of typographic descender padding. An unguarded
+        // SizedBox(16) would add a clear 16 dp. Allow a generous ceiling
+        // that still catches a regression of that magnitude.
+        expect(
+          gap,
+          lessThan(16),
+          reason:
+              'Null-description layout must not inject a 16 dp orphan '
+              'spacer between the title and the chip row. Measured gap '
+              'was $gap dp. If this test fails at exactly or above 16 dp, '
+              'the P9 review fix for the orphan SizedBox regressed.',
+        );
+      },
+    );
+
+    testWidgets(
+      'description adds vertical space between title and chips when present',
+      (tester) async {
+        // Companion to the above: when description IS set, the ABOUT
+        // section (with its internal 24 dp top padding, label, and body
+        // text) must visibly push the chip row further down the layout.
+        final withDesc = Exercise.fromJson(
+          TestExerciseFactory.create(
+            name: 'Paired Press',
+            description: 'A compound push movement that loads the chest.',
+          ),
+        );
+        when(
+          () => mockRepo.getExerciseById('exercise-001'),
+        ).thenAnswer((_) async => withDesc);
+
+        await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
+        await pumpAndResolve(tester);
+
+        final titleBottom = tester.getBottomLeft(find.text('Paired Press')).dy;
+        final chipTop = tester.getTopLeft(find.text('Chest')).dy;
+        final gap = chipTop - titleBottom;
+
+        // The ABOUT section contributes at least the 24 dp internal top
+        // gap plus the label and body text — comfortably above 40 dp.
+        expect(
+          gap,
+          greaterThan(40),
+          reason:
+              'Description-present layout must render the ABOUT section '
+              'between the title and the chip row, producing a large '
+              'vertical gap. Measured gap was $gap dp.',
+        );
+      },
+    );
+  });
 }

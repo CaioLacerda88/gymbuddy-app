@@ -79,6 +79,51 @@ void main() {
         final clipRRect = tester.widget<ClipRRect>(find.byType(ClipRRect));
         expect(clipRRect.borderRadius, BorderRadius.circular(12));
       });
+
+      testWidgets(
+        'passes memCacheHeight when only height is provided (P9 cache guard)',
+        (tester) async {
+          await tester.pumpWidget(
+            _buildTestWidget(
+              const ExerciseImage(
+                imageUrl: 'https://example.com/test.jpg',
+                fallbackIcon: Icons.fitness_center,
+                height: 160,
+              ),
+            ),
+          );
+
+          final cached = tester.widget<CachedNetworkImage>(
+            find.byType(CachedNetworkImage),
+          );
+          // Before P9 only memCacheWidth was forwarded — height-only callers
+          // (like the detail sheet) decoded full-resolution images.
+          expect(cached.memCacheHeight, isNotNull);
+          expect(cached.memCacheWidth, isNull);
+        },
+      );
+
+      testWidgets(
+        'passes both memCacheWidth and memCacheHeight when both dimensions are set',
+        (tester) async {
+          await tester.pumpWidget(
+            _buildTestWidget(
+              const ExerciseImage(
+                imageUrl: 'https://example.com/test.jpg',
+                fallbackIcon: Icons.fitness_center,
+                width: 80,
+                height: 80,
+              ),
+            ),
+          );
+
+          final cached = tester.widget<CachedNetworkImage>(
+            find.byType(CachedNetworkImage),
+          );
+          expect(cached.memCacheWidth, isNotNull);
+          expect(cached.memCacheHeight, isNotNull);
+        },
+      );
     });
 
     group('fallback icon sizing', () {
