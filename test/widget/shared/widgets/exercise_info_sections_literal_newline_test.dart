@@ -15,6 +15,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
 import 'package:gymbuddy_app/shared/widgets/exercise_info_sections.dart';
 
+import '../../../fixtures/test_finders.dart';
+
 Widget _build(Widget child) {
   return MaterialApp(
     theme: AppTheme.dark,
@@ -25,21 +27,6 @@ Widget _build(Widget child) {
       ),
     ),
   );
-}
-
-/// Matches the 6x6 circular form-tip bullet rendered by
-/// [ExerciseFormTipsSection] (replaced `check_circle_outline` in P9).
-Finder _findBulletDots() {
-  return find.byWidgetPredicate((widget) {
-    if (widget is! Container) return false;
-    final decoration = widget.decoration;
-    if (decoration is! BoxDecoration || decoration.shape != BoxShape.circle) {
-      return false;
-    }
-    final constraints = widget.constraints;
-    if (constraints == null) return false;
-    return constraints.maxWidth == 6 && constraints.maxHeight == 6;
-  });
 }
 
 // The exact string format stored in the database by
@@ -101,7 +88,7 @@ void main() {
       // Currently only 1 appears if the entire string is treated as one "tip".
       // P9 replaced the check_circle_outline icon with a 6x6 circular Container.
       expect(
-        _findBulletDots(),
+        findBulletDots(),
         findsNWidgets(3),
         reason:
             'BUG-002: three tips should each render a bullet dot. '
@@ -123,7 +110,7 @@ void main() {
         // trim because it contains backslash chars).
         // This test documents the expected final behavior post-fix.
         expect(find.text('FORM TIPS'), findsNothing);
-        expect(_findBulletDots(), findsNothing);
+        expect(findBulletDots(), findsNothing);
       },
     );
 
@@ -142,7 +129,7 @@ void main() {
         expect(find.text('Tip one'), findsOneWidget);
         expect(find.text('Tip two'), findsOneWidget);
         expect(find.text('Tip three'), findsOneWidget);
-        expect(_findBulletDots(), findsNWidgets(3));
+        expect(findBulletDots(), findsNWidgets(3));
       },
     );
   });
