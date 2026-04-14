@@ -37,16 +37,16 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ### Track C — Detail-sheet hierarchy fix
 
-- [ ] `lib/features/exercises/ui/exercise_detail_screen.dart`:
-  - [ ] Reorder: name -> custom-exercise label -> description -> chips -> images -> form tips -> PRs -> delete
-  - [ ] Drop "Created <date>" from main flow
-- [ ] `lib/shared/widgets/exercise_info_sections.dart`:
-  - [ ] Description body text at full opacity
-  - [ ] Form tips: replace `check_circle_outline` with 6x6 circular Container (primary), full opacity on bullet and tip
-  - [ ] Keep FORM TIPS / ABOUT labels at 55% opacity
-- [ ] Update widget tests in `test/widget/shared/widgets/exercise_info_sections_test.dart` (replace check-circle assertions)
-- [ ] Update widget tests in `test/widget/features/exercises/ui/exercise_detail_screen_test.dart` (hierarchy + no Created date)
-- [ ] Run `make format` + `make analyze` + `make test`
+- [x] `lib/features/exercises/ui/exercise_detail_screen.dart`:
+  - [x] Reorder: name -> custom-exercise label -> description -> chips -> images -> form tips -> PRs -> delete
+  - [x] Drop "Created <date>" from main flow
+- [x] `lib/shared/widgets/exercise_info_sections.dart`:
+  - [x] Description body text at full opacity
+  - [x] Form tips: replace `check_circle_outline` with 6x6 circular Container (primary), full opacity on bullet and tip
+  - [x] Keep FORM TIPS / ABOUT labels at 55% opacity
+- [x] Update widget tests in `test/widget/shared/widgets/exercise_info_sections_test.dart` (replace check-circle assertions + full-opacity checks)
+- [x] Update widget tests in `test/widget/features/exercises/ui/exercise_detail_screen_test.dart` (hierarchy + no Created date; 5 new tests)
+- [x] Local widget test run: 38/38 pass
 - [ ] Commit: `refactor(exercises): tighten detail-sheet hierarchy and form-tip visuals (P9 Track C)`
 
 ### Track D — Browse polish

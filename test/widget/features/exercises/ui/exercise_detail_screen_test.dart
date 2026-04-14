@@ -387,4 +387,127 @@ void main() {
       },
     );
   });
+
+  group('ExerciseDetailScreen P9 hierarchy', () {
+    testWidgets('Created <date> line is no longer rendered', (tester) async {
+      final exercise = Exercise.fromJson(
+        TestExerciseFactory.create(
+          createdAt: '2026-02-15T10:00:00Z',
+          description: 'Primary body copy.',
+        ),
+      );
+      when(
+        () => mockRepo.getExerciseById('exercise-001'),
+      ).thenAnswer((_) async => exercise);
+
+      await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
+      await pumpAndResolve(tester);
+
+      // The pre-P9 detail body rendered "Created February 15, 2026" above
+      // the description. After P9 that line is gone from the main flow.
+      expect(
+        find.textContaining('Created '),
+        findsNothing,
+        reason: 'P9 dropped the Created <date> line from the detail body.',
+      );
+    });
+
+    testWidgets(
+      'description renders above muscle/equipment chips (P9 reorder)',
+      (tester) async {
+        final exercise = Exercise.fromJson(
+          TestExerciseFactory.create(
+            description: 'The description goes before the chips.',
+          ),
+        );
+        when(
+          () => mockRepo.getExerciseById('exercise-001'),
+        ).thenAnswer((_) async => exercise);
+
+        await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
+        await pumpAndResolve(tester);
+
+        final descTopLeft = tester.getTopLeft(
+          find.byType(ExerciseDescriptionSection),
+        );
+        // Find the muscle-group chip by its display label.
+        final chipTopLeft = tester.getTopLeft(find.text('Chest'));
+
+        expect(
+          descTopLeft.dy,
+          lessThan(chipTopLeft.dy),
+          reason: 'Description section must sit above the chip row.',
+        );
+      },
+    );
+
+    testWidgets('form tips section renders below the chip row', (tester) async {
+      final exercise = Exercise.fromJson(
+        TestExerciseFactory.create(
+          description: 'Primary body copy.',
+          formTips: 'Tip one\nTip two',
+        ),
+      );
+      when(
+        () => mockRepo.getExerciseById('exercise-001'),
+      ).thenAnswer((_) async => exercise);
+
+      await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
+      await pumpAndResolve(tester);
+
+      final formTipsTopLeft = tester.getTopLeft(
+        find.byType(ExerciseFormTipsSection),
+      );
+      final chipTopLeft = tester.getTopLeft(find.text('Chest'));
+
+      expect(
+        formTipsTopLeft.dy,
+        greaterThan(chipTopLeft.dy),
+        reason: 'Form tips section must sit below the chip row.',
+      );
+    });
+
+    testWidgets(
+      'custom exercise shows "Custom exercise" label directly under title',
+      (tester) async {
+        final exercise = Exercise.fromJson(
+          TestExerciseFactory.create(
+            name: 'My Home Press',
+            isDefault: false,
+            userId: 'user-001',
+          ),
+        );
+        when(
+          () => mockRepo.getExerciseById('exercise-001'),
+        ).thenAnswer((_) async => exercise);
+
+        await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
+        await pumpAndResolve(tester);
+
+        expect(find.text('Custom exercise'), findsOneWidget);
+
+        final titleTopLeft = tester.getTopLeft(find.text('My Home Press'));
+        final labelTopLeft = tester.getTopLeft(find.text('Custom exercise'));
+
+        expect(labelTopLeft.dy, greaterThan(titleTopLeft.dy));
+        // And the label sits above the description/chip area.
+        final chipTopLeft = tester.getTopLeft(find.text('Chest'));
+        expect(labelTopLeft.dy, lessThan(chipTopLeft.dy));
+      },
+    );
+
+    testWidgets('default exercise omits the "Custom exercise" label', (
+      tester,
+    ) async {
+      final exercise = Exercise.fromJson(TestExerciseFactory.create());
+      when(
+        () => mockRepo.getExerciseById('exercise-001'),
+      ).thenAnswer((_) async => exercise);
+
+      await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
+      await pumpAndResolve(tester);
+
+      expect(find.text('Custom exercise'), findsNothing);
+    });
+  });
 }

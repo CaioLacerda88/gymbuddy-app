@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../../core/exceptions/app_exception.dart';
 import '../../../shared/widgets/exercise_image.dart';
@@ -140,14 +139,30 @@ class _ExerciseDetailBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
-    final dateFormat = DateFormat.yMMMMd();
 
+    // P9 hierarchy: name -> [custom label] -> description -> chips -> images
+    // -> form tips -> PRs -> delete. "Created <date>" was dropped — it was a
+    // data-model leak with no user value. The custom-exercise label moves up
+    // from below chips to just under the title so non-default exercises are
+    // identified before users scan the content.
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(exercise.name, style: theme.textTheme.headlineLarge),
+          if (!exercise.isDefault) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Custom exercise',
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: primary.withValues(alpha: 0.8),
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+          ExerciseDescriptionSection(description: exercise.description),
           const SizedBox(height: 16),
           Wrap(
             spacing: 8,
@@ -168,24 +183,6 @@ class _ExerciseDetailBody extends ConsumerWidget {
             const SizedBox(height: 16),
             _ExerciseImageRow(exercise: exercise),
           ],
-          const SizedBox(height: 16),
-          Text(
-            'Created ${dateFormat.format(exercise.createdAt)}',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-            ),
-          ),
-          if (!exercise.isDefault) ...[
-            const SizedBox(height: 8),
-            Text(
-              'Custom exercise',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: primary.withValues(alpha: 0.8),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-          ExerciseDescriptionSection(description: exercise.description),
           ExerciseFormTipsSection(formTips: exercise.formTips),
           const SizedBox(height: 24),
           _PRSection(

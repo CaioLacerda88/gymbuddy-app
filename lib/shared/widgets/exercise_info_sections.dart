@@ -30,9 +30,9 @@ class ExerciseDescriptionSection extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           description!,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: onSurface.withValues(alpha: 0.8),
-          ),
+          // P9: body prose at full opacity — the description is not
+          // metadata, it's primary content.
+          style: theme.textTheme.bodyMedium?.copyWith(color: onSurface),
         ),
       ],
     );
@@ -83,17 +83,26 @@ class ExerciseFormTipsSection extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  Icons.check_circle_outline,
-                  size: 16,
-                  color: primary.withValues(alpha: 0.6),
+                // P9: neutral circular bullet in primary, full opacity.
+                // Supersedes the earlier check_circle_outline which read
+                // as a "done" checkmark rather than a simple list marker.
+                Padding(
+                  padding: const EdgeInsets.only(top: 7),
+                  child: Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: primary,
+                    ),
+                  ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     tips[index],
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: onSurface.withValues(alpha: 0.8),
+                      color: onSurface,
                     ),
                   ),
                 ),

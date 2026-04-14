@@ -12,6 +12,26 @@ Widget buildTestWidget(Widget child) {
   );
 }
 
+/// Matches the 6x6 circular form-tip bullet rendered by
+/// [ExerciseFormTipsSection] (replaced the check_circle_outline icon in P9).
+///
+/// Container's `width`/`height` constructor args translate into a tight
+/// BoxConstraints stored on the widget. We assert on both the shape of the
+/// BoxDecoration and those constraints so we don't accidentally match
+/// incidental circular decorations elsewhere.
+Finder _findBulletDots() {
+  return find.byWidgetPredicate((widget) {
+    if (widget is! Container) return false;
+    final decoration = widget.decoration;
+    if (decoration is! BoxDecoration || decoration.shape != BoxShape.circle) {
+      return false;
+    }
+    final constraints = widget.constraints;
+    if (constraints == null) return false;
+    return constraints.maxWidth == 6 && constraints.maxHeight == 6;
+  });
+}
+
 void main() {
   group('ExerciseDescriptionSection', () {
     testWidgets('renders ABOUT header and text when description is present', (
@@ -94,18 +114,38 @@ void main() {
       expect(find.text('FORM TIPS'), findsOneWidget);
     });
 
-    testWidgets('renders check_circle_outline icons for each tip', (
+    testWidgets(
+      'renders a circular bullet for each tip (not a check_circle icon)',
+      (tester) async {
+        await tester.pumpWidget(
+          buildTestWidget(
+            const ExerciseFormTipsSection(
+              formTips: 'Keep bar close\nHinge at hips\nSqueeze glutes',
+            ),
+          ),
+        );
+
+        expect(_findBulletDots(), findsNWidgets(3));
+        // P9: the old check_circle_outline icon is gone — the bullet is a
+        // neutral dot, not a "done" checkmark.
+        expect(find.byIcon(Icons.check_circle_outline), findsNothing);
+      },
+    );
+
+    testWidgets('bullet uses the primary color at full opacity', (
       tester,
     ) async {
       await tester.pumpWidget(
-        buildTestWidget(
-          const ExerciseFormTipsSection(
-            formTips: 'Keep bar close\nHinge at hips\nSqueeze glutes',
-          ),
-        ),
+        buildTestWidget(const ExerciseFormTipsSection(formTips: 'Single tip')),
       );
 
-      expect(find.byIcon(Icons.check_circle_outline), findsNWidgets(3));
+      final bullets = tester.widgetList<Container>(_findBulletDots()).toList();
+      expect(bullets, hasLength(1));
+
+      final decoration = bullets.single.decoration! as BoxDecoration;
+      final expectedPrimary = AppTheme.dark.colorScheme.primary;
+      expect(decoration.color, expectedPrimary);
+      expect(decoration.color!.a, 1.0);
     });
 
     testWidgets('splits on newlines and renders each tip separately', (
@@ -134,8 +174,8 @@ void main() {
 
       expect(find.text('First tip'), findsOneWidget);
       expect(find.text('Second tip'), findsOneWidget);
-      // Only 2 icons — empty lines not rendered.
-      expect(find.byIcon(Icons.check_circle_outline), findsNWidgets(2));
+      // Only 2 bullets — empty lines not rendered.
+      expect(_findBulletDots(), findsNWidgets(2));
     });
 
     testWidgets('trims whitespace from individual tips', (tester) async {
@@ -159,7 +199,7 @@ void main() {
       );
 
       expect(find.text('FORM TIPS'), findsNothing);
-      expect(find.byIcon(Icons.check_circle_outline), findsNothing);
+      expect(_findBulletDots(), findsNothing);
     });
 
     testWidgets('returns SizedBox.shrink when formTips is empty string', (
@@ -180,7 +220,7 @@ void main() {
         );
 
         expect(find.text('FORM TIPS'), findsNothing);
-        expect(find.byIcon(Icons.check_circle_outline), findsNothing);
+        expect(_findBulletDots(), findsNothing);
       },
     );
 
@@ -193,7 +233,38 @@ void main() {
 
       expect(find.text('FORM TIPS'), findsOneWidget);
       expect(find.text('Only one tip'), findsOneWidget);
-      expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
+      expect(_findBulletDots(), findsOneWidget);
+    });
+
+    testWidgets('tip text renders at full opacity (not muted)', (tester) async {
+      await tester.pumpWidget(
+        buildTestWidget(
+          const ExerciseFormTipsSection(formTips: 'Full opacity tip'),
+        ),
+      );
+
+      final textWidget = tester.widget<Text>(find.text('Full opacity tip'));
+      final resolvedColor = textWidget.style?.color;
+      expect(resolvedColor, isNotNull);
+      expect(resolvedColor!.a, 1.0);
+    });
+  });
+
+  group('ExerciseDescriptionSection opacity', () {
+    testWidgets('description text renders at full opacity (not muted)', (
+      tester,
+    ) async {
+      const bodyText = 'The description must read as primary content.';
+      await tester.pumpWidget(
+        buildTestWidget(
+          const ExerciseDescriptionSection(description: bodyText),
+        ),
+      );
+
+      final textWidget = tester.widget<Text>(find.text(bodyText));
+      final resolvedColor = textWidget.style?.color;
+      expect(resolvedColor, isNotNull);
+      expect(resolvedColor!.a, 1.0);
     });
   });
 }
