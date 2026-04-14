@@ -149,4 +149,77 @@ void main() {
       expect(find.byType(RefreshIndicator), findsOneWidget);
     });
   });
+
+  group('ExerciseListScreen P9 custom-exercise accent', () {
+    BoxDecoration? cardDecoration(WidgetTester tester, String exerciseName) {
+      // Walk up from the exercise name Text to find the card's outer
+      // Container (the one carrying the Border decoration).
+      final textFinder = find.text(exerciseName);
+      expect(textFinder, findsOneWidget);
+      final containers = tester
+          .widgetList<Container>(
+            find.ancestor(of: textFinder, matching: find.byType(Container)),
+          )
+          .toList();
+      for (final c in containers) {
+        final d = c.decoration;
+        if (d is BoxDecoration && d.border != null) {
+          return d;
+        }
+      }
+      return null;
+    }
+
+    testWidgets('custom exercise card has a primary left-border accent', (
+      tester,
+    ) async {
+      final customExercises = [
+        Exercise.fromJson(
+          TestExerciseFactory.create(
+            id: 'exercise-custom-001',
+            name: 'My Home Press',
+            isDefault: false,
+            userId: 'user-001',
+          ),
+        ),
+      ];
+
+      await tester.pumpWidget(
+        buildTestWidget(exerciseValue: AsyncData(customExercises)),
+      );
+      await tester.pumpAndSettle();
+
+      final deco = cardDecoration(tester, 'My Home Press');
+      expect(deco, isNotNull);
+      final border = deco!.border! as Border;
+      expect(
+        border.left.width,
+        3,
+        reason: 'custom cards should have a 3dp left accent',
+      );
+      expect(border.left.style, isNot(equals(BorderStyle.none)));
+    });
+
+    testWidgets('default exercise card has no left-border accent', (
+      tester,
+    ) async {
+      final defaultExercises = [
+        Exercise.fromJson(TestExerciseFactory.create(name: 'Bench Press')),
+      ];
+
+      await tester.pumpWidget(
+        buildTestWidget(exerciseValue: AsyncData(defaultExercises)),
+      );
+      await tester.pumpAndSettle();
+
+      final deco = cardDecoration(tester, 'Bench Press');
+      expect(deco, isNotNull);
+      final border = deco!.border! as Border;
+      expect(
+        border.left.style,
+        BorderStyle.none,
+        reason: 'default cards should have no left accent',
+      );
+    });
+  });
 }

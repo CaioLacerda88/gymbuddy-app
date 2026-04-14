@@ -321,6 +321,11 @@ class _ExerciseCard extends StatelessWidget {
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
 
+    // P9: a 3dp left-border accent in primary flags user-created exercises
+    // in the browse list so they are instantly distinguishable from the 150
+    // default rows. Default cards keep the existing hairline top-border only.
+    final isCustom = !exercise.isDefault;
+
     return Semantics(
       label: 'Exercise: ${exercise.name}',
       button: true,
@@ -329,15 +334,22 @@ class _ExerciseCard extends StatelessWidget {
         child: Material(
           color: theme.cardTheme.color,
           borderRadius: BorderRadius.circular(16),
+          clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: () => context.go('/exercises/${exercise.id}'),
             borderRadius: BorderRadius.circular(16),
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
+                // P9: no borderRadius here — Flutter requires uniform Border
+                // colors when borderRadius is set, but we need the top hairline
+                // and the primary left accent to differ. The outer Material's
+                // borderRadius + clipBehavior round the visible corners.
                 border: Border(
                   top: BorderSide(color: primary.withValues(alpha: 0.15)),
+                  left: isCustom
+                      ? BorderSide(color: primary, width: 3)
+                      : BorderSide.none,
                 ),
               ),
               child: Row(

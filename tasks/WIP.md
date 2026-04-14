@@ -51,10 +51,12 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ### Track D — Browse polish
 
-- [ ] `lib/features/exercises/ui/exercise_list_screen.dart`: add 3dp primary left-border to non-default exercise cards
-- [ ] `lib/shared/widgets/exercise_image.dart`: ensure `memCacheHeight` is also set (review constraints for list-card decode safety)
-- [ ] Widget test: custom-exercise card has visible left accent; default does not
-- [ ] Run `make format` + `make analyze` + `make test`
+- [x] `lib/features/exercises/ui/exercise_list_screen.dart`: add 3dp primary left-border to non-default exercise cards (dropped inner `borderRadius` because Flutter's `Border` requires uniform sides when `borderRadius` is set; the outer `Material` with `clipBehavior: Clip.antiAlias` still rounds the visible corners)
+- [x] `lib/shared/widgets/exercise_image.dart`: ensure `memCacheHeight` is also set — height-only callers (detail sheet) were decoding full-resolution images
+- [x] Widget test: custom-exercise card has visible left accent; default does not
+- [x] Widget test: `ExerciseImage` forwards `memCacheHeight` when only height is given, and both when both are given
+- [x] Run `dart format` + `dart analyze --fatal-infos` on Track D files (0 issues)
+- [x] Run widget tests for Track D files (19/19 pass)
 - [ ] Commit: `feat(exercises): custom-exercise left-accent and image-cache tightening (P9 Track D)`
 
 ### Final verification
