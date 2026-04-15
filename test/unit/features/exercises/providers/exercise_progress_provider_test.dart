@@ -302,17 +302,20 @@ void main() {
       expect(points, isEmpty);
     });
 
-    test('null-weight sets are ignored but valid-weight sets still produce a point', () {
-      final points = buildProgressPoints([
-        _row(DateTime.utc(2026, 3, 1, 10), [
-          _set(id: 'a', weight: null, reps: 5),
-          _set(id: 'b', weight: 80, reps: 5),
-        ]),
-      ]);
+    test(
+      'null-weight sets are ignored but valid-weight sets still produce a point',
+      () {
+        final points = buildProgressPoints([
+          _row(DateTime.utc(2026, 3, 1, 10), [
+            _set(id: 'a', weight: null, reps: 5),
+            _set(id: 'b', weight: 80, reps: 5),
+          ]),
+        ]);
 
-      expect(points, hasLength(1));
-      expect(points.first.weight, 80);
-    });
+        expect(points, hasLength(1));
+        expect(points.first.weight, 80);
+      },
+    );
   });
 
   group('ExerciseProgressKey', () {
