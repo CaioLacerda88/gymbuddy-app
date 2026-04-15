@@ -221,8 +221,7 @@ class WorkoutRepository extends BaseRepository {
   ///
   /// RLS-scoped to the current user via `workouts.user_id = userId`. The
   /// explicit `.eq('user_id', userId)` on the inner-joined workouts table
-  /// matches the pattern used by [getFinishedWorkoutsSince] — Supabase RLS
-  /// is the hard guarantee, this filter is defence-in-depth.
+  /// provides defence-in-depth — Supabase RLS is the hard guarantee.
   Future<List<({DateTime finishedAt, List<ExerciseSet> sets})>>
   getExerciseHistory(
     String exerciseId, {
@@ -305,31 +304,6 @@ class WorkoutRepository extends BaseRepository {
   Future<void> discardWorkout(String workoutId, {required String userId}) {
     return mapException(() async {
       await _workouts.delete().eq('id', workoutId).eq('user_id', userId);
-    });
-  }
-
-  /// Get finished workouts for a user that were completed on or after [since].
-  ///
-  /// Filters on `finished_at` (not `started_at`) so volume is attributed to
-  /// the week the workout was *completed*. A workout started Sunday 23:45 and
-  /// finished Monday 00:10 counts as Monday's week.
-  ///
-  /// Used by the week volume provider to fetch all completed workouts
-  /// from the current week. Returns workout details with sets so volume
-  /// can be calculated client-side.
-  Future<List<WorkoutDetail>> getFinishedWorkoutsSince(
-    String userId,
-    DateTime since,
-  ) {
-    return mapException(() async {
-      final data = await _workouts
-          .select('*, workout_exercises(*, exercise:exercises(*), sets(*))')
-          .eq('user_id', userId)
-          .eq('is_active', false)
-          .not('finished_at', 'is', null)
-          .gte('finished_at', since.toIso8601String())
-          .order('finished_at', ascending: false);
-      return data.map(parseWorkoutDetail).toList();
     });
   }
 

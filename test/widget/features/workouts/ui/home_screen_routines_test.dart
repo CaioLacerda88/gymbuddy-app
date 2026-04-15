@@ -1,4 +1,9 @@
-import 'dart:async';
+/// Tests for the routines surface on HomeScreen after the W8 refresh.
+///
+/// Starter routines moved to /routines (see routine_list_screen_test.dart).
+/// Home only shows MY ROUTINES - truncated to 3 + "See all" pill - and only
+/// when the user does NOT have an active weekly plan.
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,215 +22,31 @@ import 'package:gymbuddy_app/features/workouts/providers/workout_history_provide
 import 'package:gymbuddy_app/features/workouts/providers/workout_providers.dart';
 import 'package:gymbuddy_app/features/workouts/ui/home_screen.dart';
 
-void main() {
-  group('HomeScreen STARTER ROUTINES deduplication (PO-009)', () {
-    testWidgets('does not render duplicate STARTER ROUTINES section', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            routineListProvider.overrideWith(() => _MixedRoutineNotifier()),
-            workoutHistoryProvider.overrideWith(
-              () => _EmptyWorkoutHistoryNotifier(),
-            ),
-            activeWorkoutProvider.overrideWith(
-              () => _NullActiveWorkoutNotifier(),
-            ),
-            weeklyPlanProvider.overrideWith(() => _NullWeeklyPlanNotifier()),
-            weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
-            weekVolumeProvider.overrideWith((ref) => Future.value(0)),
-            workoutCountProvider.overrideWith((ref) => Future.value(0)),
-            profileProvider.overrideWith(() => _ProfileNotifier()),
-          ],
-          child: MaterialApp(
-            theme: AppTheme.dark,
-            home: const Scaffold(body: HomeScreen()),
-          ),
-        ),
-      );
+import '../../../../fixtures/test_factories.dart';
 
-      await tester.pump();
-      await tester.pump();
+// ---------------------------------------------------------------------------
+// Stubs
+// ---------------------------------------------------------------------------
 
-      // STARTER ROUTINES should appear exactly once.
-      expect(find.text('STARTER ROUTINES'), findsOneWidget);
-      // MY ROUTINES should appear once.
-      expect(find.text('MY ROUTINES'), findsOneWidget);
-    });
-
-    testWidgets(
-      'section headers use 70%+ opacity for WCAG compliance (UX-V07)',
-      (tester) async {
-        await tester.pumpWidget(
-          ProviderScope(
-            overrides: [
-              routineListProvider.overrideWith(
-                () => _DefaultOnlyRoutineNotifier(),
-              ),
-              workoutHistoryProvider.overrideWith(
-                () => _EmptyWorkoutHistoryNotifier(),
-              ),
-              activeWorkoutProvider.overrideWith(
-                () => _NullActiveWorkoutNotifier(),
-              ),
-              weeklyPlanProvider.overrideWith(() => _NullWeeklyPlanNotifier()),
-              weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
-              weekVolumeProvider.overrideWith((ref) => Future.value(0)),
-              workoutCountProvider.overrideWith((ref) => Future.value(0)),
-              profileProvider.overrideWith(() => _ProfileNotifier()),
-            ],
-            child: MaterialApp(
-              theme: AppTheme.dark,
-              home: const Scaffold(body: HomeScreen()),
-            ),
-          ),
-        );
-
-        await tester.pump();
-        await tester.pump();
-
-        // Find section header text widget to inspect its style.
-        final textWidgets = tester
-            .widgetList<Text>(find.text('STARTER ROUTINES'))
-            .toList();
-        expect(textWidgets, isNotEmpty);
-
-        final style = textWidgets.first.style;
-        final alpha = style?.color?.a ?? 0;
-        // Opacity should be 0.7 or higher.
-        expect(alpha, greaterThanOrEqualTo(0.7));
-      },
-    );
-
-    testWidgets(
-      'does not show RECENT section (removed in home simplification)',
-      (tester) async {
-        // Use a never-completing notifier that stays in loading state.
-        final notifier = _PendingWorkoutHistoryNotifier();
-
-        await tester.pumpWidget(
-          ProviderScope(
-            overrides: [
-              routineListProvider.overrideWith(
-                () => _DefaultOnlyRoutineNotifier(),
-              ),
-              workoutHistoryProvider.overrideWith(() => notifier),
-              activeWorkoutProvider.overrideWith(
-                () => _NullActiveWorkoutNotifier(),
-              ),
-              weeklyPlanProvider.overrideWith(() => _NullWeeklyPlanNotifier()),
-              weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
-              weekVolumeProvider.overrideWith((ref) => Future.value(0)),
-              workoutCountProvider.overrideWith((ref) => Future.value(0)),
-              profileProvider.overrideWith(() => _ProfileNotifier()),
-            ],
-            child: MaterialApp(
-              theme: AppTheme.dark,
-              home: const Scaffold(body: HomeScreen()),
-            ),
-          ),
-        );
-
-        await tester.pump();
-        await tester.pump();
-
-        // RECENT section was removed — skeleton should no longer appear.
-        expect(find.text('RECENT'), findsNothing);
-
-        // Complete the future so the test can clean up without pending timers.
-        notifier.complete();
-        await tester.pumpAndSettle();
-      },
-    );
-
-    testWidgets('routines hidden when active plan exists', (tester) async {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            routineListProvider.overrideWith(() => _MixedRoutineNotifier()),
-            workoutHistoryProvider.overrideWith(
-              () => _EmptyWorkoutHistoryNotifier(),
-            ),
-            activeWorkoutProvider.overrideWith(
-              () => _NullActiveWorkoutNotifier(),
-            ),
-            weeklyPlanProvider.overrideWith(() => _ActiveWeeklyPlanNotifier()),
-            weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
-            weekVolumeProvider.overrideWith((ref) => Future.value(0)),
-            workoutCountProvider.overrideWith((ref) => Future.value(0)),
-            profileProvider.overrideWith(() => _ProfileNotifier()),
-          ],
-          child: MaterialApp(
-            theme: AppTheme.dark,
-            home: const Scaffold(body: HomeScreen()),
-          ),
-        ),
-      );
-
-      await tester.pump();
-      await tester.pump();
-
-      // Routines list should be hidden when active plan exists.
-      expect(find.text('MY ROUTINES'), findsNothing);
-      expect(find.text('STARTER ROUTINES'), findsNothing);
-    });
-  });
-}
-
-/// Returns both user and default routines.
-class _MixedRoutineNotifier extends AsyncNotifier<List<Routine>>
+class _RoutineStub extends AsyncNotifier<List<Routine>>
     implements RoutineListNotifier {
+  _RoutineStub(this.routines);
+  final List<Routine> routines;
+
   @override
-  Future<List<Routine>> build() async {
-    return [
-      Routine(
-        id: 'user-1',
-        name: 'My Push',
-        userId: 'user-001',
-        isDefault: false,
-        exercises: const [],
-        createdAt: DateTime(2026),
-      ),
-      Routine(
-        id: 'default-1',
-        name: 'Starter A',
-        isDefault: true,
-        exercises: const [],
-        createdAt: DateTime(2026),
-      ),
-    ];
-  }
+  Future<List<Routine>> build() async => routines;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-/// Returns only default routines.
-class _DefaultOnlyRoutineNotifier extends AsyncNotifier<List<Routine>>
-    implements RoutineListNotifier {
-  @override
-  Future<List<Routine>> build() async {
-    return [
-      Routine(
-        id: 'default-1',
-        name: 'Starter A',
-        isDefault: true,
-        exercises: const [],
-        createdAt: DateTime(2026),
-      ),
-    ];
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-/// Returns empty workout history immediately.
-class _EmptyWorkoutHistoryNotifier extends AsyncNotifier<List<Workout>>
+class _HistoryStub extends AsyncNotifier<List<Workout>>
     implements WorkoutHistoryNotifier {
+  _HistoryStub(this.workouts);
+  final List<Workout> workouts;
+
   @override
-  Future<List<Workout>> build() async => [];
+  Future<List<Workout>> build() async => workouts;
 
   @override
   bool get hasMore => false;
@@ -240,32 +61,6 @@ class _EmptyWorkoutHistoryNotifier extends AsyncNotifier<List<Workout>>
   Future<void> refresh() async {}
 }
 
-/// Stays in loading state until [complete] is called.
-class _PendingWorkoutHistoryNotifier extends AsyncNotifier<List<Workout>>
-    implements WorkoutHistoryNotifier {
-  final _completer = Completer<List<Workout>>();
-
-  @override
-  Future<List<Workout>> build() => _completer.future;
-
-  void complete() {
-    if (!_completer.isCompleted) _completer.complete([]);
-  }
-
-  @override
-  bool get hasMore => false;
-
-  @override
-  bool get isLoadingMore => false;
-
-  @override
-  Future<void> loadMore() async {}
-
-  @override
-  Future<void> refresh() async {}
-}
-
-/// Returns null active workout.
 class _NullActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?>
     implements ActiveWorkoutNotifier {
   @override
@@ -275,40 +70,213 @@ class _NullActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?>
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _NullWeeklyPlanNotifier extends AsyncNotifier<WeeklyPlan?>
+class _PlanStub extends AsyncNotifier<WeeklyPlan?>
     implements WeeklyPlanNotifier {
+  _PlanStub(this.plan);
+  final WeeklyPlan? plan;
+
   @override
-  Future<WeeklyPlan?> build() async => null;
+  Future<WeeklyPlan?> build() async => plan;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _ActiveWeeklyPlanNotifier extends AsyncNotifier<WeeklyPlan?>
-    implements WeeklyPlanNotifier {
-  @override
-  Future<WeeklyPlan?> build() async => WeeklyPlan(
-    id: 'plan-1',
-    userId: 'user-001',
-    weekStart: DateTime(2026, 4, 6),
-    routines: const [
-      BucketRoutine(routineId: 'user-1', order: 1),
-      BucketRoutine(routineId: 'default-1', order: 2),
-    ],
-    createdAt: DateTime(2026, 4, 6),
-    updatedAt: DateTime(2026, 4, 6),
-  );
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _ProfileNotifier extends AsyncNotifier<Profile?>
-    implements ProfileNotifier {
+class _ProfileStub extends AsyncNotifier<Profile?> implements ProfileNotifier {
   @override
   Future<Profile?> build() async =>
-      const Profile(id: 'user-001', displayName: 'Test', weightUnit: 'kg');
+      const Profile(id: 'user-001', displayName: 'Alex', weightUnit: 'kg');
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+// ---------------------------------------------------------------------------
+// Factories
+// ---------------------------------------------------------------------------
+
+Routine _routine({
+  required String id,
+  required String name,
+  bool isDefault = false,
+  String? userId,
+}) => Routine(
+  id: id,
+  name: name,
+  userId: userId,
+  isDefault: isDefault,
+  exercises: const [],
+  createdAt: DateTime(2026),
+);
+
+BucketRoutine _bucket({required String routineId, required int order}) =>
+    BucketRoutine(routineId: routineId, order: order);
+
+WeeklyPlan _plan({required List<BucketRoutine> routines}) => WeeklyPlan(
+  id: 'plan-001',
+  userId: 'user-001',
+  weekStart: DateTime(2026, 4, 13),
+  routines: routines,
+  createdAt: DateTime(2026, 4, 13),
+  updatedAt: DateTime(2026, 4, 13),
+);
+
+Workout _workout() => Workout.fromJson(
+  TestWorkoutFactory.create(finishedAt: '2026-04-10T10:00:00Z'),
+);
+
+Widget _build({
+  required List<Routine> routines,
+  WeeklyPlan? plan,
+  List<Workout> workouts = const [],
+  int workoutCount = 0,
+}) {
+  return ProviderScope(
+    overrides: [
+      routineListProvider.overrideWith(() => _RoutineStub(routines)),
+      workoutHistoryProvider.overrideWith(() => _HistoryStub(workouts)),
+      activeWorkoutProvider.overrideWith(() => _NullActiveWorkoutNotifier()),
+      weeklyPlanProvider.overrideWith(() => _PlanStub(plan)),
+      weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
+      workoutCountProvider.overrideWith((ref) => Future.value(workoutCount)),
+      profileProvider.overrideWith(() => _ProfileStub()),
+    ],
+    child: MaterialApp(
+      theme: AppTheme.dark,
+      home: const Scaffold(body: HomeScreen()),
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+void main() {
+  group('HomeScreen - starter routines moved off home', () {
+    testWidgets(
+      'does NOT render STARTER ROUTINES on home when defaults exist',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(
+          _build(
+            routines: [
+              _routine(id: 'u-1', name: 'My Push', userId: 'user-001'),
+              _routine(id: 'd-1', name: 'Full Body', isDefault: true),
+            ],
+            workouts: [_workout()],
+            workoutCount: 1,
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.text('STARTER ROUTINES'), findsNothing);
+        // Full Body must not appear as a starter card on home.
+        expect(find.text('Full Body'), findsNothing);
+      },
+    );
+  });
+
+  group('HomeScreen - MY ROUTINES (truncated top 3)', () {
+    testWidgets('shows MY ROUTINES when user has routines and no active plan', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        _build(
+          routines: [_routine(id: 'u-1', name: 'My Push', userId: 'user-001')],
+          workouts: [_workout()],
+          workoutCount: 1,
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('MY ROUTINES'), findsOneWidget);
+      expect(find.text('My Push'), findsOneWidget);
+    });
+
+    testWidgets('truncates user routines to the top 3', (tester) async {
+      tester.view.physicalSize = const Size(800, 3000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        _build(
+          routines: [
+            _routine(id: 'u-1', name: 'My Push', userId: 'user-001'),
+            _routine(id: 'u-2', name: 'My Pull', userId: 'user-001'),
+            _routine(id: 'u-3', name: 'My Legs', userId: 'user-001'),
+            _routine(id: 'u-4', name: 'My Arms', userId: 'user-001'),
+            _routine(id: 'u-5', name: 'My Shoulders', userId: 'user-001'),
+          ],
+          workouts: [_workout()],
+          workoutCount: 1,
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('My Push'), findsOneWidget);
+      expect(find.text('My Pull'), findsOneWidget);
+      expect(find.text('My Legs'), findsOneWidget);
+      expect(find.text('My Arms'), findsNothing);
+      expect(find.text('My Shoulders'), findsNothing);
+      expect(find.text('See all'), findsOneWidget);
+    });
+
+    testWidgets('no See all pill when 3 or fewer user routines', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        _build(
+          routines: [
+            _routine(id: 'u-1', name: 'My Push', userId: 'user-001'),
+            _routine(id: 'u-2', name: 'My Pull', userId: 'user-001'),
+          ],
+          workouts: [_workout()],
+          workoutCount: 1,
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('See all'), findsNothing);
+    });
+
+    testWidgets('MY ROUTINES hidden when active plan exists', (tester) async {
+      tester.view.physicalSize = const Size(800, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        _build(
+          routines: [_routine(id: 'r-1', name: 'Push', userId: 'user-001')],
+          plan: _plan(routines: [_bucket(routineId: 'r-1', order: 1)]),
+          workoutCount: 1,
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('MY ROUTINES'), findsNothing);
+      expect(find.text('STARTER ROUTINES'), findsNothing);
+    });
+  });
 }

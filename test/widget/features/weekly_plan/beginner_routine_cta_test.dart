@@ -1,15 +1,21 @@
-/// Widget tests for the first-run beginner routine CTA inside
-/// [WeekBucketSection].
+/// Widget tests for the first-run beginner routine CTA (`_BeginnerCta`) which
+/// now lives inside [ActionHero] (see `lib/features/workouts/ui/widgets/
+/// action_hero.dart`). After the W8 Home refresh, Home composes its blocks
+/// from ActionHero (owns the beginner CTA), HomeStatusLine, LastSessionLine,
+/// etc. — WeekBucketSection is chip-row-only.
 ///
-/// The CTA is a private widget (`_BeginnerRoutineCta`), so these tests drive
-/// it through the public [WeekBucketSection] with provider overrides:
-/// no plan + `workoutCount == 0` + a default routine in the list.
+/// Since `_BeginnerCta` is private, tests drive it through the public
+/// [ActionHero] widget with provider overrides:
+/// - `weeklyPlanProvider` returns null (no active plan)
+/// - `workoutCountProvider` returns 0 (brand-new user)
+/// - `routineListProvider` holds at least one default routine
 ///
 /// Covers:
 ///  - Renders the YOUR FIRST WORKOUT label, routine name, and stats line
 ///  - Renders a play_arrow icon
 ///  - Whole card is tappable (InkWell wraps the content)
-///  - Does NOT render when the user has finished at least one workout
+///  - Does NOT render when the user has finished at least one workout (then
+///    ActionHero renders the lapsed "Plan your week" CTA instead)
 ///  - Does NOT render when no default routines exist
 ///  - Prefers "Full Body" over other defaults; falls back to first default
 ///    alphabetically when Full Body is missing
@@ -19,13 +25,17 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
 import 'package:gymbuddy_app/features/routines/models/routine.dart';
 import 'package:gymbuddy_app/features/routines/providers/notifiers/routine_list_notifier.dart';
 import 'package:gymbuddy_app/features/weekly_plan/data/models/weekly_plan.dart';
 import 'package:gymbuddy_app/features/weekly_plan/providers/weekly_plan_provider.dart';
-import 'package:gymbuddy_app/features/weekly_plan/ui/widgets/week_bucket_section.dart';
+import 'package:gymbuddy_app/features/workouts/models/active_workout_state.dart';
+import 'package:gymbuddy_app/features/workouts/providers/notifiers/active_workout_notifier.dart';
 import 'package:gymbuddy_app/features/workouts/providers/workout_history_providers.dart';
+import 'package:gymbuddy_app/features/workouts/providers/workout_providers.dart';
+import 'package:gymbuddy_app/features/workouts/ui/widgets/action_hero.dart';
 
 // ---------------------------------------------------------------------------
 // Notifier stubs
@@ -50,6 +60,15 @@ class _RoutineListStub extends AsyncNotifier<List<Routine>>
 
   @override
   Future<List<Routine>> build() async => routines;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _NullActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?>
+    implements ActiveWorkoutNotifier {
+  @override
+  Future<ActiveWorkoutState?> build() async => null;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -98,17 +117,35 @@ Widget _build({
   int workoutCount = 0,
   WeeklyPlan? plan,
 }) {
+  final router = GoRouter(
+    initialLocation: '/home',
+    routes: [
+      GoRoute(
+        path: '/home',
+        builder: (context, state) => const Scaffold(body: ActionHero()),
+      ),
+      GoRoute(
+        path: '/plan/week',
+        builder: (context, state) =>
+            const Scaffold(body: Center(child: Text('Plan week'))),
+      ),
+      GoRoute(
+        path: '/workout/active',
+        builder: (context, state) =>
+            const Scaffold(body: Center(child: Text('Active workout'))),
+      ),
+    ],
+  );
+
   return ProviderScope(
     overrides: [
       weeklyPlanProvider.overrideWith(() => _WeeklyPlanStub(plan)),
       routineListProvider.overrideWith(() => _RoutineListStub(routines)),
       weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
       workoutCountProvider.overrideWith((ref) => Future.value(workoutCount)),
+      activeWorkoutProvider.overrideWith(() => _NullActiveWorkoutNotifier()),
     ],
-    child: MaterialApp(
-      theme: AppTheme.dark,
-      home: const Scaffold(body: WeekBucketSection()),
-    ),
+    child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
   );
 }
 
@@ -189,8 +226,9 @@ void main() {
       await tester.pump();
 
       expect(find.text('YOUR FIRST WORKOUT'), findsNothing);
-      // Falls back to the "Plan your week" empty state when routines exist.
-      expect(find.textContaining('Plan your week'), findsOneWidget);
+      // ActionHero switches to the lapsed state: "Plan your week" primary
+      // button + "Quick workout" secondary button.
+      expect(find.text('Plan your week'), findsOneWidget);
     });
 
     testWidgets('does NOT render when no default routines exist', (
@@ -211,9 +249,10 @@ void main() {
 
       // CTA not shown.
       expect(find.text('YOUR FIRST WORKOUT'), findsNothing);
-      // Plan-your-week prompt also not shown when the only candidate is
-      // a user routine but workoutCount is 0 — the section renders nothing.
-      expect(find.textContaining('Plan your week'), findsNothing);
+      // Lapsed CTA also not shown — workoutCount is 0 so ActionHero takes
+      // the brand-new branch, but `_pickBeginnerRoutine` returns null, so the
+      // widget collapses to SizedBox.shrink().
+      expect(find.text('Plan your week'), findsNothing);
     });
 
     testWidgets('does NOT render when routines list is entirely empty', (
@@ -321,12 +360,7 @@ void main() {
       );
     });
 
-    testWidgets('tap does not throw when handled by startRoutineWorkout', (
-      tester,
-    ) async {
-      // GoRouter is not available in this test context, so the actual
-      // navigation would throw; we just verify the InkWell receives the tap
-      // without synchronously failing during build.
+    testWidgets('tap does not throw during build or layout', (tester) async {
       await tester.pumpWidget(
         _build(
           routines: [_defaultRoutine(id: 'r-full', name: 'Full Body')],
