@@ -142,6 +142,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
             TextField(
               controller: _nameController,
               autofocus: !_isEditing,
+              maxLength: 80,
               decoration: const InputDecoration(hintText: 'Routine name'),
               onChanged: (_) => setState(() {}),
             ),

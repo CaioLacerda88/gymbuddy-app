@@ -13,6 +13,8 @@ class AppTextField extends StatefulWidget {
     this.prefixIcon,
     this.focusNode,
     this.onFieldSubmitted,
+    this.maxLength,
+    this.showCounter = true,
   });
 
   final String label;
@@ -25,6 +27,14 @@ class AppTextField extends StatefulWidget {
   final IconData? prefixIcon;
   final FocusNode? focusNode;
   final ValueChanged<String>? onFieldSubmitted;
+  final int? maxLength;
+
+  /// When `false`, suppresses Flutter's automatic `N/M` counter while still
+  /// enforcing `maxLength`. Only needed for fixed-height layouts where the
+  /// ~22px counter row overflows — see `onboarding_screen.dart`. Raw
+  /// `TextField` call sites handle the same case by passing
+  /// `counterText: ''` directly.
+  final bool showCounter;
 
   @override
   State<AppTextField> createState() => _AppTextFieldState();
@@ -50,8 +60,10 @@ class _AppTextFieldState extends State<AppTextField> {
       onChanged: widget.onChanged,
       focusNode: widget.focusNode,
       onFieldSubmitted: widget.onFieldSubmitted,
+      maxLength: widget.maxLength,
       decoration: InputDecoration(
         labelText: widget.label,
+        counterText: widget.showCounter ? null : '',
         prefixIcon: widget.prefixIcon != null ? Icon(widget.prefixIcon) : null,
         suffixIcon: widget.obscureText
             ? IconButton(

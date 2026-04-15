@@ -126,6 +126,23 @@ void main() {
       expect(dumbbellSemantics.properties.selected, isTrue);
     });
 
+    testWidgets('clamps exercise name input to 80 characters', (tester) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(buildTestWidget());
+
+      // Enter 90 chars — widget's maxLength=80 must clamp input.
+      final overlong = 'x' * 90;
+      await tester.enterText(find.byType(TextFormField), overlong);
+      await tester.pump();
+
+      final field = tester.widget<TextFormField>(find.byType(TextFormField));
+      expect(field.controller!.text.length, 80);
+    });
+
     testWidgets('shows snackbar when submitting without selections', (
       tester,
     ) async {

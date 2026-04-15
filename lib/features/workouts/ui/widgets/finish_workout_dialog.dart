@@ -75,6 +75,7 @@ class _FinishWorkoutDialogState extends State<FinishWorkoutDialog> {
             label: 'Workout notes',
             child: TextField(
               controller: _notesController,
+              maxLength: 1000,
               decoration: const InputDecoration(
                 hintText: 'Add notes (optional)',
                 border: OutlineInputBorder(),

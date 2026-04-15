@@ -191,6 +191,7 @@ Future<void> _showEditNameDialog(
         content: TextField(
           controller: controller,
           autofocus: true,
+          maxLength: 50,
           textCapitalization: TextCapitalization.words,
           decoration: const InputDecoration(hintText: 'Enter your name'),
           onSubmitted: (value) => Navigator.of(ctx).pop(value.trim()),

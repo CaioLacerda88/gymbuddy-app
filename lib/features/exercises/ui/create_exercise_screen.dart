@@ -132,6 +132,7 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
                   validator: _validateName,
                   textInputAction: TextInputAction.done,
                   prefixIcon: Icons.fitness_center,
+                  maxLength: 80,
                   onChanged: (_) {
                     if (_nameError != null) {
                       setState(() => _nameError = null);

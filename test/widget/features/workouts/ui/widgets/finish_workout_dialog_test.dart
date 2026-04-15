@@ -85,6 +85,21 @@ void main() {
         expect(find.text('Add notes (optional)'), findsOneWidget);
       });
 
+      testWidgets('clamps workout notes input to 1000 characters', (
+        tester,
+      ) async {
+        await showDialog(tester, incompleteCount: 0);
+
+        final overLimit = 'x' * 1500;
+        await tester.enterText(find.byType(TextField), overLimit);
+        await tester.pumpAndSettle();
+
+        // The controller should hold exactly 1000 chars — MaxLengthEnforcement
+        // default on mobile/web is `truncateAfterCompositionEnds` / `enforced`.
+        final field = tester.widget<TextField>(find.byType(TextField));
+        expect(field.controller!.text.length, 1000);
+      });
+
       testWidgets('shows "Keep Going" and "Save & Finish" buttons', (
         tester,
       ) async {
