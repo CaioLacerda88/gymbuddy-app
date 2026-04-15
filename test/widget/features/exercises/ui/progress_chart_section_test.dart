@@ -183,6 +183,40 @@ void main() {
         findsOneWidget,
       );
     });
+
+    testWidgets(
+      'error state shows empty-state copy without crashing',
+      (tester) async {
+        // The provider error branch falls back to the same empty-state copy
+        // as the zero-data branch.  Accepted behaviour for v1 (tech-lead
+        // acknowledged conflation); this test documents and locks it in.
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              profileProvider.overrideWith(() => _FakeProfileNotifier('kg')),
+              exerciseProgressProvider.overrideWith(
+                (ref, _) => Future.error(Exception('network failure')),
+              ),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.dark,
+              home: const Scaffold(
+                body: ProgressChartSection(exerciseId: 'ex-1'),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // No chart rendered on error.
+        expect(find.byType(LineChart), findsNothing);
+        // Falls back to the same empty-state copy.
+        expect(
+          find.text('Log this exercise to see your progress'),
+          findsOneWidget,
+        );
+      },
+    );
   });
 
   group('AppTheme.dark SegmentedButton', () {

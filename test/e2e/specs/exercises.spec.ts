@@ -445,6 +445,54 @@ test.describe('Exercise form tips', { tag: '@smoke' }, () => {
 });
 
 // =============================================================================
+// SMOKE: Exercise progress chart (P1)
+// Uses smokeExerciseProgress user — seeded with one completed Bench Press set
+// so ProgressChartSection renders a chart rather than the empty state.
+// =============================================================================
+
+test.describe('Exercise progress chart', { tag: '@smoke' }, () => {
+  test.beforeEach(async ({ page }) => {
+    await login(
+      page,
+      TEST_USERS.smokeExerciseProgress.email,
+      TEST_USERS.smokeExerciseProgress.password,
+    );
+    await navigateToTab(page, 'Exercises');
+  });
+
+  test('should show Progress header on exercise detail for a user with logged sets', async ({
+    page,
+  }) => {
+    // Search for Barbell Bench Press — the exercise seeded by global-setup.
+    await flutterFillByInput(page, 'Search exercises', SEED_EXERCISES.benchPress);
+    await page.waitForTimeout(800);
+
+    const card = page
+      .locator(EXERCISE_LIST.exerciseCard(SEED_EXERCISES.benchPress))
+      .first();
+    await expect(card).toBeVisible({ timeout: 10_000 });
+    await card.click();
+
+    await expect(page.locator(EXERCISE_DETAIL.appBarTitle)).toBeVisible({
+      timeout: 10_000,
+    });
+
+    // The ProgressChartSection must render its "Progress (kg)" or "Progress (lbs)"
+    // heading — this confirms the section mounted without crashing.
+    await expect(
+      page.locator(EXERCISE_DETAIL.progressChartHeading),
+    ).toBeVisible({ timeout: 10_000 });
+
+    // With one seeded session the Semantics label will be
+    // "Progress chart, 1 session logged". Matching on the prefix guards
+    // against fl_chart regressions that produce a blank canvas with no node.
+    await expect(
+      page.locator(EXERCISE_DETAIL.progressChartSemantics),
+    ).toBeVisible({ timeout: 10_000 });
+  });
+});
+
+// =============================================================================
 // FULL: Exercise library (from full/exercise-library)
 // Uses fullExercises user
 // =============================================================================

@@ -53,6 +53,8 @@ const TEST_USERS = [
   'e2e-full-routine-regression@test.local',
   // Exercise detail bottom sheet full spec (BUG-002 in-workout path)
   'e2e-full-ex-detail-sheet@test.local',
+  // Exercise progress chart smoke (P1) — needs a seeded completed working set
+  'e2e-smoke-exercise-progress@test.local',
 ];
 
 /**
@@ -387,6 +389,109 @@ async function seedWeeklyPlanReviewData(
   );
 }
 
+/**
+ * Seed a completed working set for the smokeExerciseProgress user so the
+ * ProgressChartSection renders an actual chart instead of the empty state.
+ *
+ * Inserts: profile → workout → workout_exercise → set (completed, working).
+ * Uses "Barbell Bench Press" (seeded by seed.sql).
+ *
+ * Idempotent: checks if a workout named 'E2E Progress Chart Workout' already
+ * exists for this user.
+ */
+async function seedExerciseProgressData(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<void> {
+  const { data: existing } = await supabase
+    .from('workouts')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('name', 'E2E Progress Chart Workout')
+    .maybeSingle();
+
+  if (existing) {
+    console.log('[global-setup] Exercise progress seed data already exists, skipping.');
+    return;
+  }
+
+  // Find "Barbell Bench Press" exercise (limit 1 in case seed.sql ran multiple times)
+  const { data: exercises, error: exError } = await supabase
+    .from('exercises')
+    .select('id')
+    .eq('name', 'Barbell Bench Press')
+    .eq('is_default', true)
+    .limit(1);
+  const exercise = exercises?.[0] ?? null;
+
+  if (exError || !exercise) {
+    console.log(
+      `[global-setup] Warning: could not find Barbell Bench Press for progress seed: ${exError?.message}`,
+    );
+    return;
+  }
+
+  const now = new Date();
+  const startedAt = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+  const finishedAt = new Date(now.getTime() - 90 * 60 * 1000);
+
+  const { data: workout, error: wError } = await supabase
+    .from('workouts')
+    .insert({
+      user_id: userId,
+      name: 'E2E Progress Chart Workout',
+      started_at: startedAt.toISOString(),
+      finished_at: finishedAt.toISOString(),
+      duration_seconds: 1800,
+    })
+    .select('id')
+    .single();
+
+  if (wError || !workout) {
+    console.log(
+      `[global-setup] Warning: could not insert progress chart workout: ${wError?.message}`,
+    );
+    return;
+  }
+
+  const { data: wx, error: wxError } = await supabase
+    .from('workout_exercises')
+    .insert({
+      workout_id: workout.id,
+      exercise_id: exercise.id,
+      order: 0,
+    })
+    .select('id')
+    .single();
+
+  if (wxError || !wx) {
+    console.log(
+      `[global-setup] Warning: could not insert progress chart workout_exercise: ${wxError?.message}`,
+    );
+    return;
+  }
+
+  const { error: setError } = await supabase.from('sets').insert({
+    workout_exercise_id: wx.id,
+    set_number: 1,
+    reps: 5,
+    weight: 80,
+    set_type: 'working',
+    is_completed: true,
+  });
+
+  if (setError) {
+    console.log(
+      `[global-setup] Warning: could not insert progress chart set: ${setError.message}`,
+    );
+    return;
+  }
+
+  console.log(
+    `[global-setup] Seeded exercise progress data for smokeExerciseProgress (workout: ${workout.id})`,
+  );
+}
+
 async function globalSetup(): Promise<void> {
   const supabaseUrl = process.env['SUPABASE_URL'];
   const supabaseAnonKey = process.env['SUPABASE_ANON_KEY'];
@@ -586,6 +691,25 @@ async function globalSetup(): Promise<void> {
   );
   if (weeklyPlanUserId) {
     await seedWeeklyPlanReviewData(supabase, weeklyPlanUserId);
+  }
+
+  // Seed exercise history for smokeExerciseProgress user (P1 progress chart)
+  const exerciseProgressUserId = await getUserId(
+    supabase,
+    'e2e-smoke-exercise-progress@test.local',
+  );
+  if (exerciseProgressUserId) {
+    await supabase
+      .from('profiles')
+      .upsert(
+        {
+          id: exerciseProgressUserId,
+          display_name: 'Progress Chart User',
+          fitness_level: 'intermediate',
+        },
+        { onConflict: 'id' },
+      );
+    await seedExerciseProgressData(supabase, exerciseProgressUserId);
   }
 
   // Seed a minimal workout for users whose tests rely on the "Plan your week"

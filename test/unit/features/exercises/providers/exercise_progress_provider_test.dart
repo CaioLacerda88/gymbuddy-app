@@ -289,4 +289,68 @@ void main() {
       expect(a, equals(b));
     });
   });
+
+  group('buildProgressPoints — null weight', () {
+    test('null weight set is skipped (treated as 0, below threshold)', () {
+      final points = buildProgressPoints([
+        _row(DateTime.utc(2026, 3, 1, 10), [
+          _set(id: 'a', weight: null, reps: 10),
+        ]),
+      ]);
+
+      // null weight → `set.weight ?? 0` → 0 → `<= 0` guard → no point
+      expect(points, isEmpty);
+    });
+
+    test('null-weight sets are ignored but valid-weight sets still produce a point', () {
+      final points = buildProgressPoints([
+        _row(DateTime.utc(2026, 3, 1, 10), [
+          _set(id: 'a', weight: null, reps: 5),
+          _set(id: 'b', weight: 80, reps: 5),
+        ]),
+      ]);
+
+      expect(points, hasLength(1));
+      expect(points.first.weight, 80);
+    });
+  });
+
+  group('ExerciseProgressKey', () {
+    test('two keys with same exerciseId and window are equal', () {
+      const a = ExerciseProgressKey(
+        exerciseId: 'ex-1',
+        window: TimeWindow.last90Days,
+      );
+      const b = ExerciseProgressKey(
+        exerciseId: 'ex-1',
+        window: TimeWindow.last90Days,
+      );
+      expect(a, equals(b));
+      expect(a.hashCode, equals(b.hashCode));
+    });
+
+    test('keys differing by exerciseId are not equal', () {
+      const a = ExerciseProgressKey(
+        exerciseId: 'ex-1',
+        window: TimeWindow.last90Days,
+      );
+      const b = ExerciseProgressKey(
+        exerciseId: 'ex-2',
+        window: TimeWindow.last90Days,
+      );
+      expect(a, isNot(equals(b)));
+    });
+
+    test('keys differing by window are not equal', () {
+      const a = ExerciseProgressKey(
+        exerciseId: 'ex-1',
+        window: TimeWindow.last90Days,
+      );
+      const b = ExerciseProgressKey(
+        exerciseId: 'ex-1',
+        window: TimeWindow.allTime,
+      );
+      expect(a, isNot(equals(b)));
+    });
+  });
 }
