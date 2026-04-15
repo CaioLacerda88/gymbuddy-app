@@ -584,6 +584,9 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
   - Tests: 1070 Flutter pass (+8 net: 9 set_filters + 17 exercise_progress + 10 widget section + 1 active_workout_notifier invalidation; minus the deduplicated PR-detection private). +1 Playwright `@smoke` (`Exercise progress chart`, new `smokeExerciseProgress` user with two seeded sessions to hit the multi-point branch).
   - All reviewer findings (2 Important + 2 Nits + 1 post-fix Important) closed in-cycle per "no deferring" policy.
 
+**Sprint C — Resilience (in progress)**
+- PR #61: W6 Direct Supabase access in UI. Literal `.from()` leak scan was already clean — all DB access sits inside `data/` repos. The residual bypass was `Supabase.instance.client.auth.currentUser?.id` read inline from one UI screen (`create_exercise_screen.dart`) and four methods inside `ProfileNotifier`, forcing those files to import `supabase_flutter` for a session lookup. New `currentUserIdProvider` (sync `Provider<String?>`, intentionally non-reactive — router handles auth transitions via `authStateProvider`) in `features/auth/providers/auth_providers.dart`. All 5 call sites now go through `ref.read(currentUserIdProvider)`; unused `supabase_flutter` import dropped from the UI file. Tests: +2 unit pinning signed-in / signed-out branches via `overrideWithValue`; 1072 total. Reviewer approved, 2 nits (comment clarifying non-reactive contract, comment clarifying test intent) closed in-cycle per "no deferring" policy. `sentry_init.dart` and `auth_repository.dart` intentionally untouched (core infra + THE auth layer).
+
 ### Remaining — Sprint C: Resilience (~3-4 days)
 
 | ID | Item | Effort | Notes |
@@ -591,7 +594,6 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 | B6 | ProGuard/R8 optimization | 2-3h | No minify/shrink today (19.7MB → ~12-14MB target). Needs keep rules for Supabase + Hive reflection. |
 | W3 | Stale workout timeout UX | 2-3h | When `startedAt` >6h ago on app open, show "Workout from [date] still open — Resume or Discard?" modal. |
 | W3b | Input length limits (TextField + server CHECK) | 1-2h | Prevents DB bloat and UI overflow on long free-text inputs. |
-| W6 | Direct Supabase access in UI (bypass repo pattern) | 30min | Cleanup of residual `supabase.from()` calls outside repositories. |
 | W8 | HomeScreen `SingleChildScrollView` → `CustomScrollView` | 2-3h | Performance fix for long history lists. |
 
 ### Deferred to v1.1+
