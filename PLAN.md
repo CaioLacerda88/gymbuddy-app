@@ -39,7 +39,7 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 13a-PR6 | Bulk Dependency Upgrade + Toolchain Refresh (Riverpod 3, GoRouter 17, Freezed 3) | DONE | #49 |
 | 13a-PR7 | Close local CI Android build gap (`make ci` runs `flutter build apk --debug`) | DONE | #47 |
 | 13a-PR8 | E2E overhaul: Flutter 3.41.6 AOM selectors, bug fixes, restructure to feature files | DONE | #50 |
-| 13 | Launch — last phase before Play Store (Sprint B Retention + Sprint C Resilience remaining) | IN PROGRESS | - |
+| 13 | Launch — last phase before Play Store (Sprint B Retention DONE; Sprint C Resilience remaining) | IN PROGRESS | - |
 | 14 | Offline Support | TODO | - |
 | 15 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
 | 16 | Gamification Advanced (Quests, Stats Panel) | TODO | - |
@@ -578,12 +578,11 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
   - **UI polish (shipped alongside content):** Exercise detail sheet reordered to name → custom label → description → chips → images → FORM TIPS → PRs → delete (the "Created [date]" line was dropped). Form-tip bullets switched from `check_circle_outline` to a 6dp primary-color dot; body prose raised to full `onSurface` opacity. Browse list got a 3dp primary-color left accent on non-default (user-created) exercise cards; `ExerciseImage` now propagates `memCacheHeight`/`memCacheWidth` so height-only callers (detail sheet) stop decoding full-res images.
   - **Absorbs P2** — count-only library expansion was rejected in favor of shipping 150 exercises with complete content rather than 150 with 50+ empty detail sheets.
   - Tests: 1030 Flutter pass, new `test/fixtures/test_finders.dart` helper (`findBulletDots()`) shared across three widget tests. All 6 reviewer findings (2 Important + 4 Nits) fixed in the same cycle per "no deferring" policy.
-
-### Remaining — Sprint B: Retention (~2-3 days, updated 2026-04-14)
-
-| Slot | ID | Item | Effort | Rationale |
-|------|----|------|--------|-----------|
-| 1 | P1 | Progress charts per exercise | 2-3 days | #1 retention driver. `fl_chart` line chart of weight-over-time per exercise. Handles zero/one-data-point states without crash. |
+- PR #60: P1 Per-exercise weight progress chart — `fl_chart` line chart on the exercise detail sheet between PR section and delete. Metric: max completed working-set weight per calendar day (shared `completedWorkingSets` predicate extracted to `lib/features/workouts/utils/set_filters.dart` so chart and PR detection can't drift). 90d-default / All-time toggle held as per-exercise local state. Phase 13 Exit Criterion #4 now MET.
+  - **Anti-generic aesthetic:** 3dp green line on `surfaceColor` (no card wrapper), linear curves, no gradient fill, single midpoint hairline grid, inline min/max y-labels flush-right, `lineTouchData` disabled (read-only glance surface), 200dp fixed height. 0-point → copy only ("Log this exercise to see your progress"); 1-point → copy only ("1 session logged") — skips a 200dp mostly-empty canvas.
+  - **Side effects:** `SegmentedButtonThemeData` added to `AppTheme.dark` (Material 3 default read ghostly on the dark surface); `exerciseProgressProvider` invalidated in `ActiveWorkoutNotifier.finishWorkout` so chart refreshes post-save despite `keepAlive`; `Semantics(image: true)` required for Flutter AOM to expose the chart as `role=img` (the E2E assertion path — CI-only regression caught on first push).
+  - Tests: 1070 Flutter pass (+8 net: 9 set_filters + 17 exercise_progress + 10 widget section + 1 active_workout_notifier invalidation; minus the deduplicated PR-detection private). +1 Playwright `@smoke` (`Exercise progress chart`, new `smokeExerciseProgress` user with two seeded sessions to hit the multi-point branch).
+  - All reviewer findings (2 Important + 2 Nits + 1 post-fix Important) closed in-cycle per "no deferring" policy.
 
 ### Remaining — Sprint C: Resilience (~3-4 days)
 
@@ -614,7 +613,7 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 1. ✅ `SELECT COUNT(*) FROM exercises WHERE is_default = true AND (description IS NULL OR form_tips IS NULL)` returns `0` on hosted Supabase (met by PR #58 — 150/150 covered)
 2. Zero image 404s on default exercise tiles (QA walkthrough against production storage)
 3. New user sign-up → home shows "Start your first workout" CTA with beginner routine, not a blank list (E2E verified)
-4. Any exercise with ≥2 logged sets shows a weight-over-time chart; zero/single-data-point states handled without crash (unit + QA)
+4. ✅ Any exercise with ≥2 logged sets shows a weight-over-time chart; zero/single-data-point states handled without crash (met by PR #60 — unit + widget + @smoke E2E cover all three states)
 5. All Sprint C items merged
 6. APK size reduced via R8 (19.7MB → ~12-14MB target, documented in PR body)
 7. Full CI green, 145/145 E2E pass, no critical open bugs in QA Status
