@@ -121,6 +121,7 @@ class HomeScreen extends ConsumerWidget {
       final result = await ResumeWorkoutDialog.show(
         context,
         workoutName: existingWorkout.workout.name,
+        startedAt: existingWorkout.workout.startedAt,
       );
       if (!context.mounted) return;
       if (result == ResumeWorkoutResult.resume) {
