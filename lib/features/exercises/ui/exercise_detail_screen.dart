@@ -11,6 +11,7 @@ import '../../profile/providers/profile_providers.dart';
 import '../models/exercise.dart';
 import '../providers/exercise_providers.dart'
     show exerciseByIdProvider, exerciseListProvider, exerciseRepositoryProvider;
+import 'widgets/progress_chart_section.dart';
 
 class ExerciseDetailScreen extends ConsumerStatefulWidget {
   const ExerciseDetailScreen({super.key, required this.exerciseId});
@@ -197,6 +198,8 @@ class _ExerciseDetailBody extends ConsumerWidget {
             exerciseId: exercise.id,
             equipmentType: exercise.equipmentType,
           ),
+          const SizedBox(height: 24),
+          ProgressChartSection(exerciseId: exercise.id),
           if (onDelete != null) ...[
             const SizedBox(height: 32),
             SizedBox(

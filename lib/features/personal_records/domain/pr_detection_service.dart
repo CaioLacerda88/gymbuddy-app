@@ -3,7 +3,7 @@ import 'package:uuid/uuid.dart';
 import '../../exercises/models/exercise.dart';
 import '../../workouts/models/active_workout_state.dart';
 import '../../workouts/models/exercise_set.dart';
-import '../../workouts/models/set_type.dart';
+import '../../workouts/utils/set_filters.dart';
 import '../models/personal_record.dart';
 import '../models/record_type.dart';
 
@@ -44,7 +44,7 @@ class PRDetectionService {
       if (exercise == null) continue;
 
       final exerciseId = entry.workoutExercise.exerciseId;
-      final workingSets = _completedWorkingSets(entry.sets);
+      final workingSets = completedWorkingSets(entry.sets);
       if (workingSets.isEmpty) continue;
 
       final existing = existingRecords[exerciseId] ?? [];
@@ -114,18 +114,6 @@ class PRDetectionService {
       newRecords: newRecords,
       isFirstWorkout: isFirstWorkout,
     );
-  }
-
-  /// Filters to completed working sets with valid reps.
-  List<ExerciseSet> _completedWorkingSets(List<ExerciseSet> sets) {
-    return sets
-        .where(
-          (s) =>
-              s.setType == SetType.working &&
-              s.isCompleted &&
-              (s.reps ?? 0) > 0,
-        )
-        .toList();
   }
 
   /// Check a single record type (maxWeight or maxReps).
