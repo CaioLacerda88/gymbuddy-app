@@ -25,8 +25,11 @@ import 'package:gymbuddy_app/features/workouts/ui/widgets/resume_workout_dialog.
 Future<ResumeWorkoutResult?> _showResumeDialog(
   WidgetTester tester, {
   String workoutName = 'Push Day',
+  DateTime? startedAt,
 }) async {
   ResumeWorkoutResult? result;
+  final start =
+      startedAt ?? DateTime.now().subtract(const Duration(minutes: 10));
 
   await tester.pumpWidget(
     MaterialApp(
@@ -38,6 +41,7 @@ Future<ResumeWorkoutResult?> _showResumeDialog(
               result = await ResumeWorkoutDialog.show(
                 context,
                 workoutName: workoutName,
+                startedAt: start,
               );
             },
             child: const Text('Open'),
@@ -87,6 +91,9 @@ void main() {
                   result = await ResumeWorkoutDialog.show(
                     context,
                     workoutName: 'Push Day',
+                    startedAt: DateTime.now().subtract(
+                      const Duration(minutes: 10),
+                    ),
                   );
                 },
                 child: const Text('Open'),
@@ -120,6 +127,9 @@ void main() {
                   result = await ResumeWorkoutDialog.show(
                     context,
                     workoutName: 'Push Day',
+                    startedAt: DateTime.now().subtract(
+                      const Duration(minutes: 10),
+                    ),
                   );
                 },
                 child: const Text('Open'),
@@ -151,6 +161,9 @@ void main() {
                   await ResumeWorkoutDialog.show(
                     context,
                     workoutName: 'Push Day',
+                    startedAt: DateTime.now().subtract(
+                      const Duration(minutes: 10),
+                    ),
                   );
                 },
                 child: const Text('Open'),
@@ -168,7 +181,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Dialog must still be visible because barrierDismissible: false.
-      expect(find.text('Resume Workout?'), findsOneWidget);
+      expect(find.text('Resume workout?'), findsOneWidget);
     });
 
     // NEW-007 core assertion: the Discard result (ResumeWorkoutResult.discard)
