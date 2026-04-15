@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../auth/providers/auth_providers.dart';
 import '../data/profile_repository.dart';
 import '../models/profile.dart';
 
@@ -15,10 +16,10 @@ final profileProvider = AsyncNotifierProvider<ProfileNotifier, Profile?>(
 class ProfileNotifier extends AsyncNotifier<Profile?> {
   @override
   Future<Profile?> build() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return null;
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return null;
     final repo = ref.read(profileRepositoryProvider);
-    return repo.getProfile(user.id);
+    return repo.getProfile(userId);
   }
 
   Future<void> saveOnboardingProfile({
@@ -26,12 +27,12 @@ class ProfileNotifier extends AsyncNotifier<Profile?> {
     required String fitnessLevel,
     int trainingFrequencyPerWeek = 3,
   }) async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return;
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
     final repo = ref.read(profileRepositoryProvider);
     state = AsyncData(
       await repo.upsertProfile(
-        userId: user.id,
+        userId: userId,
         displayName: displayName,
         fitnessLevel: fitnessLevel,
         trainingFrequencyPerWeek: trainingFrequencyPerWeek,
@@ -42,11 +43,11 @@ class ProfileNotifier extends AsyncNotifier<Profile?> {
   Future<void> updateTrainingFrequency(int frequency) async {
     final current = state.value;
     if (current == null) return;
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return;
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
     final repo = ref.read(profileRepositoryProvider);
     state = await AsyncValue.guard(() async {
-      await repo.updateTrainingFrequency(user.id, frequency);
+      await repo.updateTrainingFrequency(userId, frequency);
       return current.copyWith(trainingFrequencyPerWeek: frequency);
     });
   }
@@ -54,12 +55,12 @@ class ProfileNotifier extends AsyncNotifier<Profile?> {
   Future<void> toggleWeightUnit() async {
     final current = state.value;
     if (current == null) return;
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return;
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
     final newUnit = current.weightUnit == 'kg' ? 'lbs' : 'kg';
     final repo = ref.read(profileRepositoryProvider);
     state = await AsyncValue.guard(() async {
-      await repo.updateWeightUnit(user.id, newUnit);
+      await repo.updateWeightUnit(userId, newUnit);
       return current.copyWith(weightUnit: newUnit);
     });
   }

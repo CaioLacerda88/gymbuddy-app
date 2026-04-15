@@ -10,6 +10,16 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(Supabase.instance.client.auth);
 });
 
+/// Synchronous read of the signed-in user's id, so UI/providers don't have to
+/// import `supabase_flutter` just to look up `auth.currentUser?.id`.
+///
+/// Not reactive: consumers get the value at read time. Auth transitions
+/// (sign-in/sign-out) are handled by the router via [authStateProvider], so
+/// there's no need to `watch` this to stay in sync.
+final currentUserIdProvider = Provider<String?>((ref) {
+  return Supabase.instance.client.auth.currentUser?.id;
+});
+
 /// Exposes the current auth state as a stream.
 /// Used by the router to decide redirects.
 ///
