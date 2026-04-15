@@ -32,6 +32,12 @@
 --   sets.notes                |          0 |    1000
 --
 -- Constraint naming: `valid_<table>_<col>_length`.
+--
+-- Intentionally non-idempotent: `ALTER TABLE ... ADD CONSTRAINT` fails on
+-- re-apply. Safe because Supabase's migration runner tracks applied
+-- migrations in `supabase_migrations.schema_migrations`; normal `supabase
+-- db push` flow never re-runs a migration. For local `supabase db reset`,
+-- the whole DB is rebuilt first, so idempotency isn't needed there either.
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
