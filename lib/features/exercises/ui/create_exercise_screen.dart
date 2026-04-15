@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/exceptions/app_exception.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/gradient_button.dart';
+import '../../auth/providers/auth_providers.dart';
 import '../models/exercise.dart';
 import '../providers/exercise_providers.dart'
     show exerciseListProvider, exerciseRepositoryProvider;
@@ -63,7 +63,7 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
+      final userId = ref.read(currentUserIdProvider);
       if (userId == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
