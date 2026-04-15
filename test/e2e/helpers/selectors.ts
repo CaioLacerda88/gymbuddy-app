@@ -158,8 +158,11 @@ export const EXERCISE_DETAIL = {
    */
   progressChartHeading: 'text=/^Progress \\(/',
   /**
-   * Semantics node wrapping the LineChart when ≥1 data point is present.
-   * _ChartBody wraps the chart in Semantics(label: 'Progress chart, N session(s) logged').
+   * Semantics node wrapping the LineChart when ≥2 data points are present.
+   * _ChartBody wraps the chart in Semantics(label: 'Progress chart, N sessions logged').
+   * Note: the single-point branch renders copy-only ("1 session logged") with
+   * no `image: true` semantics, so this selector only matches when the user
+   * has logged sets on at least two distinct calendar days.
    */
   progressChartSemantics: 'role=img[name*="Progress chart"]',
 } as const;

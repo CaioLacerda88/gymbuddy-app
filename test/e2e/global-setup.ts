@@ -390,13 +390,25 @@ async function seedWeeklyPlanReviewData(
 }
 
 /**
- * Seed a completed working set for the smokeExerciseProgress user so the
- * ProgressChartSection renders an actual chart instead of the empty state.
+ * Seed two completed working sets on two different calendar dates for the
+ * smokeExerciseProgress user so ProgressChartSection renders its multi-point
+ * LineChart branch (which emits the `image: true` Semantics node the smoke
+ * test selector matches).
  *
- * Inserts: profile → workout → workout_exercise → set (completed, working).
- * Uses "Barbell Bench Press" (seeded by seed.sql).
+ * A single-point series is intentionally rendered as copy-only ("1 session
+ * logged") with NO `image: true` semantics — see
+ * `lib/features/exercises/ui/widgets/progress_chart_section.dart`. Seeding a
+ * second session on a distinct calendar day bumps us onto the chart branch.
  *
- * Idempotent: checks if a workout named 'E2E Progress Chart Workout' already
+ * Inserts: profile → 2 × (workout → workout_exercise → set). The two workouts
+ * are >1 day apart (8 days and today) to avoid device-local timezone edge
+ * cases around day-bucketing in `buildProgressPoints`.
+ *
+ * Uses "Barbell Bench Press" (seeded by seed.sql). Both sets are
+ * `set_type = 'working'` and `is_completed = true` — the predicate in
+ * `lib/features/workouts/utils/set_filters.dart` filters on exactly that.
+ *
+ * Idempotent: checks if a workout named 'E2E Progress Chart Workout 1' already
  * exists for this user.
  */
 async function seedExerciseProgressData(
@@ -407,7 +419,7 @@ async function seedExerciseProgressData(
     .from('workouts')
     .select('id')
     .eq('user_id', userId)
-    .eq('name', 'E2E Progress Chart Workout')
+    .eq('name', 'E2E Progress Chart Workout 1')
     .maybeSingle();
 
   if (existing) {
@@ -432,63 +444,94 @@ async function seedExerciseProgressData(
   }
 
   const now = new Date();
-  const startedAt = new Date(now.getTime() - 2 * 60 * 60 * 1000);
-  const finishedAt = new Date(now.getTime() - 90 * 60 * 1000);
+  // Session 1: ~8 days ago (>1-day gap keeps us clear of timezone edge cases).
+  const startedAt1 = new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000);
+  const finishedAt1 = new Date(
+    now.getTime() - 8 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000,
+  );
+  // Session 2: today (~90 minutes ago, matches the pattern of other seed helpers).
+  const startedAt2 = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+  const finishedAt2 = new Date(now.getTime() - 90 * 60 * 1000);
 
-  const { data: workout, error: wError } = await supabase
-    .from('workouts')
-    .insert({
-      user_id: userId,
-      name: 'E2E Progress Chart Workout',
-      started_at: startedAt.toISOString(),
-      finished_at: finishedAt.toISOString(),
-      duration_seconds: 1800,
-    })
-    .select('id')
-    .single();
+  const sessions: Array<{
+    name: string;
+    startedAt: Date;
+    finishedAt: Date;
+    weight: number;
+  }> = [
+    {
+      name: 'E2E Progress Chart Workout 1',
+      startedAt: startedAt1,
+      finishedAt: finishedAt1,
+      weight: 80,
+    },
+    {
+      name: 'E2E Progress Chart Workout 2',
+      startedAt: startedAt2,
+      finishedAt: finishedAt2,
+      weight: 82.5,
+    },
+  ];
 
-  if (wError || !workout) {
-    console.log(
-      `[global-setup] Warning: could not insert progress chart workout: ${wError?.message}`,
-    );
-    return;
-  }
+  const insertedWorkoutIds: string[] = [];
+  for (const session of sessions) {
+    const { data: workout, error: wError } = await supabase
+      .from('workouts')
+      .insert({
+        user_id: userId,
+        name: session.name,
+        started_at: session.startedAt.toISOString(),
+        finished_at: session.finishedAt.toISOString(),
+        duration_seconds: 1800,
+      })
+      .select('id')
+      .single();
 
-  const { data: wx, error: wxError } = await supabase
-    .from('workout_exercises')
-    .insert({
-      workout_id: workout.id,
-      exercise_id: exercise.id,
-      order: 0,
-    })
-    .select('id')
-    .single();
+    if (wError || !workout) {
+      console.log(
+        `[global-setup] Warning: could not insert progress chart workout (${session.name}): ${wError?.message}`,
+      );
+      return;
+    }
 
-  if (wxError || !wx) {
-    console.log(
-      `[global-setup] Warning: could not insert progress chart workout_exercise: ${wxError?.message}`,
-    );
-    return;
-  }
+    const { data: wx, error: wxError } = await supabase
+      .from('workout_exercises')
+      .insert({
+        workout_id: workout.id,
+        exercise_id: exercise.id,
+        order: 0,
+      })
+      .select('id')
+      .single();
 
-  const { error: setError } = await supabase.from('sets').insert({
-    workout_exercise_id: wx.id,
-    set_number: 1,
-    reps: 5,
-    weight: 80,
-    set_type: 'working',
-    is_completed: true,
-  });
+    if (wxError || !wx) {
+      console.log(
+        `[global-setup] Warning: could not insert progress chart workout_exercise (${session.name}): ${wxError?.message}`,
+      );
+      return;
+    }
 
-  if (setError) {
-    console.log(
-      `[global-setup] Warning: could not insert progress chart set: ${setError.message}`,
-    );
-    return;
+    const { error: setError } = await supabase.from('sets').insert({
+      workout_exercise_id: wx.id,
+      set_number: 1,
+      reps: 5,
+      weight: session.weight,
+      set_type: 'working',
+      is_completed: true,
+    });
+
+    if (setError) {
+      console.log(
+        `[global-setup] Warning: could not insert progress chart set (${session.name}): ${setError.message}`,
+      );
+      return;
+    }
+
+    insertedWorkoutIds.push(workout.id);
   }
 
   console.log(
-    `[global-setup] Seeded exercise progress data for smokeExerciseProgress (workout: ${workout.id})`,
+    `[global-setup] Seeded exercise progress data for smokeExerciseProgress (workouts: ${insertedWorkoutIds.join(', ')})`,
   );
 }
 

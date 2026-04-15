@@ -446,8 +446,11 @@ test.describe('Exercise form tips', { tag: '@smoke' }, () => {
 
 // =============================================================================
 // SMOKE: Exercise progress chart (P1)
-// Uses smokeExerciseProgress user — seeded with one completed Bench Press set
-// so ProgressChartSection renders a chart rather than the empty state.
+// Uses smokeExerciseProgress user — seeded with two completed Bench Press sets
+// on two different calendar dates so ProgressChartSection renders its
+// multi-point LineChart branch (which emits the `image: true` semantics the
+// selector below matches). A single-point series is intentionally copy-only
+// with no `image` semantics, so one session would not satisfy this assertion.
 // =============================================================================
 
 test.describe('Exercise progress chart', { tag: '@smoke' }, () => {
@@ -483,9 +486,11 @@ test.describe('Exercise progress chart', { tag: '@smoke' }, () => {
       page.locator(EXERCISE_DETAIL.progressChartHeading),
     ).toBeVisible({ timeout: 10_000 });
 
-    // With one seeded session the Semantics label will be
-    // "Progress chart, 1 session logged". Matching on the prefix guards
-    // against fl_chart regressions that produce a blank canvas with no node.
+    // With two seeded sessions on different days the Semantics label will be
+    // "Progress chart, 2 sessions logged" and the LineChart emits a Semantics
+    // node with `image: true` (role=img). Matching on the "Progress chart"
+    // prefix guards against fl_chart regressions that produce a blank canvas
+    // with no node.
     await expect(
       page.locator(EXERCISE_DETAIL.progressChartSemantics),
     ).toBeVisible({ timeout: 10_000 });
