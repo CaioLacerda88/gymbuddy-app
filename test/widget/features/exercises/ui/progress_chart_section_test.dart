@@ -184,4 +184,76 @@ void main() {
       );
     });
   });
+
+  group('AppTheme.dark SegmentedButton', () {
+    // Guards the dark-surface treatment added for the progress-chart window
+    // toggle (and any other SegmentedButton in the app). A regression to
+    // the M3 default would flip selected-segment foreground to `onSurface`
+    // and drop unselected alpha back toward 0.38 — both caught here.
+    const primary = Color(0xFF00E676);
+
+    testWidgets('selected segment resolves to primary-tinted container', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: Scaffold(
+            body: SegmentedButton<int>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(value: 0, label: Text('A')),
+                ButtonSegment(value: 1, label: Text('B')),
+              ],
+              selected: const {0},
+              onSelectionChanged: (_) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final context = tester.element(find.byType(SegmentedButton<int>));
+      final style = Theme.of(context).segmentedButtonTheme.style!;
+      final selectedBg = style.backgroundColor!.resolve({WidgetState.selected});
+      final selectedFg = style.foregroundColor!.resolve({WidgetState.selected});
+      final selectedText = style.textStyle!.resolve({WidgetState.selected});
+
+      expect(selectedBg, primary.withValues(alpha: 0.15));
+      expect(selectedFg, primary);
+      expect(selectedText?.fontWeight, FontWeight.w600);
+    });
+
+    testWidgets('unselected segment foreground is not ghostly (>= 0.5 alpha)', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: Scaffold(
+            body: SegmentedButton<int>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(value: 0, label: Text('A')),
+                ButtonSegment(value: 1, label: Text('B')),
+              ],
+              selected: const {0},
+              onSelectionChanged: (_) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final context = tester.element(find.byType(SegmentedButton<int>));
+      final style = Theme.of(context).segmentedButtonTheme.style!;
+      final unselectedFg = style.foregroundColor!.resolve(
+        const <WidgetState>{},
+      );
+
+      expect(unselectedFg, isNotNull);
+      // Default M3 unselected alpha is ~0.38; our override lifts it to 0.75.
+      expect(unselectedFg!.a, greaterThanOrEqualTo(0.5));
+    });
+  });
 }

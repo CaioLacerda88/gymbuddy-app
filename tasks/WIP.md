@@ -44,7 +44,8 @@ Active work being done by agents. Each section is removed once the branch is mer
 - [x] Unit tests: working-set filter util (9 tests) + provider + transform (12 tests). Covers warmup/dropset/failure/incomplete/zero-rep/null-rep exclusion, same-day dedupe, multi-day sorting, 90d `since` cutoff, allTime `null since`, signed-out user isolation, Freezed equality.
 - [x] Widget tests: empty state, single-point state + caption, multi-point state, kg↔lbs header swap, 90d→All time toggle re-fires provider, Semantics label plural vs singular (7 tests).
 - [x] Verify `make ci` green (format + analyze + test + android-debug-build).
-- [ ] ui-ux-critic design review after implementation (anti-generic-AI pass).
+- [x] ui-ux-critic design review after implementation (anti-generic-AI pass).
+- [x] ui-ux-critic review revision: zeroed fl_chart reserved axis space + moved y-labels to `right: 0` so they align with the data edge; added `SegmentedButtonThemeData` to `AppTheme.dark` (selected = primary @ 0.15 tint / primary foreground / w600; unselected foreground @ 0.75 alpha to replace M3 default ~0.38). Added 2 theme assertion tests under the existing chart test file (1060 → 1062).
 - [ ] qa-engineer: selector impact assessment on exercise detail (sheet reordered recently in PR #58). If any new user-visible copy, add `@smoke` Playwright test in `specs/exercises.spec.ts` asserting chart section rendering for an exercise with ≥2 sessions. This is additive UI, not a flow change — full E2E run not strictly required unless navigation added.
 - [ ] reviewer pass — fix every finding in-cycle (no deferring).
 - [ ] PR.

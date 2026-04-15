@@ -200,7 +200,26 @@ class _LineChart extends StatelessWidget {
                 return (value - mid).abs() < 0.0001;
               },
             ),
-            titlesData: const FlTitlesData(show: false),
+            // Explicitly zero every side's reserved axis space.
+            // `show: false` alone hides titles but each `AxisTitles` still
+            // carries its default `reservedSize` (30/44). Setting each to
+            // `reservedSize: 0` guarantees the chart fills its SizedBox
+            // edge-to-edge so the overlaid y-labels line up with the data.
+            titlesData: const FlTitlesData(
+              show: false,
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(showTitles: false, reservedSize: 0),
+              ),
+              rightTitles: AxisTitles(
+                sideTitles: SideTitles(showTitles: false, reservedSize: 0),
+              ),
+              topTitles: AxisTitles(
+                sideTitles: SideTitles(showTitles: false, reservedSize: 0),
+              ),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(showTitles: false, reservedSize: 0),
+              ),
+            ),
             borderData: FlBorderData(show: false),
             lineTouchData: const LineTouchData(enabled: false),
             lineBarsData: [
@@ -226,7 +245,7 @@ class _LineChart extends StatelessWidget {
           ),
         ),
         Positioned(
-          right: 4,
+          right: 0,
           top: 0,
           child: _AxisLabel(
             text: _formatWeight(rawMax),
@@ -235,8 +254,10 @@ class _LineChart extends StatelessWidget {
             ),
           ),
         ),
+        // Min y-label hugs the bottom-right when there's no month strip,
+        // and is pushed up by 20dp so it doesn't collide with it otherwise.
         Positioned(
-          right: 4,
+          right: 0,
           bottom: showMonthLabels ? 20 : 0,
           child: _AxisLabel(
             text: _formatWeight(rawMin),
@@ -247,7 +268,7 @@ class _LineChart extends StatelessWidget {
         ),
         if (showMonthLabels) ...[
           Positioned(
-            left: 4,
+            left: 0,
             bottom: 0,
             child: _AxisLabel(
               text: DateFormat.MMM().format(points.first.date),
@@ -257,7 +278,7 @@ class _LineChart extends StatelessWidget {
             ),
           ),
           Positioned(
-            right: 4,
+            right: 0,
             bottom: 0,
             child: _AxisLabel(
               text: DateFormat.MMM().format(points.last.date),
