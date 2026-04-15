@@ -99,5 +99,16 @@ void main() {
       final startedAt = now.subtract(const Duration(days: 30));
       expect(formatResumeAge(startedAt, now), '30 days ago');
     });
+
+    test(
+      'returns "less than an hour ago" for future startedAt (clock skew)',
+      () {
+        // Defensive: if the server clock is slightly ahead of the client,
+        // startedAt can land in the future. The function must not crash or
+        // emit gibberish — it falls through to the <1h branch.
+        final startedAt = now.add(const Duration(minutes: 5));
+        expect(formatResumeAge(startedAt, now), 'less than an hour ago');
+      },
+    );
   });
 }

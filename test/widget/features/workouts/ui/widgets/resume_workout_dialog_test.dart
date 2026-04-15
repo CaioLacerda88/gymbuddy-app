@@ -106,8 +106,10 @@ void main() {
       );
 
       // Text.rich concatenates the spans into a single RichText — search on
-      // the combined textual content.
-      expect(find.textContaining('Leg Day'), findsOneWidget);
+      // the combined textual content. The name is wrapped in literal quote
+      // characters to match the fresh branch's quoting style, so we assert
+      // the quotes are rendered (not just the substring).
+      expect(find.textContaining('"Leg Day"'), findsOneWidget);
       expect(find.textContaining('hours ago'), findsOneWidget);
     });
 

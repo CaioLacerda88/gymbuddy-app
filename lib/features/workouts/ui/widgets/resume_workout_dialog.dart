@@ -122,7 +122,7 @@ class ResumeWorkoutDialog extends StatelessWidget {
               TextSpan(
                 children: [
                   TextSpan(
-                    text: workoutName,
+                    text: '"$workoutName"',
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
