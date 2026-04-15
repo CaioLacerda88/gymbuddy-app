@@ -12,10 +12,14 @@ import '../../providers/exercise_progress_provider.dart';
 /// Renders inline inside [ExerciseDetailScreen], between the PR list and the
 /// delete button. Read-only glance surface: no tooltips, no zoom, no pan.
 ///
+/// The selected [TimeWindow] is held as local widget state, not an app-global
+/// provider — every exercise opens on the 90-day default, so toggling "All
+/// time" on one exercise can't leak into another.
+///
 /// See `tasks/WIP.md` for the design rationale — anti-generic-AI
 /// constraints (no gradient fill, no bezier, no card wrapper, one hairline
 /// grid, inline min/max labels) are non-negotiable and tested.
-class ProgressChartSection extends ConsumerWidget {
+class ProgressChartSection extends ConsumerStatefulWidget {
   const ProgressChartSection({super.key, required this.exerciseId});
 
   final String exerciseId;
@@ -25,12 +29,31 @@ class ProgressChartSection extends ConsumerWidget {
   static const double _dotRadius = 6;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProgressChartSection> createState() =>
+      _ProgressChartSectionState();
+}
+
+class _ProgressChartSectionState extends ConsumerState<ProgressChartSection> {
+  TimeWindow _window = TimeWindow.last90Days;
+
+  @override
+  void didUpdateWidget(covariant ProgressChartSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Reset the window to the 90-day default whenever the host widget is
+    // rebuilt for a different exercise — guarantees per-exercise isolation
+    // even when the parent keeps the widget identity (e.g. single detail
+    // sheet navigating between exercises).
+    if (oldWidget.exerciseId != widget.exerciseId) {
+      _window = TimeWindow.last90Days;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final window = ref.watch(progressTimeWindowProvider);
     final asyncPoints = ref.watch(
       exerciseProgressProvider(
-        ExerciseProgressKey(exerciseId: exerciseId, window: window),
+        ExerciseProgressKey(exerciseId: widget.exerciseId, window: _window),
       ),
     );
     final weightUnit = ref.watch(profileProvider).value?.weightUnit ?? 'kg';
@@ -46,14 +69,13 @@ class ProgressChartSection extends ConsumerWidget {
         ),
         const SizedBox(height: 12),
         _WindowToggle(
-          value: window,
-          onChanged: (w) =>
-              ref.read(progressTimeWindowProvider.notifier).state = w,
+          value: _window,
+          onChanged: (w) => setState(() => _window = w),
         ),
         const SizedBox(height: 12),
         asyncPoints.when(
           loading: () => const SizedBox(
-            height: _chartHeight,
+            height: ProgressChartSection._chartHeight,
             child: Center(
               child: SizedBox(
                 width: 20,
@@ -62,8 +84,7 @@ class ProgressChartSection extends ConsumerWidget {
               ),
             ),
           ),
-          error: (_, _) =>
-              const _EmptyCopy(text: 'Log this exercise to see your progress'),
+          error: (_, _) => const _EmptyCopy(text: 'Could not load progress'),
           data: (points) => _ChartBody(points: points),
         ),
       ],
@@ -102,22 +123,21 @@ class _ChartBody extends StatelessWidget {
       return const _EmptyCopy(text: 'Log this exercise to see your progress');
     }
 
+    // Single-point case: skip the 200dp chart canvas (a lonely dot floating
+    // in mostly empty space looks unfinished) and render only the copy.
+    // The Semantics label is kept so accessibility still conveys the count.
+    if (points.length == 1) {
+      return Semantics(
+        label: 'Progress chart, 1 session logged',
+        child: const _EmptyCopy(text: '1 session logged'),
+      );
+    }
+
     return Semantics(
-      label:
-          'Progress chart, ${points.length} '
-          '${points.length == 1 ? 'session' : 'sessions'} logged',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            height: ProgressChartSection._chartHeight,
-            child: _LineChart(points: points),
-          ),
-          if (points.length == 1) ...[
-            const SizedBox(height: 8),
-            const _EmptyCopy(text: '1 session logged'),
-          ],
-        ],
+      label: 'Progress chart, ${points.length} sessions logged',
+      child: SizedBox(
+        height: ProgressChartSection._chartHeight,
+        child: _LineChart(points: points),
       ),
     );
   }

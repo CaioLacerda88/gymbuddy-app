@@ -62,8 +62,12 @@ void main() {
     });
 
     testWidgets(
-      'renders chart with one dot and "1 session logged" for single point',
+      'single-point state shows only the "1 session logged" copy, no chart',
       (tester) async {
+        // Per reviewer Nit 2: a lone 200dp chart with one dot and empty
+        // whitespace reads as unfinished. For one logged session we render
+        // only the subdued copy — simpler and visually coherent with the
+        // zero-data empty state.
         final points = [
           ProgressPoint(
             date: DateTime(2026, 3, 1),
@@ -74,7 +78,7 @@ void main() {
         await tester.pumpWidget(_buildHarness(unit: 'kg', points: points));
         await tester.pumpAndSettle();
 
-        expect(find.byType(LineChart), findsOneWidget);
+        expect(find.byType(LineChart), findsNothing);
         expect(find.text('1 session logged'), findsOneWidget);
       },
     );
@@ -184,37 +188,88 @@ void main() {
       );
     });
 
+    testWidgets('error state shows distinct "Could not load progress" copy', (
+      tester,
+    ) async {
+      // Per reviewer Nit 1: the provider error branch must NOT reuse the
+      // zero-data copy ("Log this exercise to see your progress") — that
+      // tells the user to log a workout when the real issue is a load
+      // failure. Render a distinct message instead, same bodyMedium @
+      // 0.4-alpha treatment.
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            profileProvider.overrideWith(() => _FakeProfileNotifier('kg')),
+            exerciseProgressProvider.overrideWith(
+              (ref, _) => Future.error(Exception('network failure')),
+            ),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: const Scaffold(
+              body: ProgressChartSection(exerciseId: 'ex-1'),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // No chart rendered on error.
+      expect(find.byType(LineChart), findsNothing);
+      // Distinct from the zero-data empty-state copy.
+      expect(find.text('Could not load progress'), findsOneWidget);
+      expect(find.text('Log this exercise to see your progress'), findsNothing);
+    });
+
     testWidgets(
-      'error state shows empty-state copy without crashing',
+      'window defaults back to 90d when host rebuilds with a new exerciseId',
       (tester) async {
-        // The provider error branch falls back to the same empty-state copy
-        // as the zero-data branch.  Accepted behaviour for v1 (tech-lead
-        // acknowledged conflation); this test documents and locks it in.
+        // Per reviewer Important 2: the time-window state must not leak
+        // across exercises. Opening exercise A, toggling to "All time",
+        // then rebuilding the host with a different exerciseId must reset
+        // the toggle to the 90d default (cold-start semantics per exercise).
+        final callLog = <ExerciseProgressKey>[];
+        final hostKey = GlobalKey<_HostState>();
+
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
               profileProvider.overrideWith(() => _FakeProfileNotifier('kg')),
-              exerciseProgressProvider.overrideWith(
-                (ref, _) => Future.error(Exception('network failure')),
-              ),
+              exerciseProgressProvider.overrideWith((ref, key) async {
+                callLog.add(key);
+                return <ProgressPoint>[];
+              }),
             ],
             child: MaterialApp(
               theme: AppTheme.dark,
-              home: const Scaffold(
-                body: ProgressChartSection(exerciseId: 'ex-1'),
+              home: Scaffold(
+                body: _Host(key: hostKey, initialId: 'ex-A'),
               ),
             ),
           ),
         );
         await tester.pumpAndSettle();
 
-        // No chart rendered on error.
-        expect(find.byType(LineChart), findsNothing);
-        // Falls back to the same empty-state copy.
-        expect(
-          find.text('Log this exercise to see your progress'),
-          findsOneWidget,
+        // Toggle exercise A to "All time".
+        await tester.tap(find.text('All time'));
+        await tester.pumpAndSettle();
+        final lastForA = callLog.lastWhere((k) => k.exerciseId == 'ex-A');
+        expect(lastForA.window, TimeWindow.allTime);
+
+        // Swap the host's exerciseId to 'ex-B' in place — triggers
+        // didUpdateWidget on ProgressChartSection, which must reset _window.
+        hostKey.currentState!.setExercise('ex-B');
+        await tester.pumpAndSettle();
+
+        // The provider must have been invoked for ex-B on the 90d default.
+        final firstForB = callLog.firstWhere((k) => k.exerciseId == 'ex-B');
+        expect(firstForB.window, TimeWindow.last90Days);
+
+        // The 90d segment is the one now selected in the UI.
+        final selected = tester.widget<SegmentedButton<TimeWindow>>(
+          find.byType(SegmentedButton<TimeWindow>),
         );
+        expect(selected.selected, {TimeWindow.last90Days});
       },
     );
   });
@@ -290,4 +345,24 @@ void main() {
       expect(unselectedFg!.a, greaterThanOrEqualTo(0.5));
     });
   });
+}
+
+/// Helper host widget: lets a test swap the exerciseId on an already-mounted
+/// [ProgressChartSection], which is what triggers `didUpdateWidget` and the
+/// window-reset logic we want to verify.
+class _Host extends StatefulWidget {
+  const _Host({super.key, required this.initialId});
+  final String initialId;
+
+  @override
+  State<_Host> createState() => _HostState();
+}
+
+class _HostState extends State<_Host> {
+  late String _id = widget.initialId;
+
+  void setExercise(String id) => setState(() => _id = id);
+
+  @override
+  Widget build(BuildContext context) => ProgressChartSection(exerciseId: _id);
 }

@@ -11,6 +11,7 @@ import '../../../analytics/data/models/analytics_event.dart';
 import '../../../analytics/providers/analytics_providers.dart';
 import '../../../auth/providers/auth_providers.dart';
 import '../../../exercises/models/exercise.dart';
+import '../../../exercises/providers/exercise_progress_provider.dart';
 import '../../../personal_records/domain/pr_detection_service.dart';
 import '../../../personal_records/providers/pr_providers.dart';
 import '../../../profile/providers/profile_providers.dart';
@@ -602,6 +603,12 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
         exercises: workoutExercises,
         sets: sets,
       );
+
+      // Invalidate the per-exercise progress chart family so any exercise
+      // whose detail sheet is re-opened this session reflects the newly
+      // saved sets. Invalidating the whole family is correct — a finished
+      // workout may touch any exercise, and the family is small per user.
+      ref.invalidate(exerciseProgressProvider);
 
       // PR detection: batch-fetch existing records, then detect new ones.
       try {

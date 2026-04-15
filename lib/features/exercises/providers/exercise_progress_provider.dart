@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 
 import '../../auth/providers/auth_providers.dart';
 import '../../workouts/models/exercise_set.dart';
@@ -43,13 +42,6 @@ class ExerciseProgressKey {
   int get hashCode => Object.hash(exerciseId, window);
 }
 
-/// Currently-selected time window for the progress chart. UI-local state —
-/// no persistence needed, the 90-day default is cheap to re-render on every
-/// detail-sheet open.
-final progressTimeWindowProvider = StateProvider<TimeWindow>(
-  (ref) => TimeWindow.last90Days,
-);
-
 /// Per-exercise weight-over-time series.
 ///
 /// Groups the raw session history by user-local calendar date and takes the
@@ -59,11 +51,10 @@ final progressTimeWindowProvider = StateProvider<TimeWindow>(
 ///
 /// `ref.keepAlive()` matches the pattern from `workoutCountProvider` — the
 /// detail sheet is opened and closed frequently and the underlying query is
-/// stable per user. Invalidate explicitly on workout save/discard if it
-/// becomes necessary; for v1 the data is stale-on-reopen only within a very
-/// short window (the user has to finish a workout and re-open the sheet
-/// within the same Riverpod container lifetime), which matches user
-/// expectation for a passive "glance" surface.
+/// stable per user. `ActiveWorkoutNotifier.finishWorkout` explicitly
+/// `ref.invalidate`s this family after a successful save so a user who
+/// finishes a workout and re-opens the detail sheet in the same session
+/// sees fresh data.
 final exerciseProgressProvider = FutureProvider.autoDispose
     .family<List<ProgressPoint>, ExerciseProgressKey>((ref, key) async {
       ref.keepAlive();
