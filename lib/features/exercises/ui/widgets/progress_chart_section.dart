@@ -128,12 +128,14 @@ class _ChartBody extends StatelessWidget {
     // The Semantics label is kept so accessibility still conveys the count.
     if (points.length == 1) {
       return Semantics(
+        image: true,
         label: 'Progress chart, 1 session logged',
         child: const _EmptyCopy(text: '1 session logged'),
       );
     }
 
     return Semantics(
+      image: true,
       label: 'Progress chart, ${points.length} sessions logged',
       child: SizedBox(
         height: ProgressChartSection._chartHeight,
