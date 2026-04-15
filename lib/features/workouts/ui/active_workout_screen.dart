@@ -332,11 +332,13 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
                 child: TextField(
                   controller: _nameController,
                   autofocus: true,
+                  maxLength: 80,
                   textAlign: TextAlign.center,
                   textCapitalization: TextCapitalization.sentences,
                   style: theme.textTheme.titleMedium,
                   decoration: const InputDecoration(
                     isDense: true,
+                    counterText: '',
                     border: UnderlineInputBorder(),
                     contentPadding: EdgeInsets.symmetric(vertical: 4),
                   ),

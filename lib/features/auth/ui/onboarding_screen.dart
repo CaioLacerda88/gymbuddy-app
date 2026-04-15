@@ -269,6 +269,8 @@ class _ProfileSetupPage extends StatelessWidget {
             controller: nameController,
             textInputAction: TextInputAction.done,
             prefixIcon: Icons.person_outlined,
+            maxLength: 50,
+            showCounter: false,
           ),
           const SizedBox(height: 24),
           Text('Fitness level', style: theme.textTheme.titleMedium),
