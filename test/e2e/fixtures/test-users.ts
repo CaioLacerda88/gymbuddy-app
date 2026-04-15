@@ -79,6 +79,13 @@ export const TEST_USERS = {
     email: 'e2e-smoke-first-workout@test.local',
     password: 'TestPassword123!',
   },
+  // Exercise progress chart (P1) — user with two seeded completed working sets
+  // on different calendar dates so ProgressChartSection renders the multi-point
+  // LineChart branch (single-point renders copy-only with no `image` semantics).
+  smokeExerciseProgress: {
+    email: 'e2e-smoke-exercise-progress@test.local',
+    password: 'TestPassword123!',
+  },
 
   // -------------------------------------------------------------------------
   // Full suite users (one per spec file)

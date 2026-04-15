@@ -13,6 +13,7 @@ import 'package:gymbuddy_app/features/workouts/models/set_type.dart';
 import 'package:gymbuddy_app/features/workouts/models/workout.dart';
 import 'package:gymbuddy_app/features/workouts/providers/workout_providers.dart';
 import 'package:gymbuddy_app/features/exercises/models/exercise.dart';
+import 'package:gymbuddy_app/features/exercises/providers/exercise_progress_provider.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
 
@@ -890,6 +891,75 @@ void main() {
       expect(capturedSets, hasLength(2));
 
       verify(() => mockStorage.clearActiveWorkout()).called(1);
+    });
+
+    test('success: invalidates exerciseProgressProvider family so chart '
+        'refreshes after save (P1 review Important 1)', () async {
+      // Regression for PR #??? reviewer finding: `exerciseProgressProvider`
+      // is `keepAlive`-guarded, so without an explicit invalidate a user
+      // who finishes a workout and re-opens the exercise detail sheet in
+      // the same session sees stale chart data. Verify here that a keyed
+      // read before `finishWorkout` triggers a second repo hit after the
+      // save completes.
+      final initial = makeState(exerciseCount: 1, setsPerExercise: 1);
+      final (:container, :mockRepo, :mockStorage, :mockAuth) =
+          makeAsyncContainer(initial);
+      addTearDown(container.dispose);
+
+      when(() => mockAuth.currentUser).thenReturn(fakeUser());
+      when(
+        () => mockRepo.saveWorkout(
+          workout: any(named: 'workout'),
+          exercises: any(named: 'exercises'),
+          sets: any(named: 'sets'),
+        ),
+      ).thenAnswer((_) async => makeWorkout(isActive: false));
+      when(() => mockStorage.clearActiveWorkout()).thenAnswer((_) async {});
+      when(
+        () => mockRepo.getExerciseHistory(
+          any(),
+          userId: any(named: 'userId'),
+          since: any(named: 'since'),
+        ),
+      ).thenAnswer((_) async => const []);
+
+      // Prime the state and prime the chart provider for a specific
+      // exercise — simulates a user viewing the chart before finishing
+      // the workout.
+      await container.read(activeWorkoutProvider.future);
+      const key = ExerciseProgressKey(
+        exerciseId: 'ex-1',
+        window: TimeWindow.last90Days,
+      );
+      // Subscribe so `keepAlive` actually takes effect and the cached
+      // value persists across the save.
+      final sub = container.listen(exerciseProgressProvider(key), (_, _) {});
+      addTearDown(sub.close);
+      await container.read(exerciseProgressProvider(key).future);
+
+      verify(
+        () => mockRepo.getExerciseHistory(
+          'ex-1',
+          userId: any(named: 'userId'),
+          since: any(named: 'since'),
+        ),
+      ).called(1);
+
+      // Act: finish the workout successfully.
+      await container.read(activeWorkoutProvider.notifier).finishWorkout();
+
+      // Re-read the provider — if the notifier invalidated correctly,
+      // the repo is hit a second time. Without the invalidate this would
+      // fail (call count stays at 1).
+      await container.read(exerciseProgressProvider(key).future);
+
+      verify(
+        () => mockRepo.getExerciseHistory(
+          'ex-1',
+          userId: any(named: 'userId'),
+          since: any(named: 'since'),
+        ),
+      ).called(1);
     });
 
     test('does nothing when state is null', () async {

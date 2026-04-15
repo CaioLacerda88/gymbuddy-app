@@ -151,6 +151,20 @@ export const EXERCISE_DETAIL = {
    * _TappableImage wraps the image in Semantics(label: '${name} end position', image: true).
    */
   endImage: (name: string) => `role=img[name*="${name} end position"]`,
+  /**
+   * Progress chart section heading — "Progress (kg)" or "Progress (lbs)".
+   * ProgressChartSection renders Text('Progress ($weightUnit)') as titleMedium.
+   * Match on the "Progress" prefix so the test is weight-unit-agnostic.
+   */
+  progressChartHeading: 'text=/^Progress \\(/',
+  /**
+   * Semantics node wrapping the LineChart when ≥2 data points are present.
+   * _ChartBody wraps the chart in Semantics(label: 'Progress chart, N sessions logged').
+   * Note: the single-point branch renders copy-only ("1 session logged") with
+   * no `image: true` semantics, so this selector only matches when the user
+   * has logged sets on at least two distinct calendar days.
+   */
+  progressChartSemantics: 'role=img[name*="Progress chart"]',
 } as const;
 
 // ---------------------------------------------------------------------------

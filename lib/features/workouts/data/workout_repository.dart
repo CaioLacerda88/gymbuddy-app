@@ -183,6 +183,75 @@ class WorkoutRepository extends BaseRepository {
     });
   }
 
+  /// One row in the per-exercise progress query.
+  ///
+  /// Returned in `finished_at` order (ascending). The chart provider buckets
+  /// these per user-local calendar date and selects the max completed
+  /// working-set weight per bucket.
+  ///
+  /// [finishedAt] — UTC timestamp from `workouts.finished_at`.
+  /// [sets] — raw sets from `workout_exercises.sets` (unfiltered; the
+  /// `isCompletedWorkingSet` predicate is applied client-side so the filter
+  /// logic stays co-located with PR detection).
+  static List<({DateTime finishedAt, List<ExerciseSet> sets})>
+  _parseExerciseHistoryRows(List<dynamic> rows) {
+    final result = <({DateTime finishedAt, List<ExerciseSet> sets})>[];
+    for (final row in rows) {
+      final map = row as Map<String, dynamic>;
+      final workout = map['workouts'] as Map<String, dynamic>?;
+      final finishedAtStr = workout?['finished_at'] as String?;
+      if (finishedAtStr == null) continue;
+      final finishedAt = DateTime.parse(finishedAtStr);
+      final setsData = map['sets'] as List<dynamic>? ?? [];
+      final sets = setsData
+          .map((s) => ExerciseSet.fromJson(s as Map<String, dynamic>))
+          .toList();
+      result.add((finishedAt: finishedAt, sets: sets));
+    }
+    return result;
+  }
+
+  /// Fetch finished-workout history for a single [exerciseId] belonging to
+  /// [userId].
+  ///
+  /// Returns one entry per `workout_exercises` row (one per session that
+  /// logged this exercise), sorted ascending by `workouts.finished_at`.
+  /// When [since] is non-null, only sessions finished on or after [since]
+  /// are returned (used for the 90-day window).
+  ///
+  /// RLS-scoped to the current user via `workouts.user_id = userId`. The
+  /// explicit `.eq('user_id', userId)` on the inner-joined workouts table
+  /// matches the pattern used by [getFinishedWorkoutsSince] — Supabase RLS
+  /// is the hard guarantee, this filter is defence-in-depth.
+  Future<List<({DateTime finishedAt, List<ExerciseSet> sets})>>
+  getExerciseHistory(
+    String exerciseId, {
+    required String userId,
+    DateTime? since,
+  }) {
+    return mapException(() async {
+      var query = _client
+          .from('workout_exercises')
+          .select('sets(*), workouts!inner(finished_at, user_id, is_active)')
+          .eq('exercise_id', exerciseId)
+          .eq('workouts.user_id', userId)
+          .eq('workouts.is_active', false)
+          .not('workouts.finished_at', 'is', null);
+
+      if (since != null) {
+        query = query.gte('workouts.finished_at', since.toIso8601String());
+      }
+
+      final data = await query.order(
+        'finished_at',
+        referencedTable: 'workouts',
+        ascending: true,
+      );
+
+      return _parseExerciseHistoryRows(data);
+    });
+  }
+
   /// Batch-fetch the most recent completed sets for given exercise IDs.
   /// Returns a map of exerciseId -> list of sets from the last workout.
   ///

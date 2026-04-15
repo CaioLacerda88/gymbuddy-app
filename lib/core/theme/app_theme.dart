@@ -40,6 +40,7 @@ class AppTheme {
       cardTheme: _cardTheme,
       elevatedButtonTheme: _elevatedButtonTheme,
       inputDecorationTheme: _inputDecorationTheme,
+      segmentedButtonTheme: _segmentedButtonTheme,
       appBarTheme: const AppBarThemeData(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -85,6 +86,43 @@ class AppTheme {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ),
+  );
+
+  /// Dark-surface tuning for Material 3 `SegmentedButton`.
+  ///
+  /// The M3 default renders underpowered on our `_surfaceColor` (#1A1A2E):
+  /// the selected container is barely tinted and the unselected label
+  /// drops to ~0.38 alpha, making both states read ghostly. This theme
+  /// bumps selected visibility (primary tint at 0.15, primary foreground,
+  /// weight 600) and lifts unselected foreground to 0.75 alpha so both
+  /// segments stay legible on dark surfaces.
+  static final _segmentedButtonTheme = SegmentedButtonThemeData(
+    style: ButtonStyle(
+      backgroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return _primaryColor.withValues(alpha: 0.15);
+        }
+        return Colors.transparent;
+      }),
+      foregroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return _primaryColor;
+        }
+        return Colors.white.withValues(alpha: 0.75);
+      }),
+      textStyle: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return const TextStyle(fontWeight: FontWeight.w600);
+        }
+        return const TextStyle(fontWeight: FontWeight.w500);
+      }),
+      side: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return BorderSide(color: _primaryColor.withValues(alpha: 0.5));
+        }
+        return BorderSide(color: Colors.white.withValues(alpha: 0.15));
+      }),
     ),
   );
 
