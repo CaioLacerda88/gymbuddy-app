@@ -586,14 +586,14 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 
 **Sprint C — Resilience (in progress)**
 - PR #61: W6 Direct Supabase access in UI. Literal `.from()` leak scan was already clean — all DB access sits inside `data/` repos. The residual bypass was `Supabase.instance.client.auth.currentUser?.id` read inline from one UI screen (`create_exercise_screen.dart`) and four methods inside `ProfileNotifier`, forcing those files to import `supabase_flutter` for a session lookup. New `currentUserIdProvider` (sync `Provider<String?>`, intentionally non-reactive — router handles auth transitions via `authStateProvider`) in `features/auth/providers/auth_providers.dart`. All 5 call sites now go through `ref.read(currentUserIdProvider)`; unused `supabase_flutter` import dropped from the UI file. Tests: +2 unit pinning signed-in / signed-out branches via `overrideWithValue`; 1072 total. Reviewer approved, 2 nits (comment clarifying non-reactive contract, comment clarifying test intent) closed in-cycle per "no deferring" policy. `sentry_init.dart` and `auth_repository.dart` intentionally untouched (core infra + THE auth layer).
+- PR #63: W3b Input length limits (TextField + server CHECK). Defense-in-depth — UI `maxLength` blocks casual over-entry, migration `00021_input_length_limits.sql` adds 9 `CHECK` constraints against API-level abuse (anyone bypassing the client). `AppTextField` gets `maxLength` (pass-through) + `showCounter` (default `true`, off only for the onboarding display-name field where the fixed-height viewport cannot afford the counter line). Six UI sites wired: onboarding/profile display-name (50), create-exercise/routine/workout-rename name (80), finish-workout notes (1000). DB ceilings sized with headroom above observed seed maxes (form_tips seed max 246 → DB 2000). Pre-flight `char_length` scan against hosted Supabase confirmed zero existing rows would violate any constraint. Tests: +2 widget (`AppTextField` clamping + counter), +1 widget (finish-workout notes clamping), +1 widget (create-exercise name clamping — added in reviewer fixup since the WIP spec had promised it); 1076 total. Migration applied to hosted Supabase post-merge; all 9 constraints verified via `pg_constraint`. Reviewer findings (1 Important + 2 Nits) closed in-cycle per "no deferring" policy.
 
-### Remaining — Sprint C: Resilience (~3-4 days)
+### Remaining — Sprint C: Resilience (~3 days)
 
 | ID | Item | Effort | Notes |
 |----|------|--------|-------|
 | B6 | ProGuard/R8 optimization | 2-3h | No minify/shrink today (19.7MB → ~12-14MB target). Needs keep rules for Supabase + Hive reflection. |
 | W3 | Stale workout timeout UX | 2-3h | When `startedAt` >6h ago on app open, show "Workout from [date] still open — Resume or Discard?" modal. |
-| W3b | Input length limits (TextField + server CHECK) | 1-2h | Prevents DB bloat and UI overflow on long free-text inputs. |
 | W8 | HomeScreen `SingleChildScrollView` → `CustomScrollView` | 2-3h | Performance fix for long history lists. |
 
 ### Deferred to v1.1+
