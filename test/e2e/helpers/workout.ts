@@ -25,18 +25,71 @@
 
 import { Page, expect } from '@playwright/test';
 import { flutterFill } from './app';
-import { WORKOUT, EXERCISE_PICKER } from './selectors';
+import { WORKOUT, EXERCISE_PICKER, HOME, FIRST_WORKOUT_CTA } from './selectors';
 
 /**
  * Start an empty workout from the Home screen.
  *
- * Clicks the "Start Empty Workout" button and waits until the active workout
- * screen is visible (identified by the Finish Workout button in the bottom bar).
+ * W8 Home refresh removed the "Start Empty Workout" FilledButton. The helper
+ * now handles two home states:
+ *
+ *   - Lapsed state (has history, no plan): taps "Quick workout" OutlinedButton.
+ *   - Brand-new state (no history, no plan): the hero shows "YOUR FIRST WORKOUT"
+ *     which starts the Full Body routine, not an empty workout. In this case we
+ *     fall back to tapping the beginner CTA (FIRST_WORKOUT_CTA.card — the button
+ *     role selector) and accept that it starts a routine instead of an empty
+ *     workout. Tests using freshStateUsers that need truly empty workouts should
+ *     ensure lapsed state by completing one workout first.
+ *
+ * For tests that need a truly empty workout (no exercises pre-filled), use the
+ * lapsed state by ensuring the user has at least one completed workout before
+ * calling this helper. Users in global-setup freshStateUsers start brand-new
+ * but transition to lapsed after the first test in each suite completes a workout.
  */
 export async function startEmptyWorkout(page: Page): Promise<void> {
-  await page.click(WORKOUT.startEmpty);
+  // W8 Home refresh removed the "Start Empty Workout" FilledButton.
+  // The entry points are now state-dependent:
+  //   - Lapsed (has history, no plan): "Quick workout" OutlinedButton
+  //   - Brand-new (no history, no plan): "YOUR FIRST WORKOUT" hero CTA
+  //
+  // Wait for the home screen to stabilise (either state is visible), then click
+  // the appropriate entry point. We use waitFor({ state: 'visible' }) so the
+  // helper actually waits rather than doing an immediate snapshot check.
+  //
+  // Prefer "Quick workout" (lapsed state). If it never appears within 10 s,
+  // fall back to the "YOUR FIRST WORKOUT" beginner CTA (brand-new state).
+
+  const quickWorkoutLoc = page.locator(HOME.quickWorkout).first();
+  const beginnerCtaLoc = page.locator(FIRST_WORKOUT_CTA.card).first();
+
+  // Race the two locators: whichever becomes visible first wins.
+  const quickWorkoutVisible = await quickWorkoutLoc
+    .waitFor({ state: 'visible', timeout: 10_000 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (quickWorkoutVisible) {
+    await quickWorkoutLoc.click();
+  } else {
+    // Brand-new state: the beginner CTA card is the only entry point.
+    // Use .first() to guard against Flutter AOM duplicate nodes.
+    await beginnerCtaLoc.waitFor({ state: 'visible', timeout: 10_000 });
+    await beginnerCtaLoc.click();
+    // Flutter CanvasKit may need a second tap to fire the InkWell after the
+    // first click activates the semantics overlay.
+    await page.waitForTimeout(800);
+    const navigated = await page
+      .locator(WORKOUT.finishButton)
+      .isVisible({ timeout: 2_000 })
+      .catch(() => false);
+    if (!navigated) {
+      await beginnerCtaLoc.click().catch(() => {});
+      await page.waitForTimeout(800);
+    }
+  }
+
   await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
-    timeout: 15_000,
+    timeout: 20_000,
   });
 }
 

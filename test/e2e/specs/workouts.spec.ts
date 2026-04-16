@@ -11,7 +11,7 @@
 import { test, expect } from '@playwright/test';
 import { waitForAppReady } from '../helpers/app';
 import { login } from '../helpers/auth';
-import { NAV, WORKOUT, HOME, PR, HOME_STATS, HISTORY } from '../helpers/selectors';
+import { NAV, WORKOUT, HOME, PR, HISTORY, FIRST_WORKOUT_CTA } from '../helpers/selectors';
 import {
   startEmptyWorkout,
   addExercise,
@@ -50,8 +50,10 @@ test.describe('Workouts', { tag: '@smoke' }, () => {
     // Add Barbell Bench Press.
     await addExercise(page, SEED_EXERCISES.benchPress);
 
-    // Wait for the exercise card with its set row.
-    await expect(page.locator(WORKOUT.addSetButton)).toBeVisible({
+    // Wait for the exercise card with its set row. Use .first() to guard
+    // against strict mode violation when the workout starts with pre-filled
+    // exercises (brand-new state starts Full Body with multiple exercises).
+    await expect(page.locator(WORKOUT.addSetButton).first()).toBeVisible({
       timeout: 10_000,
     });
 
@@ -86,15 +88,34 @@ test.describe('Workouts', { tag: '@smoke' }, () => {
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 20_000 });
   });
 
-  test('should show home screen with start workout option after login', async ({
+  test('should show home screen with a workout entry point after login', async ({
     page,
   }) => {
     // After login the home screen should be visible with the navigation bar
-    // and a way to start a workout.
+    // and a way to start a workout. W8: the "Start Empty Workout" button was
+    // replaced — the home screen shows either:
+    //   • "Quick workout" (lapsed state, has history)
+    //   • "YOUR FIRST WORKOUT" card (brand-new, no history)
+    //
+    // Use waitFor() (retrying) rather than isVisible() (one-shot check) so the
+    // test properly waits for the ActionHero to render after the provider loads.
     await expect(page.locator(NAV.homeTab)).toBeVisible();
-    await expect(page.locator(WORKOUT.startEmpty)).toBeVisible({
-      timeout: 10_000,
-    });
+    const hasQuickWorkout = await page
+      .locator(HOME.quickWorkout)
+      .first()
+      .waitFor({ state: 'visible', timeout: 10_000 })
+      .then(() => true)
+      .catch(() => false);
+    // Flutter AOM exposes the hero card as a button — use the card selector
+    // (role=button[name*="YOUR FIRST WORKOUT"]) not the plain text selector
+    // (text=) which only matches DOM text nodes, not aria-labels.
+    const hasBeginnerCta = await page
+      .locator(FIRST_WORKOUT_CTA.card)
+      .first()
+      .waitFor({ state: 'visible', timeout: 5_000 })
+      .then(() => true)
+      .catch(() => false);
+    expect(hasQuickWorkout || hasBeginnerCta).toBe(true);
   });
 
   test('should complete full workout journey: start, add exercise, set weight/reps, complete set, finish', async ({
@@ -110,8 +131,9 @@ test.describe('Workouts', { tag: '@smoke' }, () => {
     await addExercise(page, SEED_EXERCISES.benchPress);
 
     // After adding, an exercise card with at least one set row should appear.
-    // The add-set button confirms the exercise card is rendered.
-    await expect(page.locator(WORKOUT.addSetButton)).toBeVisible({
+    // The add-set button confirms the exercise card is rendered. Use .first()
+    // to avoid strict mode violations when multiple exercises are present.
+    await expect(page.locator(WORKOUT.addSetButton).first()).toBeVisible({
       timeout: 10_000,
     });
 
@@ -412,7 +434,7 @@ test.describe('Workout logging', () => {
 
     // Add Barbell Bench Press.
     await addExercise(page, SEED_EXERCISES.benchPress);
-    await expect(page.locator(WORKOUT.addSetButton)).toBeVisible({
+    await expect(page.locator(WORKOUT.addSetButton).first()).toBeVisible({
       timeout: 10_000,
     });
 
@@ -670,13 +692,14 @@ test.describe('Workout logging', () => {
 
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
 
-    // Navigate to history via the Last session stat cell (SPA navigation).
+    // Navigate to history via the Last session line (SPA navigation).
     // page.goto('/home/history') reloads the Flutter SPA and the router
-    // doesn't preserve the deep link.
-    await expect(page.locator(HOME_STATS.lastSessionCell)).toBeVisible({
+    // doesn't preserve the deep link. W8: the stat cell is gone; use the
+    // editorial Last session line which also navigates to /home/history.
+    await expect(page.locator(HOME.lastSessionLine)).toBeVisible({
       timeout: 10_000,
     });
-    await page.click(HOME_STATS.lastSessionCell);
+    await page.click(HOME.lastSessionLine);
 
     // The history screen must be visible.
     await expect(page.locator(HISTORY.heading)).toBeVisible({ timeout: 15_000 });

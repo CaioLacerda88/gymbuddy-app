@@ -233,7 +233,12 @@ export const EXERCISE_PICKER = {
 } as const;
 
 // ---------------------------------------------------------------------------
-// Home screen
+// Home screen — W8 IA refresh
+//
+// The stat-cell grid (_ContextualStatCells) was deleted in W8. All selectors
+// for `HOME_STATS.lastSessionCell` and `HOME_STATS.weekVolumeCell` are
+// removed here; any test that previously relied on those cells must use the
+// new `HOME.lastSessionLine` selector instead.
 // ---------------------------------------------------------------------------
 export const HOME = {
   /**
@@ -245,6 +250,59 @@ export const HOME = {
    * "Workout \u2014 <date>").
    */
   activeBanner: 'role=button[name*="Active workout:"]',
+  /**
+   * HomeStatusLine — the single-line state-aware status at the top of Home.
+   * Rendered as Text.rich (active/complete) or Text (lapsed/"No plan this
+   * week") or display-name only (brand-new). Match on the shared keyword
+   * "week" which appears in all non-brand-new states.
+   * For brand-new state use `HOME.statusDisplayName` instead.
+   */
+  statusLine: 'text=/this week|Week complete|No plan/',
+  /**
+   * Brand-new state: HomeStatusLine shows the user's display name only.
+   * Used to confirm the brand-new home state without relying on workout data.
+   * Check for 'Gym User' which is the display_name seeded for most E2E users.
+   */
+  statusDisplayName: (name: string) => `text=${name}`,
+  /**
+   * ActionHero label — the small uppercase label inside the hero banner.
+   * One of: "UP NEXT", "YOUR FIRST WORKOUT", "NEW WEEK".
+   * labelSmall with letterSpacing and FontWeight.w700.
+   */
+  actionHeroLabel: (label: string) => `text=${label}`,
+  /**
+   * ActionHero headline — the routine name (active / beginner) or
+   * "Start new week" (week-complete). titleLarge bold.
+   */
+  actionHeroHeadline: (headline: string) => `text=${headline}`,
+  /**
+   * LastSessionLine — editorial "Last: {routineName}, {relativeDate}" tap
+   * target navigating to /home/history.
+   * Flutter's Semantics widget sets label="Last session: {name}, {date}" on the
+   * InkWell. The AOM exposes this as a button with accessible name starting with
+   * "Last session:". Use the role+name selector for reliable matching.
+   */
+  lastSessionLine: 'role=button[name*="Last session:"]',
+  /**
+   * "See all" TextButton in _HomeRoutinesList — routes to /routines.
+   * Only visible when the user has more than 3 user routines and no active plan.
+   */
+  myRoutinesSeeAll: 'text=See all',
+  /**
+   * "Plan your week" FilledButton.icon in the lapsed-state ActionHero.
+   * Navigates to /plan/week.
+   */
+  planYourWeek: 'text=Plan your week',
+  /**
+   * "Quick workout" OutlinedButton in the lapsed-state ActionHero secondary CTA.
+   * Navigates to /workout/active (starts an empty workout).
+   */
+  quickWorkout: 'text=Quick workout',
+  /**
+   * "Start new week" headline inside the week-complete _HeroBanner.
+   * Tapping the banner navigates to /plan/week.
+   */
+  startNewWeek: 'text=Start new week',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -602,14 +660,14 @@ export const PROFILE_WEEKLY_GOAL = {
 } as const;
 
 // ---------------------------------------------------------------------------
-// Home stat cards — _StatCardsRow in HomeScreen
+// Home stat cards — DELETED in W8 Home refresh
+//
+// _ContextualStatCells and its two stat cells ("Last session", "Week's
+// volume") were removed in W8. The `HOME_STATS` export is intentionally
+// absent so compile errors surface any test that still references it.
+// Tests that previously used HOME_STATS.lastSessionCell should now use
+// HOME.lastSessionLine.
 // ---------------------------------------------------------------------------
-export const HOME_STATS = {
-  /** "Last session" contextual stat cell — Semantics label "Last session: {value}" */
-  lastSessionCell: 'role=button[name*="Last session"]',
-  /** "Week's volume" contextual stat cell — Semantics label "Week's volume: {value}" */
-  weekVolumeCell: 'role=button[name*="Week\'s volume"]',
-} as const;
 
 // ---------------------------------------------------------------------------
 // First-run beginner routine CTA — _BeginnerRoutineCta in WeekBucketSection (P8).
