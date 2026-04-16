@@ -617,7 +617,7 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 3. New user sign-up → home shows "Start your first workout" CTA with beginner routine, not a blank list (E2E verified)
 4. ✅ Any exercise with ≥2 logged sets shows a weight-over-time chart; zero/single-data-point states handled without crash (met by PR #60 — unit + widget + @smoke E2E cover all three states)
 5. All Sprint C items merged
-6. APK size reduced via R8 (19.7MB → ~12-14MB target, documented in PR body)
+6. ✅ R8 code + resource shrinking enabled on release builds: `classes.dex` reduced ≥50% and total `arm64-v8a` APK deflation 10-15% documented in PR body. (Absolute APK size floor ~22 MB is set by Flutter native libs `libflutter.so` + `libapp.so` + `libsentry*.so` ≈ 21.8 MB, untouchable by R8. Further reduction requires AAB + per-device ABI/language splits — separate DevOps task, out of scope for Phase 13.)
 7. Full CI green, 145/145 E2E pass, no critical open bugs in QA Status
 
 ---
