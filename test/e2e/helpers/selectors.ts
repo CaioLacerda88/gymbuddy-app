@@ -152,19 +152,38 @@ export const EXERCISE_DETAIL = {
    */
   endImage: (name: string) => `role=img[name*="${name} end position"]`,
   /**
-   * Progress chart section heading — "Progress (kg)" or "Progress (lbs)".
-   * ProgressChartSection renders Text('Progress ($weightUnit)') as titleMedium.
-   * Match on the "Progress" prefix so the test is weight-unit-agnostic.
+   * BL-3: "Progress (kg)" section heading was removed. The unit now lives on
+   * the Y-axis; the trend summary line is the first text row.
+   * The card container is identified by its widget key instead.
+   * @deprecated Use progressChartCard instead.
    */
-  progressChartHeading: 'text=/^Progress \\(/',
+  // progressChartHeading: removed — heading killed by BL-3 acceptance #9.
   /**
-   * Semantics node wrapping the LineChart when ≥2 data points are present.
-   * _ChartBody wraps the chart in Semantics(label: 'Progress chart, N sessions logged').
-   * Note: the single-point branch renders copy-only ("1 session logged") with
-   * no `image: true` semantics, so this selector only matches when the user
-   * has logged sets on at least two distinct calendar days.
+   * The chart card container — always present when ProgressChartSection mounts
+   * (including loading, error, empty, and data states). Identified by the
+   * Key('progress-chart-card') set on _ChartCard.
+   * Use this as the liveness check: if the section mounted, this key is in tree.
+   *
+   * Note: BL-3 removed the `Semantics(image: true)` wrapper from the LineChart
+   * canvas. The old `role=img[name*="Progress chart"]` selector no longer matches.
+   * For the chart plot area itself use progressChartCanvas.
    */
-  progressChartSemantics: 'role=img[name*="Progress chart"]',
+  progressChartCard: '[data-flutter-semantics-key="progress-chart-card"]',
+  /**
+   * The empty-state container rendered when workoutCount == 0.
+   * _ChartBody renders Key('progress-chart-empty-container') in the zero-data branch.
+   */
+  progressChartEmptyContainer: '[data-flutter-semantics-key="progress-chart-empty-container"]',
+  /**
+   * The 30d window segment button — always visible when ProgressChartSection
+   * has data. Text label: "30d".
+   */
+  progressChart30dButton: 'text=30d',
+  /**
+   * New empty-state copy (BL-3 acceptance #12).
+   * Rendered when workoutCount == 0 and no points exist.
+   */
+  progressChartEmptyCopy: 'text=Log your first set to start tracking',
 } as const;
 
 // ---------------------------------------------------------------------------

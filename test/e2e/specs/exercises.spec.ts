@@ -463,7 +463,7 @@ test.describe('Exercise progress chart', { tag: '@smoke' }, () => {
     await navigateToTab(page, 'Exercises');
   });
 
-  test('should show Progress header on exercise detail for a user with logged sets', async ({
+  test('should show progress chart section on exercise detail for a user with logged sets', async ({
     page,
   }) => {
     // Search for Barbell Bench Press — the exercise seeded by global-setup.
@@ -480,20 +480,24 @@ test.describe('Exercise progress chart', { tag: '@smoke' }, () => {
       timeout: 10_000,
     });
 
-    // The ProgressChartSection must render its "Progress (kg)" or "Progress (lbs)"
-    // heading — this confirms the section mounted without crashing.
+    // BL-3: "Progress (kg)" heading was removed (acceptance #9). The chart
+    // section is now identified by its trend summary copy and window toggle.
+    // With two seeded sessions, the trend copy should be a non-empty string
+    // (Up/Down/Holding steady) and the 30d window segment must be visible.
+    //
+    // The window SegmentedButton is the most reliable liveness signal — it is
+    // always rendered when the section has data (loading state shows a spinner,
+    // error state shows "Could not load progress" + the toggles, data state
+    // always shows the toggle row).
     await expect(
-      page.locator(EXERCISE_DETAIL.progressChartHeading),
+      page.locator(EXERCISE_DETAIL.progressChart30dButton),
     ).toBeVisible({ timeout: 10_000 });
 
-    // With two seeded sessions on different days the Semantics label will be
-    // "Progress chart, 2 sessions logged" and the LineChart emits a Semantics
-    // node with `image: true` (role=img). Matching on the "Progress chart"
-    // prefix guards against fl_chart regressions that produce a blank canvas
-    // with no node.
+    // The old "Progress (kg)" heading must NOT appear (regression guard for
+    // BL-3 acceptance #9 — kill the section header).
     await expect(
-      page.locator(EXERCISE_DETAIL.progressChartSemantics),
-    ).toBeVisible({ timeout: 10_000 });
+      page.locator('text=/^Progress \\(/'),
+    ).not.toBeVisible({ timeout: 3_000 });
   });
 });
 

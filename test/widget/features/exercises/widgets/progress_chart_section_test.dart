@@ -432,6 +432,109 @@ void main() {
     });
   });
 
+  group('ProgressChartSection — acceptance #9: section header killed', () {
+    testWidgets(
+      '"Progress (kg)" text is absent from the widget tree in all data states',
+      (tester) async {
+        // Data state — chart renders with points.
+        final points = _linearPoints(n: 3);
+        await tester.pumpWidget(
+          _buildHarness(unit: 'kg', points: points, workoutCount: 3),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Progress (kg)'), findsNothing);
+        expect(find.text('Progress (lbs)'), findsNothing);
+        // Also covers the regex variant — no text starting with "Progress ("
+        expect(
+          find.byWidgetPredicate(
+            (w) => w is Text && (w.data ?? '').startsWith('Progress ('),
+          ),
+          findsNothing,
+        );
+      },
+    );
+
+    testWidgets('"Progress (lbs)" text is also absent when unit is lbs', (
+      tester,
+    ) async {
+      final points = _linearPoints(n: 3);
+      await tester.pumpWidget(
+        _buildHarness(unit: 'lbs', points: points, workoutCount: 3),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Progress (lbs)'), findsNothing);
+    });
+  });
+
+  group('ProgressChartSection — acceptance #2: weekly-max aggregation', () {
+    testWidgets(
+      'allTime window with >30 points collapses to fewer weekly-max spots',
+      (tester) async {
+        // 35 points spaced 3 days apart → spans ~105 days, all in allTime window.
+        // Weekly-max aggregation kicks in when N > 30 in the allTime window.
+        // 35 points × 3-day step = 105 days / 7 = 15 ISO weeks → ≤15 spots.
+        final points = _linearPoints(n: 35, daysPerStep: 3);
+
+        // We need a custom harness that uses allTime window. The default harness
+        // starts with last30Days; override the provider to force the chart to
+        // call _buildSeries with allTime.
+        //
+        // The simplest way is to pump the widget and then tap "All time" so the
+        // widget state switches windows. The provider override returns the same
+        // 35 points regardless of the window key (the key parameter is ignored
+        // by the override), which is fine — we want to test the aggregation in
+        // _buildSeries, not the provider query.
+        await tester.pumpWidget(
+          _buildHarness(unit: 'kg', points: points, workoutCount: 35),
+        );
+        await tester.pumpAndSettle();
+
+        // Switch to allTime window.
+        await tester.tap(find.text('All time'));
+        await tester.pumpAndSettle();
+
+        // With 35 points and allTime + N>30, weekly-max collapses the series.
+        // 105-day span / 7 = 15 ISO weeks → at most 15 aggregated spots.
+        final lineChart = tester.widget<LineChart>(find.byType(LineChart));
+        final spotCount = lineChart.data.lineBarsData.single.spots.length;
+        // 35 raw points must collapse to fewer weekly-max entries.
+        // The exact count depends on ISO-week anchoring from the start date;
+        // 35 points × 3-day step spans ~14-16 ISO weeks.
+        expect(
+          spotCount,
+          lessThan(35),
+          reason: 'weekly-max must reduce 35 raw points',
+        );
+        expect(
+          spotCount,
+          greaterThanOrEqualTo(10),
+          reason: 'should still have multiple aggregated weeks',
+        );
+      },
+    );
+
+    testWidgets(
+      'allTime window with ≤30 points does NOT aggregate — raw count preserved',
+      (tester) async {
+        // 25 points in allTime → no weekly-max aggregation (N <= 30 threshold).
+        final points = _linearPoints(n: 25, daysPerStep: 4);
+        await tester.pumpWidget(
+          _buildHarness(unit: 'kg', points: points, workoutCount: 25),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('All time'));
+        await tester.pumpAndSettle();
+
+        final lineChart = tester.widget<LineChart>(find.byType(LineChart));
+        // In e1RM mode, all 25 points have reps=5 > 0 so none are filtered out.
+        expect(lineChart.data.lineBarsData.single.spots.length, 25);
+      },
+    );
+  });
+
   group('ProgressChartSection — window toggle still works', () {
     testWidgets('tapping 90d re-queries with TimeWindow.last90Days', (
       tester,
