@@ -152,19 +152,29 @@ export const EXERCISE_DETAIL = {
    */
   endImage: (name: string) => `role=img[name*="${name} end position"]`,
   /**
-   * Progress chart section heading — "Progress (kg)" or "Progress (lbs)".
-   * ProgressChartSection renders Text('Progress ($weightUnit)') as titleMedium.
-   * Match on the "Progress" prefix so the test is weight-unit-agnostic.
+   * BL-3: "Progress (kg)" section heading was removed. The unit now lives on
+   * the Y-axis; the trend summary line is the first text row.
+   *
+   * Note: BL-3 removed the `Semantics(image: true)` wrapper from the LineChart
+   * canvas. The old `role=img[name*="Progress chart"]` selector no longer matches.
+   *
+   * The `progressChartCard` and `progressChartEmptyContainer` selectors were
+   * removed during BL-3 review: they used `[data-flutter-semantics-key="..."]`
+   * which Flutter does not emit on the DOM (Key doesn't surface in the AX tree
+   * that way). No spec exercised them, so removing is safe. Re-add via a
+   * proper `Semantics(identifier: ...)` wrapper if an E2E needs to target the
+   * card or empty container in the future.
    */
-  progressChartHeading: 'text=/^Progress \\(/',
   /**
-   * Semantics node wrapping the LineChart when ≥2 data points are present.
-   * _ChartBody wraps the chart in Semantics(label: 'Progress chart, N sessions logged').
-   * Note: the single-point branch renders copy-only ("1 session logged") with
-   * no `image: true` semantics, so this selector only matches when the user
-   * has logged sets on at least two distinct calendar days.
+   * The 30d window segment button — always visible when ProgressChartSection
+   * has data. Text label: "30d".
    */
-  progressChartSemantics: 'role=img[name*="Progress chart"]',
+  progressChart30dButton: 'text=30d',
+  /**
+   * New empty-state copy (BL-3 acceptance #12).
+   * Rendered when workoutCount == 0 and no points exist.
+   */
+  progressChartEmptyCopy: 'text=Log your first set to start tracking',
 } as const;
 
 // ---------------------------------------------------------------------------
