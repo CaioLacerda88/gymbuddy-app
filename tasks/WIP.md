@@ -16,7 +16,7 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 **Sprint C Remaining:** B6 (ProGuard/R8 optimization). After B6 merges, Phase 13 Exit Criterion #5 met.
 
-**Local repo state:** on `main` at `871b996`, working tree clean.
+**Local repo state:** on `main` at `2b7f6ed`, working tree clean.
 
 **Hosted Supabase:** up to date through `00021_input_length_limits.sql`.
 
