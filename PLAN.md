@@ -809,6 +809,8 @@ Same `/profile` URL. Identity block with `LVL N` badge, XP bar (6dp height, `#00
 One line replacing date subtitle: `[LVL 12] . [14d streak] . [Mon, Apr 7]`
 Daily quest chip (44dp, dismissible) between stat cards and routine list.
 
+**Observation from B6 smoke (2026-04-16) — factor into 15e scope:** On the `active-plan` home state (Samsung S25 Ultra), the top ~30% of the screen holds the plan counter + hero banner + week strip; the bottom ~70% down to the bottom nav is dead space. `Last: <routine>, Today` is a token text gesture with no data payload. The highest-dopamine moment in a training app is seeing your own work reflected back — right now we don't. When scoping 15e, the daily quest chip + LVL/streak line alone likely will not fill the returning-lifter gap; consider a post-workout recap surface (last-session best-set-per-exercise, trailing 7-day volume, PR-of-the-week) as part of the same pass so XP/streak/quest additions and the recap fill compose into one coherent design rather than two disjoint passes. Anti-generic-AI: do NOT ship a vanilla "Recent workouts" list — whatever lands must feel like GymBuddy (dark, bold, data-forward, glance-first).
+
 ---
 
 ## Phase 16: Gamification Advanced
