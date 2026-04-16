@@ -213,8 +213,12 @@ void main() {
       final combined = richTexts.map((rt) => rt.text.toPlainText()).join('|');
       expect(combined, contains('of 2 this week'));
 
-      // Action hero shows the suggested next routine.
-      expect(find.text('Start Push Day'), findsOneWidget);
+      // Action hero shows the suggested next routine (new UP NEXT banner
+      // uses just the routine name, not the legacy "Start X" prefix). The
+      // routine name also appears in the bucket chip row below, so we
+      // assert one-or-more rather than a strict single match.
+      expect(find.text('UP NEXT'), findsOneWidget);
+      expect(find.text('Push Day'), findsWidgets);
     });
 
     testWidgets('active plan + week complete: shows "Start new week" hero', (

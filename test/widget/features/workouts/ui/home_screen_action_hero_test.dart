@@ -191,7 +191,9 @@ class _RouterObserver extends NavigatorObserver {
 
 void main() {
   group('ActionHero - active plan, incomplete', () {
-    testWidgets('shows "Start {suggestedNext}" label', (tester) async {
+    testWidgets('renders banner with UP NEXT label and routine name', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _buildWithRouter(
           plan: _plan(
@@ -210,7 +212,111 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      expect(find.text('Start Push Day'), findsOneWidget);
+      // New banner pattern (matches _BeginnerCta vocabulary): UP NEXT label
+      // above the routine name; no stock "Start X" button text.
+      expect(find.text('UP NEXT'), findsOneWidget);
+      expect(find.text('Push Day'), findsOneWidget);
+      expect(find.text('Start Push Day'), findsNothing);
+    });
+
+    testWidgets('renders metadata line with exercise count and duration', (
+      tester,
+    ) async {
+      // 6 exercises x 3 sets at 120s rest each — matches the duration
+      // estimator's 45-min output (mirrors the beginner CTA test pattern).
+      final routine = Routine(
+        id: 'r-1',
+        name: 'Push Day',
+        userId: 'user-001',
+        isDefault: false,
+        exercises: List.generate(
+          6,
+          (i) => RoutineExercise(
+            exerciseId: 'ex-$i',
+            setConfigs: List.generate(
+              3,
+              (_) => const RoutineSetConfig(targetReps: 5, restSeconds: 120),
+            ),
+          ),
+        ),
+        createdAt: DateTime(2026),
+      );
+
+      await tester.pumpWidget(
+        _buildWithRouter(
+          plan: _plan(routines: [_bucket(routineId: 'r-1', order: 1)]),
+          routines: [routine],
+          workoutCount: 5,
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.textContaining('6 exercises'), findsOneWidget);
+      expect(find.textContaining('~45 min'), findsOneWidget);
+    });
+
+    testWidgets('renders play_arrow as a glyph (not a Button component)', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _buildWithRouter(
+          plan: _plan(routines: [_bucket(routineId: 'r-1', order: 1)]),
+          routines: [_routine(id: 'r-1', name: 'Push Day', userId: 'user-001')],
+          workoutCount: 5,
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      // Play glyph is present, but the banner must NOT be a FilledButton —
+      // the active-plan hero is a tappable Material+InkWell card, not a
+      // stock Material button.
+      expect(find.byIcon(Icons.play_arrow), findsOneWidget);
+      expect(find.byType(FilledButton), findsNothing);
+    });
+
+    testWidgets('routine name is rendered with titleLarge typography', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _buildWithRouter(
+          plan: _plan(routines: [_bucket(routineId: 'r-1', order: 1)]),
+          routines: [_routine(id: 'r-1', name: 'Push Day', userId: 'user-001')],
+          workoutCount: 5,
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final ctx = tester.element(find.text('Push Day'));
+      final expected = Theme.of(
+        ctx,
+      ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700);
+      final actual = tester.widget<Text>(find.text('Push Day')).style;
+      expect(actual?.fontSize, expected?.fontSize);
+      expect(actual?.fontWeight, FontWeight.w700);
+    });
+
+    testWidgets('banner is tappable (InkWell with non-null onTap)', (
+      tester,
+    ) async {
+      // We don't assert the destination here — startRoutineWorkout is covered
+      // by its own widget tests and needs a routine with resolved exercises
+      // to reach the navigation call. The contract this test owns is that
+      // the banner surface is wired up as a tappable InkWell.
+      await tester.pumpWidget(
+        _buildWithRouter(
+          plan: _plan(routines: [_bucket(routineId: 'r-1', order: 1)]),
+          routines: [_routine(id: 'r-1', name: 'Push Day', userId: 'user-001')],
+          workoutCount: 5,
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final inkWell = tester.widget<InkWell>(find.byType(InkWell));
+      expect(inkWell.onTap, isNotNull);
     });
 
     testWidgets('suggested-next advances to the next uncompleted routine', (
@@ -234,9 +340,9 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      // With the first routine complete, the hero CTA advances.
-      expect(find.text('Start Pull Day'), findsOneWidget);
-      expect(find.text('Start Push Day'), findsNothing);
+      // With the first routine complete, the hero CTA advances to Pull Day.
+      expect(find.text('Pull Day'), findsOneWidget);
+      expect(find.text('Push Day'), findsNothing);
     });
   });
 
@@ -288,7 +394,7 @@ void main() {
 
   group('ActionHero - lapsed (no plan, has history)', () {
     testWidgets(
-      'shows "Plan your week" primary FilledButton + "Quick workout" secondary TextButton',
+      'shows "Plan your week" primary FilledButton + "Quick workout" secondary OutlinedButton',
       (tester) async {
         await tester.pumpWidget(
           _buildWithRouter(
@@ -304,11 +410,35 @@ void main() {
         expect(find.text('Plan your week'), findsOneWidget);
         expect(find.text('Quick workout'), findsOneWidget);
 
-        // Primary must be FilledButton, secondary must be TextButton.
+        // Primary must be FilledButton, secondary must be OutlinedButton
+        // (visibility upgrade from the original ghost TextButton).
         expect(find.byType(FilledButton), findsOneWidget);
-        expect(find.byType(TextButton), findsOneWidget);
+        expect(find.byType(OutlinedButton), findsOneWidget);
+        expect(find.byType(TextButton), findsNothing);
       },
     );
+
+    testWidgets('secondary OutlinedButton has minimum height of 48dp', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _buildWithRouter(
+          plan: null,
+          routines: [_routine(id: 'r-1', name: 'X', userId: 'user-001')],
+          workouts: [_workout()],
+          workoutCount: 3,
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final outlined = tester.widget<OutlinedButton>(
+        find.byType(OutlinedButton),
+      );
+      final min = outlined.style?.minimumSize?.resolve({});
+      expect(min, isNotNull);
+      expect(min!.height, greaterThanOrEqualTo(48));
+    });
 
     testWidgets('"Plan your week" navigates to /plan/week', (tester) async {
       await tester.pumpWidget(
@@ -330,31 +460,40 @@ void main() {
   });
 
   group('ActionHero - week complete', () {
-    testWidgets('shows "Start new week" when all routines done', (
+    testWidgets(
+      'renders banner with NEW WEEK label and "Start new week" headline',
+      (tester) async {
+        await tester.pumpWidget(
+          _buildWithRouter(
+            plan: _plan(
+              routines: [
+                _bucket(routineId: 'r-1', order: 1, completedWorkoutId: 'wk-1'),
+                _bucket(routineId: 'r-2', order: 2, completedWorkoutId: 'wk-2'),
+              ],
+            ),
+            routines: [
+              _routine(id: 'r-1', name: 'Push', userId: 'user-001'),
+              _routine(id: 'r-2', name: 'Pull', userId: 'user-001'),
+            ],
+            workoutCount: 6,
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        // New banner pattern: NEW WEEK label + "Start new week" headline +
+        // "Y of Y done" sub-line, NOT a FilledButton with stock chrome.
+        expect(find.text('NEW WEEK'), findsOneWidget);
+        expect(find.text('Start new week'), findsOneWidget);
+        expect(find.textContaining('2 of 2 done'), findsOneWidget);
+        expect(find.byType(FilledButton), findsNothing);
+        expect(find.byIcon(Icons.play_arrow), findsOneWidget);
+      },
+    );
+
+    testWidgets('tapping the week-complete banner navigates to /plan/week', (
       tester,
     ) async {
-      await tester.pumpWidget(
-        _buildWithRouter(
-          plan: _plan(
-            routines: [
-              _bucket(routineId: 'r-1', order: 1, completedWorkoutId: 'wk-1'),
-              _bucket(routineId: 'r-2', order: 2, completedWorkoutId: 'wk-2'),
-            ],
-          ),
-          routines: [
-            _routine(id: 'r-1', name: 'Push', userId: 'user-001'),
-            _routine(id: 'r-2', name: 'Pull', userId: 'user-001'),
-          ],
-          workoutCount: 6,
-        ),
-      );
-      await tester.pump();
-      await tester.pump();
-
-      expect(find.text('Start new week'), findsOneWidget);
-    });
-
-    testWidgets('"Start new week" navigates to /plan/week', (tester) async {
       await tester.pumpWidget(
         _buildWithRouter(
           plan: _plan(
@@ -377,7 +516,27 @@ void main() {
   });
 
   group('ActionHero - tap targets', () {
-    testWidgets('hero banner is at least 48dp tall', (tester) async {
+    testWidgets('lapsed primary FilledButton is at least 48dp tall', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _buildWithRouter(
+          plan: null,
+          routines: [_routine(id: 'r-1', name: 'X', userId: 'user-001')],
+          workouts: [_workout()],
+          workoutCount: 3,
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final button = tester.widget<FilledButton>(find.byType(FilledButton));
+      final min = button.style?.minimumSize?.resolve({});
+      expect(min, isNotNull);
+      expect(min!.height, greaterThanOrEqualTo(48));
+    });
+
+    testWidgets('active-plan banner has at least 80dp height', (tester) async {
       await tester.pumpWidget(
         _buildWithRouter(
           plan: _plan(routines: [_bucket(routineId: 'r-1', order: 1)]),
@@ -388,11 +547,13 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      // The CTA is a FilledButton with minimumSize >= 48dp.
-      final button = tester.widget<FilledButton>(find.byType(FilledButton));
-      final min = button.style?.minimumSize?.resolve({});
-      expect(min, isNotNull);
-      expect(min!.height, greaterThanOrEqualTo(48));
+      // The banner wraps "Push" — find its enclosing InkWell and assert the
+      // rendered height is >= 80dp.
+      final inkWell = find
+          .ancestor(of: find.text('Push'), matching: find.byType(InkWell))
+          .first;
+      final size = tester.getSize(inkWell);
+      expect(size.height, greaterThanOrEqualTo(80));
     });
   });
 }

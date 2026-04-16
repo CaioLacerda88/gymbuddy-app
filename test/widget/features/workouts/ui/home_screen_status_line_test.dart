@@ -174,6 +174,61 @@ void main() {
       expect(find.textContaining('SAT,'), findsNothing);
       expect(find.textContaining('SUN,'), findsNothing);
     });
+
+    testWidgets(
+      'incomplete state is rendered at titleLarge so it outranks hero content',
+      (tester) async {
+        await tester.pumpWidget(
+          _build(
+            plan: _plan(
+              routines: [
+                _bucket(routineId: 'r-1', order: 1, completedWorkoutId: 'wk-1'),
+                _bucket(routineId: 'r-2', order: 2),
+                _bucket(routineId: 'r-3', order: 3),
+              ],
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        // Resolve titleLarge from the active theme via the harness context.
+        final ctx = tester.element(find.byType(HomeStatusLine));
+        final expected = Theme.of(ctx).textTheme.titleLarge;
+
+        // Scope the RichText search to the HomeStatusLine subtree — Material
+        // chrome also renders RichTexts. Text.rich wraps the user spans in
+        // a DefaultTextStyle-carrying root span (bodyMedium), so the tree is
+        // [root 14dp] > [our TextSpan null] > [count span 20dp, suffix span
+        // 20dp]. Assert that at least one leaf explicitly carries the
+        // titleLarge fontSize; that's the contract that makes the status
+        // line outrank the hero below it.
+        final richText = tester.widget<RichText>(
+          find.descendant(
+            of: find.byType(HomeStatusLine),
+            matching: find.byType(RichText),
+          ),
+        );
+        final sizes = <double?>[];
+        void collect(InlineSpan span) {
+          if (span is TextSpan) {
+            if (span.style?.fontSize != null) sizes.add(span.style!.fontSize);
+            for (final child in span.children ?? const <InlineSpan>[]) {
+              collect(child);
+            }
+          }
+        }
+
+        collect(richText.text);
+        expect(
+          sizes,
+          contains(expected?.fontSize),
+          reason:
+              'HomeStatusLine should render at least one span at '
+              'titleLarge (${expected?.fontSize}); got $sizes',
+        );
+      },
+    );
   });
 
   group('HomeStatusLine - active plan, complete', () {
@@ -197,6 +252,32 @@ void main() {
         expect(find.textContaining('2 of 2 done'), findsOneWidget);
       },
     );
+
+    testWidgets(
+      'complete state is rendered at titleLarge so it outranks hero content',
+      (tester) async {
+        await tester.pumpWidget(
+          _build(
+            plan: _plan(
+              routines: [
+                _bucket(routineId: 'r-1', order: 1, completedWorkoutId: 'wk-1'),
+                _bucket(routineId: 'r-2', order: 2, completedWorkoutId: 'wk-2'),
+              ],
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        final completeFinder = find.textContaining('Week complete');
+        final ctx = tester.element(completeFinder);
+        final expected = Theme.of(ctx).textTheme.titleLarge;
+
+        final actual = tester.widget<Text>(completeFinder).style;
+        expect(actual?.fontSize, expected?.fontSize);
+        expect(actual?.fontWeight, FontWeight.w700);
+      },
+    );
   });
 
   group('HomeStatusLine - no plan, history exists', () {
@@ -218,6 +299,31 @@ void main() {
       await tester.pump();
 
       expect(find.text('No plan this week'), findsOneWidget);
+    });
+
+    testWidgets('lapsed state stays at titleMedium (muted, not celebratory)', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _build(
+          plan: null,
+          workouts: [_workout()],
+          profile: const Profile(
+            id: 'user-001',
+            displayName: 'Alex',
+            weightUnit: 'kg',
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final lapsedFinder = find.text('No plan this week');
+      final ctx = tester.element(lapsedFinder);
+      final expected = Theme.of(ctx).textTheme.titleMedium;
+
+      final actual = tester.widget<Text>(lapsedFinder).style;
+      expect(actual?.fontSize, expected?.fontSize);
     });
 
     testWidgets(

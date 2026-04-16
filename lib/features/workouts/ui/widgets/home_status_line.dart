@@ -38,10 +38,13 @@ class HomeStatusLine extends ConsumerWidget {
       final total = ref.watch(totalBucketCountProvider);
       final isComplete = ref.watch(isWeekCompleteProvider);
 
+      // Active/complete states use titleLarge so the status line outranks the
+      // hero content directly below — the hero reads as a consequence of the
+      // status, not a sibling. Lapsed (further down) stays at titleMedium.
       if (isComplete) {
         return Text(
           'Week complete \u2014 $total of $total done',
-          style: theme.textTheme.titleMedium?.copyWith(
+          style: theme.textTheme.titleLarge?.copyWith(
             color: theme.colorScheme.primary,
             fontWeight: FontWeight.w700,
           ),
@@ -53,14 +56,14 @@ class HomeStatusLine extends ConsumerWidget {
           children: [
             TextSpan(
               text: '$completed',
-              style: theme.textTheme.titleMedium?.copyWith(
+              style: theme.textTheme.titleLarge?.copyWith(
                 color: theme.colorScheme.primary,
                 fontWeight: FontWeight.w700,
               ),
             ),
             TextSpan(
               text: ' of $total this week',
-              style: theme.textTheme.titleMedium?.copyWith(
+              style: theme.textTheme.titleLarge?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
                 fontWeight: FontWeight.w600,
               ),

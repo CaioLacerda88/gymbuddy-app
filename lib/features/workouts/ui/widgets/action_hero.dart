@@ -40,7 +40,7 @@ class ActionHero extends ConsumerWidget {
     if (hasActivePlan) {
       final isComplete = ref.watch(isWeekCompleteProvider);
       if (isComplete) {
-        return _WeekCompleteHero(onPressed: () => context.push('/plan/week'));
+        return _WeekCompleteHero(onTap: () => context.push('/plan/week'));
       }
       return const _ActivePlanHero();
     }
@@ -118,7 +118,7 @@ class ActionHero extends ConsumerWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Active plan: "Start {suggestedNext}"
+// Active plan: 80dp banner — UP NEXT label + routine name + metadata
 // ---------------------------------------------------------------------------
 
 class _ActivePlanHero extends ConsumerWidget {
@@ -134,22 +134,17 @@ class _ActivePlanHero extends ConsumerWidget {
       (r) => r?.id == suggested.routineId,
       orElse: () => null,
     );
+    if (routine == null) return const SizedBox.shrink();
 
-    final label = routine?.name ?? 'Next workout';
+    final durationMin = estimateRoutineDurationMinutes(routine);
+    final metadata =
+        '${routine.exercises.length} exercises \u00B7 ~$durationMin min';
 
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton.icon(
-        onPressed: routine == null
-            ? null
-            : () => startRoutineWorkout(context, ref, routine),
-        icon: const Icon(Icons.play_arrow_rounded),
-        label: Text('Start $label', overflow: TextOverflow.ellipsis),
-        style: FilledButton.styleFrom(
-          minimumSize: const Size(double.infinity, 56),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-        ),
-      ),
+    return _HeroBanner(
+      label: 'UP NEXT',
+      headline: routine.name,
+      subline: metadata,
+      onTap: () => startRoutineWorkout(context, ref, routine),
     );
   }
 }
@@ -181,8 +176,12 @@ class _LapsedHero extends StatelessWidget {
             ),
           ),
         ),
-        TextButton(
+        const SizedBox(height: 8),
+        OutlinedButton(
           onPressed: onQuickWorkout,
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 48),
+          ),
           child: const Text('Quick workout'),
         ),
       ],
@@ -191,27 +190,22 @@ class _LapsedHero extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Week complete: Start new week
+// Week complete: 80dp banner — NEW WEEK label + "Start new week" + Y of Y done
 // ---------------------------------------------------------------------------
 
-class _WeekCompleteHero extends StatelessWidget {
-  const _WeekCompleteHero({required this.onPressed});
+class _WeekCompleteHero extends ConsumerWidget {
+  const _WeekCompleteHero({required this.onTap});
 
-  final VoidCallback onPressed;
+  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton.icon(
-        onPressed: onPressed,
-        icon: const Icon(Icons.refresh_rounded),
-        label: const Text('Start new week'),
-        style: FilledButton.styleFrom(
-          minimumSize: const Size(double.infinity, 56),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-        ),
-      ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final total = ref.watch(totalBucketCountProvider);
+    return _HeroBanner(
+      label: 'NEW WEEK',
+      headline: 'Start new week',
+      subline: total > 0 ? '$total of $total done' : null,
+      onTap: onTap,
     );
   }
 }
@@ -221,9 +215,9 @@ class _WeekCompleteHero extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 /// First-run banner CTA surfacing a recommended beginner routine with a
-/// one-tap entry into an active workout. Dimensions (80dp) and copy are
-/// preserved from the original implementation inside
-/// `week_bucket_section.dart` so existing E2E selectors continue to match.
+/// one-tap entry into an active workout. Shares the [_HeroBanner] vocabulary
+/// with [_ActivePlanHero] and [_WeekCompleteHero] so the four hero states
+/// read as variants of one surface, not four unrelated cards.
 class _BeginnerCta extends StatelessWidget {
   const _BeginnerCta({required this.routine, required this.onTap});
 
@@ -232,11 +226,51 @@ class _BeginnerCta extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final mutedColor = theme.colorScheme.onSurface.withValues(alpha: 0.55);
     final durationMin = estimateRoutineDurationMinutes(routine);
     final stats =
         '${routine.exercises.length} exercises \u00B7 ~$durationMin min';
+
+    return _HeroBanner(
+      label: 'YOUR FIRST WORKOUT',
+      headline: routine.name,
+      subline: stats,
+      onTap: onTap,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Shared 80dp banner surface for all three hero variants (active plan,
+// brand-new beginner, week complete). One Material+InkWell card with a left
+// accent border in primary green, label / headline / subline rows, and a
+// trailing play glyph. Background flows through theme.cardTheme.color so the
+// banner inherits app-wide surface tokens.
+// ---------------------------------------------------------------------------
+
+class _HeroBanner extends StatelessWidget {
+  const _HeroBanner({
+    required this.label,
+    required this.headline,
+    this.subline,
+    required this.onTap,
+  });
+
+  /// Small uppercase label, e.g. "UP NEXT", "YOUR FIRST WORKOUT", "NEW WEEK".
+  final String label;
+
+  /// Primary content line, e.g. routine name or "Start new week".
+  final String headline;
+
+  /// Optional metadata line below the headline (exercises x duration, "Y of Y
+  /// done", etc.). When null the banner renders only the label + headline.
+  final String? subline;
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final mutedColor = theme.colorScheme.onSurface.withValues(alpha: 0.55);
 
     return Material(
       color: theme.cardTheme.color ?? theme.colorScheme.surface,
@@ -244,59 +278,65 @@ class _BeginnerCta extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(kRadiusMd),
         onTap: onTap,
-        child: Container(
-          height: 80,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(kRadiusMd),
-            border: Border(
-              left: BorderSide(color: theme.colorScheme.primary, width: 4),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 80),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(kRadiusMd),
+              border: Border(
+                left: BorderSide(color: theme.colorScheme.primary, width: 4),
+              ),
             ),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'YOUR FIRST WORKOUT',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: mutedColor,
-                        letterSpacing: 1.2,
-                        fontWeight: FontWeight.w700,
-                      ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          label,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: mutedColor,
+                            letterSpacing: 1.2,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          headline,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            color: theme.colorScheme.onSurface,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                        if (subline != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            subline!,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: mutedColor,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ],
+                      ],
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      routine.name,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: theme.colorScheme.onSurface,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      stats,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: mutedColor,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 12),
+                  Icon(
+                    Icons.play_arrow,
+                    color: theme.colorScheme.primary,
+                    size: 28,
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Icon(
-                Icons.play_arrow,
-                color: theme.colorScheme.primary,
-                size: 28,
-              ),
-            ],
+            ),
           ),
         ),
       ),

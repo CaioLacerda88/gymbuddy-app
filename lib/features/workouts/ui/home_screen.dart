@@ -80,40 +80,42 @@ class _ConfirmBanner extends ConsumerWidget {
     if (!needsConfirmation) return const SizedBox.shrink();
 
     final theme = Theme.of(context);
+    final borderRadius = BorderRadius.circular(12);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: theme.cardTheme.color ?? theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
+      child: Material(
+        color: theme.cardTheme.color ?? theme.colorScheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: borderRadius,
+          side: BorderSide(
             color: theme.colorScheme.primary.withValues(alpha: 0.3),
-            width: 1,
           ),
         ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Same plan this week?',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Same plan this week?',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
+                  ),
                 ),
               ),
-            ),
-            TextButton(
-              onPressed: () => context.push('/plan/week'),
-              child: const Text('Edit'),
-            ),
-            TextButton(
-              onPressed: () {
-                ref.read(weeklyPlanNeedsConfirmationProvider.notifier).state =
-                    false;
-              },
-              child: const Text('Confirm'),
-            ),
-          ],
+              TextButton(
+                onPressed: () => context.push('/plan/week'),
+                child: const Text('Edit'),
+              ),
+              TextButton(
+                onPressed: () {
+                  ref.read(weeklyPlanNeedsConfirmationProvider.notifier).state =
+                      false;
+                },
+                child: const Text('Confirm'),
+              ),
+            ],
+          ),
         ),
       ),
     );
