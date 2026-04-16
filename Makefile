@@ -1,4 +1,4 @@
-.PHONY: gen gen-watch format analyze test build-android-debug ci
+.PHONY: gen gen-watch format analyze test build-android-debug build-android-release-arm64 ci
 
 gen:
 	dart run build_runner build --delete-conflicting-outputs
@@ -19,3 +19,6 @@ build-android-debug:
 	flutter build apk --debug --no-shrink
 
 ci: format gen analyze test build-android-debug
+
+build-android-release-arm64:
+	flutter build apk --split-per-abi --target-platform android-arm64

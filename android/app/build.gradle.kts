@@ -62,6 +62,19 @@ android {
                 // Dev/CI without keystore — fall back to debug signing.
                 signingConfigs.getByName("debug")
             }
+
+            // B6: enable R8 code shrinking + resource shrinking for release only.
+            // Debug builds stay un-shrunk (make ci uses flutter build apk --debug --no-shrink).
+            isMinifyEnabled = true
+            isShrinkResources = true
+
+            // proguard-android-optimize.txt ships with AGP and includes the
+            // aggressive-but-safe default ruleset (removes unused code, inlines,
+            // merges classes). Our app-specific keep rules live in proguard-rules.pro.
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }
