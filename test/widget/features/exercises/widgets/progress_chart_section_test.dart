@@ -1,0 +1,495 @@
+import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:gymbuddy_app/core/theme/app_theme.dart';
+import 'package:gymbuddy_app/features/exercises/models/progress_point.dart';
+import 'package:gymbuddy_app/features/exercises/providers/exercise_progress_provider.dart';
+import 'package:gymbuddy_app/features/exercises/ui/widgets/progress_chart_section.dart';
+import 'package:gymbuddy_app/features/profile/models/profile.dart';
+import 'package:gymbuddy_app/features/profile/providers/profile_providers.dart';
+
+/// Fake profile notifier so tests can pin the weight unit without hitting the
+/// real profile repository.
+class _FakeProfileNotifier extends AsyncNotifier<Profile?>
+    implements ProfileNotifier {
+  _FakeProfileNotifier(this._unit);
+  final String _unit;
+
+  @override
+  Future<Profile?> build() async => Profile(id: 'user-001', weightUnit: _unit);
+
+  @override
+  Future<void> saveOnboardingProfile({
+    required String displayName,
+    required String fitnessLevel,
+    int trainingFrequencyPerWeek = 3,
+  }) async {}
+
+  @override
+  Future<void> updateTrainingFrequency(int frequency) async {}
+
+  @override
+  Future<void> toggleWeightUnit() async {}
+}
+
+/// Build the harness with an explicit [ExerciseProgressData] record so the
+/// widget's consumption of `points` AND `workoutCount` is exercised (BL-1
+/// disambiguation folded into BL-3 acceptance #14).
+Widget _buildHarness({
+  required String unit,
+  required List<ProgressPoint> points,
+  required int workoutCount,
+  double? prValue,
+}) {
+  return ProviderScope(
+    overrides: [
+      profileProvider.overrideWith(() => _FakeProfileNotifier(unit)),
+      exerciseProgressProvider.overrideWith(
+        (ref, _) async => (points: points, workoutCount: workoutCount),
+      ),
+    ],
+    child: MaterialApp(
+      theme: AppTheme.dark,
+      home: Scaffold(
+        body: ProgressChartSection(exerciseId: 'ex-1', prValue: prValue),
+      ),
+    ),
+  );
+}
+
+/// Shorthand for building `N` ascending-date progress points for a density
+/// test. Weights start at [startWeight] and rise by [step] per point; dates
+/// start at [startDate] and advance by [daysPerStep] per point.
+List<ProgressPoint> _linearPoints({
+  required int n,
+  double startWeight = 80,
+  double step = 2.5,
+  DateTime? startDate,
+  int daysPerStep = 3,
+}) {
+  final first = startDate ?? DateTime(2026, 3, 1);
+  return [
+    for (var i = 0; i < n; i++)
+      ProgressPoint(
+        date: first.add(Duration(days: daysPerStep * i)),
+        weight: startWeight + step * i,
+        sessionReps: 5,
+      ),
+  ];
+}
+
+/// Finds the chart's plot-area SizedBox (uses a Key so we can measure its
+/// height independently of the surrounding container chrome).
+SizedBox _chartCanvas(WidgetTester tester) =>
+    tester.widget<SizedBox>(find.byKey(const Key('progress-chart-canvas')));
+
+void main() {
+  group('ProgressChartSection — empty state', () {
+    testWidgets(
+      '0 points AND 0 workouts → first-log copy + dashed container, no chart',
+      (tester) async {
+        await tester.pumpWidget(
+          _buildHarness(unit: 'kg', points: const [], workoutCount: 0),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(LineChart), findsNothing);
+        expect(
+          find.text('Log your first set to start tracking'),
+          findsOneWidget,
+        );
+        // Dashed-ish container marker: we tag it with a Key for the widget
+        // to find deterministically (the spec allows a solid-border fallback
+        // instead of a true CustomPaint dashed border).
+        expect(
+          find.byKey(const Key('progress-chart-empty-container')),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'BL-1: 1 point AND 2 workouts → "2 workouts logged" copy, not "1 session logged"',
+      (tester) async {
+        // Two workouts that aggregated to one day → the provider still
+        // reports workoutCount = 2. The trend-copy row must use the workout
+        // count, not points.length, to disambiguate.
+        final points = [
+          ProgressPoint(
+            date: DateTime(2026, 3, 1),
+            weight: 100,
+            sessionReps: 5,
+          ),
+        ];
+        await tester.pumpWidget(
+          _buildHarness(unit: 'kg', points: points, workoutCount: 2),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('2 workouts logged — keep going'), findsOneWidget);
+        expect(find.text('1 session logged'), findsNothing);
+      },
+    );
+
+    testWidgets('1 point AND 1 workout → "1 workout logged — keep going"', (
+      tester,
+    ) async {
+      final points = [
+        ProgressPoint(date: DateTime(2026, 3, 1), weight: 100, sessionReps: 5),
+      ];
+      await tester.pumpWidget(
+        _buildHarness(unit: 'kg', points: points, workoutCount: 1),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('1 workout logged — keep going'), findsOneWidget);
+    });
+  });
+
+  group('ProgressChartSection — densities', () {
+    testWidgets('sparse (3 points) → 120dp chart canvas, per-dot date labels', (
+      tester,
+    ) async {
+      final points = _linearPoints(n: 3);
+      await tester.pumpWidget(
+        _buildHarness(unit: 'kg', points: points, workoutCount: 3),
+      );
+      await tester.pumpAndSettle();
+
+      // Acceptance #8: <4 points → 120dp plot area (not the whole widget).
+      final canvas = _chartCanvas(tester);
+      expect(canvas.height, 120);
+
+      // Acceptance #4: N<10 → per-dot date labels. Every point's formatted
+      // date label should render once.
+      for (final p in points) {
+        final label = _formatDate(p.date);
+        expect(
+          find.text(label),
+          findsWidgets,
+          reason: 'expected per-dot label for $label',
+        );
+      }
+
+      // Trend copy should read as "Up X kg in 30 days" (default window).
+      // The default window is last30Days and weights rise 80 → 82.5 → 85.
+      expect(find.textContaining('Up'), findsOneWidget);
+      expect(find.textContaining('in 30 days'), findsOneWidget);
+    });
+
+    testWidgets(
+      'mid (5 points) → 200dp chart canvas, first + last date labels',
+      (tester) async {
+        final points = _linearPoints(n: 5);
+        await tester.pumpWidget(
+          _buildHarness(unit: 'kg', points: points, workoutCount: 5),
+        );
+        await tester.pumpAndSettle();
+
+        // Acceptance #8: >=4 points → 200dp plot area.
+        final canvas = _chartCanvas(tester);
+        expect(canvas.height, 200);
+
+        // Acceptance #4: 5 <= 8 points → first + last dates shown.
+        final firstLabel = _formatDate(points.first.date);
+        final lastLabel = _formatDate(points.last.date);
+        expect(find.text(firstLabel), findsWidgets);
+        expect(find.text(lastLabel), findsWidgets);
+
+        // Trend copy is still "Up X kg in 30 days".
+        expect(find.textContaining('Up'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'rich (11 points) → 200dp canvas, 3 evenly-spaced date labels, no weekly aggregation in 30d window',
+      (tester) async {
+        // 11 points spaced 2 days apart → 20-day span, still within 30d.
+        final points = _linearPoints(n: 11, daysPerStep: 2);
+        await tester.pumpWidget(
+          _buildHarness(unit: 'kg', points: points, workoutCount: 11),
+        );
+        await tester.pumpAndSettle();
+
+        final canvas = _chartCanvas(tester);
+        expect(canvas.height, 200);
+
+        // Weekly-max aggregation is ONLY for allTime window when N>30.
+        // With 11 points in the 30d window, no aggregation → the LineChart's
+        // spot count should equal the raw point count.
+        final lineChart = tester.widget<LineChart>(find.byType(LineChart));
+        expect(lineChart.data.lineBarsData.single.spots.length, 11);
+
+        // >8 points → 3 evenly-spaced labels (first, middle, last).
+        final firstLabel = _formatDate(points.first.date);
+        final midLabel = _formatDate(points[points.length ~/ 2].date);
+        final lastLabel = _formatDate(points.last.date);
+        expect(find.text(firstLabel), findsWidgets);
+        expect(find.text(midLabel), findsWidgets);
+        expect(find.text(lastLabel), findsWidgets);
+      },
+    );
+  });
+
+  group('ProgressChartSection — PR ring', () {
+    testWidgets('ring renders at peak dot when 3+ points', (tester) async {
+      // Peak is the last point at 85 kg (80 → 82.5 → 85).
+      final points = _linearPoints(n: 3);
+      await tester.pumpWidget(
+        _buildHarness(unit: 'kg', points: points, workoutCount: 3),
+      );
+      await tester.pumpAndSettle();
+
+      // The widget flags the peak dot so tests can locate it. The widget
+      // publishes a Semantics label on the chart that mentions "PR".
+      expect(
+        find.byWidgetPredicate(
+          (w) =>
+              w is Semantics &&
+              (w.properties.label ?? '').contains('PR marker'),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('prValue anchors ring in Weight mode when it matches a dot', (
+      tester,
+    ) async {
+      // 5 points: 80, 82.5, 85, 87.5, 90. In-window peak is 90.
+      // Pass prValue = 87.5 as the all-time PR — in Weight mode the ring
+      // should anchor at the 87.5 dot (3rd index), NOT the peak (90).
+      final points = _linearPoints(n: 5);
+      await tester.pumpWidget(
+        _buildHarness(
+          unit: 'kg',
+          points: points,
+          workoutCount: 5,
+          prValue: 87.5,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Switch to Weight mode — prValue only applies there. In e1RM mode
+      // the raw 87.5 kg doesn't match a dot's Epley y-value.
+      await tester.tap(find.text('Weight'));
+      await tester.pumpAndSettle();
+
+      // The PR anchor is identified via a Semantics label that encodes
+      // the anchor weight. We verify the ring followed prValue, not the
+      // in-window peak.
+      expect(
+        find.byWidgetPredicate(
+          (w) =>
+              w is Semantics &&
+              (w.properties.label ?? '').contains('PR marker at 87.5'),
+        ),
+        findsOneWidget,
+        reason: 'Ring should anchor at prValue=87.5, not the peak 90',
+      );
+    });
+  });
+
+  group('ProgressChartSection — metric toggle', () {
+    testWidgets('switching Weight → e1RM changes the plotted y-values', (
+      tester,
+    ) async {
+      // 100 kg × 5 reps: raw weight = 100, e1RM = 100 * (1 + 5/30) = 116.67
+      // 105 kg × 5 reps: raw weight = 105, e1RM = 105 * (1 + 5/30) = 122.5
+      final points = [
+        ProgressPoint(date: DateTime(2026, 3, 1), weight: 100, sessionReps: 5),
+        ProgressPoint(date: DateTime(2026, 3, 3), weight: 105, sessionReps: 5),
+      ];
+
+      await tester.pumpWidget(
+        _buildHarness(unit: 'kg', points: points, workoutCount: 2),
+      );
+      await tester.pumpAndSettle();
+
+      // Default metric is e1RM → the topmost plotted y is the e1RM value,
+      // NOT the raw 105. Reading the chart's spots confirms this.
+      var lineChart = tester.widget<LineChart>(find.byType(LineChart));
+      var yMax = lineChart.data.lineBarsData.single.spots
+          .map((s) => s.y)
+          .reduce((a, b) => a > b ? a : b);
+      expect(
+        yMax,
+        closeTo(105 * (1 + 5 / 30), 0.01),
+        reason: 'e1RM mode should plot Epley values',
+      );
+
+      // Tap the "Weight" segment. The toggle is a SegmentedButton<ChartMetric>
+      // distinct from the window toggle.
+      await tester.tap(find.text('Weight'));
+      await tester.pumpAndSettle();
+
+      lineChart = tester.widget<LineChart>(find.byType(LineChart));
+      yMax = lineChart.data.lineBarsData.single.spots
+          .map((s) => s.y)
+          .reduce((a, b) => a > b ? a : b);
+      expect(
+        yMax,
+        closeTo(105, 0.01),
+        reason: 'Weight mode should plot raw max weight',
+      );
+    });
+  });
+
+  group('ProgressChartSection — container chrome', () {
+    testWidgets(
+      'chart card uses theme cardTheme.color, 12dp radius, 1dp border',
+      (tester) async {
+        final points = _linearPoints(n: 3);
+        await tester.pumpWidget(
+          _buildHarness(unit: 'kg', points: points, workoutCount: 3),
+        );
+        await tester.pumpAndSettle();
+
+        final container = tester.widget<Container>(
+          find.byKey(const Key('progress-chart-card')),
+        );
+        final decoration = container.decoration! as BoxDecoration;
+        expect(decoration.borderRadius, BorderRadius.circular(12));
+        expect(decoration.border, isNotNull);
+        // No shadow / no glow.
+        expect(decoration.boxShadow, anyOf(isNull, isEmpty));
+      },
+    );
+  });
+
+  group('ProgressChartSection — y-axis unit', () {
+    testWidgets('y-axis labels carry weightUnit suffix (kg)', (tester) async {
+      final points = _linearPoints(n: 3);
+      await tester.pumpWidget(
+        _buildHarness(unit: 'kg', points: points, workoutCount: 3),
+      );
+      await tester.pumpAndSettle();
+
+      // Every y-axis tick label should carry the unit suffix. We don't pin
+      // an exact number (Y-range padding logic picks it), but at least one
+      // label in the chart should end with " kg".
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is Text && (w.data ?? '').endsWith(' kg'),
+        ),
+        findsWidgets,
+      );
+    });
+
+    testWidgets('y-axis labels swap to lbs when profile says lbs', (
+      tester,
+    ) async {
+      final points = _linearPoints(n: 3);
+      await tester.pumpWidget(
+        _buildHarness(unit: 'lbs', points: points, workoutCount: 3),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is Text && (w.data ?? '').endsWith(' lbs'),
+        ),
+        findsWidgets,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is Text && (w.data ?? '').endsWith(' kg'),
+        ),
+        findsNothing,
+      );
+    });
+  });
+
+  group('ProgressChartSection — trend copy states', () {
+    testWidgets('flat delta → "Holding steady at X kg"', (tester) async {
+      final points = [
+        ProgressPoint(date: DateTime(2026, 3, 1), weight: 100, sessionReps: 5),
+        ProgressPoint(date: DateTime(2026, 3, 3), weight: 100, sessionReps: 5),
+      ];
+      await tester.pumpWidget(
+        _buildHarness(unit: 'kg', points: points, workoutCount: 2),
+      );
+      await tester.pumpAndSettle();
+
+      // e1RM mode is default; e1RM @ 100×5 is ~116.67, and both endpoints
+      // have the same value → trendDelta == 0 → "Holding steady" copy.
+      expect(find.textContaining('Holding steady'), findsOneWidget);
+    });
+
+    testWidgets('negative delta → neutral "Down X kg in 30 days" copy', (
+      tester,
+    ) async {
+      final points = [
+        ProgressPoint(date: DateTime(2026, 3, 1), weight: 100, sessionReps: 5),
+        ProgressPoint(date: DateTime(2026, 3, 5), weight: 95, sessionReps: 5),
+      ];
+      await tester.pumpWidget(
+        _buildHarness(unit: 'kg', points: points, workoutCount: 2),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Down'), findsOneWidget);
+      expect(find.textContaining('in 30 days'), findsOneWidget);
+    });
+  });
+
+  group('ProgressChartSection — window toggle still works', () {
+    testWidgets('tapping 90d re-queries with TimeWindow.last90Days', (
+      tester,
+    ) async {
+      // Toggles only render when there's data to toggle between — the
+      // zero-state suppresses them intentionally. Provide a non-empty
+      // points list so the window SegmentedButton is on screen.
+      final points = _linearPoints(n: 3);
+      final callLog = <TimeWindow>[];
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            profileProvider.overrideWith(() => _FakeProfileNotifier('kg')),
+            exerciseProgressProvider.overrideWith((ref, key) async {
+              callLog.add(key.window);
+              return (points: points, workoutCount: 3);
+            }),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: const Scaffold(
+              body: ProgressChartSection(exerciseId: 'ex-1'),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Default window must be last30Days per acceptance #2.
+      expect(callLog, contains(TimeWindow.last30Days));
+      final before = callLog.length;
+
+      await tester.tap(find.text('90d'));
+      await tester.pumpAndSettle();
+
+      expect(callLog.length, greaterThan(before));
+      expect(callLog.last, TimeWindow.last90Days);
+    });
+  });
+}
+
+/// Mirrors the MMM d format used by the widget for x-axis labels so tests
+/// can predict the exact string (`Mar 1`, etc.) without importing intl here.
+String _formatDate(DateTime d) {
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  return '${months[d.month - 1]} ${d.day}';
+}

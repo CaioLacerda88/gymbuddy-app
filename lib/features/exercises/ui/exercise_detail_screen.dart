@@ -136,6 +136,19 @@ class _ExerciseDetailBody extends ConsumerWidget {
   final bool isDeleting;
   final VoidCallback? onDelete;
 
+  /// Looks up the all-time max-weight PR for [exerciseId] and returns its
+  /// value. Returns `null` when the provider is loading/errored or no PR
+  /// of type `maxWeight` exists — the chart gracefully falls back to the
+  /// in-window peak in that case.
+  double? _maxWeightPRValue(WidgetRef ref, String exerciseId) {
+    final records = ref.watch(exercisePRsProvider(exerciseId)).value;
+    if (records == null) return null;
+    for (final r in records) {
+      if (r.recordType == RecordType.maxWeight) return r.value;
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
@@ -199,7 +212,16 @@ class _ExerciseDetailBody extends ConsumerWidget {
             equipmentType: exercise.equipmentType,
           ),
           const SizedBox(height: 24),
-          ProgressChartSection(exerciseId: exercise.id),
+          // Thread the all-time max-weight PR into the chart. The PR
+          // section above already watches `exercisePRsProvider`; watching
+          // it here too is cheap (Riverpod caches by exerciseId). When
+          // loading/error/absent → `null` → chart falls back to in-window
+          // peak for the gold ring anchor, which is the correct behaviour
+          // per acceptance #5.
+          ProgressChartSection(
+            exerciseId: exercise.id,
+            prValue: _maxWeightPRValue(ref, exercise.id),
+          ),
           if (onDelete != null) ...[
             const SizedBox(height: 32),
             SizedBox(
