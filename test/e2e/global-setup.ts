@@ -618,6 +618,7 @@ async function globalSetup(): Promise<void> {
     'e2e-full-crash@test.local',
     'e2e-full-home@test.local',
     'e2e-full-workout@test.local',
+    'e2e-full-ex-detail-sheet@test.local',
     'e2e-smoke-workout@test.local',
     'e2e-smoke-pr@test.local',
     // P8 beginner CTA requires zero workouts for the CTA to render
@@ -791,6 +792,7 @@ async function globalSetup(): Promise<void> {
     'e2e-full-manage-data@test.local',
     'e2e-full-pr@test.local',
     'e2e-full-crash@test.local',
+    'e2e-full-ex-detail-sheet@test.local',
   ];
   for (const email of usersNeedingSeededWorkoutForP8) {
     const uid = await getUserId(supabase, email);
