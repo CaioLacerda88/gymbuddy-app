@@ -7,7 +7,6 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../profile/providers/profile_providers.dart';
 import '../../models/progress_point.dart';
 import '../../providers/exercise_progress_provider.dart';
-import '../../utils/e1rm.dart';
 
 /// Primary metric for the progress chart.
 ///
@@ -126,7 +125,8 @@ class _ProgressChartSectionState extends ConsumerState<ProgressChartSection> {
       ),
       data: (data) {
         return _ChartBody(
-          rawPoints: data.points,
+          rawPoints: data.rawPoints,
+          e1rmPoints: data.e1rmPoints,
           workoutCount: data.workoutCount,
           window: _window,
           metric: _metric,
@@ -149,6 +149,7 @@ class _ProgressChartSectionState extends ConsumerState<ProgressChartSection> {
 class _ChartBody extends StatelessWidget {
   const _ChartBody({
     required this.rawPoints,
+    required this.e1rmPoints,
     required this.workoutCount,
     required this.window,
     required this.metric,
@@ -160,6 +161,7 @@ class _ChartBody extends StatelessWidget {
   });
 
   final List<ProgressPoint> rawPoints;
+  final List<ProgressPoint> e1rmPoints;
   final int workoutCount;
   final TimeWindow window;
   final ChartMetric metric;
@@ -175,8 +177,12 @@ class _ChartBody extends StatelessWidget {
     final onSurface70 = theme.colorScheme.onSurface.withValues(alpha: 0.70);
 
     // Zero-data empty state — render the dashed-ish container and leave
-    // the window/metric toggles off (no data to toggle between).
-    if (rawPoints.isEmpty && workoutCount == 0) {
+    // the window/metric toggles off (no data to toggle between). Guard on
+    // workoutCount only: a workoutCount > 0 with both series empty means the
+    // user logged something unchartable (bodyweight-only / all warmups) and
+    // should see the "N workouts logged" copy, not the first-log empty state
+    // (review IMPORTANT #1).
+    if (workoutCount == 0) {
       return _ChartCard(
         child: Container(
           key: const Key('progress-chart-empty-container'),
@@ -197,8 +203,12 @@ class _ChartBody extends StatelessWidget {
       );
     }
 
-    // Derive the *visible* series from the raw per-day max-weight points.
-    final series = _buildSeries(rawPoints, metric: metric, window: window);
+    // Pick the pre-ranked series for the current metric. No inline Epley
+    // re-mapping: the provider already built an e1RM-ranked series (whose
+    // per-day peak can differ from the raw-weight peak, e.g. 100×10 beats
+    // 110×3 on e1RM). See [ExerciseProgressData] for the review BLOCKER.
+    final sourcePoints = metric == ChartMetric.e1rm ? e1rmPoints : rawPoints;
+    final series = _buildSeries(sourcePoints, window: window);
 
     // Trend copy per acceptance #6.
     final (trendText, trendColor) = _buildTrendCopy(
@@ -342,10 +352,10 @@ class _TrendRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final metricLabel = metric == ChartMetric.e1rm ? 'e1RM' : 'Weight';
-    final nextMetric = metric == ChartMetric.e1rm
-        ? ChartMetric.weight
-        : ChartMetric.e1rm;
-    final nextMetricLabel = nextMetric == ChartMetric.e1rm ? 'e1RM' : 'Weight';
+    // Announce the *next* state in the Semantics label so screen readers
+    // hear the affordance, not the current value. Computed inline per
+    // review NIT #1 — no need to lift to a local.
+    final nextMetricLabel = metric == ChartMetric.e1rm ? 'Weight' : 'e1RM';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -383,7 +393,11 @@ class _TrendRow extends StatelessWidget {
               label: 'Switch metric to $nextMetricLabel',
               button: true,
               child: TextButton(
-                onPressed: () => onMetricChanged(nextMetric),
+                onPressed: () => onMetricChanged(
+                  metric == ChartMetric.e1rm
+                      ? ChartMetric.weight
+                      : ChartMetric.e1rm,
+                ),
                 style: TextButton.styleFrom(
                   visualDensity: VisualDensity.compact,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -690,37 +704,21 @@ class _PrRingPainter extends FlDotPainter {
 // Pure helpers — kept at file scope so widget tests exercise them too.
 // -----------------------------------------------------------------------------
 
-/// Derive the visible series from the raw max-weight per-day points, given
-/// the current metric and window.
+/// Apply window-dependent aggregation to the pre-ranked series.
 ///
-/// - Weight mode: returns [rawPoints] as-is.
-/// - e1RM mode: re-maps each point's weight to its Epley value using the
-///   already-captured [ProgressPoint.sessionReps]. This avoids a second
-///   query — the PR layer uses the same reps to compute e1RM server-side
-///   so the two views agree to the decimal.
-/// - allTime window with > 30 resulting points: collapse to weekly-max
-///   (ISO-week start anchor) to keep the chart legible.
+/// The caller has already picked the correct source list (raw-weight vs
+/// e1RM-ranked — see [ExerciseProgressData]), so this helper is now just
+/// the weekly-max collapse: allTime window with > 30 points → weekly-max
+/// (ISO-week start anchor) to keep the chart legible. Smaller series pass
+/// through unchanged.
 List<ProgressPoint> _buildSeries(
-  List<ProgressPoint> rawPoints, {
-  required ChartMetric metric,
+  List<ProgressPoint> source, {
   required TimeWindow window,
 }) {
-  final mapped = switch (metric) {
-    ChartMetric.weight => rawPoints,
-    ChartMetric.e1rm => [
-      for (final p in rawPoints)
-        ProgressPoint(
-          date: p.date,
-          weight: e1RM(p.weight, p.sessionReps),
-          sessionReps: p.sessionReps,
-        ),
-    ].where((p) => p.weight > 0).toList(),
-  };
-
-  if (window == TimeWindow.allTime && mapped.length > 30) {
-    return _weeklyMax(mapped);
+  if (window == TimeWindow.allTime && source.length > 30) {
+    return _weeklyMax(source);
   }
-  return mapped;
+  return source;
 }
 
 /// Group [points] by ISO week (Mon-anchored) and keep the max-weight point

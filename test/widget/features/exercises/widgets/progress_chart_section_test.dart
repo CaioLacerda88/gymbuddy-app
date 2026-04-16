@@ -34,19 +34,40 @@ class _FakeProfileNotifier extends AsyncNotifier<Profile?>
 }
 
 /// Build the harness with an explicit [ExerciseProgressData] record so the
-/// widget's consumption of `points` AND `workoutCount` is exercised (BL-1
-/// disambiguation folded into BL-3 acceptance #14).
+/// widget's consumption of `rawPoints`, `e1rmPoints`, AND `workoutCount` is
+/// exercised (BL-1 disambiguation folded into BL-3 acceptance #14, plus
+/// BLOCKER fix: raw vs e1RM series must be independently rankable).
+///
+/// When [e1rmPoints] is omitted, the harness derives an Epley-mapped view of
+/// [points] so legacy tests keep passing without hand-crafting both lists.
+/// Tests that specifically need e1RM-peak != raw-peak (BLOCKER regression
+/// guard) pass an explicit [e1rmPoints].
 Widget _buildHarness({
   required String unit,
   required List<ProgressPoint> points,
   required int workoutCount,
+  List<ProgressPoint>? e1rmPoints,
   double? prValue,
 }) {
+  final derivedE1rm =
+      e1rmPoints ??
+      [
+        for (final p in points)
+          ProgressPoint(
+            date: p.date,
+            weight: p.weight * (1 + p.sessionReps / 30),
+            sessionReps: p.sessionReps,
+          ),
+      ].where((p) => p.weight > 0).toList();
   return ProviderScope(
     overrides: [
       profileProvider.overrideWith(() => _FakeProfileNotifier(unit)),
       exerciseProgressProvider.overrideWith(
-        (ref, _) async => (points: points, workoutCount: workoutCount),
+        (ref, _) async => (
+          rawPoints: points,
+          e1rmPoints: derivedE1rm,
+          workoutCount: workoutCount,
+        ),
       ),
     ],
     child: MaterialApp(
@@ -142,6 +163,34 @@ void main() {
 
       expect(find.text('1 workout logged — keep going'), findsOneWidget);
     });
+
+    // Review IMPORTANT #1: workouts logged but nothing chartable (all sets
+    // were bodyweight-only / warmup / incomplete → filtered out of both the
+    // raw and e1RM series). The user must see the "N workouts logged" copy
+    // so they know their session counted; NOT the first-log empty-state
+    // container.
+    testWidgets(
+      '0 points AND workoutCount == 2 → "2 workouts logged" copy, no canvas, no empty container',
+      (tester) async {
+        await tester.pumpWidget(
+          _buildHarness(
+            unit: 'kg',
+            points: const [],
+            e1rmPoints: const [],
+            workoutCount: 2,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('2 workouts logged — keep going'), findsOneWidget);
+        expect(find.byType(LineChart), findsNothing);
+        expect(find.byKey(const Key('progress-chart-canvas')), findsNothing);
+        expect(
+          find.byKey(const Key('progress-chart-empty-container')),
+          findsNothing,
+        );
+      },
+    );
   });
 
   group('ProgressChartSection — densities', () {
@@ -330,6 +379,72 @@ void main() {
         yMax,
         closeTo(105, 0.01),
         reason: 'Weight mode should plot raw max weight',
+      );
+    });
+
+    // Review BLOCKER regression guard: the provider's raw and e1RM series are
+    // ranked independently. A day with `(100×10)` (e1RM 133.3) and `(110×3)`
+    // (e1RM 121) stores 110 in rawPoints but 100 in e1rmPoints. The widget
+    // must plot the pre-ranked series for each metric instead of re-mapping
+    // the raw list — otherwise e1RM mode under-reports the peak. This test
+    // asserts the plotted y-max matches the correct per-metric peak (NOT the
+    // re-mapped raw peak, which would read ~121 instead of the true 133.3).
+    testWidgets('y-axis peak differs between metrics when fixture diverges', (
+      tester,
+    ) async {
+      // Two-day fixture so we get a real LineChart (not the single-point
+      // pill) and can read the spot y-values directly.
+      //
+      // Day 1:  raw = 100 × 5 → 100 kg, e1RM = 100 × 5 → 116.67
+      // Day 2:  raw = 110 × 3 → 110 kg (raw peak)
+      //         e1RM peak on that day came from an unseen 100 × 10 set →
+      //         133.33 (e1RM peak). Raw and e1RM lists diverge here.
+      final day1 = DateTime(2026, 3, 1);
+      final day2 = DateTime(2026, 3, 5);
+
+      final rawPoints = [
+        ProgressPoint(date: day1, weight: 100, sessionReps: 5),
+        ProgressPoint(date: day2, weight: 110, sessionReps: 3),
+      ];
+      final e1rmPoints = [
+        ProgressPoint(date: day1, weight: 100 * (1 + 5 / 30), sessionReps: 5),
+        ProgressPoint(date: day2, weight: 100 * (1 + 10 / 30), sessionReps: 10),
+      ];
+
+      await tester.pumpWidget(
+        _buildHarness(
+          unit: 'kg',
+          points: rawPoints,
+          e1rmPoints: e1rmPoints,
+          workoutCount: 2,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Default metric is e1RM → y-max should be the Epley-derived 133.3,
+      // NOT the re-mapped 110 × 3 → 121 that the buggy widget would show.
+      var lineChart = tester.widget<LineChart>(find.byType(LineChart));
+      var yMax = lineChart.data.lineBarsData.single.spots
+          .map((s) => s.y)
+          .reduce((a, b) => a > b ? a : b);
+      expect(
+        yMax,
+        closeTo(100 * (1 + 10 / 30), 0.01),
+        reason: 'e1RM mode should plot e1RM-ranked peak 133.3, not 121',
+      );
+
+      // Flip to Weight mode → y-max should be the raw 110 kg PR.
+      await tester.tap(find.text('e1RM'));
+      await tester.pumpAndSettle();
+
+      lineChart = tester.widget<LineChart>(find.byType(LineChart));
+      yMax = lineChart.data.lineBarsData.single.spots
+          .map((s) => s.y)
+          .reduce((a, b) => a > b ? a : b);
+      expect(
+        yMax,
+        closeTo(110, 0.01),
+        reason: 'Weight mode should plot the raw max weight 110',
       );
     });
   });
@@ -550,7 +665,15 @@ void main() {
             profileProvider.overrideWith(() => _FakeProfileNotifier('kg')),
             exerciseProgressProvider.overrideWith((ref, key) async {
               callLog.add(key.window);
-              return (points: points, workoutCount: 3);
+              final e1rm = [
+                for (final p in points)
+                  ProgressPoint(
+                    date: p.date,
+                    weight: p.weight * (1 + p.sessionReps / 30),
+                    sessionReps: p.sessionReps,
+                  ),
+              ];
+              return (rawPoints: points, e1rmPoints: e1rm, workoutCount: 3);
             }),
           ],
           child: MaterialApp(
@@ -578,6 +701,7 @@ void main() {
 
 /// Mirrors the MMM d format used by the widget for x-axis labels so tests
 /// can predict the exact string (`Mar 1`, etc.) without importing intl here.
+/// Assumes `en` locale — matches the widget's `DateFormat.MMMd()` default.
 String _formatDate(DateTime d) {
   const months = [
     'Jan',

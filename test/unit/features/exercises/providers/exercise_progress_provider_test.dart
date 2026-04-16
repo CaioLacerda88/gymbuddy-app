@@ -262,6 +262,67 @@ void main() {
     });
   });
 
+  group('buildExerciseProgressData', () {
+    // Review BLOCKER regression guard: the raw and e1RM lists are ranked
+    // independently. A day with two qualifying sets where the weight-peak
+    // set has a LOWER e1RM than another set must surface the true e1RM peak
+    // in `e1rmPoints`, not the re-mapped weight-peak. The old code picked
+    // the max-weight set per day and stored its reps → e1RM mode then
+    // plotted `e1RM(110, 3) ≈ 121` instead of the true `e1RM(100, 10) ≈ 133`.
+    test(
+      'day with weight-peak != e1RM-peak surfaces correct value in each list',
+      () {
+        // (100 × 10) → e1RM 133.33 (higher on Epley, lower raw weight)
+        // (110 × 3)  → e1RM 121.0  (lower on Epley, higher raw weight)
+        final data = buildExerciseProgressData([
+          _row(DateTime.utc(2026, 3, 1, 10), [
+            _set(id: 'a', weight: 100, reps: 10),
+            _set(id: 'b', weight: 110, reps: 3),
+          ]),
+        ]);
+
+        expect(data.rawPoints, hasLength(1));
+        expect(
+          data.rawPoints.first.weight,
+          110,
+          reason: 'rawPoints must keep the weight-peak set (110)',
+        );
+
+        expect(data.e1rmPoints, hasLength(1));
+        expect(
+          data.e1rmPoints.first.weight,
+          closeTo(100 * (1 + 10 / 30), 1e-9),
+          reason:
+              'e1rmPoints must report the e1RM-peak set (133.33), '
+              'NOT the weight-peak set re-mapped (121).',
+        );
+
+        expect(data.workoutCount, 1);
+      },
+    );
+
+    test('empty input → both series empty, workoutCount == 0', () {
+      final data = buildExerciseProgressData(const []);
+      expect(data.rawPoints, isEmpty);
+      expect(data.e1rmPoints, isEmpty);
+      expect(data.workoutCount, 0);
+    });
+
+    test('workoutCount mirrors buildProgressPoints for the same rows', () {
+      final rows = [
+        _row(DateTime.utc(2026, 3, 1, 10), [_set(weight: 100, reps: 5)]),
+        _row(DateTime.utc(2026, 3, 2, 10), [_set(weight: 105, reps: 5)]),
+        _row(DateTime.utc(2026, 3, 3, 10), [
+          _set(weight: 200, setType: SetType.warmup),
+        ]),
+      ];
+      final data = buildExerciseProgressData(rows);
+      final raw = buildProgressPoints(rows);
+      expect(data.workoutCount, raw.workoutCount);
+      expect(data.rawPoints.length, raw.points.length);
+    });
+  });
+
   group('peakPoint', () {
     test('empty list → null', () {
       expect(peakPoint(const []), isNull);
@@ -365,7 +426,8 @@ void main() {
         ).future,
       );
 
-      expect(result.points, isEmpty);
+      expect(result.rawPoints, isEmpty);
+      expect(result.e1rmPoints, isEmpty);
       expect(result.workoutCount, 0);
       verifyNever(
         () => mockRepo.getExerciseHistory(
@@ -500,9 +562,11 @@ void main() {
           ).future,
         );
 
-        expect(result.points, hasLength(2));
-        expect(result.points[0].weight, 95);
-        expect(result.points[1].weight, 100);
+        expect(result.rawPoints, hasLength(2));
+        expect(result.rawPoints[0].weight, 95);
+        expect(result.rawPoints[1].weight, 100);
+        // The e1RM series should also have two days, ranked by Epley value.
+        expect(result.e1rmPoints, hasLength(2));
         // Three repo rows, all with qualifying sets → workoutCount = 3.
         expect(result.workoutCount, 3);
       },

@@ -45,16 +45,29 @@ class ExerciseProgressKey {
   int get hashCode => Object.hash(exerciseId, window);
 }
 
-/// Result of [buildProgressPoints] / [exerciseProgressProvider].
+/// Result of [buildExerciseProgressData] / [exerciseProgressProvider].
 ///
-/// - [points] — one per user-local calendar date with a qualifying set.
+/// - [rawPoints] — one per user-local calendar date with a qualifying set,
+///   ranked by max raw weight. `.weight` carries the heaviest completed
+///   working-set weight for that day (kg or lbs per user profile).
+/// - [e1rmPoints] — one per user-local calendar date, ranked by max Epley
+///   e1RM across that day's completed working sets. `.weight` carries the
+///   e1RM value (same unit). The ranking differs from [rawPoints]: a day
+///   with `(100 kg × 10)` (e1RM 133.3) and `(110 kg × 3)` (e1RM 121) keeps
+///   the 110 set in [rawPoints] but the 100 set in [e1rmPoints]. Picking
+///   the correct series per metric is the whole point of the split —
+///   re-mapping [rawPoints] would under-report e1RM peaks (review BLOCKER).
 /// - [workoutCount] — number of distinct `workouts` rows in the window that
 ///   contained at least one completed working set with weight > 0. This is
 ///   what the chart's trend-copy row uses to disambiguate "1 workout" from
 ///   "N workouts same day" (BL-1 fix, folded into BL-3 acceptance #14). A
 ///   user who logged 2 workouts on one day should see `"2 workouts logged"`,
 ///   not `"1 session logged"`.
-typedef ExerciseProgressData = ({List<ProgressPoint> points, int workoutCount});
+typedef ExerciseProgressData = ({
+  List<ProgressPoint> rawPoints,
+  List<ProgressPoint> e1rmPoints,
+  int workoutCount,
+});
 
 /// Per-exercise weight-over-time series.
 ///
@@ -75,10 +88,20 @@ final exerciseProgressProvider = FutureProvider.autoDispose
 
       final userId = ref.read(authRepositoryProvider).currentUser?.id;
       if (userId == null) {
-        return (points: const <ProgressPoint>[], workoutCount: 0);
+        return (
+          rawPoints: const <ProgressPoint>[],
+          e1rmPoints: const <ProgressPoint>[],
+          workoutCount: 0,
+        );
       }
 
       final repo = ref.watch(workoutRepositoryProvider);
+      // Intentional capture: the cutoff is resolved once per provider read so
+      // the window doesn't drift mid-session. A user who opens the detail
+      // sheet at 23:59 and keeps it open past midnight still sees the window
+      // they opened with; `ActiveWorkoutNotifier.finishWorkout` explicitly
+      // invalidates this family so a re-open after save recomputes `now`.
+      // Do not lift to a top-level constant — it would never refresh.
       final since = key.window.cutoffFrom(DateTime.now());
       final rows = await repo.getExerciseHistory(
         key.exerciseId,
@@ -86,10 +109,35 @@ final exerciseProgressProvider = FutureProvider.autoDispose
         since: since,
       );
 
-      return buildProgressPoints(rows);
+      return buildExerciseProgressData(rows);
     });
 
-/// Convert raw `(finishedAt, sets)` history into plottable progress points.
+/// Build the full [ExerciseProgressData] bundle from raw history rows.
+///
+/// Thin composite over [buildProgressPoints] (raw-weight series +
+/// workoutCount) and [toE1RmSeries] (e1RM series). Both series run over the
+/// same rows so they stay in sync, but each is ranked independently — see
+/// [ExerciseProgressData] for why re-mapping the raw series would misreport
+/// e1RM peaks (review BLOCKER).
+ExerciseProgressData buildExerciseProgressData(
+  List<({DateTime finishedAt, List<ExerciseSet> sets})> rows,
+) {
+  final raw = buildProgressPoints(rows);
+  final e1rm = toE1RmSeries(rows);
+  return (
+    rawPoints: raw.points,
+    e1rmPoints: e1rm,
+    workoutCount: raw.workoutCount,
+  );
+}
+
+/// Narrow result shape for [buildProgressPoints] — the raw-weight series and
+/// its qualifying-workout count. Kept separate from [ExerciseProgressData]
+/// so this helper can still be unit-tested without pulling the e1RM series
+/// into every assertion.
+typedef RawProgressPoints = ({List<ProgressPoint> points, int workoutCount});
+
+/// Convert raw `(finishedAt, sets)` history into the raw-weight series.
 ///
 /// Public for unit tests — the grouping/max-per-day logic is the provider's
 /// real behaviour and is worth asserting without a mocked repository.
@@ -97,7 +145,7 @@ final exerciseProgressProvider = FutureProvider.autoDispose
 /// Returns both the aggregated [ProgressPoint] list AND the raw count of
 /// workouts that qualified (had at least one completed working set with
 /// weight > 0). See [ExerciseProgressData] for the BL-1 rationale.
-ExerciseProgressData buildProgressPoints(
+RawProgressPoints buildProgressPoints(
   List<({DateTime finishedAt, List<ExerciseSet> sets})> rows,
 ) {
   // Dedupe + max-per-day in a single pass.

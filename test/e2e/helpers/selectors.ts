@@ -154,26 +154,17 @@ export const EXERCISE_DETAIL = {
   /**
    * BL-3: "Progress (kg)" section heading was removed. The unit now lives on
    * the Y-axis; the trend summary line is the first text row.
-   * The card container is identified by its widget key instead.
-   * @deprecated Use progressChartCard instead.
-   */
-  // progressChartHeading: removed — heading killed by BL-3 acceptance #9.
-  /**
-   * The chart card container — always present when ProgressChartSection mounts
-   * (including loading, error, empty, and data states). Identified by the
-   * Key('progress-chart-card') set on _ChartCard.
-   * Use this as the liveness check: if the section mounted, this key is in tree.
    *
    * Note: BL-3 removed the `Semantics(image: true)` wrapper from the LineChart
    * canvas. The old `role=img[name*="Progress chart"]` selector no longer matches.
-   * For the chart plot area itself use progressChartCanvas.
+   *
+   * The `progressChartCard` and `progressChartEmptyContainer` selectors were
+   * removed during BL-3 review: they used `[data-flutter-semantics-key="..."]`
+   * which Flutter does not emit on the DOM (Key doesn't surface in the AX tree
+   * that way). No spec exercised them, so removing is safe. Re-add via a
+   * proper `Semantics(identifier: ...)` wrapper if an E2E needs to target the
+   * card or empty container in the future.
    */
-  progressChartCard: '[data-flutter-semantics-key="progress-chart-card"]',
-  /**
-   * The empty-state container rendered when workoutCount == 0.
-   * _ChartBody renders Key('progress-chart-empty-container') in the zero-data branch.
-   */
-  progressChartEmptyContainer: '[data-flutter-semantics-key="progress-chart-empty-container"]',
   /**
    * The 30d window segment button — always visible when ProgressChartSection
    * has data. Text label: "30d".
