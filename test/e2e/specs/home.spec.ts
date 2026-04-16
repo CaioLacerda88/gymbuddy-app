@@ -353,7 +353,9 @@ test.describe('First workout CTA (P8)', { tag: '@smoke' }, () => {
       .isVisible({ timeout: 2_000 })
       .catch(() => false);
     if (!navigated) {
-      await page.locator(FIRST_WORKOUT_CTA.card).click().catch(() => {});
+      await page.locator(FIRST_WORKOUT_CTA.card).click().catch((e) => {
+        console.warn('retry click failed:', e);
+      });
       await page.waitForTimeout(800);
     }
 

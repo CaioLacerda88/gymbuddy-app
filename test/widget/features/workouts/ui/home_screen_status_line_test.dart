@@ -109,6 +109,11 @@ Widget _build({
     overrides: [
       weeklyPlanProvider.overrideWith(() => _PlanStub(plan)),
       workoutHistoryProvider.overrideWith(() => _HistoryStub(workouts)),
+      // HomeStatusLine derives its "has history" from `workoutCountProvider`
+      // via `hasAnyWorkoutProvider` (keeps the widget from rebuilding on
+      // every paginated loadMore). Mirror the list length here so the two
+      // sources of truth stay aligned in tests.
+      workoutCountProvider.overrideWith((ref) => Future.value(workouts.length)),
       profileProvider.overrideWith(() => _ProfileStub(profile)),
     ],
     child: MaterialApp(

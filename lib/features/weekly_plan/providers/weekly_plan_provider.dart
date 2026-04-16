@@ -269,6 +269,17 @@ final weeklyPlanProvider =
       WeeklyPlanNotifier.new,
     );
 
+/// Derived boolean: true iff the current week's plan exists AND has at least
+/// one routine. Consumer widgets that only need the "is there an active plan?"
+/// boolean should watch this instead of `weeklyPlanProvider` — that way they
+/// rebuild on transitions (plan created / cleared / all routines removed) and
+/// not on every routine-level mutation inside an existing plan (add/remove/
+/// mark-complete/rename).
+final hasActivePlanProvider = Provider<bool>((ref) {
+  final plan = ref.watch(weeklyPlanProvider).value;
+  return plan != null && plan.routines.isNotEmpty;
+});
+
 /// Whether the current week plan needs confirmation (auto-populated but not
 /// explicitly confirmed by the user). True when plan exists and was just
 /// created by auto-populate at the start of the week.

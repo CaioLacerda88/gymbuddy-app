@@ -74,9 +74,11 @@ class HomeStatusLine extends ConsumerWidget {
     }
 
     // No active plan. Decide between "No plan this week" (has history) and
-    // the brand-new display-name-only or silent state.
-    final history = ref.watch(workoutHistoryProvider).value;
-    final hasHistory = history != null && history.isNotEmpty;
+    // the brand-new display-name-only or silent state. Use the scoped
+    // boolean provider instead of watching the full paginated history list —
+    // that list is not keepAlive and would force this widget to rebuild on
+    // every `loadMore()` page-append.
+    final hasHistory = ref.watch(hasAnyWorkoutProvider);
 
     if (hasHistory) {
       return Text(

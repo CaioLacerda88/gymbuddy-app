@@ -82,6 +82,19 @@ final workoutCountProvider = FutureProvider<int>((ref) {
   return repo.getFinishedWorkoutCount(userId);
 });
 
+/// Derived boolean: true iff the user has at least one finished workout.
+///
+/// Consumer widgets that only need the "has any history?" boolean should
+/// watch this instead of [workoutHistoryProvider] — that way they rebuild
+/// only on the false→true transition (or back to zero on data reset) and
+/// NOT on every `loadMore()` page-append. Also faster to read at cold
+/// start since [workoutCountProvider] is `keepAlive` and returns a single
+/// integer rather than waiting on the paginated list.
+final hasAnyWorkoutProvider = Provider<bool>((ref) {
+  final count = ref.watch(workoutCountProvider).value;
+  return count != null && count > 0;
+});
+
 /// Fetch full workout detail for a specific workout.
 final workoutDetailProvider = FutureProvider.family<WorkoutDetail, String>((
   ref,

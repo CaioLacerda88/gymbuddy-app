@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/radii.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../../routines/models/routine.dart';
 import '../../routines/providers/notifiers/routine_list_notifier.dart';
@@ -80,7 +81,7 @@ class _ConfirmBanner extends ConsumerWidget {
     if (!needsConfirmation) return const SizedBox.shrink();
 
     final theme = Theme.of(context);
-    final borderRadius = BorderRadius.circular(12);
+    final borderRadius = BorderRadius.circular(kRadiusMd);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Material(
@@ -172,10 +173,10 @@ class _HomeRoutinesList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final planAsync = ref.watch(weeklyPlanProvider);
-    // Retain previous data during reload so we don't flash the list in/out.
-    final plan = planAsync.value;
-    final hasActivePlan = plan != null && plan.routines.isNotEmpty;
+    // Scoped subscription: only flips on plan create/clear/empty transitions,
+    // so routine-level plan mutations (mark-complete, add, remove) do not
+    // force this list to rebuild.
+    final hasActivePlan = ref.watch(hasActivePlanProvider);
     if (hasActivePlan) return const SizedBox.shrink();
 
     final routinesAsync = ref.watch(routineListProvider);
@@ -237,9 +238,9 @@ class _CreateRoutineCta extends StatelessWidget {
 
     return Material(
       color: theme.cardTheme.color ?? theme.colorScheme.surface,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(kRadiusMd),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(kRadiusMd),
         onTap: () => context.go('/routines/create'),
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 72),

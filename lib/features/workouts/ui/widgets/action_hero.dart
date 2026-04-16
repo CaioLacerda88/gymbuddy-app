@@ -13,6 +13,22 @@ import '../../providers/workout_history_providers.dart';
 import '../../providers/workout_providers.dart';
 import 'resume_workout_dialog.dart';
 
+/// Selects the routine to recommend to a brand-new user. Prefers
+/// "Full Body"; falls back to the alphabetical-first default.
+///
+/// Top-level because it is a pure function over [List<Routine>] with no
+/// dependency on widget state — keeping it outside the widget class makes it
+/// trivially testable in isolation.
+Routine? pickBeginnerRoutine(List<Routine> routines) {
+  final defaults = routines.where((r) => r.isDefault).toList();
+  if (defaults.isEmpty) return null;
+  for (final r in defaults) {
+    if (r.name == 'Full Body') return r;
+  }
+  defaults.sort((a, b) => a.name.compareTo(b.name));
+  return defaults.first;
+}
+
 /// The banner CTA on the Home screen. Resolves to one of four state modes
 /// per PLAN W8:
 ///
@@ -20,22 +36,26 @@ import 'resume_workout_dialog.dart';
 ///    starts the next uncompleted routine in the bucket.
 /// 2. **Brand new (no plan, no history)** — beginner CTA surfacing the
 ///    default Full Body (or alphabetical-first default) routine.
-/// 3. **Lapsed (no plan, has history)** — primary `"Plan your week"` that
-///    navigates to `/plan/week`, plus a secondary `"Quick workout"` text
-///    button below.
+/// 3. **Lapsed (no plan, has history)** — a `_HeroBanner` "Plan your week"
+///    primary (same surface vocabulary as the other three hero states) plus
+///    a clearly-secondary "Quick workout" `OutlinedButton` below.
 /// 4. **Week complete** — primary `"Start new week"` that navigates to
 ///    `/plan/week`.
 ///
-/// Watches only the providers required to decide the current mode. Rebuilds
-/// isolate here rather than invalidating the whole Home tree.
+/// Watches only the minimum set of providers required to decide the current
+/// mode. Per-state widgets are extracted so Riverpod only registers listeners
+/// that are actually needed for the active branch — e.g. [_BrandNewHero]
+/// owns its `routineListProvider` subscription so [ActionHero] does NOT
+/// rebuild whenever any routine is added/edited/deleted.
 class ActionHero extends ConsumerWidget {
   const ActionHero({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final planAsync = ref.watch(weeklyPlanProvider);
-    final plan = planAsync.value;
-    final hasActivePlan = plan != null && plan.routines.isNotEmpty;
+    // Scoped subscription: this derived provider only flips when a plan is
+    // created / cleared / emptied, not on every routine mutation inside a
+    // plan.
+    final hasActivePlan = ref.watch(hasActivePlanProvider);
 
     if (hasActivePlan) {
       final isComplete = ref.watch(isWeekCompleteProvider);
@@ -50,17 +70,17 @@ class ActionHero extends ConsumerWidget {
     // Wait for a committed value before deciding between the beginner CTA
     // and the lapsed CTA. Without this guard the wrong branch flashes in
     // the 200-600ms cold-start window.
+    //
+    // Note: `workoutCountProvider` is `keepAlive` — once warmed up, it
+    // survives nav transitions, so this wait only matters on the very first
+    // Home mount of the session. `workoutHistoryProvider` does NOT keepAlive
+    // and would need a full page load to repopulate, giving a noticeably
+    // longer flash window if we gated on it here instead.
     if (!workoutCountAsync.hasValue) return const SizedBox.shrink();
     final workoutCount = workoutCountAsync.value!;
 
     if (workoutCount == 0) {
-      final routines = ref.watch(routineListProvider).value ?? [];
-      final beginner = _pickBeginnerRoutine(routines);
-      if (beginner == null) return const SizedBox.shrink();
-      return _BeginnerCta(
-        routine: beginner,
-        onTap: () => startRoutineWorkout(context, ref, beginner),
-      );
+      return const _BrandNewHero();
     }
 
     // Lapsed: user has history but no plan this week.
@@ -70,22 +90,21 @@ class ActionHero extends ConsumerWidget {
     );
   }
 
-  /// Selects the routine to recommend to a brand-new user. Prefers
-  /// "Full Body"; falls back to the alphabetical-first default.
-  static Routine? _pickBeginnerRoutine(List<Routine> routines) {
-    final defaults = routines.where((r) => r.isDefault).toList();
-    if (defaults.isEmpty) return null;
-    for (final r in defaults) {
-      if (r.name == 'Full Body') return r;
-    }
-    defaults.sort((a, b) => a.name.compareTo(b.name));
-    return defaults.first;
-  }
-
   /// Starts an empty workout with the active-workout resume dialog guard.
   ///
-  /// Mirrors the previous `HomeScreen._startEmptyWorkout` logic so the
-  /// behavior is identical after the IA refresh.
+  /// Three outcomes when an existing workout is present:
+  /// * **Resume** — navigate to `/workout/active` and keep the existing
+  ///   workout intact.
+  /// * **Discard** — delete the existing workout, start a fresh one, and
+  ///   navigate to `/workout/active`. The user chose "Quick workout" intending
+  ///   to start fresh; stopping after the discard would leave them staring at
+  ///   Home with nothing happening.
+  /// * **Dismissed** (`result == null`) — currently impossible because the
+  ///   dialog is shown with `barrierDismissible: false`, but guarded here as
+  ///   a no-op so a future dismissible variant does not need to touch this
+  ///   code.
+  ///
+  /// When there is no existing workout we just start one and navigate.
   Future<void> _startQuickWorkout(BuildContext context, WidgetRef ref) async {
     final existingWorkout = ref.read(activeWorkoutProvider).value;
     if (existingWorkout != null) {
@@ -104,12 +123,17 @@ class ActionHero extends ConsumerWidget {
         try {
           await ref.read(activeWorkoutProvider.notifier).discardWorkout();
         } catch (_) {
-          return;
+          return; // discard failed — do not silently start a new workout
         }
-        return;
-      } else {
+        if (!context.mounted) return;
+        await ref.read(activeWorkoutProvider.notifier).startWorkout();
+        if (!context.mounted) return;
+        context.go('/workout/active');
         return;
       }
+      // result == null (dialog dismissed). Unreachable today due to
+      // barrierDismissible: false — treat as cancel.
+      return;
     }
     await ref.read(activeWorkoutProvider.notifier).startWorkout();
     if (!context.mounted) return;
@@ -150,9 +174,38 @@ class _ActivePlanHero extends ConsumerWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Lapsed: Plan your week (primary) + Quick workout (secondary)
+// Brand new: YOUR FIRST WORKOUT — recommended default routine (e.g. Full Body)
 // ---------------------------------------------------------------------------
 
+/// First-run hero. Extracted as its own [ConsumerWidget] so the
+/// `routineListProvider` subscription lives only on this branch — otherwise
+/// `ActionHero` would re-subscribe whenever any routine is added/edited/
+/// deleted, regardless of which state the hero is actually in.
+class _BrandNewHero extends ConsumerWidget {
+  const _BrandNewHero();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final routines = ref.watch(routineListProvider).value ?? const <Routine>[];
+    final beginner = pickBeginnerRoutine(routines);
+    if (beginner == null) return const SizedBox.shrink();
+    return _BeginnerCta(
+      routine: beginner,
+      onTap: () => startRoutineWorkout(context, ref, beginner),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Lapsed: [_HeroBanner] "Plan your week" (primary) + OutlinedButton
+// "Quick workout" (secondary)
+// ---------------------------------------------------------------------------
+
+/// Lapsed-state hero. Shares the [_HeroBanner] surface with the three other
+/// hero states (active plan / brand-new / week-complete) so the four modes
+/// read as variants of one banner, not four unrelated components. Underneath
+/// the banner we keep a secondary [OutlinedButton] "Quick workout" — a
+/// clearly-secondary affordance, not a second hero.
 class _LapsedHero extends StatelessWidget {
   const _LapsedHero({required this.onPlanWeek, required this.onQuickWorkout});
 
@@ -164,17 +217,11 @@ class _LapsedHero extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        FilledButton.icon(
-          onPressed: onPlanWeek,
-          icon: const Icon(Icons.calendar_today_rounded),
-          label: const Text('Plan your week'),
-          style: FilledButton.styleFrom(
-            minimumSize: const Size(double.infinity, 56),
-            textStyle: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+        _HeroBanner(
+          label: 'NO PLAN',
+          headline: 'Plan your week',
+          subline: 'Pick routines for the week',
+          onTap: onPlanWeek,
         ),
         const SizedBox(height: 8),
         OutlinedButton(
@@ -240,11 +287,12 @@ class _BeginnerCta extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Shared 80dp banner surface for all three hero variants (active plan,
-// brand-new beginner, week complete). One Material+InkWell card with a left
-// accent border in primary green, label / headline / subline rows, and a
-// trailing play glyph. Background flows through theme.cardTheme.color so the
-// banner inherits app-wide surface tokens.
+// Shared 80dp banner surface for all four hero variants (active plan,
+// brand-new beginner, lapsed "Plan your week", week complete). One
+// Material+InkWell card with a left accent border in primary green,
+// label / headline / subline rows, and a trailing play glyph. Background
+// flows through theme.cardTheme.color so the banner inherits app-wide
+// surface tokens.
 // ---------------------------------------------------------------------------
 
 class _HeroBanner extends StatelessWidget {
@@ -255,10 +303,12 @@ class _HeroBanner extends StatelessWidget {
     required this.onTap,
   });
 
-  /// Small uppercase label, e.g. "UP NEXT", "YOUR FIRST WORKOUT", "NEW WEEK".
+  /// Small uppercase label, e.g. "UP NEXT", "YOUR FIRST WORKOUT", "NO PLAN",
+  /// "NEW WEEK".
   final String label;
 
-  /// Primary content line, e.g. routine name or "Start new week".
+  /// Primary content line, e.g. routine name, "Plan your week", "Start new
+  /// week".
   final String headline;
 
   /// Optional metadata line below the headline (exercises x duration, "Y of Y
