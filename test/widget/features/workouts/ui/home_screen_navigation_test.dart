@@ -1,7 +1,7 @@
-/// Navigation tests for the redesigned home screen.
+/// Navigation tests for the W8 redesigned home screen.
 ///
-/// Stat cells both navigate to /home/history via push.
-/// "Start Empty Workout" navigates to /workout/active via go.
+/// - LastSessionLine navigates to /home/history via push.
+/// - "Quick workout" (lapsed-state secondary CTA) goes to /workout/active via go.
 library;
 
 import 'package:flutter/material.dart';
@@ -21,6 +21,7 @@ import 'package:gymbuddy_app/features/workouts/providers/notifiers/active_workou
 import 'package:gymbuddy_app/features/workouts/providers/workout_history_providers.dart';
 import 'package:gymbuddy_app/features/workouts/providers/workout_providers.dart';
 import 'package:gymbuddy_app/features/workouts/ui/home_screen.dart';
+import 'package:gymbuddy_app/features/workouts/ui/widgets/last_session_line.dart';
 
 import '../../../../fixtures/test_factories.dart';
 
@@ -28,33 +29,25 @@ import '../../../../fixtures/test_factories.dart';
 // Stubs
 // ---------------------------------------------------------------------------
 
-class _EmptyRoutineNotifier extends AsyncNotifier<List<Routine>>
+class _RoutineStub extends AsyncNotifier<List<Routine>>
     implements RoutineListNotifier {
+  _RoutineStub(this.routines);
+  final List<Routine> routines;
+
   @override
-  Future<List<Routine>> build() async => [];
+  Future<List<Routine>> build() async => routines;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-/// History notifier that returns a single completed workout so the
-/// contextual stat cells render (the P8 hide-when-empty guard collapses the
-/// row when lastSession == null AND weekVolume == 0).
-class _SingleWorkoutHistoryNotifier extends AsyncNotifier<List<Workout>>
+class _HistoryStub extends AsyncNotifier<List<Workout>>
     implements WorkoutHistoryNotifier {
+  _HistoryStub(this.workouts);
+  final List<Workout> workouts;
+
   @override
-  Future<List<Workout>> build() async {
-    final yesterday = DateTime.now().subtract(const Duration(days: 1));
-    return [
-      Workout.fromJson(
-        TestWorkoutFactory.create(
-          id: 'wk-001',
-          name: 'Push Day',
-          finishedAt: yesterday.toIso8601String(),
-        ),
-      ),
-    ];
-  }
+  Future<List<Workout>> build() async => workouts;
 
   @override
   bool get hasMore => false;
@@ -75,33 +68,48 @@ class _NullActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?>
   Future<ActiveWorkoutState?> build() async => null;
 
   @override
+  Future<void> startWorkout([String? name]) async {}
+
+  @override
+  Future<void> discardWorkout() async {}
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _NullWeeklyPlanNotifier extends AsyncNotifier<WeeklyPlan?>
+class _PlanStub extends AsyncNotifier<WeeklyPlan?>
     implements WeeklyPlanNotifier {
+  _PlanStub(this.plan);
+  final WeeklyPlan? plan;
+
   @override
-  Future<WeeklyPlan?> build() async => null;
+  Future<WeeklyPlan?> build() async => plan;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _ProfileNotifier extends AsyncNotifier<Profile?>
-    implements ProfileNotifier {
+class _ProfileStub extends AsyncNotifier<Profile?> implements ProfileNotifier {
+  _ProfileStub(this.profile);
+  final Profile? profile;
+
   @override
-  Future<Profile?> build() async =>
-      const Profile(id: 'user-001', displayName: 'Alex', weightUnit: 'kg');
+  Future<Profile?> build() async => profile;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Harness
 // ---------------------------------------------------------------------------
 
-Widget _buildTestApp() {
+Workout _workout({required String finishedAt, String name = 'Push Day'}) =>
+    Workout.fromJson(
+      TestWorkoutFactory.create(name: name, finishedAt: finishedAt),
+    );
+
+Widget _buildTestApp({required List<Workout> workouts}) {
   final router = GoRouter(
     initialLocation: '/home',
     routes: [
@@ -111,27 +119,37 @@ Widget _buildTestApp() {
         routes: [
           GoRoute(
             path: 'history',
-            name: 'history',
             builder: (context, _) =>
                 const Scaffold(body: Center(child: Text('History Screen'))),
           ),
         ],
+      ),
+      GoRoute(
+        path: '/plan/week',
+        builder: (context, _) =>
+            const Scaffold(body: Center(child: Text('Plan Week Screen'))),
+      ),
+      GoRoute(
+        path: '/workout/active',
+        builder: (context, _) =>
+            const Scaffold(body: Center(child: Text('Active Workout Screen'))),
       ),
     ],
   );
 
   return ProviderScope(
     overrides: [
-      routineListProvider.overrideWith(() => _EmptyRoutineNotifier()),
-      workoutHistoryProvider.overrideWith(
-        () => _SingleWorkoutHistoryNotifier(),
-      ),
+      routineListProvider.overrideWith(() => _RoutineStub(const [])),
+      workoutHistoryProvider.overrideWith(() => _HistoryStub(workouts)),
       activeWorkoutProvider.overrideWith(() => _NullActiveWorkoutNotifier()),
-      weeklyPlanProvider.overrideWith(() => _NullWeeklyPlanNotifier()),
+      weeklyPlanProvider.overrideWith(() => _PlanStub(null)),
       weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
-      weekVolumeProvider.overrideWith((ref) => Future.value(0)),
-      workoutCountProvider.overrideWith((ref) => Future.value(1)),
-      profileProvider.overrideWith(() => _ProfileNotifier()),
+      workoutCountProvider.overrideWith((ref) => Future.value(workouts.length)),
+      profileProvider.overrideWith(
+        () => _ProfileStub(
+          const Profile(id: 'user-001', displayName: 'Alex', weightUnit: 'kg'),
+        ),
+      ),
     ],
     child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
   );
@@ -142,70 +160,32 @@ Widget _buildTestApp() {
 // ---------------------------------------------------------------------------
 
 void main() {
-  group('Home screen contextual stat cell navigation', () {
-    testWidgets(
-      'tapping Last session cell navigates to /home/history via push',
-      (tester) async {
-        tester.view.physicalSize = const Size(800, 2000);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
+  group('HomeScreen - last session line navigation', () {
+    testWidgets('tapping LastSessionLine navigates to /home/history via push', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-        await tester.pumpWidget(_buildTestApp());
-        await tester.pump();
-        await tester.pump();
+      final yesterday = DateTime.now().subtract(const Duration(days: 1));
+      await tester.pumpWidget(
+        _buildTestApp(
+          workouts: [_workout(finishedAt: yesterday.toIso8601String())],
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
 
-        // Tap the "Last session" stat cell.
-        await tester.tap(find.text('Last session'));
-        await tester.pumpAndSettle();
+      await tester.tap(find.byType(LastSessionLine));
+      await tester.pumpAndSettle();
 
-        // History screen should be visible.
-        expect(find.text('History Screen'), findsOneWidget);
+      expect(find.text('History Screen'), findsOneWidget);
 
-        // Verify push semantics — HomeScreen is still on the stack.
-        final navigatorState = tester.state<NavigatorState>(
-          find.byType(Navigator).last,
-        );
-        expect(
-          navigatorState.canPop(),
-          isTrue,
-          reason:
-              'History was reached via push — HomeScreen is still below it.',
-        );
-      },
-    );
-
-    testWidgets(
-      'tapping Week volume cell navigates to /home/history via push',
-      (tester) async {
-        tester.view.physicalSize = const Size(800, 2000);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-
-        await tester.pumpWidget(_buildTestApp());
-        await tester.pump();
-        await tester.pump();
-
-        // Tap the "Week's volume" stat cell.
-        await tester.tap(find.text("Week's volume"));
-        await tester.pumpAndSettle();
-
-        // History screen should be visible.
-        expect(find.text('History Screen'), findsOneWidget);
-
-        // Verify push semantics.
-        final navigatorState = tester.state<NavigatorState>(
-          find.byType(Navigator).last,
-        );
-        expect(
-          navigatorState.canPop(),
-          isTrue,
-          reason:
-              'History was reached via push — HomeScreen is still below it.',
-        );
-      },
-    );
+      final nav = tester.state<NavigatorState>(find.byType(Navigator).last);
+      expect(nav.canPop(), isTrue);
+    });
 
     testWidgets('back from History returns to HomeScreen', (tester) async {
       tester.view.physicalSize = const Size(800, 2000);
@@ -213,25 +193,53 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(_buildTestApp());
+      final yesterday = DateTime.now().subtract(const Duration(days: 1));
+      await tester.pumpWidget(
+        _buildTestApp(
+          workouts: [_workout(finishedAt: yesterday.toIso8601String())],
+        ),
+      );
       await tester.pump();
       await tester.pump();
 
-      // Navigate to History.
-      await tester.tap(find.text('Last session'));
+      await tester.tap(find.byType(LastSessionLine));
       await tester.pumpAndSettle();
       expect(find.text('History Screen'), findsOneWidget);
 
-      // Pop back.
-      final navigator = tester.state<NavigatorState>(
-        find.byType(Navigator).last,
-      );
-      navigator.pop();
+      final nav = tester.state<NavigatorState>(find.byType(Navigator).last);
+      nav.pop();
       await tester.pumpAndSettle();
 
-      // HomeScreen must be visible again (no "GymBuddy" title — check stat cells).
-      expect(find.text('Last session'), findsOneWidget);
+      // Home is visible again - no History on stack.
       expect(find.text('History Screen'), findsNothing);
     });
+  });
+
+  group('HomeScreen - lapsed-state secondary CTA navigation', () {
+    testWidgets(
+      'tapping Quick workout (lapsed state) navigates to /workout/active',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final yesterday = DateTime.now().subtract(const Duration(days: 1));
+        await tester.pumpWidget(
+          _buildTestApp(
+            workouts: [_workout(finishedAt: yesterday.toIso8601String())],
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        await tester.tap(find.text('Quick workout'));
+        // Allow the activeWorkoutProvider to resolve and the navigation to
+        // settle. Multiple pumps model the async startWorkout flow.
+        await tester.pumpAndSettle();
+
+        expect(find.text('Active Workout Screen'), findsOneWidget);
+      },
+    );
   });
 }

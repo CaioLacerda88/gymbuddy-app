@@ -89,30 +89,40 @@ class ResumeWorkoutDialog extends StatelessWidget {
   const ResumeWorkoutDialog({
     required this.workoutName,
     required this.startedAt,
+    this.now,
     super.key,
   });
 
   final String workoutName;
   final DateTime startedAt;
 
+  /// Injection seam for tests. When null the dialog samples [DateTime.now] at
+  /// build time. Tests pass a fixed value so age-dependent assertions do not
+  /// flake when the suite runs near midnight.
+  final DateTime? now;
+
   static Future<ResumeWorkoutResult?> show(
     BuildContext context, {
     required String workoutName,
     required DateTime startedAt,
+    DateTime? now,
   }) {
     return showDialog<ResumeWorkoutResult>(
       context: context,
       barrierDismissible: false,
-      builder: (_) =>
-          ResumeWorkoutDialog(workoutName: workoutName, startedAt: startedAt),
+      builder: (_) => ResumeWorkoutDialog(
+        workoutName: workoutName,
+        startedAt: startedAt,
+        now: now,
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final now = DateTime.now();
-    final age = now.difference(startedAt);
+    final effectiveNow = now ?? DateTime.now();
+    final age = effectiveNow.difference(startedAt);
     final isStale = isStaleWorkout(age);
 
     return AlertDialog(
@@ -129,7 +139,8 @@ class ResumeWorkoutDialog extends StatelessWidget {
                   ),
                   const TextSpan(text: '\n'),
                   TextSpan(
-                    text: 'was interrupted ${formatResumeAge(startedAt, now)}.',
+                    text:
+                        'was interrupted ${formatResumeAge(startedAt, effectiveNow)}.',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     ),

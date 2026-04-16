@@ -1,7 +1,7 @@
 /// Unit tests for the currentWeekMonday() helper.
 ///
-/// This function determines the Monday boundary used by weekVolumeProvider
-/// to filter workouts for the current week. Edge cases:
+/// This function determines the Monday boundary used by the weekly-plan
+/// provider to anchor the active week. Edge cases:
 ///   - Monday itself (no subtraction needed)
 ///   - Sunday (6 days to subtract)
 ///   - Mid-week days

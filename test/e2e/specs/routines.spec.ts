@@ -669,8 +669,9 @@ test.describe('Routines', () => {
 
     // Navigate from Home tab.
     await page.click(NAV.homeTab);
-    // Home screen no longer shows "GymBuddy" title — verify with actual content.
-    await expect(page.locator('text=Start Empty Workout')).toBeVisible({ timeout: 15_000 });
+    // Home tab is confirmed by the URL reaching /home. The old "Start Empty
+    // Workout" button was removed in W8; verify with a reliable home indicator.
+    await page.waitForURL('**/home**', { timeout: 15_000 });
 
     await page.click(NAV.routinesTab);
     await expect(page.locator(ROUTINE.heading).first()).toBeVisible({ timeout: 15_000 });
@@ -873,8 +874,10 @@ test.describe('Routine regressions', () => {
       .first()
       .isVisible({ timeout: 3_000 })
       .catch(() => false);
+    // "Start Empty Workout" was removed in W8. Check for home URL or the
+    // NAV home tab instead to confirm we did not land on the workout screen.
     const onHome = await page
-      .locator('text=Start Empty Workout')
+      .locator(NAV.homeTab)
       .isVisible({ timeout: 3_000 })
       .catch(() => false);
 

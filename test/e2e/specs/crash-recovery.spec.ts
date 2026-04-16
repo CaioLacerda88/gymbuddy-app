@@ -201,11 +201,8 @@ test.describe('Crash and session recovery', () => {
 
     // Return to Home.
     await page.click(NAV.homeTab);
-    // Verify home screen content loaded (home screen no longer shows "GymBuddy"
-    // title — it uses a date-based header like "THIS WEEK").
-    await expect(page.locator('text=Start Empty Workout')).toBeVisible({
-      timeout: 15_000,
-    });
+    // W8: "Start Empty Workout" was removed. Confirm home tab is active via URL.
+    await page.waitForURL('**/home**', { timeout: 15_000 });
 
     // The active workout banner or a resume link must still be present on the
     // home screen because the workout was not discarded.
@@ -261,7 +258,7 @@ test.describe('Crash and session recovery', () => {
     // The workout screen is full-screen without bottom nav, so go back first.
     await page.goBack();
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator('text=Start Empty Workout')).toBeVisible({ timeout: 15_000 });
+    // W8: "Start Empty Workout" removed. Home confirmed by NAV tab visibility above.
 
     // The _ActiveWorkoutBanner renders the workout name which starts with
     // "Workout \u2014". Verify it is present before finishing.
@@ -294,7 +291,8 @@ test.describe('Crash and session recovery', () => {
     // Return to home if not already there.
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
     await page.click(NAV.homeTab);
-    await expect(page.locator('text=Start Empty Workout')).toBeVisible({ timeout: 15_000 });
+    // W8: "Start Empty Workout" removed. Home confirmed by NAV tab + URL.
+    await page.waitForURL('**/home**', { timeout: 15_000 });
 
     // The banner must no longer be visible — the workout is finished.
     await expect(page.locator(HOME.activeBanner)).not.toBeVisible({

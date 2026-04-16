@@ -1,0 +1,108 @@
+/// Widget tests for the Routines screen (`/routines`).
+///
+/// Per PLAN W8, starter routines are moved OFF the home screen and must
+/// surface on the Routines screen. This test file locks down that
+/// contract so we never accidentally drop the starter section when
+/// refactoring.
+library;
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:gymbuddy_app/core/theme/app_theme.dart';
+import 'package:gymbuddy_app/features/routines/models/routine.dart';
+import 'package:gymbuddy_app/features/routines/providers/notifiers/routine_list_notifier.dart';
+import 'package:gymbuddy_app/features/routines/ui/routine_list_screen.dart';
+
+class _RoutineListStub extends AsyncNotifier<List<Routine>>
+    implements RoutineListNotifier {
+  _RoutineListStub(this.routines);
+  final List<Routine> routines;
+
+  @override
+  Future<List<Routine>> build() async => routines;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+Routine _routine({
+  required String id,
+  required String name,
+  bool isDefault = false,
+  String? userId,
+}) => Routine(
+  id: id,
+  name: name,
+  userId: userId,
+  isDefault: isDefault,
+  exercises: const [],
+  createdAt: DateTime(2026),
+);
+
+Widget _build({required List<Routine> routines}) {
+  return ProviderScope(
+    overrides: [
+      routineListProvider.overrideWith(() => _RoutineListStub(routines)),
+    ],
+    child: MaterialApp(theme: AppTheme.dark, home: const RoutineListScreen()),
+  );
+}
+
+void main() {
+  group('RoutineListScreen - starter routines section', () {
+    testWidgets('renders STARTER ROUTINES section when defaults exist', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _build(
+          routines: [
+            _routine(id: 'default-1', name: 'Full Body', isDefault: true),
+            _routine(id: 'default-2', name: 'Upper Body', isDefault: true),
+          ],
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('STARTER ROUTINES'), findsOneWidget);
+      expect(find.text('Full Body'), findsOneWidget);
+      expect(find.text('Upper Body'), findsOneWidget);
+    });
+
+    testWidgets(
+      'renders both MY ROUTINES and STARTER ROUTINES when user has both',
+      (tester) async {
+        await tester.pumpWidget(
+          _build(
+            routines: [
+              _routine(id: 'u-1', name: 'My Workout', userId: 'user-001'),
+              _routine(id: 'd-1', name: 'Full Body', isDefault: true),
+            ],
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.text('MY ROUTINES'), findsOneWidget);
+        expect(find.text('STARTER ROUTINES'), findsOneWidget);
+        expect(find.text('My Workout'), findsOneWidget);
+        expect(find.text('Full Body'), findsOneWidget);
+      },
+    );
+
+    testWidgets('omits STARTER ROUTINES when no defaults exist', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _build(
+          routines: [_routine(id: 'u-1', name: 'X', userId: 'user-001')],
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('STARTER ROUTINES'), findsNothing);
+    });
+  });
+}

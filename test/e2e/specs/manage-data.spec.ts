@@ -12,7 +12,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { flutterFill, navigateToTab } from '../helpers/app';
 import { login } from '../helpers/auth';
-import { AUTH, NAV, WORKOUT, PROFILE, MANAGE_DATA, PR, HISTORY, HOME_STATS } from '../helpers/selectors';
+import { AUTH, NAV, WORKOUT, PROFILE, MANAGE_DATA, PR, HISTORY, HOME } from '../helpers/selectors';
 import {
   startEmptyWorkout,
   addExercise,
@@ -473,10 +473,13 @@ test.describe('Manage Data', () => {
       timeout: 5_000,
     });
 
-    // Navigate to history via SPA navigation (page.goto reloads the Flutter
-    // SPA and the router doesn't preserve the deep link).
+    // Navigate to history via the Last session line (SPA navigation — page.goto
+    // reloads the Flutter SPA and the router doesn't preserve the deep link).
     await navigateToTab(page, 'Home');
-    await page.click(HOME_STATS.lastSessionCell);
+    await expect(page.locator(HOME.lastSessionLine)).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.click(HOME.lastSessionLine);
     await expect(page.locator(HISTORY.heading)).toBeVisible({ timeout: 15_000 });
 
     // The history list must NOT show the empty state — at least one workout exists.
@@ -516,11 +519,11 @@ test.describe('Manage Data', () => {
     // No DB table names in visible text (regression check for the delete bug).
     await assertNoTableNamesVisible(page);
 
-    // Navigate to history via SPA navigation.
+    // After history deletion, the Last session line must be hidden (no history).
+    // This is a more direct assertion: the W8 home screen hides LastSessionLine
+    // when workoutHistory is empty.
     await navigateToTab(page, 'Home');
-    await page.click(HOME_STATS.lastSessionCell);
-    await expect(page.locator(HISTORY.heading)).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator(HISTORY.emptyState)).toBeVisible({
+    await expect(page.locator(HOME.lastSessionLine)).not.toBeVisible({
       timeout: 10_000,
     });
   });
@@ -632,9 +635,12 @@ test.describe('Manage Data', () => {
       timeout: 5_000,
     });
 
-    // Navigate to history via SPA navigation.
+    // Navigate to history via the Last session line (SPA navigation).
     await navigateToTab(page, 'Home');
-    await page.click(HOME_STATS.lastSessionCell);
+    await expect(page.locator(HOME.lastSessionLine)).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.click(HOME.lastSessionLine);
     await expect(page.locator(HISTORY.heading)).toBeVisible({ timeout: 15_000 });
     await expect(page.locator(HISTORY.emptyState)).not.toBeVisible({
       timeout: 5_000,
@@ -670,11 +676,9 @@ test.describe('Manage Data', () => {
     // Regression guard: no table names visible.
     await assertNoTableNamesVisible(page);
 
-    // Verify history is empty.
+    // After Reset All, the Last session line must be hidden (history cleared).
     await navigateToTab(page, 'Home');
-    await page.click(HOME_STATS.lastSessionCell);
-    await expect(page.locator(HISTORY.heading)).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator(HISTORY.emptyState)).toBeVisible({
+    await expect(page.locator(HOME.lastSessionLine)).not.toBeVisible({
       timeout: 10_000,
     });
   });

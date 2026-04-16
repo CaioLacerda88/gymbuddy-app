@@ -1,7 +1,16 @@
-/// Widget tests for WeekBucketSection.
+/// Widget tests for [WeekBucketSection] after the W8 Home refresh.
 ///
-/// Covers: header text, completion counter, routine chip rendering,
-/// empty state CTA, confirmation banner, and suggested-next card.
+/// The widget is now chip-row-only — the `THIS WEEK` label, progress
+/// counter, edit icon, "Up next" card, beginner CTA, empty state, and
+/// confirmation banner all moved to sibling widgets on the Home screen
+/// (`HomeStatusLine`, `ActionHero`, `_ConfirmBanner`, `_WeekReviewCard`).
+///
+/// Covers:
+///  - Renders the chip row when an active plan has routines
+///  - Hides when plan is null, plan is empty, or routines list is empty
+///  - Hides on week-complete (HomeScreen owns the review card)
+///  - Hides during initial load or on error with no cached data
+///  - Retains stale content during provider reload (no flicker)
 library;
 
 // ignore_for_file: invalid_use_of_internal_member — copyWithPrevious is @internal in Riverpod 3; needed to simulate reload state in tests
@@ -15,8 +24,8 @@ import 'package:gymbuddy_app/features/routines/models/routine.dart';
 import 'package:gymbuddy_app/features/routines/providers/notifiers/routine_list_notifier.dart';
 import 'package:gymbuddy_app/features/weekly_plan/data/models/weekly_plan.dart';
 import 'package:gymbuddy_app/features/weekly_plan/providers/weekly_plan_provider.dart';
+import 'package:gymbuddy_app/features/weekly_plan/ui/widgets/routine_chip.dart';
 import 'package:gymbuddy_app/features/weekly_plan/ui/widgets/week_bucket_section.dart';
-import 'package:gymbuddy_app/features/workouts/providers/workout_history_providers.dart';
 
 // ---------------------------------------------------------------------------
 // Stubs
@@ -123,24 +132,14 @@ WeeklyPlan _plan({List<BucketRoutine> routines = const []}) {
 }
 
 // ---------------------------------------------------------------------------
-// Helper widget builder (for non-loading scenarios)
+// Helper widget builder
 // ---------------------------------------------------------------------------
 
-Widget _build({
-  WeeklyPlan? plan,
-  List<Routine> routines = const [],
-  bool needsConfirmation = false,
-  int workoutCount =
-      1, // default > 0 so beginner CTA is suppressed in most tests
-}) {
+Widget _build({WeeklyPlan? plan, List<Routine> routines = const []}) {
   return ProviderScope(
     overrides: [
       weeklyPlanProvider.overrideWith(() => _WeeklyPlanStub(plan)),
       routineListProvider.overrideWith(() => _RoutineListStub(routines)),
-      weeklyPlanNeedsConfirmationProvider.overrideWith(
-        (ref) => needsConfirmation,
-      ),
-      workoutCountProvider.overrideWith((ref) => Future.value(workoutCount)),
     ],
     child: MaterialApp(
       theme: AppTheme.dark,
@@ -154,50 +153,48 @@ Widget _build({
 // ---------------------------------------------------------------------------
 
 void main() {
-  group('WeekBucketSection — empty state', () {
+  group('WeekBucketSection — hidden states', () {
     testWidgets('renders nothing when routines list is empty', (tester) async {
-      await tester.pumpWidget(_build(plan: _plan(), routines: const []));
+      await tester.pumpWidget(
+        _build(
+          plan: _plan(routines: [_bucket(routineId: 'r-001')]),
+          routines: const [],
+        ),
+      );
       await tester.pump();
       await tester.pump();
 
+      // No chips, no THIS WEEK label, no counter — fully collapsed.
+      expect(find.byType(RoutineChip), findsNothing);
       expect(find.text('THIS WEEK'), findsNothing);
-      expect(find.text('Plan your week →'), findsNothing);
     });
 
-    testWidgets(
-      'shows "Plan your week" CTA when routines exist but no plan set',
-      (tester) async {
-        await tester.pumpWidget(
-          _build(
-            plan: null, // no plan for this week
-            routines: [_routine()],
-          ),
-        );
-        await tester.pump();
-        await tester.pump();
+    testWidgets('renders nothing when plan is null', (tester) async {
+      await tester.pumpWidget(_build(plan: null, routines: [_routine()]));
+      await tester.pump();
+      await tester.pump();
 
-        expect(find.textContaining('Plan your week'), findsOneWidget);
-      },
-    );
+      expect(find.byType(RoutineChip), findsNothing);
+    });
 
-    testWidgets('shows THIS WEEK header + Plan CTA when bucket is empty', (
+    testWidgets('renders nothing when plan has no bucket routines', (
       tester,
     ) async {
       await tester.pumpWidget(
         _build(
-          plan: _plan(routines: []), // plan exists but empty
+          plan: _plan(routines: const []),
           routines: [_routine()],
         ),
       );
       await tester.pump();
       await tester.pump();
 
-      // Empty bucket shows "THIS WEEK" header + bordered "Plan your week" CTA.
-      expect(find.text('THIS WEEK'), findsOneWidget);
-      expect(find.textContaining('Plan your week'), findsOneWidget);
+      expect(find.byType(RoutineChip), findsNothing);
     });
 
-    testWidgets('renders nothing when plan is loading', (tester) async {
+    testWidgets('renders nothing when plan is loading with no cached data', (
+      tester,
+    ) async {
       final stub = _LoadingWeeklyPlanStub();
 
       await tester.pumpWidget(
@@ -207,8 +204,6 @@ void main() {
             routineListProvider.overrideWith(
               () => _RoutineListStub([_routine()]),
             ),
-            weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
-            workoutCountProvider.overrideWith((ref) => Future.value(1)),
           ],
           child: MaterialApp(
             theme: AppTheme.dark,
@@ -218,32 +213,39 @@ void main() {
       );
       await tester.pump();
 
-      // Loading state collapses to SizedBox.shrink.
-      expect(find.text('THIS WEEK'), findsNothing);
+      expect(find.byType(RoutineChip), findsNothing);
 
       // Complete to release the pending future so the test can clean up.
       stub.complete();
       await tester.pumpAndSettle();
     });
-  });
 
-  group('WeekBucketSection — active week', () {
-    testWidgets('shows "THIS WEEK" header', (tester) async {
+    testWidgets('renders nothing in week-complete state', (tester) async {
+      // All routines complete → HomeScreen's _WeekReviewCard owns the review;
+      // WeekBucketSection collapses to SizedBox.shrink().
       await tester.pumpWidget(
         _build(
-          plan: _plan(routines: [_bucket(routineId: 'r-001', order: 1)]),
-          routines: [_routine(id: 'r-001', name: 'Push Day')],
+          plan: _plan(
+            routines: [
+              _bucket(routineId: 'r-001', order: 1, completedWorkoutId: 'wk-1'),
+              _bucket(routineId: 'r-002', order: 2, completedWorkoutId: 'wk-2'),
+            ],
+          ),
+          routines: [
+            _routine(id: 'r-001'),
+            _routine(id: 'r-002'),
+          ],
         ),
       );
       await tester.pump();
       await tester.pump();
 
-      expect(find.text('THIS WEEK'), findsOneWidget);
+      expect(find.byType(RoutineChip), findsNothing);
     });
+  });
 
-    testWidgets('shows edit icon button in section header (BUG-5)', (
-      tester,
-    ) async {
+  group('WeekBucketSection — active chip row', () {
+    testWidgets('renders one RoutineChip per bucket entry', (tester) async {
       tester.view.physicalSize = const Size(800, 2000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -251,18 +253,27 @@ void main() {
 
       await tester.pumpWidget(
         _build(
-          plan: _plan(routines: [_bucket(routineId: 'r-001', order: 1)]),
-          routines: [_routine(id: 'r-001', name: 'Push Day')],
+          plan: _plan(
+            routines: [
+              _bucket(routineId: 'r-001', order: 1),
+              _bucket(routineId: 'r-002', order: 2),
+              _bucket(routineId: 'r-003', order: 3),
+            ],
+          ),
+          routines: [
+            _routine(id: 'r-001', name: 'Push Day'),
+            _routine(id: 'r-002', name: 'Pull Day'),
+            _routine(id: 'r-003', name: 'Leg Day'),
+          ],
         ),
       );
       await tester.pump();
       await tester.pump();
 
-      // The edit icon (edit_outlined) must be visible in the THIS WEEK header.
-      expect(find.byIcon(Icons.edit_outlined), findsOneWidget);
+      expect(find.byType(RoutineChip), findsNWidgets(3));
     });
 
-    testWidgets('shows routine chips for each bucket entry', (tester) async {
+    testWidgets('chip row shows routine names', (tester) async {
       tester.view.physicalSize = const Size(800, 2000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -285,83 +296,45 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      // Both routine names must appear somewhere in the chip row and/or card.
       expect(find.textContaining('Push Day'), findsWidgets);
-      expect(find.textContaining('Pull Day'), findsOneWidget);
+      expect(find.textContaining('Pull Day'), findsWidgets);
     });
 
-    testWidgets('completion counter shows "0 of 2" when no routines done', (
-      tester,
-    ) async {
+    testWidgets('chip row ordering matches bucket order', (tester) async {
       tester.view.physicalSize = const Size(800, 2000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
+      // Bucket entries are intentionally out of insertion order — the widget
+      // must sort them ascending by `order` before building chips.
       await tester.pumpWidget(
         _build(
           plan: _plan(
             routines: [
+              _bucket(routineId: 'r-002', order: 2),
               _bucket(routineId: 'r-001', order: 1),
-              _bucket(routineId: 'r-002', order: 2),
             ],
           ),
           routines: [
-            _routine(id: 'r-001'),
-            _routine(id: 'r-002'),
+            _routine(id: 'r-001', name: 'Push Day'),
+            _routine(id: 'r-002', name: 'Pull Day'),
           ],
         ),
       );
       await tester.pump();
       await tester.pump();
 
-      // The completion counter is rendered as Text.rich (RichText).
-      // Verify the full combined text contains "0" and "of 2".
-      final richTexts = tester.widgetList<RichText>(find.byType(RichText));
-      final combined = richTexts.map((rt) => rt.text.toPlainText()).join(' ');
-
-      expect(combined, contains('0'));
-      expect(combined, contains('of 2'));
-    });
-
-    testWidgets('completion counter shows "1 of 2" when one routine is done', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(800, 2000);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      await tester.pumpWidget(
-        _build(
-          plan: _plan(
-            routines: [
-              _bucket(
-                routineId: 'r-001',
-                order: 1,
-                completedWorkoutId: 'wk-done',
-              ),
-              _bucket(routineId: 'r-002', order: 2),
-            ],
-          ),
-          routines: [
-            _routine(id: 'r-001'),
-            _routine(id: 'r-002'),
-          ],
-        ),
-      );
-      await tester.pump();
-      await tester.pump();
-
-      final richTexts = tester.widgetList<RichText>(find.byType(RichText));
-      final combined = richTexts.map((rt) => rt.text.toPlainText()).join(' ');
-
-      expect(combined, contains('1'));
-      expect(combined, contains('of 2'));
+      final chips = tester
+          .widgetList<RoutineChip>(find.byType(RoutineChip))
+          .toList();
+      expect(chips.length, 2);
+      expect(chips.first.sequenceNumber, 1);
+      expect(chips.last.sequenceNumber, 2);
     });
 
     testWidgets(
-      'all routines done triggers week-complete transform (no THIS WEEK header)',
+      'does not render removed UI (THIS WEEK header, counter, Up next card)',
       (tester) async {
         tester.view.physicalSize = const Size(800, 2000);
         tester.view.devicePixelRatio = 1.0;
@@ -372,229 +345,31 @@ void main() {
           _build(
             plan: _plan(
               routines: [
-                _bucket(
-                  routineId: 'r-001',
-                  order: 1,
-                  completedWorkoutId: 'wk-1',
-                ),
-                _bucket(
-                  routineId: 'r-002',
-                  order: 2,
-                  completedWorkoutId: 'wk-2',
-                ),
+                _bucket(routineId: 'r-001', order: 1),
+                _bucket(routineId: 'r-002', order: 2),
               ],
             ),
             routines: [
-              _routine(id: 'r-001'),
-              _routine(id: 'r-002'),
+              _routine(id: 'r-001', name: 'Push Day'),
+              _routine(id: 'r-002', name: 'Pull Day'),
             ],
           ),
         );
         await tester.pump();
         await tester.pump();
 
-        // All complete → WeekReviewSection shows instead, section header gone.
-        // This verifies the week-complete transform triggers correctly.
+        // These moved out of WeekBucketSection in W8.
         expect(find.text('THIS WEEK'), findsNothing);
-      },
-    );
-  });
-
-  group('WeekBucketSection — suggested-next card', () {
-    testWidgets('shows "Up next" card when there is an uncompleted routine', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(800, 2000);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      await tester.pumpWidget(
-        _build(
-          plan: _plan(
-            routines: [
-              _bucket(routineId: 'r-001', order: 1),
-              _bucket(routineId: 'r-002', order: 2),
-            ],
-          ),
-          routines: [
-            _routine(id: 'r-001', name: 'Push Day'),
-            _routine(id: 'r-002', name: 'Pull Day'),
-          ],
-        ),
-      );
-      await tester.pump();
-      await tester.pump();
-
-      // The card should show "Up next" label text.
-      expect(find.text('Up next'), findsOneWidget);
-    });
-
-    testWidgets('suggested-next card shows the routine name', (tester) async {
-      tester.view.physicalSize = const Size(800, 2000);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      await tester.pumpWidget(
-        _build(
-          plan: _plan(routines: [_bucket(routineId: 'r-001', order: 1)]),
-          routines: [_routine(id: 'r-001', name: 'Chest & Shoulders')],
-        ),
-      );
-      await tester.pump();
-      await tester.pump();
-
-      // Card should display the routine name.
-      expect(find.text('Chest & Shoulders'), findsWidgets);
-      expect(find.text('Up next'), findsOneWidget);
-    });
-
-    testWidgets('suggested-next card has play_arrow icon', (tester) async {
-      tester.view.physicalSize = const Size(800, 2000);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      await tester.pumpWidget(
-        _build(
-          plan: _plan(routines: [_bucket(routineId: 'r-001', order: 1)]),
-          routines: [_routine(id: 'r-001', name: 'Push Day')],
-        ),
-      );
-      await tester.pump();
-      await tester.pump();
-
-      expect(find.byIcon(Icons.play_arrow), findsOneWidget);
-    });
-
-    testWidgets('suggested-next card is NOT shown when all routines are done', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(800, 2000);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      await tester.pumpWidget(
-        _build(
-          plan: _plan(
-            routines: [
-              _bucket(routineId: 'r-001', order: 1, completedWorkoutId: 'wk-1'),
-            ],
-          ),
-          routines: [_routine(id: 'r-001', name: 'Push Day')],
-        ),
-      );
-      await tester.pump();
-      await tester.pump();
-
-      // All routines complete → week review mode, no "Up next".
-      expect(find.text('Up next'), findsNothing);
-    });
-
-    testWidgets('suggested-next card shows second routine when first is done', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(800, 2000);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      await tester.pumpWidget(
-        _build(
-          plan: _plan(
-            routines: [
-              _bucket(
-                routineId: 'r-001',
-                order: 1,
-                completedWorkoutId: 'wk-done',
-              ),
-              _bucket(routineId: 'r-002', order: 2),
-            ],
-          ),
-          routines: [
-            _routine(id: 'r-001', name: 'Push Day'),
-            _routine(id: 'r-002', name: 'Pull Day'),
-          ],
-        ),
-      );
-      await tester.pump();
-      await tester.pump();
-
-      // "Up next" should show Pull Day (second routine).
-      expect(find.text('Up next'), findsOneWidget);
-      // Pull Day should appear in both the card subtitle and in the chip row.
-      expect(find.textContaining('Pull Day'), findsWidgets);
-    });
-
-    testWidgets('suggested-next card is tappable (InkWell wraps it)', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(800, 2000);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      await tester.pumpWidget(
-        _build(
-          plan: _plan(routines: [_bucket(routineId: 'r-001', order: 1)]),
-          routines: [_routine(id: 'r-001', name: 'Push Day')],
-        ),
-      );
-      await tester.pump();
-      await tester.pump();
-
-      // Verify the card is tappable by finding an InkWell ancestor of "Up next".
-      final upNextText = find.text('Up next');
-      expect(upNextText, findsOneWidget);
-
-      // Tapping the card should not throw (the actual navigation is handled
-      // by GoRouter which is not available in this test context, so we just
-      // verify no exception is thrown).
-      final inkWells = find.ancestor(
-        of: upNextText,
-        matching: find.byType(InkWell),
-      );
-      expect(
-        inkWells,
-        findsWidgets,
-        reason: 'The "Up next" card should be wrapped in an InkWell',
-      );
-    });
-
-    testWidgets(
-      'suggested-next card shows "Next workout" fallback when routine id is unknown',
-      (tester) async {
-        tester.view.physicalSize = const Size(800, 2000);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-
-        // The bucket references 'r-unknown' but the routines list has no entry
-        // for that id. The card should fall back to 'Next workout'.
-        await tester.pumpWidget(
-          _build(
-            plan: _plan(routines: [_bucket(routineId: 'r-unknown', order: 1)]),
-            // Provide a different routine id so nameMap misses 'r-unknown'.
-            routines: [_routine(id: 'r-other', name: 'Pull Day')],
-          ),
-        );
-        await tester.pump();
-        await tester.pump();
-
-        // "Up next" label should appear.
-        expect(find.text('Up next'), findsOneWidget);
-        // Routine name falls back to the default.
-        expect(find.text('Next workout'), findsOneWidget);
+        expect(find.text('Up next'), findsNothing);
+        expect(find.byIcon(Icons.edit_outlined), findsNothing);
+        // Confirm banner moved to HomeScreen.
+        expect(find.text('Same plan this week?'), findsNothing);
       },
     );
   });
 
   group('WeekBucketSection — reload stale data', () {
-    testWidgets('retains THIS WEEK content during provider reload', (
-      tester,
-    ) async {
+    testWidgets('retains chip row during provider reload', (tester) async {
       tester.view.physicalSize = const Size(800, 2000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -611,8 +386,6 @@ void main() {
             routineListProvider.overrideWith(
               () => _RoutineListStub([_routine(id: 'r-001', name: 'Push Day')]),
             ),
-            weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
-            workoutCountProvider.overrideWith((ref) => Future.value(1)),
           ],
           child: MaterialApp(
             theme: AppTheme.dark,
@@ -623,254 +396,14 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      // Active week is visible.
-      expect(find.text('THIS WEEK'), findsOneWidget);
+      expect(find.byType(RoutineChip), findsOneWidget);
 
       // Simulate provider reload (e.g., returning to home screen).
       stub.simulateReload();
       await tester.pump();
 
-      // THIS WEEK should still be visible — stale data shown during reload.
-      expect(find.text('THIS WEEK'), findsOneWidget);
-    });
-
-    testWidgets('hides content on initial load when no cached data', (
-      tester,
-    ) async {
-      final stub = _LoadingWeeklyPlanStub();
-
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            weeklyPlanProvider.overrideWith(() => stub),
-            routineListProvider.overrideWith(
-              () => _RoutineListStub([_routine()]),
-            ),
-            weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
-            workoutCountProvider.overrideWith((ref) => Future.value(1)),
-          ],
-          child: MaterialApp(
-            theme: AppTheme.dark,
-            home: const Scaffold(body: WeekBucketSection()),
-          ),
-        ),
-      );
-      await tester.pump();
-
-      // Initial load (no cached data) should show nothing.
-      expect(find.text('THIS WEEK'), findsNothing);
-
-      stub.complete();
-      await tester.pumpAndSettle();
-    });
-  });
-
-  group('WeekBucketSection — first-run beginner CTA (P8)', () {
-    // Realistic Full Body routine mirroring supabase/seed.sql — 6 exercises
-    // × 3 sets each with varied rests. Used so the rendered stats line
-    // ("6 exercises · ~55 min") exercises the real duration estimator rather
-    // than the empty-routine degenerate case.
-    Routine buildSeedFullBody() {
-      RoutineExercise ex(int restSeconds) => RoutineExercise(
-        exerciseId: 'e-$restSeconds',
-        setConfigs: List.generate(
-          3,
-          (_) => RoutineSetConfig(targetReps: 5, restSeconds: restSeconds),
-        ),
-      );
-      return Routine(
-        id: 'r-fb',
-        name: 'Full Body',
-        isDefault: true,
-        exercises: [ex(240), ex(180), ex(180), ex(180), ex(60), ex(60)],
-        createdAt: DateTime(2026),
-      );
-    }
-
-    testWidgets(
-      'renders beginner CTA when plan is null, workoutCount is 0, and a default routine exists',
-      (tester) async {
-        await tester.pumpWidget(
-          _build(plan: null, routines: [buildSeedFullBody()], workoutCount: 0),
-        );
-        await tester.pump();
-        await tester.pump();
-
-        expect(find.text('YOUR FIRST WORKOUT'), findsOneWidget);
-        // Stats line should reflect real set_configs, not a hardcoded "~45 min".
-        expect(find.text('6 exercises \u00B7 ~55 min'), findsOneWidget);
-        // "Plan your week" fallback must not show alongside the CTA.
-        expect(find.textContaining('Plan your week'), findsNothing);
-      },
-    );
-
-    testWidgets(
-      'renders Plan-your-week fallback (not CTA) when workoutCount > 0',
-      (tester) async {
-        await tester.pumpWidget(
-          _build(
-            plan: null,
-            routines: [
-              Routine(
-                id: 'r-fb',
-                name: 'Full Body',
-                isDefault: true,
-                exercises: const [],
-                createdAt: DateTime(2026),
-              ),
-            ],
-            workoutCount: 3,
-          ),
-        );
-        await tester.pump();
-        await tester.pump();
-
-        expect(find.text('YOUR FIRST WORKOUT'), findsNothing);
-        expect(find.textContaining('Plan your week'), findsOneWidget);
-      },
-    );
-
-    testWidgets(
-      'renders nothing when workoutCount is 0 but no defaults are available',
-      (tester) async {
-        await tester.pumpWidget(
-          _build(
-            plan: null,
-            routines: [
-              Routine(
-                id: 'r-user',
-                userId: 'user-001',
-                name: 'My Routine',
-                isDefault: false,
-                exercises: const [],
-                createdAt: DateTime(2026),
-              ),
-            ],
-            workoutCount: 0,
-          ),
-        );
-        await tester.pump();
-        await tester.pump();
-
-        expect(find.text('YOUR FIRST WORKOUT'), findsNothing);
-        expect(find.textContaining('Plan your week'), findsNothing);
-      },
-    );
-
-    testWidgets(
-      'renders nothing while workoutCountProvider is loading (no CTA/empty-state flash)',
-      (tester) async {
-        // Unresolved future: provider stays in AsyncLoading.
-        final completer = Completer<int>();
-
-        await tester.pumpWidget(
-          ProviderScope(
-            overrides: [
-              weeklyPlanProvider.overrideWith(() => _WeeklyPlanStub(null)),
-              routineListProvider.overrideWith(
-                () => _RoutineListStub([
-                  Routine(
-                    id: 'r-fb',
-                    name: 'Full Body',
-                    isDefault: true,
-                    exercises: const [],
-                    createdAt: DateTime(2026),
-                  ),
-                ]),
-              ),
-              weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => false),
-              workoutCountProvider.overrideWith((ref) => completer.future),
-            ],
-            child: MaterialApp(
-              theme: AppTheme.dark,
-              home: const Scaffold(body: WeekBucketSection()),
-            ),
-          ),
-        );
-        await tester.pump();
-        await tester.pump();
-
-        // Neither the beginner CTA nor the "Plan your week" fallback must
-        // appear while the count is still resolving — otherwise cold-start
-        // flashes the wrong branch for 200-600ms.
-        expect(find.text('YOUR FIRST WORKOUT'), findsNothing);
-        expect(find.textContaining('Plan your week'), findsNothing);
-
-        // Settle the pending future so the test teardown does not dangle.
-        completer.complete(0);
-        await tester.pumpAndSettle();
-      },
-    );
-  });
-
-  group('WeekBucketSection — confirmation banner', () {
-    testWidgets('shows confirmation banner when needsConfirmation is true', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        _build(
-          plan: _plan(routines: [_bucket(routineId: 'r-001', order: 1)]),
-          routines: [_routine(id: 'r-001')],
-          needsConfirmation: true,
-        ),
-      );
-      await tester.pump();
-      await tester.pump();
-
-      expect(find.text('Same plan this week?'), findsOneWidget);
-      expect(find.text('Confirm'), findsOneWidget);
-      expect(find.text('Edit'), findsOneWidget);
-    });
-
-    testWidgets(
-      'does NOT show confirmation banner when needsConfirmation is false',
-      (tester) async {
-        await tester.pumpWidget(
-          _build(
-            plan: _plan(routines: [_bucket(routineId: 'r-001', order: 1)]),
-            routines: [_routine(id: 'r-001')],
-            needsConfirmation: false,
-          ),
-        );
-        await tester.pump();
-        await tester.pump();
-
-        expect(find.text('Same plan this week?'), findsNothing);
-      },
-    );
-
-    testWidgets('tapping Confirm dismisses the banner', (tester) async {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            weeklyPlanProvider.overrideWith(
-              () => _WeeklyPlanStub(
-                _plan(routines: [_bucket(routineId: 'r-001', order: 1)]),
-              ),
-            ),
-            routineListProvider.overrideWith(
-              () => _RoutineListStub([_routine(id: 'r-001')]),
-            ),
-            // Use a real StateProvider so the Confirm button can mutate it.
-            weeklyPlanNeedsConfirmationProvider.overrideWith((ref) => true),
-            workoutCountProvider.overrideWith((ref) => Future.value(1)),
-          ],
-          child: MaterialApp(
-            theme: AppTheme.dark,
-            home: const Scaffold(body: WeekBucketSection()),
-          ),
-        ),
-      );
-      await tester.pump();
-      await tester.pump();
-
-      expect(find.text('Same plan this week?'), findsOneWidget);
-
-      await tester.tap(find.text('Confirm'));
-      await tester.pump();
-      await tester.pump();
-
-      expect(find.text('Same plan this week?'), findsNothing);
+      // Chip row should still be visible — stale data shown during reload.
+      expect(find.byType(RoutineChip), findsOneWidget);
     });
   });
 }

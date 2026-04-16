@@ -618,6 +618,7 @@ async function globalSetup(): Promise<void> {
     'e2e-full-crash@test.local',
     'e2e-full-home@test.local',
     'e2e-full-workout@test.local',
+    'e2e-full-ex-detail-sheet@test.local',
     'e2e-smoke-workout@test.local',
     'e2e-smoke-pr@test.local',
     // P8 beginner CTA requires zero workouts for the CTA to render
@@ -755,13 +756,43 @@ async function globalSetup(): Promise<void> {
     await seedExerciseProgressData(supabase, exerciseProgressUserId);
   }
 
+  // Clear weekly plans for users whose tests add/clear plans during the test
+  // run, so each run starts with a clean slate and the plan picker shows all
+  // available routines (not filtered by "already in plan").
+  const usersNeedingWeeklyPlanClean = [
+    'e2e-smoke-weekly-plan@test.local',
+  ];
+  for (const email of usersNeedingWeeklyPlanClean) {
+    const uid = await getUserId(supabase, email);
+    if (!uid) continue;
+    await supabase.from('weekly_plans').delete().eq('user_id', uid);
+    console.log(`[global-setup] Cleared weekly plan for ${email}`);
+  }
+
   // Seed a minimal workout for users whose tests rely on the "Plan your week"
-  // empty state. P8 replaces that state with a beginner CTA when
-  // workoutCount == 0, so we push workoutCount above 0 for these users so the
-  // Home screen renders the legacy planning prompt and the tests can navigate
-  // past it without the beginner CTA intercepting.
+  // empty state or need "Quick workout" (lapsed state). W8 replaced the
+  // "Start Empty Workout" button with state-dependent entry points: brand-new
+  // users (workoutCount == 0) see "YOUR FIRST WORKOUT" CTA (starts a routine,
+  // not an empty workout), while lapsed users see "Quick workout" (empty workout).
+  //
+  // Tests that call startEmptyWorkout() and then manipulate individual sets /
+  // exercises expect an empty workout (no pre-filled exercises). These users must
+  // start in lapsed state. The clean step above resets them to zero workouts, so
+  // we re-seed one minimal completed workout to push them into lapsed state.
   const usersNeedingSeededWorkoutForP8 = [
     'e2e-smoke-weekly-plan@test.local',
+    // All freshStateUsers that call startEmptyWorkout() in their tests must
+    // start in lapsed state (Quick workout → empty workout) rather than
+    // brand-new state (YOUR FIRST WORKOUT CTA → Full Body routine with
+    // pre-filled exercises). The clean step resets them to zero workouts, so
+    // we re-seed one minimal completed workout here.
+    'e2e-smoke-workout@test.local',
+    'e2e-full-workout@test.local',
+    'e2e-full-home@test.local',
+    'e2e-full-manage-data@test.local',
+    'e2e-full-pr@test.local',
+    'e2e-full-crash@test.local',
+    'e2e-full-ex-detail-sheet@test.local',
   ];
   for (const email of usersNeedingSeededWorkoutForP8) {
     const uid = await getUserId(supabase, email);

@@ -1,268 +1,230 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
-import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/workout_formatters.dart';
+import '../../../core/theme/radii.dart';
 import '../../profile/providers/profile_providers.dart';
-import '../../weekly_plan/providers/weekly_plan_provider.dart';
-import '../../weekly_plan/ui/widgets/week_bucket_section.dart';
+import '../../routines/models/routine.dart';
 import '../../routines/providers/notifiers/routine_list_notifier.dart';
 import '../../routines/ui/start_routine_action.dart';
 import '../../routines/ui/widgets/routine_action_sheet.dart';
 import '../../routines/ui/widgets/routine_card.dart';
-import '../providers/workout_history_providers.dart';
-import '../providers/workout_providers.dart';
-import 'widgets/contextual_stat_cell.dart';
-import 'widgets/resume_workout_dialog.dart';
+import '../../weekly_plan/providers/suggested_next_provider.dart';
+import '../../weekly_plan/providers/week_review_stats_provider.dart';
+import '../../weekly_plan/providers/weekly_plan_provider.dart';
+import '../../weekly_plan/ui/widgets/week_bucket_section.dart';
+import '../../weekly_plan/ui/widgets/week_review_section.dart';
+import 'widgets/action_hero.dart';
+import 'widgets/home_status_line.dart';
+import 'widgets/last_session_line.dart';
 
-class HomeScreen extends ConsumerWidget {
+/// The GymBuddy home surface.
+///
+/// Per PLAN W8, the composition is state-aware and intent-first:
+///
+/// 1. [HomeStatusLine]     — state-aware single-line status (replaces date
+///                           header + greeting)
+/// 2. Confirmation banner  — "Same plan this week?" (renders above hero when
+///                           `weeklyPlanNeedsConfirmationProvider` is true)
+/// 3. [WeekReviewSection]  — week-complete stats card (only when the current
+///                           week's plan is fully done)
+/// 4. [ActionHero]         — the banner CTA for the current state
+/// 5. [WeekBucketSection]  — chip row (only when an active plan exists and is
+///                           not yet complete)
+/// 6. [LastSessionLine]    — editorial "Last: ..." line (hidden when no
+///                           history)
+/// 7. `_HomeRoutinesList`  — user's routines, top 3 + "See all", only when
+///                           no active plan
+///
+/// Note: this build method intentionally does NOT watch any providers. Each
+/// block is a ConsumerWidget that subscribes to only the state it needs, so
+/// a change in (for example) `workoutHistoryProvider` does not rebuild the
+/// status line or chip row.
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final profile = ref.watch(profileProvider).value;
-    final planAsync = ref.watch(weeklyPlanProvider);
-    final routinesAsync = ref.watch(routineListProvider);
-
-    // Determine if user has an active weekly plan.
-    // Use hasValue + value to retain previous state during provider reload
-    // (AsyncLoading with previous data), preventing UI flicker.
-    final hasActivePlan =
-        planAsync.hasValue &&
-        planAsync.value != null &&
-        planAsync.value!.routines.isNotEmpty;
-
-    return SafeArea(
+  Widget build(BuildContext context) {
+    return const SafeArea(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Header — Date + user display name
-            const SizedBox(height: 8),
-            Text(
-              DateFormat('EEE, MMM d').format(DateTime.now()).toUpperCase(),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
-            ),
-            if (profile?.displayName != null &&
-                profile!.displayName!.isNotEmpty) ...[
-              const SizedBox(height: 2),
-              Text(profile.displayName!, style: theme.textTheme.headlineMedium),
-            ],
-            const SizedBox(height: 20),
-
-            // 2. THIS WEEK section (hero) — always above the fold
-            const WeekBucketSection(),
-
-            // 3. Contextual stat cells
-            const _ContextualStatCells(),
-            const SizedBox(height: 20),
-
-            // 4. Start Empty Workout — FilledButton, full-width
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: () => _startEmptyWorkout(context, ref),
-                icon: const Icon(Icons.play_arrow_rounded),
-                label: const Text('Start Empty Workout'),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 52),
-                  textStyle: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // 5. Routines list — hidden when user has active plan
-            if (!hasActivePlan)
-              routinesAsync.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (err, _) => Text(
-                  'Failed to load routines',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                data: (routines) {
-                  final userRoutines = routines
-                      .where((r) => r.userId != null && !r.isDefault)
-                      .toList();
-                  final defaultRoutines = routines
-                      .where((r) => r.isDefault)
-                      .toList();
-
-                  // Only show onboarding CTA when no routines at all.
-                  if (userRoutines.isEmpty && defaultRoutines.isEmpty) {
-                    return const _CreateRoutineCta();
-                  }
-
-                  return _RoutinesList(
-                    userRoutines: userRoutines,
-                    defaultRoutines: defaultRoutines,
-                  );
-                },
-              ),
+            HomeStatusLine(),
+            SizedBox(height: 16),
+            _ConfirmBanner(),
+            _WeekReviewCard(),
+            ActionHero(),
+            SizedBox(height: 12),
+            RepaintBoundary(child: WeekBucketSection()),
+            LastSessionLine(),
+            SizedBox(height: 16),
+            _HomeRoutinesList(),
           ],
         ),
       ),
     );
   }
-
-  Future<void> _startEmptyWorkout(BuildContext context, WidgetRef ref) async {
-    final existingWorkout = ref.read(activeWorkoutProvider).value;
-    if (existingWorkout != null) {
-      if (!context.mounted) return;
-      final result = await ResumeWorkoutDialog.show(
-        context,
-        workoutName: existingWorkout.workout.name,
-        startedAt: existingWorkout.workout.startedAt,
-      );
-      if (!context.mounted) return;
-      if (result == ResumeWorkoutResult.resume) {
-        context.go('/workout/active');
-        return;
-      }
-      if (result == ResumeWorkoutResult.discard) {
-        try {
-          await ref.read(activeWorkoutProvider.notifier).discardWorkout();
-        } catch (_) {
-          return; // discard failed — don't start a new workout
-        }
-        return; // discard succeeded — don't start a new workout
-      } else {
-        return; // dismissed
-      }
-    }
-    await ref.read(activeWorkoutProvider.notifier).startWorkout();
-    if (!context.mounted) return;
-    context.go('/workout/active');
-  }
 }
 
-/// Two horizontal stat cells: last session + this week's volume.
-class _ContextualStatCells extends ConsumerWidget {
-  const _ContextualStatCells();
+// ---------------------------------------------------------------------------
+// Confirmation banner ("Same plan this week?")
+// ---------------------------------------------------------------------------
+
+class _ConfirmBanner extends ConsumerWidget {
+  const _ConfirmBanner();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final lastSession = ref.watch(lastSessionProvider);
-    final weekVolume = ref.watch(weekVolumeProvider);
-    final weightUnit = ref.watch(profileProvider).value?.weightUnit ?? 'kg';
+    final needsConfirmation = ref.watch(weeklyPlanNeedsConfirmationProvider);
+    if (!needsConfirmation) return const SizedBox.shrink();
 
-    // Hide both cells for brand-new users who have nothing to show yet.
-    // Only collapse when weekVolume has actually resolved — during initial
-    // load we retain the current placeholder behavior so the row doesn't
-    // flash in after the first frame once data arrives.
-    //
-    // Use a near-zero threshold rather than exact float equality: the
-    // provider currently returns 0.0 from an explicit empty-sum path, but
-    // if that ever changes (e.g. weight*reps summing over a zeroed-out
-    // set producing a floating-point epsilon), strict == 0 would either
-    // leave an ugly "0 kg this week" cell visible or hide incorrectly on
-    // rounding drift.
-    final weekVolumeValue = weekVolume.value;
-    if (lastSession == null &&
-        weekVolumeValue != null &&
-        weekVolumeValue < 0.001) {
-      return const SizedBox.shrink();
-    }
-
-    final lastValue = lastSession != null
-        ? '${lastSession.relativeDate} \u2014 ${lastSession.name}'
-        : 'No workouts yet';
-
-    final volumeValue = weekVolume.when(
-      data: (v) => v > 0
-          ? '${WorkoutFormatters.formatVolume(v, weightUnit: weightUnit)} this week'
-          : 'No volume yet',
-      loading: () => '--',
-      error: (_, _) => '--',
-    );
-
-    return Row(
-      children: [
-        Expanded(
-          child: ContextualStatCell(
-            label: 'Last session',
-            value: lastValue,
-            onTap: () => context.push('/home/history'),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: ContextualStatCell(
-            label: "Week's volume",
-            value: volumeValue,
-            onTap: () => context.push('/home/history'),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Routines list shown when user has no active weekly plan.
-class _RoutinesList extends ConsumerWidget {
-  const _RoutinesList({
-    required this.userRoutines,
-    required this.defaultRoutines,
-  });
-
-  final List<dynamic> userRoutines;
-  final List<dynamic> defaultRoutines;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (userRoutines.isNotEmpty) ...[
-          Text(
-            'MY ROUTINES',
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
-            ),
+    final borderRadius = BorderRadius.circular(kRadiusMd);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: theme.cardTheme.color ?? theme.colorScheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: borderRadius,
+          side: BorderSide(
+            color: theme.colorScheme.primary.withValues(alpha: 0.3),
           ),
-          const SizedBox(height: 8),
-          ...userRoutines.map(
-            (r) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: RoutineCard(
-                routine: r,
-                onTap: () => startRoutineWorkout(context, ref, r),
-                onLongPress: () => showRoutineActionSheet(context, ref, r),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Same plan this week?',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () => context.push('/plan/week'),
+                child: const Text('Edit'),
+              ),
+              TextButton(
+                onPressed: () {
+                  ref.read(weeklyPlanNeedsConfirmationProvider.notifier).state =
+                      false;
+                },
+                child: const Text('Confirm'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Week review card (complete state)
+// ---------------------------------------------------------------------------
+
+/// Renders the [WeekReviewSection] stats card — and only the stats card — when
+/// the current week's bucket is fully completed. The "Start new week" CTA is
+/// owned by [ActionHero], so this card passes `onNewWeek: null` to keep the
+/// review card chrome-free (no NEW WEEK link in the header).
+class _WeekReviewCard extends ConsumerWidget {
+  const _WeekReviewCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final plan = ref.watch(weeklyPlanProvider).value;
+    if (plan == null || plan.routines.isEmpty) return const SizedBox.shrink();
+
+    final isComplete = ref.watch(isWeekCompleteProvider);
+    if (!isComplete) return const SizedBox.shrink();
+
+    final routines = ref.watch(routineListProvider).value ?? const <Routine>[];
+    final nameMap = <String, String>{for (final r in routines) r.id: r.name};
+    final weightUnit = ref.watch(profileProvider).value?.weightUnit ?? 'kg';
+    final stats = ref.watch(weekReviewStatsProvider).value;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: WeekReviewSection(
+        plan: plan,
+        routineNames: nameMap,
+        totalVolume: stats?.totalVolume ?? 0,
+        prCount: stats?.prCount ?? 0,
+        weightUnit: weightUnit,
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// My Routines list (only when no active plan)
+// ---------------------------------------------------------------------------
+
+/// Maximum number of user routines shown inline on Home. When the user has
+/// more, a "See all" pill links to `/routines`.
+const _homeRoutineLimit = 3;
+
+class _HomeRoutinesList extends ConsumerWidget {
+  const _HomeRoutinesList();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Scoped subscription: only flips on plan create/clear/empty transitions,
+    // so routine-level plan mutations (mark-complete, add, remove) do not
+    // force this list to rebuild.
+    final hasActivePlan = ref.watch(hasActivePlanProvider);
+    if (hasActivePlan) return const SizedBox.shrink();
+
+    final routinesAsync = ref.watch(routineListProvider);
+    return routinesAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (routines) {
+        final userRoutines = routines
+            .where((r) => r.userId != null && !r.isDefault)
+            .toList();
+        if (userRoutines.isEmpty) {
+          return const _CreateRoutineCta();
+        }
+
+        final shown = userRoutines.take(_homeRoutineLimit).toList();
+        final hasMore = userRoutines.length > _homeRoutineLimit;
+        final theme = Theme.of(context);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'MY ROUTINES',
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-        ],
-        if (defaultRoutines.isNotEmpty) ...[
-          Text(
-            'STARTER ROUTINES',
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
-            ),
-          ),
-          const SizedBox(height: 8),
-          ...defaultRoutines.map(
-            (r) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: RoutineCard(
-                routine: r,
-                onTap: () => startRoutineWorkout(context, ref, r),
+            const SizedBox(height: 8),
+            for (final r in shown)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: RoutineCard(
+                  routine: r,
+                  onTap: () => startRoutineWorkout(context, ref, r),
+                  onLongPress: () => showRoutineActionSheet(context, ref, r),
+                ),
               ),
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
-      ],
+            if (hasMore)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  onPressed: () => context.go('/routines'),
+                  child: const Text('See all'),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
@@ -274,37 +236,32 @@ class _CreateRoutineCta extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: AppTheme.primaryGradient,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () => context.go('/routines/create'),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 72),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.add_rounded,
-                    color: theme.colorScheme.onPrimary,
-                    size: 28,
+    return Material(
+      color: theme.cardTheme.color ?? theme.colorScheme.surface,
+      borderRadius: BorderRadius.circular(kRadiusMd),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(kRadiusMd),
+        onTap: () => context.go('/routines/create'),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 72),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.add_rounded,
+                  color: theme.colorScheme.primary,
+                  size: 28,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Create Your First Routine',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.w700,
                   ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Create Your First Routine',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: theme.colorScheme.onPrimary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),

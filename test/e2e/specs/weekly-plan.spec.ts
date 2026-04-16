@@ -9,10 +9,59 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { login } from '../helpers/auth';
 import { navigateToTab } from '../helpers/app';
 import { WEEKLY_PLAN } from '../helpers/selectors';
 import { TEST_USERS } from '../fixtures/test-users';
+
+/**
+ * Flutter's ListView.builder uses viewport culling — items outside the visible
+ * area are not rendered in the DOM. Scroll the active bottom sheet down to
+ * force all items to render, then locate the one matching [buttonNameFragment].
+ *
+ * Uses page.mouse.wheel() which triggers Flutter's scroll physics (same
+ * approach as routines.spec.ts BUG-004 exercise scroll tests).
+ */
+async function scrollSheetAndClick(
+  page: Page,
+  buttonNameFragment: string,
+): Promise<void> {
+  // Try to find the element without scrolling first (it may already be visible).
+  const loc = page.locator(`role=button[name*="${buttonNameFragment}"]`).first();
+  const alreadyVisible = await loc
+    .waitFor({ state: 'visible', timeout: 3_000 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (alreadyVisible) {
+    await loc.click();
+    return;
+  }
+
+  // Position the mouse over the sheet's content area so wheel events scroll
+  // the sheet's list, not the background page.
+  const viewportSize = page.viewportSize();
+  const cx = viewportSize ? viewportSize.width / 2 : 400;
+  const cy = viewportSize ? viewportSize.height * 0.7 : 500;
+  await page.mouse.move(cx, cy);
+
+  // Scroll the bottom-sheet list down in steps until the button becomes visible.
+  // page.mouse.wheel() triggers Flutter's scroll physics reliably.
+  for (let i = 0; i < 8; i++) {
+    await page.mouse.wheel(0, 200);
+    await page.waitForTimeout(300);
+
+    const visible = await loc
+      .waitFor({ state: 'visible', timeout: 1_500 })
+      .then(() => true)
+      .catch(() => false);
+    if (visible) break;
+  }
+
+  await expect(loc).toBeVisible({ timeout: 5_000 });
+  await loc.click();
+}
 
 // The Push Day starter routine is seeded by seed.sql.
 const PUSH_DAY = 'Push Day';
@@ -109,8 +158,11 @@ test.describe('Weekly Plan', { tag: '@smoke' }, () => {
         const dialogShown = await clearConfirm.isVisible({ timeout: 5_000 }).catch(() => false);
         if (dialogShown) {
           await clearConfirm.click();
-          // After clearing, context.pop() navigates away — navigate back via hash.
-          await page.waitForURL('**/home**', { timeout: 10_000 });
+          // After clearing, context.pop() navigates away from /plan/week.
+          // When the user navigated via window.location.hash (not a push), pop
+          // may not go to /home. Instead of waiting for a specific URL, just
+          // wait briefly for navigation to complete, then re-navigate via hash.
+          await page.waitForTimeout(2_000);
           await page.evaluate(() => { window.location.hash = '#/plan/week'; });
           await page.waitForTimeout(2_000);
         }
@@ -142,9 +194,10 @@ test.describe('Weekly Plan', { tag: '@smoke' }, () => {
     });
 
     // Tap the Push Day tile in the sheet.
-    const pushDayTile = page.locator(`text=${PUSH_DAY}`).first();
-    await expect(pushDayTile).toBeVisible({ timeout: 10_000 });
-    await pushDayTile.click();
+    // Flutter's ListView.builder uses viewport culling — items below the fold
+    // are not rendered in the DOM. Use scrollSheetAndClick to scroll until
+    // Push Day becomes visible, then click it.
+    await scrollSheetAndClick(page, PUSH_DAY);
 
     // Confirm with "ADD 1 ROUTINE" button.
     await expect(page.locator(WEEKLY_PLAN.addConfirmButton)).toBeVisible({
@@ -185,7 +238,8 @@ test.describe('Weekly Plan', { tag: '@smoke' }, () => {
       await expect(page.locator(WEEKLY_PLAN.addRoutinesSheetTitle)).toBeVisible({
         timeout: 10_000,
       });
-      await page.locator(`text=${PUSH_DAY}`).first().click();
+      // Flutter's ListView.builder uses viewport culling — scroll to find Push Day.
+      await scrollSheetAndClick(page, PUSH_DAY);
       await page.locator(WEEKLY_PLAN.addConfirmButton).click();
       await expect(page.locator(`text=${PUSH_DAY}`).first()).toBeVisible({
         timeout: 10_000,
@@ -234,7 +288,8 @@ test.describe('Weekly Plan', { tag: '@smoke' }, () => {
         await expect(page.locator(WEEKLY_PLAN.addRoutinesSheetTitle)).toBeVisible({
           timeout: 10_000,
         });
-        await page.locator(`text=${PUSH_DAY}`).first().click();
+        // Flutter's ListView.builder uses viewport culling — scroll to find Push Day.
+        await scrollSheetAndClick(page, PUSH_DAY);
         await page.locator(WEEKLY_PLAN.addConfirmButton).click();
         await expect(page.locator(`text=${PUSH_DAY}`).first()).toBeVisible({
           timeout: 10_000,

@@ -295,8 +295,9 @@ test.describe('Auth — edge cases', () => {
     await expect(page.locator('text=Log Out')).toBeVisible({ timeout: 15_000 });
 
     await page.click(NAV.homeTab);
-    // Home screen no longer shows "GymBuddy" title — verify with actual content.
-    await expect(page.locator('text=Start Empty Workout')).toBeVisible({ timeout: 15_000 });
+    // Home screen in W8 no longer has a "Start Empty Workout" button.
+    // Verify the home tab is active (URL-based confirmation).
+    await page.waitForURL('**/home**', { timeout: 15_000 });
 
     // Logout returns to the login screen.
     await logout(page);

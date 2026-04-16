@@ -9,6 +9,7 @@ Future<ResumeWorkoutResult?> _showDialog(
   WidgetTester tester, {
   required String workoutName,
   required DateTime startedAt,
+  DateTime? now,
 }) async {
   ResumeWorkoutResult? captured;
 
@@ -23,6 +24,7 @@ Future<ResumeWorkoutResult?> _showDialog(
                 context,
                 workoutName: workoutName,
                 startedAt: startedAt,
+                now: now,
               );
             },
             child: const Text('Open'),
@@ -99,10 +101,15 @@ void main() {
     testWidgets('body surfaces both the workout name and an age hint', (
       tester,
     ) async {
+      // Pinned clock so the "hours ago" assertion does not flake when the
+      // suite runs near midnight (subtracting 8h from wall time would cross
+      // into the previous calendar day and hit the "yesterday at ..." branch).
+      final now = DateTime(2026, 4, 15, 14, 0);
       await _showDialog(
         tester,
         workoutName: 'Leg Day',
-        startedAt: DateTime.now().subtract(const Duration(hours: 8)),
+        startedAt: now.subtract(const Duration(hours: 8)),
+        now: now,
       );
 
       // Text.rich concatenates the spans into a single RichText — search on
