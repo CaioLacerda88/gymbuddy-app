@@ -52,7 +52,13 @@ class ProgressChartSection extends ConsumerStatefulWidget {
 
   static const double _lineWidth = 3;
   static const double _dotRadius = 4;
+
+  /// PR ring geometry — intentionally larger than the plain 8dp dots so the
+  /// ring pops. Inner hollow circle 5dp + 2dp stroke + 3dp outer gap → total
+  /// 10dp diameter (2dp delta vs plain dots).
+  static const double _prRingInnerRadius = 5;
   static const double _prRingStroke = 2;
+  static const double _prRingOuterGap = 3;
 
   @override
   ConsumerState<ProgressChartSection> createState() =>
@@ -269,7 +275,7 @@ class _ChartBody extends StatelessWidget {
         child: Text(
           '${_formatWeight(point.weight)} $weightUnit',
           style: theme.textTheme.titleLarge?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.70),
+            color: theme.colorScheme.onSurface,
           ),
         ),
       ),
@@ -301,11 +307,11 @@ class _ChartCard extends StatelessWidget {
   }
 }
 
-/// Trend-copy line (left) + window SegmentedButton (right) on one row,
-/// with the e1RM/Weight metric toggle below right-aligned. The spec-text
-/// "single row" couldn't cleanly hold 5 toggles (3 window segments + 2
-/// metric segments) on a phone-width card — stacking the metric toggle
-/// preserves all controls without shrinking their hit areas.
+/// Trend copy + window toggle + compact metric cycle, all on one row. The
+/// metric toggle is a subordinate `TextButton` that cycles e1RM ↔ Weight on
+/// tap — a full `SegmentedButton<ChartMetric>` would dominate the sparse
+/// 120dp canvas. Trend copy takes `Expanded` and may wrap to 2 lines on very
+/// narrow widths rather than truncate.
 class _TrendRow extends StatelessWidget {
   const _TrendRow({
     required this.metric,
@@ -335,10 +341,16 @@ class _TrendRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final metricLabel = metric == ChartMetric.e1rm ? 'e1RM' : 'Weight';
+    final nextMetric = metric == ChartMetric.e1rm
+        ? ChartMetric.weight
+        : ChartMetric.e1rm;
+    final nextMetricLabel = nextMetric == ChartMetric.e1rm ? 'e1RM' : 'Weight';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(
               child: Text(
@@ -364,25 +376,28 @@ class _TrendRow extends StatelessWidget {
               selected: {window},
               onSelectionChanged: (s) => onWindowChanged(s.first),
             ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        // Metric toggle, right-aligned and smaller.
-        Align(
-          alignment: Alignment.centerRight,
-          child: SegmentedButton<ChartMetric>(
-            showSelectedIcon: false,
-            style: const ButtonStyle(
-              visualDensity: VisualDensity.compact,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            const SizedBox(width: 4),
+            // Subordinate metric cycle — one label, one tap, one style step
+            // down from the window segments.
+            Semantics(
+              label: 'Switch metric to $nextMetricLabel',
+              button: true,
+              child: TextButton(
+                onPressed: () => onMetricChanged(nextMetric),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  minimumSize: const Size(0, 32),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  foregroundColor: theme.colorScheme.onSurface.withValues(
+                    alpha: 0.70,
+                  ),
+                  textStyle: theme.textTheme.labelSmall,
+                ),
+                child: Text(metricLabel),
+              ),
             ),
-            segments: const [
-              ButtonSegment(value: ChartMetric.e1rm, label: Text('e1RM')),
-              ButtonSegment(value: ChartMetric.weight, label: Text('Weight')),
-            ],
-            selected: {metric},
-            onSelectionChanged: (s) => onMetricChanged(s.first),
-          ),
+          ],
         ),
         if (canvas != null) ...[const SizedBox(height: 12), canvas!],
       ],
@@ -550,8 +565,9 @@ class _LineChart extends StatelessWidget {
                   return _PrRingPainter(
                     primary: primary,
                     ringColor: AppTheme.prBadgeColor,
-                    innerRadius: ProgressChartSection._dotRadius,
+                    innerRadius: ProgressChartSection._prRingInnerRadius,
                     strokeWidth: ProgressChartSection._prRingStroke,
+                    outerGap: ProgressChartSection._prRingOuterGap,
                   );
                 }
                 return FlDotCirclePainter(
@@ -598,15 +614,17 @@ class _RingSemanticsLabel extends StatelessWidget {
 }
 
 /// Custom dot painter for the PR dot: hollow primary-stroke circle with a
-/// gold outer ring. Visual: inner accent line at 2dp stroke, gold ring just
-/// outside it. No fill — the point is to draw attention without obscuring
-/// the line underneath.
+/// gold outer ring. Three layers — gold outer ring, hollow primary inner,
+/// 1.5dp solid anchor fill — picked so the ring pops at 10dp total while
+/// plain dots stay at 8dp (2dp delta). No fill on the stroked circles so
+/// the line underneath is never obscured.
 class _PrRingPainter extends FlDotPainter {
   const _PrRingPainter({
     required this.primary,
     required this.ringColor,
     required this.innerRadius,
     required this.strokeWidth,
+    required this.outerGap,
   });
 
   final Color primary;
@@ -614,12 +632,15 @@ class _PrRingPainter extends FlDotPainter {
   final double innerRadius;
   final double strokeWidth;
 
+  /// Radial gap between the inner hollow circle and the gold outer ring.
+  final double outerGap;
+
   @override
   void draw(Canvas canvas, FlSpot spot, Offset offsetInCanvas) {
-    // Gold outer ring — slightly larger than the inner hollow circle.
+    // Gold outer ring — sits outside the inner hollow circle by `outerGap`.
     canvas.drawCircle(
       offsetInCanvas,
-      innerRadius + strokeWidth + 2,
+      innerRadius + strokeWidth + outerGap,
       Paint()
         ..color = ringColor
         ..strokeWidth = strokeWidth
@@ -646,7 +667,8 @@ class _PrRingPainter extends FlDotPainter {
   }
 
   @override
-  Size getSize(FlSpot spot) => Size.fromRadius(innerRadius + strokeWidth + 2);
+  Size getSize(FlSpot spot) =>
+      Size.fromRadius(innerRadius + strokeWidth + outerGap);
 
   @override
   Color get mainColor => primary;
@@ -655,7 +677,13 @@ class _PrRingPainter extends FlDotPainter {
   FlDotPainter lerp(FlDotPainter a, FlDotPainter b, double t) => b;
 
   @override
-  List<Object?> get props => [primary, ringColor, innerRadius, strokeWidth];
+  List<Object?> get props => [
+    primary,
+    ringColor,
+    innerRadius,
+    strokeWidth,
+    outerGap,
+  ];
 }
 
 // -----------------------------------------------------------------------------

@@ -99,9 +99,6 @@ void main() {
           find.text('Log your first set to start tracking'),
           findsOneWidget,
         );
-        // Dashed-ish container marker: we tag it with a Key for the widget
-        // to find deterministically (the spec allows a solid-border fallback
-        // instead of a true CustomPaint dashed border).
         expect(
           find.byKey(const Key('progress-chart-empty-container')),
           findsOneWidget,
@@ -271,8 +268,10 @@ void main() {
       await tester.pumpAndSettle();
 
       // Switch to Weight mode — prValue only applies there. In e1RM mode
-      // the raw 87.5 kg doesn't match a dot's Epley y-value.
-      await tester.tap(find.text('Weight'));
+      // the raw 87.5 kg doesn't match a dot's Epley y-value. The metric
+      // toggle is a cycle button showing the CURRENT metric label; tapping
+      // "e1RM" flips to Weight.
+      await tester.tap(find.text('e1RM'));
       await tester.pumpAndSettle();
 
       // The PR anchor is identified via a Semantics label that encodes
@@ -318,9 +317,9 @@ void main() {
         reason: 'e1RM mode should plot Epley values',
       );
 
-      // Tap the "Weight" segment. The toggle is a SegmentedButton<ChartMetric>
-      // distinct from the window toggle.
-      await tester.tap(find.text('Weight'));
+      // The metric toggle is a compact cycle button that shows the CURRENT
+      // metric label (default = "e1RM"); tapping it flips to Weight mode.
+      await tester.tap(find.text('e1RM'));
       await tester.pumpAndSettle();
 
       lineChart = tester.widget<LineChart>(find.byType(LineChart));
