@@ -42,12 +42,11 @@
 # Flutter embedding
 # ---------------------------------------------------------------------------
 # Flutter engine reflectively instantiates plugin registrants and embedding
-# entry points. The Flutter team's canonical guidance is to keep these
-# packages whole; stripping causes opaque MissingPluginException at runtime.
+# entry points. The Flutter team's canonical guidance is to keep the whole
+# package tree; stripping causes opaque MissingPluginException at runtime.
+# `io.flutter.**` already covers `plugin`, `plugins`, and `embedding` sub-
+# packages — do NOT re-add them as separate rules (redundant + misleading).
 -keep class io.flutter.** { *; }
--keep class io.flutter.plugin.** { *; }
--keep class io.flutter.plugins.** { *; }
--keep class io.flutter.embedding.** { *; }
 -dontwarn io.flutter.embedding.**
 
 # ---------------------------------------------------------------------------
@@ -72,23 +71,31 @@
 -dontwarn io.sentry.**
 
 # ---------------------------------------------------------------------------
-# Supabase (supabase_flutter — Dart side) + OkHttp (transitive Android)
+# OkHttp / OkIO / TLS providers (transitive Android)
 # ---------------------------------------------------------------------------
-# The supabase_flutter plugin is pure Dart over platform channels — no
-# supabase-kt on the Android classpath. All Supabase domain models live in
-# Dart (Freezed/json_serializable), so R8 never sees them. BUT the
-# `supabase_flutter` plugin depends on `app_links` and transitively on
-# OkHttp via some HTTP clients that bundle it. If Realtime phoenix channels
-# start failing in release builds, the culprit is usually OkHttp's internal
-# reflection for Conscrypt / BouncyCastle TLS providers.
-#
-# Guard against those transitively-pulled HTTP clients:
+# The OkHttp3 stack is pulled in transitively by `sentry-android` (bundled
+# with sentry_flutter 9.16.1 — it uses OkHttp for envelope transport to
+# sentry.io). It MAY also appear via other HTTP-using Android plugins in
+# the future; the `supabase_flutter` plugin itself is pure Dart and does
+# NOT depend on OkHttp today (verified — no supabase-kt on the classpath).
+# OkHttp's internal reflection for Conscrypt / BouncyCastle / OpenJSSE TLS
+# providers is what the -dontwarn guards below protect against: if R8
+# sees those provider classes referenced but not present, the release
+# build hard-fails with "Missing class" unless suppressed.
 -dontwarn okhttp3.**
 -dontwarn okio.**
 -dontwarn org.conscrypt.**
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
 
+# ---------------------------------------------------------------------------
+# Supabase (supabase_flutter — Dart side)
+# ---------------------------------------------------------------------------
+# The supabase_flutter plugin is pure Dart over platform channels — no
+# supabase-kt on the Android classpath. All Supabase domain models live in
+# Dart (Freezed/json_serializable), so R8 never sees them. NO KEEP RULES
+# REQUIRED.
+#
 # If a future Supabase version introduces a Kotlin/Java domain layer that
 # reflects on POJOs for JSON, add a targeted -keep here. DO NOT preemptively
 # keep io.supabase.** today — there is no io.supabase package on the
