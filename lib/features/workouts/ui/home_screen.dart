@@ -14,6 +14,7 @@ import '../../weekly_plan/providers/week_review_stats_provider.dart';
 import '../../weekly_plan/providers/weekly_plan_provider.dart';
 import '../../weekly_plan/ui/widgets/week_bucket_section.dart';
 import '../../weekly_plan/ui/widgets/week_review_section.dart';
+import '../../../shared/widgets/pending_sync_badge.dart';
 import 'widgets/action_hero.dart';
 import 'widgets/home_status_line.dart';
 import 'widgets/last_session_line.dart';
@@ -53,6 +54,7 @@ class HomeScreen extends StatelessWidget {
           children: [
             HomeStatusLine(),
             SizedBox(height: 16),
+            PendingSyncBadge(),
             _ConfirmBanner(),
             _WeekReviewCard(),
             ActionHero(),

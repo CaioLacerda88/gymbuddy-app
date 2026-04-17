@@ -79,6 +79,16 @@ class WorkoutRepository extends BaseRepository {
     });
   }
 
+  /// Evict workout history and last-sets caches for a user.
+  ///
+  /// Called by the notifier when a workout is saved offline — the repository's
+  /// own saveWorkout() handles eviction on the online path, but when the RPC
+  /// fails the notifier needs to evict manually.
+  void evictHistoryCaches(String userId) {
+    _cache.delete(HiveService.workoutHistoryCache, userId);
+    _cache.clearBox(HiveService.lastSetsCache);
+  }
+
   /// Create a new active workout (start of a session).
   Future<Workout> createActiveWorkout({
     required String userId,
@@ -376,6 +386,9 @@ class WorkoutRepository extends BaseRepository {
   }
 
   /// Get the total count of finished workouts for a user.
+  ///
+  /// On success the count is cached to `user_prefs` so it can be read
+  /// offline via [getCachedWorkoutCount].
   Future<int> getFinishedWorkoutCount(String userId) {
     return mapException(() async {
       final result = await _workouts
@@ -384,8 +397,38 @@ class WorkoutRepository extends BaseRepository {
           .eq('is_active', false)
           .not('finished_at', 'is', null)
           .count(supabase.CountOption.exact);
-      return result.count;
+      final count = result.count;
+      _cache.write(
+        HiveService.userPrefs,
+        'finished_workout_count:$userId',
+        count,
+      );
+      return count;
     });
+  }
+
+  /// Read the last-known finished workout count from cache.
+  ///
+  /// Returns `null` when no cached value exists.
+  int? getCachedWorkoutCount(String userId) {
+    return _cache.read<int>(
+      HiveService.userPrefs,
+      'finished_workout_count:$userId',
+      (json) => json as int,
+    );
+  }
+
+  /// Increment the cached workout count by 1.
+  ///
+  /// Used after an offline save so the next PR detection has a reasonable
+  /// `totalFinishedWorkouts` value even without network access.
+  void incrementCachedWorkoutCount(String userId) {
+    final current = getCachedWorkoutCount(userId) ?? 0;
+    _cache.write(
+      HiveService.userPrefs,
+      'finished_workout_count:$userId',
+      current + 1,
+    );
   }
 
   /// Discard (delete) an active workout.

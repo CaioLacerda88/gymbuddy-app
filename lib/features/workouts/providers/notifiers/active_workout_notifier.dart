@@ -6,6 +6,8 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/device/platform_info.dart';
 import '../../../../core/exceptions/app_exception.dart' as app;
+import '../../../../core/offline/pending_action.dart';
+import '../../../../core/offline/pending_sync_provider.dart';
 import '../../../../core/observability/sentry_report.dart';
 import '../../../analytics/data/models/analytics_event.dart';
 import '../../../analytics/providers/analytics_providers.dart';
@@ -72,6 +74,7 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
     _cancelRequested = true;
     _isFinishing = false;
     _isDiscarding = false;
+    savedOffline = false;
     if (_lastValidState != null) {
       state = AsyncData(_lastValidState);
     }
@@ -609,7 +612,17 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
     _isDiscarding = false;
   }
 
+  /// Whether the last [finishWorkout] call saved the workout to the offline
+  /// queue rather than syncing it to the server. UI reads this to show the
+  /// "Will sync when back online" banner on the finish screen.
+  bool savedOffline = false;
+
   /// Finish the active workout, save to server, detect PRs, and return results.
+  ///
+  /// When the network save fails, the workout is enqueued for offline sync
+  /// and a locally-constructed [Workout] is used for downstream PR detection
+  /// and weekly-plan updates. The [savedOffline] flag is set so the UI can
+  /// display an appropriate message.
   Future<PRDetectionResult?> finishWorkout({String? notes}) async {
     final current = state.value;
     if (current == null) return null;
@@ -617,6 +630,7 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
     _isFinishing = true;
     _lastValidState = current;
     _cancelRequested = false;
+    savedOffline = false;
 
     // Capture workout data BEFORE setting loading state.
     final exercises = current.exercises;
@@ -648,19 +662,89 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
       final workoutExercises = exercises.map((e) => e.workoutExercise).toList();
       final sets = exercises.expand((e) => e.sets).toList();
 
-      await _repo.saveWorkout(
-        workout: workout,
-        exercises: workoutExercises,
-        sets: sets,
-      );
+      // --- Save workout (online or offline queue) ---
+      try {
+        await _repo.saveWorkout(
+          workout: workout,
+          exercises: workoutExercises,
+          sets: sets,
+        );
+      } catch (e) {
+        log(
+          'Network save failed, queueing offline: $e',
+          name: 'ActiveWorkoutNotifier',
+          level: 900,
+        );
+        savedOffline = true;
+
+        // Build raw JSON maps matching the RPC shape.
+        // Include all required Workout fields so Workout.fromJson succeeds
+        // when retrying from the queue.
+        final workoutJson = <String, dynamic>{
+          'id': workout.id,
+          'user_id': workout.userId,
+          'name': workout.name,
+          'started_at': workout.startedAt.toIso8601String(),
+          'finished_at': workout.finishedAt?.toIso8601String(),
+          'duration_seconds': workout.durationSeconds,
+          'is_active': false,
+          'notes': workout.notes,
+          'created_at': workout.createdAt.toIso8601String(),
+        };
+        final exercisesJson = workoutExercises
+            .map(
+              (e) => <String, dynamic>{
+                'id': e.id,
+                'workout_id': e.workoutId,
+                'exercise_id': e.exerciseId,
+                'order': e.order,
+                'rest_seconds': e.restSeconds,
+              },
+            )
+            .toList();
+        final setsJson = sets
+            .map(
+              (s) => <String, dynamic>{
+                'id': s.id,
+                'workout_exercise_id': s.workoutExerciseId,
+                'set_number': s.setNumber,
+                'reps': s.reps,
+                'weight': s.weight,
+                'rpe': s.rpe,
+                'set_type': s.setType.name,
+                'notes': s.notes,
+                'is_completed': s.isCompleted,
+              },
+            )
+            .toList();
+
+        await ref
+            .read(pendingSyncProvider.notifier)
+            .enqueue(
+              PendingAction.saveWorkout(
+                id: workout.id,
+                workoutJson: workoutJson,
+                exercisesJson: exercisesJson,
+                setsJson: setsJson,
+                userId: workout.userId,
+                queuedAt: now,
+              ),
+            );
+
+        _repo.incrementCachedWorkoutCount(workout.userId);
+        _repo.evictHistoryCaches(workout.userId);
+      }
 
       // Invalidate the per-exercise progress chart family so any exercise
       // whose detail sheet is re-opened this session reflects the newly
       // saved sets. Invalidating the whole family is correct — a finished
       // workout may touch any exercise, and the family is small per user.
-      ref.invalidate(exerciseProgressProvider);
+      if (!savedOffline) {
+        ref.invalidate(exerciseProgressProvider);
+      }
 
       // PR detection: batch-fetch existing records, then detect new ones.
+      // When offline, getRecordsForExercises falls back to pr_cache (14a).
       try {
         final prRepo = ref.read(prRepositoryProvider);
         final prService = ref.read(prDetectionServiceProvider);
@@ -670,8 +754,15 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
         );
 
         // Fetch total finished workout count for accurate first-workout detection.
-        // The current workout is already saved at this point, so count >= 1.
-        workoutCount = await _repo.getFinishedWorkoutCount(_userId);
+        if (savedOffline) {
+          workoutCount = _repo.getCachedWorkoutCount(_userId) ?? 1;
+        } else {
+          try {
+            workoutCount = await _repo.getFinishedWorkoutCount(_userId);
+          } catch (_) {
+            workoutCount = _repo.getCachedWorkoutCount(_userId) ?? 1;
+          }
+        }
 
         prResult = prService.detectPRs(
           userId: _userId,
@@ -685,12 +776,23 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
             await prRepo.upsertRecords(prResult!.newRecords);
           } catch (e) {
             log(
-              'PR record save failed: $e',
+              'PR record save failed, queueing offline: $e',
               name: 'ActiveWorkoutNotifier',
               level: 900,
             );
+            // Queue upsert for later sync.
+            await ref
+                .read(pendingSyncProvider.notifier)
+                .enqueue(
+                  PendingAction.upsertRecords(
+                    id: _uuid.v4(),
+                    recordsJson: prResult!.newRecords
+                        .map((r) => r.toJson())
+                        .toList(),
+                    queuedAt: now,
+                  ),
+                );
             // prResult is still set — user sees celebration even if save failed.
-            // Records will be re-detected on next workout finish.
           }
         }
       } catch (e) {
@@ -714,12 +816,31 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
                   r.completedWorkoutId == null,
             );
             if (hasBucketMatch) {
-              await ref
-                  .read(weeklyPlanProvider.notifier)
-                  .markRoutineComplete(
-                    routineId: matchedRoutineId,
-                    workoutId: workout.id,
-                  );
+              try {
+                await ref
+                    .read(weeklyPlanProvider.notifier)
+                    .markRoutineComplete(
+                      routineId: matchedRoutineId,
+                      workoutId: workout.id,
+                    );
+              } catch (e) {
+                log(
+                  'Weekly plan update failed, queueing offline: $e',
+                  name: 'ActiveWorkoutNotifier',
+                  level: 900,
+                );
+                await ref
+                    .read(pendingSyncProvider.notifier)
+                    .enqueue(
+                      PendingAction.markRoutineComplete(
+                        id: _uuid.v4(),
+                        planId: plan.id,
+                        routineId: matchedRoutineId,
+                        workoutId: workout.id,
+                        queuedAt: now,
+                      ),
+                    );
+              }
             }
           }
         }
