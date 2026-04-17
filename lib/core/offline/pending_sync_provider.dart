@@ -18,11 +18,23 @@ import 'pending_action.dart';
 /// Mutations go through the notifier methods so the count auto-updates.
 class PendingSyncNotifier extends Notifier<int> {
   late OfflineQueueService _queue;
+  final _inFlight = <String>{};
 
   @override
   int build() {
     _queue = ref.watch(offlineQueueServiceProvider);
     return _queue.pendingCount;
+  }
+
+  /// Whether the given action ID is currently being retried.
+  bool isInFlight(String id) => _inFlight.contains(id);
+
+  /// Re-read the queue count and push it to listeners.
+  ///
+  /// Useful when an external caller (e.g. SyncService) mutates the queue
+  /// and needs the badge count to update without going through [enqueue].
+  void refreshCount() {
+    state = _queue.pendingCount;
   }
 
   /// Add an action to the offline queue and update the badge count.
@@ -38,11 +50,18 @@ class PendingSyncNotifier extends Notifier<int> {
   ///
   /// On success: dequeues the item and decrements the count.
   /// On failure: increments retryCount, stores the error, and rethrows.
+  ///
+  /// If the item is already being retried (e.g. by SyncService while the user
+  /// taps "Retry" in PendingSyncSheet), the call returns immediately to
+  /// prevent duplicate server requests.
   Future<void> retryItem(String id) async {
+    if (_inFlight.contains(id)) return;
+
     final actions = _queue.getAll();
     final action = actions.where((a) => a.id == id).firstOrNull;
     if (action == null) return;
 
+    _inFlight.add(id);
     try {
       await _executeAction(action);
       await _queue.dequeue(id);
@@ -57,6 +76,8 @@ class PendingSyncNotifier extends Notifier<int> {
       await _queue.updateAction(updated);
       state = _queue.pendingCount;
       rethrow;
+    } finally {
+      _inFlight.remove(id);
     }
   }
 

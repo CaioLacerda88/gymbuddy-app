@@ -353,6 +353,41 @@ void main() {
 
         await expectLater(notifier.retryItem('w-anything'), completes);
       });
+
+      test('retryItem rejects concurrent retry for same ID', () async {
+        // Enqueue an action
+        await queueService.enqueue(makeSaveWorkoutAction(id: 'w-001'));
+        container.read(pendingSyncProvider); // initialize
+
+        when(
+          () => mockWorkoutRepo.saveWorkout(
+            workout: any(named: 'workout'),
+            exercises: any(named: 'exercises'),
+            sets: any(named: 'sets'),
+          ),
+        ).thenAnswer((_) async => Workout.fromJson(_workoutJson(id: 'w-001')));
+
+        // First retry starts
+        final first = container
+            .read(pendingSyncProvider.notifier)
+            .retryItem('w-001');
+        // Second retry for same ID should be a no-op (in-flight guard)
+        final second = container
+            .read(pendingSyncProvider.notifier)
+            .retryItem('w-001');
+
+        await first;
+        await second;
+
+        // saveWorkout should only be called once
+        verify(
+          () => mockWorkoutRepo.saveWorkout(
+            workout: any(named: 'workout'),
+            exercises: any(named: 'exercises'),
+            sets: any(named: 'sets'),
+          ),
+        ).called(1);
+      });
     });
 
     // ---------------------------------------------------- getAll
