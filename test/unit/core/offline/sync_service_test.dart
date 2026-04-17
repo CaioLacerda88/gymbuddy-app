@@ -433,7 +433,6 @@ void main() {
       // Call retryTerminalItems — this resets retry count and calls _drain
       // directly (no connectivity transition needed).
       await container.read(syncServiceProvider.notifier).retryTerminalItems();
-      await _pumpAsync(200);
 
       // The item should be retried (retryCount was reset) and dequeued.
       expect(container.read(pendingSyncProvider), 0);
@@ -818,7 +817,6 @@ void main() {
 
         // Call retryTerminalItems while offline.
         await container.read(syncServiceProvider.notifier).retryTerminalItems();
-        await _pumpAsync(200);
 
         // The drain should check connectivity and stop — item is NOT dequeued.
         // retryCount was reset to 0 by retryTerminalItems, but the drain skipped.

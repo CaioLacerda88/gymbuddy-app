@@ -16,12 +16,12 @@ void main() {
         expect(SyncErrorClassifier.isTerminal(error), isTrue);
       });
 
-      test('returns true for 401 Unauthorized', () {
+      test('returns false for 401 Unauthorized (JWT auto-refresh)', () {
         const error = supabase.PostgrestException(
           message: 'Unauthorized',
           code: '401',
         );
-        expect(SyncErrorClassifier.isTerminal(error), isTrue);
+        expect(SyncErrorClassifier.isTerminal(error), isFalse);
       });
 
       test('returns true for 403 Forbidden', () {

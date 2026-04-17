@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -134,9 +135,8 @@ class SyncService extends Notifier<SyncState> {
       }
     }
     ref.read(pendingSyncProvider.notifier).refreshCount();
-    if (!_draining) state = const SyncState();
-    // Fire-and-forget: drain runs in background; state updates reactively.
-    _drain();
+    state = const SyncState();
+    await _drain();
   }
 
   /// Remove terminal items from queue entirely.
@@ -188,15 +188,17 @@ class SyncService extends Notifier<SyncState> {
     try {
       final analytics = ref.read(analyticsRepositoryProvider);
       final elapsed = DateTime.now().difference(action.queuedAt).inSeconds;
-      analytics.insertEvent(
-        userId: _userId(action),
-        event: AnalyticsEvent.workoutSyncSucceeded(
-          actionType: _actionType(action),
-          retryCount: action.retryCount,
-          elapsedSecondsInQueue: elapsed,
+      unawaited(
+        analytics.insertEvent(
+          userId: _userId(action),
+          event: AnalyticsEvent.workoutSyncSucceeded(
+            actionType: _actionType(action),
+            retryCount: action.retryCount,
+            elapsedSecondsInQueue: elapsed,
+          ),
+          platform: null,
+          appVersion: null,
         ),
-        platform: null,
-        appVersion: null,
       );
     } catch (_) {
       // Analytics must never break the sync loop.
@@ -207,16 +209,18 @@ class SyncService extends Notifier<SyncState> {
     try {
       final analytics = ref.read(analyticsRepositoryProvider);
       final elapsed = DateTime.now().difference(action.queuedAt).inSeconds;
-      analytics.insertEvent(
-        userId: _userId(action),
-        event: AnalyticsEvent.workoutSyncFailed(
-          actionType: _actionType(action),
-          retryCount: action.retryCount + 1,
-          errorClass: error.runtimeType.toString(),
-          elapsedSecondsInQueue: elapsed,
+      unawaited(
+        analytics.insertEvent(
+          userId: _userId(action),
+          event: AnalyticsEvent.workoutSyncFailed(
+            actionType: _actionType(action),
+            retryCount: action.retryCount + 1,
+            errorClass: error.runtimeType.toString(),
+            elapsedSecondsInQueue: elapsed,
+          ),
+          platform: null,
+          appVersion: null,
         ),
-        platform: null,
-        appVersion: null,
       );
     } catch (_) {
       // Analytics must never break the sync loop.

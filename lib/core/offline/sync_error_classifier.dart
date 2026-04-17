@@ -9,7 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 /// retry. Transient errors are server-side (5xx), network, or auth-token
 /// issues that may resolve on their own.
 abstract final class SyncErrorClassifier {
-  static const _terminalCodes = {400, 401, 403, 404, 409, 422};
+  static const _terminalCodes = {400, 403, 404, 409, 422};
 
   /// Returns `true` if [error] is a terminal error that should not be retried.
   static bool isTerminal(Object error) {
