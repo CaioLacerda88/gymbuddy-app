@@ -23,6 +23,7 @@ import 'package:gymbuddy_app/features/workouts/models/workout.dart';
 import 'package:gymbuddy_app/features/workouts/providers/notifiers/active_workout_notifier.dart';
 import 'package:gymbuddy_app/features/workouts/providers/workout_history_providers.dart';
 import 'package:gymbuddy_app/features/workouts/providers/workout_providers.dart';
+import 'package:gymbuddy_app/core/offline/pending_sync_provider.dart';
 import 'package:gymbuddy_app/features/workouts/ui/home_screen.dart';
 
 import '../../../../fixtures/test_factories.dart';
@@ -94,6 +95,11 @@ class _ProfileStub extends AsyncNotifier<Profile?> implements ProfileNotifier {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _ZeroPendingSyncNotifier extends PendingSyncNotifier {
+  @override
+  int build() => 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -168,6 +174,7 @@ Widget _build({
       workoutCountProvider.overrideWith((ref) => Future.value(workoutCount)),
       activeWorkoutProvider.overrideWith(() => _NullActiveWorkoutNotifier()),
       profileProvider.overrideWith(() => _ProfileStub(profile)),
+      pendingSyncProvider.overrideWith(() => _ZeroPendingSyncNotifier()),
     ],
     child: MaterialApp(
       theme: AppTheme.dark,

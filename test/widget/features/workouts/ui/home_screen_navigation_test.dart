@@ -20,6 +20,7 @@ import 'package:gymbuddy_app/features/workouts/models/workout.dart';
 import 'package:gymbuddy_app/features/workouts/providers/notifiers/active_workout_notifier.dart';
 import 'package:gymbuddy_app/features/workouts/providers/workout_history_providers.dart';
 import 'package:gymbuddy_app/features/workouts/providers/workout_providers.dart';
+import 'package:gymbuddy_app/core/offline/pending_sync_provider.dart';
 import 'package:gymbuddy_app/features/workouts/ui/home_screen.dart';
 import 'package:gymbuddy_app/features/workouts/ui/widgets/last_session_line.dart';
 
@@ -100,6 +101,11 @@ class _ProfileStub extends AsyncNotifier<Profile?> implements ProfileNotifier {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _ZeroPendingSyncNotifier extends PendingSyncNotifier {
+  @override
+  int build() => 0;
+}
+
 // ---------------------------------------------------------------------------
 // Harness
 // ---------------------------------------------------------------------------
@@ -150,6 +156,7 @@ Widget _buildTestApp({required List<Workout> workouts}) {
           const Profile(id: 'user-001', displayName: 'Alex', weightUnit: 'kg'),
         ),
       ),
+      pendingSyncProvider.overrideWith(() => _ZeroPendingSyncNotifier()),
     ],
     child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
   );

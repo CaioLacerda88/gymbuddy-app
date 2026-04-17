@@ -273,12 +273,36 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
         return;
       }
 
+      final wasSavedOffline = notifier.savedOffline;
+
       // Invalidate caches so stat cards and lists reflect the new workout.
-      ref.invalidate(workoutHistoryProvider);
-      ref.invalidate(workoutCountProvider);
-      ref.invalidate(prListProvider);
-      ref.invalidate(prCountProvider);
-      ref.invalidate(recentPRsProvider);
+      if (!wasSavedOffline) {
+        ref.invalidate(workoutHistoryProvider);
+        ref.invalidate(workoutCountProvider);
+      }
+      // Always invalidate PR providers when new records exist, regardless of
+      // whether the workout itself was saved offline — the PR upsert may have
+      // succeeded independently.
+      if (prResult != null && prResult.hasNewRecords) {
+        ref.invalidate(prListProvider);
+        ref.invalidate(prCountProvider);
+        ref.invalidate(recentPRsProvider);
+      }
+
+      // Show offline-save confirmation if the workout was queued.
+      if (wasSavedOffline && mounted) {
+        final colorScheme = Theme.of(context).colorScheme;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Workout saved. Will sync when back online.',
+              style: TextStyle(color: colorScheme.onTertiaryContainer),
+            ),
+            backgroundColor: colorScheme.tertiaryContainer,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
 
       // Determine if we should prompt to add this routine to the plan.
       final shouldPrompt = _shouldShowPlanPrompt(routineId);
