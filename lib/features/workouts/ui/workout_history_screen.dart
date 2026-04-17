@@ -34,11 +34,13 @@ class _WorkoutHistoryScreenState extends ConsumerState<WorkoutHistoryScreen> {
 
   void _onScroll() {
     if (!_scrollController.hasClients) return;
+    final notifier = ref.read(workoutHistoryProvider.notifier);
+    if (!notifier.hasMore) return;
     final maxScroll = _scrollController.position.maxScrollExtent;
     final currentScroll = _scrollController.position.pixels;
     // Load more when within 200px of the bottom.
     if (currentScroll >= maxScroll - 200) {
-      ref.read(workoutHistoryProvider.notifier).loadMore();
+      notifier.loadMore();
     }
   }
 

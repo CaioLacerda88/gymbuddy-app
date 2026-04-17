@@ -20,14 +20,28 @@ Widget buildOverlay(RestTimerState? timerState) {
 
 /// A minimal notifier that starts with a fixed state for widget tests.
 ///
-/// Skip and stop are no-ops here — the test verifies the provider call
-/// indirectly via state change, or via the notifier itself.
+/// Overrides [adjustTime] to compute elapsed from the state snapshot (not
+/// from the wall clock) since these tests don't run under [fakeAsync].
+/// The wall-clock behaviour of [adjustTime] is covered by the unit tests.
 class _FakeRestTimerNotifier extends RestTimerNotifier {
   _FakeRestTimerNotifier(this._initial);
   final RestTimerState? _initial;
 
   @override
   RestTimerState? build() => _initial;
+
+  @override
+  void adjustTime(int deltaSeconds) {
+    final current = state;
+    if (current == null) return;
+    final elapsed = current.totalSeconds - current.remainingSeconds;
+    final newTotal = (current.totalSeconds + deltaSeconds).clamp(30, 600);
+    final newRemaining = (newTotal - elapsed).clamp(0, newTotal);
+    state = current.copyWith(
+      totalSeconds: newTotal,
+      remainingSeconds: newRemaining,
+    );
+  }
 }
 
 void main() {

@@ -294,6 +294,44 @@ void main() {
           container.dispose();
         });
       });
+
+      test('wall-clock: remaining is correct even when ticks are delayed '
+          '(simulates background resume)', () {
+        fakeAsync((async) {
+          final container = ProviderContainer();
+
+          container.read(restTimerProvider.notifier).start(60);
+          expect(container.read(restTimerProvider)!.remainingSeconds, 60);
+
+          // Simulate 45 seconds passing at once (e.g. app backgrounded).
+          // Only one periodic tick fires, but it computes from wall clock.
+          async.elapse(const Duration(seconds: 45));
+
+          final state = container.read(restTimerProvider);
+          expect(state, isNotNull);
+          expect(state!.remainingSeconds, 15);
+
+          container.dispose();
+        });
+      });
+
+      test('wall-clock: timer completes correctly after background gap', () {
+        fakeAsync((async) {
+          final container = ProviderContainer();
+
+          container.read(restTimerProvider.notifier).start(30);
+
+          // Simulate 35 seconds passing (exceeds timer duration).
+          async.elapse(const Duration(seconds: 35));
+
+          final state = container.read(restTimerProvider);
+          expect(state, isNotNull);
+          expect(state!.remainingSeconds, 0);
+          expect(state.isActive, false);
+
+          container.dispose();
+        });
+      });
     });
   });
 }

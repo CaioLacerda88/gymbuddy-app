@@ -170,17 +170,23 @@ class _SheetBodyState extends ConsumerState<_SheetBody> {
                             ),
                             const SizedBox(height: 16),
                             FilledButton.icon(
-                              onPressed: () async {
-                                await Navigator.of(context).push(
+                              onPressed: () {
+                                // Close the sheet first to avoid a stale modal
+                                // lingering behind the create screen. The parent
+                                // receives null (no exercise selected), and we
+                                // push CreateExerciseScreen on the root
+                                // navigator so it replaces the sheet cleanly.
+                                final nav = Navigator.of(
+                                  context,
+                                  rootNavigator: true,
+                                );
+                                nav.pop(null);
+                                nav.push(
                                   MaterialPageRoute(
                                     builder: (_) =>
                                         const CreateExerciseScreen(),
                                   ),
                                 );
-                                // When user returns, exerciseListProvider has
-                                // already been invalidated by the save action.
-                                // Force rebuild to re-watch the refreshed list.
-                                if (mounted) setState(() {});
                               },
                               icon: const Icon(Icons.add),
                               label: Text(
