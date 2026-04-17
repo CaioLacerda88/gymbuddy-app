@@ -26,6 +26,7 @@ dependencies:
   wakelock_plus: ^1.2.8
   sentry_flutter: ^9.16.1
   clock: ^1.1.1
+  connectivity_plus: ^6.1.0
   fl_chart: ^1.1.0
   package_info_plus: ^9.0.1 # Pinned: 10.x requires Dart SDK newer than 3.11.4
   # Transitive pins: meta (1.17→1.18) and vector_math (2.2→2.3) are held back

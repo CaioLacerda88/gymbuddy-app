@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
+import '../connectivity/connectivity_provider.dart';
 import '../observability/sentry_init.dart' show sanitizeRouteName;
 import '../../features/auth/providers/auth_providers.dart';
 import '../../features/auth/providers/onboarding_provider.dart';
@@ -30,6 +31,7 @@ import '../../features/workouts/ui/workout_detail_screen.dart';
 import '../../features/routines/models/routine.dart';
 import '../../features/workouts/ui/workout_history_screen.dart';
 import '../../shared/widgets/legal_doc_screen.dart';
+import '../../shared/widgets/offline_banner.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -240,6 +242,7 @@ class _ShellScaffold extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activeState = ref.watch(activeWorkoutProvider).value;
+    final isOnline = ref.watch(isOnlineProvider);
     final tabIndex = _currentIndex(context);
     // When on a non-tab route (e.g. /records, /plan/week), pass index 0 to
     // satisfy NavigationBar's range requirement but hide the indicator so no
@@ -247,7 +250,12 @@ class _ShellScaffold extends ConsumerWidget {
     final isOnTab = tabIndex >= 0;
 
     return Scaffold(
-      body: child,
+      body: Column(
+        children: [
+          if (!isOnline) const OfflineBanner(),
+          Expanded(child: child),
+        ],
+      ),
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
