@@ -733,6 +733,14 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
 
         _repo.incrementCachedWorkoutCount(workout.userId);
         _repo.evictHistoryCaches(workout.userId);
+
+        _trackWorkoutEvent(
+          event: const AnalyticsEvent.workoutSyncQueued(
+            actionType: 'save_workout',
+          ),
+          breadcrumbMessage: 'workout queued for offline sync',
+          breadcrumbData: {'workout_id': workout.id},
+        );
       }
 
       // Invalidate the per-exercise progress chart family so any exercise
