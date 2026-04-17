@@ -43,7 +43,8 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 13-QA2 | QA Monkey Testing: Active Workout Stability (crash guards, timer fixes, cancel safety) | DONE | #75 |
 | 13-QA3 | QA Monkey Testing: Minor Polish (wall-clock timer, nav guards, list virtualization) | DONE | #76 |
 | 13 | Launch — last phase before Play Store (all sprints + QA DONE; verification gates open) | IN PROGRESS | - |
-| 14 | Offline Support | TODO | - |
+| 14a | Connectivity + Read-Through Cache Foundation | DONE | #78, #79 |
+| 14 | Offline Support | IN PROGRESS | - |
 | 15 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
 | 16 | Gamification Advanced (Quests, Stats Panel) | TODO | - |
 | 17 | Nice-to-Have (v2.0+) | BACKLOG | - |
@@ -657,26 +658,12 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
   - **Consequence:** Phase 14 supports "workout started online, finished offline" (the common case). "Workout started fully offline" is **out of scope for v1 of this phase** unless a migration upgrades `save_workout` to upsert the `workouts` row itself. Track separately if needed later.
   - Replay of a `save_workout` call with the same `workout.id` IS safe — the RPC delete-and-reinserts `workout_exercises` and `sets` each call.
 
-### 14a: Connectivity + Read-Through Cache Foundation
+### 14a: Connectivity + Read-Through Cache Foundation (DONE — #78, #79)
 
-**Goal:** The app opens and functions (read-only) with zero network.
-
-- Add `connectivity_plus` dependency (verified absent — zero matches across `lib/`).
-- New `onlineStatusProvider` (Riverpod `StreamProvider<bool>`) exposing a debounced connectivity stream (500ms) to filter link-up flapping.
-- New `OfflineBanner` widget (48dp top strip, `colorScheme.errorContainer`, "Offline — changes will sync when you're back online") — mounted app-wide via the shell route.
-- Read-through cache on repos (new pattern — `BaseRepository` has no cache hook, so each repo gets its own cache helper):
-  - `ExerciseRepository.getExercises({muscleGroup, equipmentType})` — cache to Hive box `exercise_cache`, keyed by composite filter (`"all"` / `"muscle=chest"` / `"equip=barbell"` / `"muscle=chest&equip=barbell"`).
-  - `ExerciseRepository.searchExercises(query, …)` — when offline, fall back to in-memory filter over the `"all"` cache entry. Server-side `ilike` cannot be replicated offline, so cache the full list and filter in Dart.
-  - `RoutineRepository.getRoutines(userId)` — cache to `routine_cache`. The repo hydrates each routine with an `Exercise` map via `_fetchExerciseMap` — the cache must snapshot **both** the routine rows **and** the resolved exercise map so `startFromRoutine()` works offline without a second query.
-  - `PRRepository.getRecordsForUser(userId)` + `getRecordsForExercises(ids)` — cache to `pr_cache`. This powers 14d's local PR detection.
-  - `WorkoutRepository.getWorkoutHistory(…)` — cache the most recent ~50 finished workouts for the history view.
-  - `WorkoutRepository.getLastWorkoutSets(exerciseIds)` — cache to `last_sets_cache` so `startFromRoutine()` can pre-fill weights offline.
-- Cache pattern: read cache first (emit immediately), network second, write fresh results back. On network error, fall back to cache silently. Stale-while-revalidate.
-- Cache invalidation: `app_opened` triggers background refresh of all caches. Writes invalidate affected keys.
-- New Hive boxes: `exercise_cache`, `routine_cache`, `pr_cache`, `workout_history_cache`, `last_sets_cache`. Register in `HiveService.init()` + `clearAll()` alongside the existing three boxes.
-- `finishedWorkoutCount` — cache in `user_prefs` box, incremented locally on each offline finish, reconciled on sync drain. Needed by `PRDetectionService.detectPRs(totalFinishedWorkouts:)` for accurate first-workout flag.
-
-**Not in scope for 14a:** writes. Still online-only.
+- **PR #78 (Infrastructure):** `connectivity_plus` dep, `onlineStatusProvider`/`isOnlineProvider` (500ms debounce), `CacheService` (generic Hive JSON read/write/delete/clearBox), 5 new Hive boxes in `HiveService`, `OfflineBanner` widget mounted in shell route. 32 tests.
+- **PR #79 (Repo Caching):** Read-through cache on all 4 repos (Exercise, Routine, PR, Workout). Pattern: read cache → try network → success writes cache → failure returns cached or rethrows. Key decisions: workout history only caches on refresh pass (limit >= 50); routine cache uses `{routines, exercises}` envelope for resolved Exercise objects; workout exerciseSummary stored as `_exercise_summary` custom field. `cacheRefreshProvider` fires once on app open. All write methods evict affected cache keys. 55 new cache tests, 1235 total.
+- **Serialization gotchas solved:** `RoutineExercise.exercise` (`@JsonKey(includeToJson: false)`) → envelope pattern. `Workout.exerciseSummary` (excluded from both toJson/fromJson) → custom field + `copyWith`.
+- **Not in scope:** writes still online-only (14b).
 
 ### 14b: Offline Workout Capture + Queue
 
@@ -867,7 +854,7 @@ Confetti, streak flames/emoji, badge walls, multiple progress bars on home, leve
 
 ---
 
-## QA Status (as of 2026-04-16)
+## QA Status (as of 2026-04-17)
 
 > Full manual QA plan: `tasks/manual-qa-testplan.md` (89 cases, 29 automated).
 
