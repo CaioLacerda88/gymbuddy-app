@@ -138,6 +138,18 @@ class _SetRowState extends ConsumerState<SetRow> {
       key: ValueKey(set.id),
       direction: DismissDirection.endToStart,
       background: _DismissBackground(theme: theme),
+      confirmDismiss: (_) async {
+        // Guard against concurrent swipes removing the same set twice.
+        // If the set was already deleted by a prior swipe gesture, the
+        // state will no longer contain it.
+        final current = ref.read(activeWorkoutProvider).value;
+        if (current == null) return false;
+        final exercise = current.exercises
+            .where((e) => e.workoutExercise.id == widget.workoutExerciseId)
+            .firstOrNull;
+        if (exercise == null) return false;
+        return exercise.sets.any((s) => s.id == set.id);
+      },
       onDismissed: (_) {
         HapticFeedback.lightImpact();
         // Save the set data before deleting so we can restore on undo.

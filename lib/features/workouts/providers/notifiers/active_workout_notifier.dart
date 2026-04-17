@@ -37,11 +37,44 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
   late WorkoutRepository _repo;
   late WorkoutLocalStorage _localStorage;
 
+  /// Re-entrance guard for [finishWorkout]. Prevents concurrent saves when
+  /// the user double-taps "Finish Workout".
+  bool _isFinishing = false;
+
+  /// Re-entrance guard for [discardWorkout]. Prevents concurrent discards
+  /// when Android back-button spam triggers multiple calls.
+  bool _isDiscarding = false;
+
+  /// Set by [cancelLoading] so that in-flight [finishWorkout] and
+  /// [discardWorkout] futures skip the final `state =` assignment when they
+  /// complete. Without this, the guard result overwrites the state restored
+  /// by [cancelLoading], causing the workout to vanish unexpectedly.
+  bool _cancelRequested = false;
+
+  /// Stores the last valid [AsyncData] state so that [cancelLoading] can
+  /// restore it if the user gives up waiting for a network operation.
+  ActiveWorkoutState? _lastValidState;
+
   @override
   FutureOr<ActiveWorkoutState?> build() {
     _repo = ref.watch(workoutRepositoryProvider);
     _localStorage = ref.watch(workoutLocalStorageProvider);
     return _localStorage.loadActiveWorkout();
+  }
+
+  /// Cancel an in-flight loading operation by restoring the last valid state.
+  ///
+  /// Used by the loading overlay's timeout cancel button. The underlying
+  /// network request continues in the background, but the UI is unblocked
+  /// so the user can retry or discard. Resets re-entrance guards so the
+  /// user can try again.
+  void cancelLoading() {
+    _cancelRequested = true;
+    _isFinishing = false;
+    _isDiscarding = false;
+    if (_lastValidState != null) {
+      state = AsyncData(_lastValidState);
+    }
   }
 
   String get _userId {
@@ -533,9 +566,13 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
   Future<void> discardWorkout() async {
     final current = state.value;
     if (current == null) return;
+    if (_isDiscarding) return;
+    _isDiscarding = true;
+    _lastValidState = current;
+    _cancelRequested = false;
 
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+    final result = await AsyncValue.guard(() async {
       await _localStorage.clearActiveWorkout();
       await _repo.discardWorkout(current.workout.id, userId: _userId);
 
@@ -561,12 +598,25 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
       );
       return null;
     });
+
+    if (_cancelRequested) {
+      _cancelRequested = false;
+      _isDiscarding = false;
+      return;
+    }
+
+    state = result;
+    _isDiscarding = false;
   }
 
   /// Finish the active workout, save to server, detect PRs, and return results.
   Future<PRDetectionResult?> finishWorkout({String? notes}) async {
     final current = state.value;
     if (current == null) return null;
+    if (_isFinishing) return null;
+    _isFinishing = true;
+    _lastValidState = current;
+    _cancelRequested = false;
 
     // Capture workout data BEFORE setting loading state.
     final exercises = current.exercises;
@@ -582,7 +632,7 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
     // detection throws before the count is fetched.
     int workoutCount = 0;
 
-    state = await AsyncValue.guard(() async {
+    final result = await AsyncValue.guard(() async {
       final now = DateTime.now().toUtc();
       final durationSeconds = now
           .difference(current.workout.startedAt)
@@ -710,6 +760,18 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
       await _localStorage.clearActiveWorkout();
       return null;
     });
+
+    if (_cancelRequested) {
+      // User tapped Cancel while we were saving. cancelLoading() already
+      // restored the previous state — discard this guard result so we don't
+      // overwrite it.
+      _cancelRequested = false;
+      _isFinishing = false;
+      return null;
+    }
+
+    state = result;
+    _isFinishing = false;
 
     return prResult;
   }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/data/base_repository.dart';
@@ -1929,6 +1931,251 @@ void main() {
         expect(bundle.analytics.events, hasLength(1));
         expect(bundle.analytics.events.first.name, 'workout_discarded');
         expect(bundle.analytics.events.first.props['source'], 'empty');
+      },
+    );
+  });
+
+  // ================================================================
+  // Concurrency guards — C1/C2 stability fixes
+  // ================================================================
+
+  group('ActiveWorkoutNotifier — finishWorkout concurrency guard', () {
+    test(
+      'second concurrent finishWorkout call returns null immediately',
+      () async {
+        final initial = makeState(exerciseCount: 1, setsPerExercise: 1);
+        final (:container, :mockRepo, :mockStorage, :mockAuth) =
+            makeAsyncContainer(initial);
+        addTearDown(container.dispose);
+
+        when(() => mockAuth.currentUser).thenReturn(fakeUser());
+        // Use a completer so we can control when the repo call completes.
+        final completer = Completer<Workout>();
+        when(
+          () => mockRepo.saveWorkout(
+            workout: any(named: 'workout'),
+            exercises: any(named: 'exercises'),
+            sets: any(named: 'sets'),
+          ),
+        ).thenAnswer((_) => completer.future);
+        when(() => mockStorage.clearActiveWorkout()).thenAnswer((_) async {});
+
+        await container.read(activeWorkoutProvider.future);
+
+        // Fire two concurrent finishWorkout calls.
+        final first = container
+            .read(activeWorkoutProvider.notifier)
+            .finishWorkout(notes: 'test');
+        final second = container
+            .read(activeWorkoutProvider.notifier)
+            .finishWorkout(notes: 'test');
+
+        // Second call should return null immediately (guarded).
+        final secondResult = await second;
+        expect(secondResult, isNull);
+
+        // Complete the first call.
+        completer.complete(makeWorkout(isActive: false));
+        await first;
+
+        // saveWorkout should have been called exactly once.
+        verify(
+          () => mockRepo.saveWorkout(
+            workout: any(named: 'workout'),
+            exercises: any(named: 'exercises'),
+            sets: any(named: 'sets'),
+          ),
+        ).called(1);
+      },
+    );
+  });
+
+  group('ActiveWorkoutNotifier — discardWorkout concurrency guard', () {
+    test('second concurrent discardWorkout call is ignored', () async {
+      final initial = makeState(exerciseCount: 1, setsPerExercise: 1);
+      final (:container, :mockRepo, :mockStorage, :mockAuth) =
+          makeAsyncContainer(initial);
+      addTearDown(container.dispose);
+
+      when(() => mockAuth.currentUser).thenReturn(fakeUser());
+      final completer = Completer<void>();
+      when(
+        () => mockRepo.discardWorkout(any(), userId: any(named: 'userId')),
+      ).thenAnswer((_) => completer.future);
+      when(() => mockStorage.clearActiveWorkout()).thenAnswer((_) async {});
+
+      await container.read(activeWorkoutProvider.future);
+
+      // Fire two concurrent discardWorkout calls.
+      final first = container
+          .read(activeWorkoutProvider.notifier)
+          .discardWorkout();
+      final second = container
+          .read(activeWorkoutProvider.notifier)
+          .discardWorkout();
+
+      // Second call completes immediately (guarded).
+      await second;
+
+      // Complete the first call.
+      completer.complete();
+      await first;
+
+      // discardWorkout should have been called exactly once.
+      verify(
+        () => mockRepo.discardWorkout(any(), userId: any(named: 'userId')),
+      ).called(1);
+    });
+  });
+
+  group('ActiveWorkoutNotifier — cancelLoading', () {
+    test('restores last valid state and resets guards', () async {
+      final initial = makeState(exerciseCount: 1, setsPerExercise: 1);
+      final (:container, :mockRepo, :mockStorage, :mockAuth) =
+          makeAsyncContainer(initial);
+      addTearDown(container.dispose);
+
+      when(() => mockAuth.currentUser).thenReturn(fakeUser());
+      // Never-completing future simulates a stalled network request.
+      when(
+        () => mockRepo.discardWorkout(any(), userId: any(named: 'userId')),
+      ).thenAnswer((_) => Completer<void>().future);
+      when(() => mockStorage.clearActiveWorkout()).thenAnswer((_) async {});
+
+      await container.read(activeWorkoutProvider.future);
+
+      // Start a discard that will stall.
+      unawaited(
+        container.read(activeWorkoutProvider.notifier).discardWorkout(),
+      );
+
+      // Give the async guard time to set loading state.
+      await Future<void>.delayed(Duration.zero);
+
+      // State should be loading.
+      expect(container.read(activeWorkoutProvider).isLoading, isTrue);
+
+      // Cancel loading.
+      container.read(activeWorkoutProvider.notifier).cancelLoading();
+
+      // State should be restored to the previous valid state.
+      final restored = container.read(activeWorkoutProvider);
+      expect(restored, isA<AsyncData<ActiveWorkoutState?>>());
+      expect(restored.value, isNotNull);
+      expect(restored.value!.workout.id, initial.workout.id);
+
+      // Guards should be reset — a second discard should proceed.
+      // (We just verify it doesn't immediately return.)
+      when(
+        () => mockRepo.discardWorkout(any(), userId: any(named: 'userId')),
+      ).thenAnswer((_) async {});
+      await container.read(activeWorkoutProvider.notifier).discardWorkout();
+      verify(
+        () => mockRepo.discardWorkout(any(), userId: any(named: 'userId')),
+      ).called(greaterThan(0));
+    });
+
+    test(
+      'state is NOT clobbered when in-flight finishWorkout completes after cancel',
+      () async {
+        // Regression: cancelLoading() restores state, but the in-flight
+        // AsyncValue.guard future may still complete and overwrite the
+        // restored state. The _cancelRequested flag prevents this.
+        final initial = makeState(exerciseCount: 1, setsPerExercise: 1);
+        final (:container, :mockRepo, :mockStorage, :mockAuth) =
+            makeAsyncContainer(initial);
+        addTearDown(container.dispose);
+
+        when(() => mockAuth.currentUser).thenReturn(fakeUser());
+
+        // Completer lets us control when the repo call completes.
+        final saveCompleter = Completer<Workout>();
+        when(
+          () => mockRepo.saveWorkout(
+            workout: any(named: 'workout'),
+            exercises: any(named: 'exercises'),
+            sets: any(named: 'sets'),
+          ),
+        ).thenAnswer((_) => saveCompleter.future);
+        when(() => mockStorage.clearActiveWorkout()).thenAnswer((_) async {});
+
+        await container.read(activeWorkoutProvider.future);
+
+        // 1. Start finishWorkout (don't await — it will hang on the completer).
+        final finishFuture = container
+            .read(activeWorkoutProvider.notifier)
+            .finishWorkout(notes: 'test');
+
+        // Give the async guard time to set loading state.
+        await Future<void>.delayed(Duration.zero);
+        expect(container.read(activeWorkoutProvider).isLoading, isTrue);
+
+        // 2. Cancel loading — state should be restored.
+        container.read(activeWorkoutProvider.notifier).cancelLoading();
+        final afterCancel = container.read(activeWorkoutProvider);
+        expect(afterCancel, isA<AsyncData<ActiveWorkoutState?>>());
+        expect(afterCancel.value, isNotNull);
+        expect(afterCancel.value!.workout.id, initial.workout.id);
+
+        // 3. Let the in-flight future complete (simulate network returning).
+        saveCompleter.complete(makeWorkout(isActive: false));
+        await finishFuture;
+
+        // 4. Drain microtasks.
+        await Future<void>.delayed(Duration.zero);
+
+        // 5. State should STILL be the restored value, not AsyncData(null)
+        // from the guard result.
+        final afterComplete = container.read(activeWorkoutProvider);
+        expect(afterComplete, isA<AsyncData<ActiveWorkoutState?>>());
+        expect(afterComplete.value, isNotNull);
+        expect(afterComplete.value!.workout.id, initial.workout.id);
+      },
+    );
+
+    test(
+      'state is NOT clobbered when in-flight discardWorkout completes after cancel',
+      () async {
+        final initial = makeState(exerciseCount: 1, setsPerExercise: 1);
+        final (:container, :mockRepo, :mockStorage, :mockAuth) =
+            makeAsyncContainer(initial);
+        addTearDown(container.dispose);
+
+        when(() => mockAuth.currentUser).thenReturn(fakeUser());
+
+        final discardCompleter = Completer<void>();
+        when(
+          () => mockRepo.discardWorkout(any(), userId: any(named: 'userId')),
+        ).thenAnswer((_) => discardCompleter.future);
+        when(() => mockStorage.clearActiveWorkout()).thenAnswer((_) async {});
+
+        await container.read(activeWorkoutProvider.future);
+
+        // 1. Start discardWorkout (don't await).
+        final discardFuture = container
+            .read(activeWorkoutProvider.notifier)
+            .discardWorkout();
+
+        await Future<void>.delayed(Duration.zero);
+        expect(container.read(activeWorkoutProvider).isLoading, isTrue);
+
+        // 2. Cancel loading.
+        container.read(activeWorkoutProvider.notifier).cancelLoading();
+        final afterCancel = container.read(activeWorkoutProvider);
+        expect(afterCancel, isA<AsyncData<ActiveWorkoutState?>>());
+        expect(afterCancel.value, isNotNull);
+        expect(afterCancel.value!.workout.id, initial.workout.id);
+
+        // 3. Let the in-flight future complete.
+        discardCompleter.complete();
+        await discardFuture;
+        await Future<void>.delayed(Duration.zero);
+
+        // 4. State should STILL be restored, not AsyncData(null).
+        final afterComplete = container.read(activeWorkoutProvider);
+        expect(afterComplete, isA<AsyncData<ActiveWorkoutState?>>());
+        expect(afterComplete.value, isNotNull);
+        expect(afterComplete.value!.workout.id, initial.workout.id);
       },
     );
   });

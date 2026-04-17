@@ -116,6 +116,7 @@ class _WeightStepperState extends State<WeightStepper> {
         GestureDetector(
           onLongPressStart: (_) => _startRepeating(_decrement),
           onLongPressEnd: (_) => _stopRepeating(),
+          onLongPressCancel: _stopRepeating,
           child: IconButton(
             onPressed: widget.value >= widget.increment ? _decrement : null,
             icon: const Icon(Icons.remove, size: 18),
@@ -160,6 +161,7 @@ class _WeightStepperState extends State<WeightStepper> {
         GestureDetector(
           onLongPressStart: (_) => _startRepeating(_increment),
           onLongPressEnd: (_) => _stopRepeating(),
+          onLongPressCancel: _stopRepeating,
           child: IconButton(
             onPressed: _increment,
             icon: const Icon(Icons.add, size: 18),

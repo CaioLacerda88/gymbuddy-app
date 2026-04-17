@@ -472,6 +472,82 @@ void main() {
       );
     });
 
+    group('dismissible race guard', () {
+      testWidgets('confirmDismiss returns false when set was already deleted', (
+        tester,
+      ) async {
+        final stateJson = TestActiveWorkoutStateFactory.createWithExercises(
+          exerciseCount: 1,
+          setsPerExercise: 2,
+        );
+        final workoutState = ActiveWorkoutState.fromJson(stateJson);
+        final weId = workoutState.exercises.first.workoutExercise.id;
+        // Use the first set for the widget but delete it from state before
+        // the dismiss gesture completes.
+        final set = workoutState.exercises.first.sets.first;
+
+        final container = makeContainer(workoutState);
+        addTearDown(container.dispose);
+        await container.read(activeWorkoutProvider.future);
+
+        await tester.pumpWidget(
+          buildTestWidget(
+            SetRow(set: set, workoutExerciseId: weId),
+            container: container,
+          ),
+        );
+
+        // Delete the set from state (simulating a concurrent swipe).
+        container.read(activeWorkoutProvider.notifier).deleteSet(weId, set.id);
+
+        // Attempt to dismiss — the Dismissible's confirmDismiss should
+        // check state and return false since the set no longer exists.
+        // We verify the Dismissible widget has a confirmDismiss callback.
+        final dismissible = tester.widget<Dismissible>(
+          find.byType(Dismissible),
+        );
+        expect(dismissible.confirmDismiss, isNotNull);
+
+        // Invoke the confirmDismiss callback directly.
+        final shouldDismiss = await dismissible.confirmDismiss!(
+          DismissDirection.endToStart,
+        );
+        expect(shouldDismiss, isFalse);
+      });
+
+      testWidgets(
+        'confirmDismiss returns true when set still exists in state',
+        (tester) async {
+          final stateJson = TestActiveWorkoutStateFactory.createWithExercises(
+            exerciseCount: 1,
+            setsPerExercise: 1,
+          );
+          final workoutState = ActiveWorkoutState.fromJson(stateJson);
+          final weId = workoutState.exercises.first.workoutExercise.id;
+          final set = workoutState.exercises.first.sets.first;
+
+          final container = makeContainer(workoutState);
+          addTearDown(container.dispose);
+          await container.read(activeWorkoutProvider.future);
+
+          await tester.pumpWidget(
+            buildTestWidget(
+              SetRow(set: set, workoutExerciseId: weId),
+              container: container,
+            ),
+          );
+
+          final dismissible = tester.widget<Dismissible>(
+            find.byType(Dismissible),
+          );
+          final shouldDismiss = await dismissible.confirmDismiss!(
+            DismissDirection.endToStart,
+          );
+          expect(shouldDismiss, isTrue);
+        },
+      );
+    });
+
     group('accessibility semantics', () {
       testWidgets('set number has correct semantics label with type info', (
         tester,

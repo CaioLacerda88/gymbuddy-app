@@ -72,8 +72,8 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen>
         Future.delayed(const Duration(milliseconds: 300), () {
           HapticFeedback.mediumImpact();
         });
+        _logCelebrationSeen();
       }
-      _logCelebrationSeen();
     });
   }
 

@@ -68,8 +68,23 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
   String? _debouncedAnalyticsUserId;
   int? _debouncedTrainingFrequency;
 
+  /// Debounce timer for [_savePlan]. Prevents rapid-fire Supabase writes
+  /// during drag reorder by coalescing multiple calls into one.
+  Timer? _saveDebounce;
+
+  /// Captured notifier for debounced save. `ref` cannot be used in dispose(),
+  /// so we hold the notifier directly, refreshed on each edit.
+  WeeklyPlanNotifier? _debouncedPlanNotifier;
+
   @override
   void dispose() {
+    // Flush any pending debounced save before tearing down. This ensures
+    // the user's last reorder is persisted even if they leave the screen
+    // within the 300ms debounce window.
+    if (_saveDebounce?.isActive ?? false) {
+      _saveDebounce!.cancel();
+      _flushDebouncedSave();
+    }
     // Fire a single analytics event for the entire edit session, capturing
     // the most-recent flags (usedAutofill / replacedExisting). This is the
     // funnel-friendly "user saved the plan" signal — intermediate reorders
@@ -399,7 +414,14 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
   /// ConsumerStatefulElement is already torn down by then), so we must hold
   /// the repo object directly.
   void _savePlan({required bool usedAutofill, required bool replacedExisting}) {
-    ref.read(weeklyPlanProvider.notifier).upsertPlan(_bucketRoutines);
+    _saveDebounce?.cancel();
+    // Capture the notifier while ref is still alive. The debounce timer
+    // (or dispose) may fire after the widget is unmounted, so we must not
+    // call ref.read() at that point.
+    _debouncedPlanNotifier = ref.read(weeklyPlanProvider.notifier);
+    _saveDebounce = Timer(const Duration(milliseconds: 300), () {
+      _flushDebouncedSave();
+    });
     _pendingAnalyticsEvent = true;
     // usedAutofill and replacedExisting are "sticky" within a session: if
     // the user first auto-filled then reordered one card, the event that
@@ -416,6 +438,15 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
         ?.id;
     _debouncedTrainingFrequency =
         ref.read(profileProvider).value?.trainingFrequencyPerWeek ?? 3;
+  }
+
+  /// Immediately flush the pending debounced upsert call.
+  ///
+  /// Called from [dispose] and when the debounce timer fires. Uses the
+  /// captured [_debouncedPlanNotifier] instead of `ref.read()` because
+  /// `ref` cannot be used after the widget is unmounted.
+  void _flushDebouncedSave() {
+    _debouncedPlanNotifier?.upsertPlan(_bucketRoutines);
   }
 
   /// Fire the debounced `week_plan_saved` analytics event exactly once.
