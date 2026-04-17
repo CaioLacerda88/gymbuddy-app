@@ -101,19 +101,13 @@ class SyncService extends Notifier<SyncState> {
           );
 
           final isTerminal = SyncErrorClassifier.isTerminal(e);
-          // Note: retryItem already incremented retryCount, so re-read.
-          final updated = queue
-              .getAll()
-              .where((a) => a.id == action.id)
-              .firstOrNull;
-          final currentRetryCount =
-              updated?.retryCount ?? action.retryCount + 1;
+          final newRetryCount = action.retryCount + 1;
 
-          if (isTerminal || currentRetryCount >= kMaxSyncRetries) {
+          if (isTerminal || newRetryCount >= kMaxSyncRetries) {
             _trackSyncFailed(action, e);
           } else {
             // Transient error — backoff before next item.
-            await Future<void>.delayed(_backoffDuration(currentRetryCount));
+            await Future<void>.delayed(_backoffDuration(newRetryCount));
           }
         }
       }
@@ -130,27 +124,27 @@ class SyncService extends Notifier<SyncState> {
   }
 
   /// Reset terminal items' retry counts and trigger a new drain.
-  void retryTerminalItems() {
+  Future<void> retryTerminalItems() async {
     final queue = ref.read(offlineQueueServiceProvider);
     final actions = queue.getAll();
     for (final action in actions) {
       if (action.retryCount >= kMaxSyncRetries) {
         final reset = _resetRetryCount(action);
-        queue.updateAction(reset);
+        await queue.updateAction(reset);
       }
     }
     ref.read(pendingSyncProvider.notifier).refreshCount();
-    state = const SyncState();
+    if (!_draining) state = const SyncState();
     _drain();
   }
 
   /// Remove terminal items from queue entirely.
-  void dismissTerminalItems() {
+  Future<void> dismissTerminalItems() async {
     final queue = ref.read(offlineQueueServiceProvider);
     final actions = queue.getAll();
     for (final action in actions) {
       if (action.retryCount >= kMaxSyncRetries) {
-        queue.dequeue(action.id);
+        await queue.dequeue(action.id);
       }
     }
     ref.read(pendingSyncProvider.notifier).refreshCount();
@@ -170,9 +164,9 @@ class SyncService extends Notifier<SyncState> {
   /// Extract the Freezed union `type` discriminator for analytics.
   static String _actionType(PendingAction action) {
     return switch (action) {
-      PendingSaveWorkout() => 'saveWorkout',
-      PendingUpsertRecords() => 'upsertRecords',
-      PendingMarkRoutineComplete() => 'markRoutineComplete',
+      PendingSaveWorkout() => 'save_workout',
+      PendingUpsertRecords() => 'upsert_records',
+      PendingMarkRoutineComplete() => 'mark_routine_complete',
     };
   }
 

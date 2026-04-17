@@ -431,7 +431,7 @@ void main() {
 
       // Call retryTerminalItems — this resets retry count and calls _drain
       // directly (no connectivity transition needed).
-      container.read(syncServiceProvider.notifier).retryTerminalItems();
+      await container.read(syncServiceProvider.notifier).retryTerminalItems();
       await _pumpAsync(200);
 
       // The item should be retried (retryCount was reset) and dequeued.
@@ -454,10 +454,11 @@ void main() {
       );
       expect(container.read(pendingSyncProvider), 1);
 
-      container.read(syncServiceProvider.notifier).dismissTerminalItems();
+      await container.read(syncServiceProvider.notifier).dismissTerminalItems();
 
       expect(container.read(pendingSyncProvider), 0);
       expect(queueService.getAll(), isEmpty);
+      expect(container.read(syncServiceProvider).terminalFailureCount, 0);
     });
 
     // ------------------------------------------------------------------
