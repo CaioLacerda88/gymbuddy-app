@@ -39,7 +39,10 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 13a-PR6 | Bulk Dependency Upgrade + Toolchain Refresh (Riverpod 3, GoRouter 17, Freezed 3) | DONE | #49 |
 | 13a-PR7 | Close local CI Android build gap (`make ci` runs `flutter build apk --debug`) | DONE | #47 |
 | 13a-PR8 | E2E overhaul: Flutter 3.41.6 AOM selectors, bug fixes, restructure to feature files | DONE | #50 |
-| 13 | Launch — last phase before Play Store (Sprint B Retention DONE; Sprint C Resilience DONE; verification gates open) | IN PROGRESS | - |
+| 13-QA1 | QA Monkey Testing: Exercise Filter Performance (autoDispose, invalidation, rebuild fix) | DONE | #74 |
+| 13-QA2 | QA Monkey Testing: Active Workout Stability (crash guards, timer fixes, cancel safety) | DONE | #75 |
+| 13-QA3 | QA Monkey Testing: Minor Polish (wall-clock timer, nav guards, list virtualization) | DONE | #76 |
+| 13 | Launch — last phase before Play Store (all sprints + QA DONE; verification gates open) | IN PROGRESS | - |
 | 14 | Offline Support | TODO | - |
 | 15 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
 | 16 | Gamification Advanced (Quests, Stats Panel) | TODO | - |
@@ -591,6 +594,12 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 - PR #67: W8 Home information architecture refresh. Original perf premise (long list virtualization) was invalidated — HomeScreen has no long list — so W8 was re-scoped (product-owner + ui-ux-critic) into a four-state IA rewrite: active-plan / brand-new / lapsed / week-complete, each sharing a unified `_HeroBanner` vocabulary (80dp, Material+InkWell surface, 3dp primary-color left accent, label → headline → subline → `FilledButton`). Lapsed state drives toward planning: `Plan your week` primary + `Quick workout` secondary. Home tree recomposed for scoped rebuilds — each block (`HomeStatusLine`, `_ConfirmBanner`, `_WeekReviewCard`, `ActionHero`, `RepaintBoundary(WeekBucketSection)`, `LastSessionLine`, `_HomeRoutinesList`) is its own `ConsumerWidget` and `HomeScreen.build` watches zero providers. Two new derived booleans (`hasActivePlanProvider` from `weeklyPlanProvider`, `hasAnyWorkoutProvider` from keep-alive `workoutCountProvider`) let status-line + routine-list skip rebuilds on paginated history loads. **Deletions:** `contextual_stat_cell.dart` + its test, `weekVolumeProvider` + its test, `_SuggestedNextCard` inside `week_bucket_section.dart`, `THIS WEEK` label/counter, date header. Starter routines moved off home entirely into `/routines`. **Side-fix:** `ResumeWorkoutDialog` now accepts an optional `DateTime? now` injection seam so age-dependent widget tests pin the clock (midnight-crossing flake). Tests: +widget (action hero all 4 states + tap destinations incl. Quick workout → Discard → start new + navigate), +widget (status line all 4 states), +widget (last session line), +widget (home routines), +unit (`lastSessionProvider` replaces `week_volume_provider_test`); total 1087. **E2E:** `startEmptyWorkout` helper is now state-aware (races `HOME.quickWorkout` vs `FIRST_WORKOUT_CTA.card`); `e2e-full-ex-detail-sheet` user added to both `freshStateUsers` and `usersNeedingSeededWorkoutForP8` so the `Exercise detail sheet` describe's `startEmptyWorkout` beforeEach gets deterministic lapsed state; full 148-test E2E suite green on CI. All reviewer findings (3 Blockers / 6 Important / 5 Nits) closed in-cycle per "no deferring" policy — B1 dead-end discard (Quick-workout → Discard now starts a fresh workout + navigates to `/workout/active`) + I1 lapsed hero breaking `_HeroBanner` vocab (rewrapped) being the load-bearing fixes.
 - PR #69: B6 ProGuard/R8 release optimization. Enabled `isMinifyEnabled = true` + `isShrinkResources = true` on `release` buildType only (debug untouched); `android/app/proguard-rules.pro` ships **narrow keep rules by design** — no `-keep class ** { *; }` wildcards. Rule blocks: reflection-friendly attributes (`Signature, *Annotation*, EnclosingMethod, InnerClasses, SourceFile, LineNumberTable` + `renamesourcefileattribute`), JNI native-methods + enum `values()`/`valueOf` + Parcelable `CREATOR`, Flutter embedding (`io.flutter.**` — covers `plugin`, `plugins`, `embedding` sub-packages), Play Core deferred-components `-dontwarn` (we don't ship deferred components; suppresses ~1.5MB bloat), Sentry (`io.sentry.**`), OkHttp/OkIO/Conscrypt/BouncyCastle/OpenJSSE TLS `-dontwarn` (OkHttp3 pulled in transitively by `sentry-android` for envelope transport — NOT from `supabase_flutter`, which is pure Dart), Kotlinx coroutines `-dontwarn`. Explicitly **no rules** for Hive (pure Dart, `Box<dynamic>` only), Supabase (pure Dart, no `io.supabase` classpath), Freezed/json_serializable/Riverpod/GoRouter (AOT-compiled into `libapp.so`) — each gap documented inline. New Makefile target `build-android-release-arm64` for local verification. **Measurements:** arm64-v8a split APK **25.83MB → 22.83MB (-11.6%)**, `classes.dex` **-64.7%**. Absolute size floor ~22 MB is native libs (`libflutter.so` + `libapp.so` + `libsentry*.so` ≈ 21.8 MB — untouchable by R8; further reduction requires AAB + per-device ABI/language splits, separate DevOps task). 5-flow on-device smoke on Samsung S25 Ultra (login/OAuth, workout logging + save, analytics event emission, exercise progress chart, force-stop + restart) captured 13,806 logcat lines; zero `FATAL EXCEPTION`, `ClassNotFound`, `NoSuchMethodError`, `MissingPluginException`, `SIGSEGV`, `SIGABRT` scoped to `com.gymbuddy.gymbuddy_app`. E2E not re-run (Playwright targets the web build; zero overlap with Android JVM/R8). Reviewer findings: 2 Important — redundant Flutter sub-package keeps (removed; identical APK size on rebuild proved the redundancy) + OkHttp comment attribution error (split section, re-attributed transitive chain to `sentry-android` 9.16.1) — both closed in-cycle per "no deferring" policy. Phase 13 Exit Criterion #6 MET; closing Sprint C also meets Exit Criterion #5.
 
+**QA Monkey Testing Sweep (complete)**
+- Full monkey testing analysis (rapid gestures, background/foreground cycling, concurrent taps, filter stress) found 18 issues: 3 crash vectors, 8 freeze risks, 4 visual glitches, 3 minor. All resolved across 3 PRs.
+- PR #74: Exercise filter performance — root cause of user-reported filter freeze: `exerciseListProvider` was `FutureProvider.family` without `autoDispose`, creating permanent cache entries per filter combo. Fix: `autoDispose.family` + correct invalidation target (`exerciseListProvider` not `filteredExerciseListProvider`) + `ConsumerWidget` extraction to eliminate double rebuilds. Systemic `autoDispose` added to `lastWorkoutSetsProvider` and `workoutDetailProvider`. Tests: 1153 total.
+- PR #75: Active workout stability — `_isFinishing`/`_isDiscarding` re-entrance guards on async operations, `_isShowingDiscardDialog` to prevent stacked dialogs, `_cancelRequested` token for cancel-safe async (prevents in-flight future from clobbering restored state), `_LoadingOverlay` with 10s cancel escape hatch (hidden during initial load via `hasRestorable`), `onLongPressCancel` on steppers, 300ms `_saveDebounce` on plan management, `confirmDismiss` race guard on set swipe-delete, `mounted` guard on PR celebration `postFrameCallback`. Tests: 1166 total.
+- PR #76: Minor polish — wall-clock timer computation in `RestTimerNotifier` (correct after background resume, uses `package:clock` for `fakeAsync` testability), exercise picker sheet pops before pushing create screen, `GoRouter` same-tab navigation guard, `hasMore` check before `loadMore()`, `ListView.builder` replacing `SingleChildScrollView + Column.map()` in routine list. Tests: 1168 total.
+
 ### Deferred to v1.1+
 
 - **P5** — 1RM estimation (Epley formula on exercise detail + PR cards)
@@ -858,15 +867,15 @@ Confetti, streak flames/emoji, badge walls, multiple progress bars on home, leve
 
 ---
 
-## QA Status (as of 2026-04-13)
+## QA Status (as of 2026-04-16)
 
 > Full manual QA plan: `tasks/manual-qa-testplan.md` (89 cases, 29 automated).
 
-**All Critical and High bugs resolved** (52+ items across PRs #24-#32, plus PR #50 E2E overhaul and PR #53 exercise image rehost). See git history for full audit trails.
+**All Critical and High bugs resolved** (52+ items across PRs #24-#32, plus PR #50 E2E overhaul, PR #53 exercise image rehost, and PRs #74-#76 monkey testing sweep). See git history for full audit trails.
 
 ### Open
 
-No open Critical/High bugs. (QA-005 resolved in PR #53 — exercise images rehosted to Supabase Storage.)
+No open Critical/High bugs. Monkey testing sweep (18 findings: 3 crash, 8 freeze, 4 visual, 3 minor) fully resolved in PRs #74-#76.
 
 ### Feature Gaps (v1.1+)
 
@@ -884,7 +893,7 @@ Edit custom exercises, per-exercise notes in workout, RPE tracking (widget exist
 
 ### Test Layers
 
-- **Unit** (`flutter_test` + `mocktail`): Models, repositories, business logic, providers. Target 80%+ on business logic. **994 tests.**
+- **Unit** (`flutter_test` + `mocktail`): Models, repositories, business logic, providers. Target 80%+ on business logic. **1168 tests.**
 - **Widget** (`flutter_test`): Screen states (loading/data/error/empty), interactions, form validation, conditional UI.
 - **E2E** (Playwright on Flutter web): Critical journeys — auth, exercises, workouts, routines, PRs, home, crash recovery, manage data, weekly plan, onboarding, profile. **145 tests (61 @smoke, 84 regression).**
 
