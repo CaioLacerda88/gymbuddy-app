@@ -81,6 +81,22 @@ sealed class AnalyticsEvent with _$AnalyticsEvent {
     required String routineId,
   }) = _AddToPlanPromptResponded;
 
+  const factory AnalyticsEvent.workoutSyncQueued({required String actionType}) =
+      _WorkoutSyncQueued;
+
+  const factory AnalyticsEvent.workoutSyncSucceeded({
+    required String actionType,
+    required int retryCount,
+    required int elapsedSecondsInQueue,
+  }) = _WorkoutSyncSucceeded;
+
+  const factory AnalyticsEvent.workoutSyncFailed({
+    required String actionType,
+    required int retryCount,
+    required String errorClass,
+    required int elapsedSecondsInQueue,
+  }) = _WorkoutSyncFailed;
+
   // NOTE: the `account_deleted` event is intentionally NOT in this sealed
   // class. It's written from inside the `delete-user` Edge Function to a
   // separate no-FK table (`account_deletion_events`) so the row survives
@@ -96,6 +112,9 @@ sealed class AnalyticsEvent with _$AnalyticsEvent {
     _WeekPlanSaved() => 'week_plan_saved',
     _WeekComplete() => 'week_complete',
     _AddToPlanPromptResponded() => 'add_to_plan_prompt_responded',
+    _WorkoutSyncQueued() => 'workout_sync_queued',
+    _WorkoutSyncSucceeded() => 'workout_sync_succeeded',
+    _WorkoutSyncFailed() => 'workout_sync_failed',
   };
 
   /// Props as stored in the `props` jsonb column. Keys are snake_case.
@@ -182,5 +201,28 @@ sealed class AnalyticsEvent with _$AnalyticsEvent {
       :final routineId,
     ) =>
       {'action': action, 'trigger': trigger, 'routine_id': routineId},
+    _WorkoutSyncQueued(:final actionType) => {'action_type': actionType},
+    _WorkoutSyncSucceeded(
+      :final actionType,
+      :final retryCount,
+      :final elapsedSecondsInQueue,
+    ) =>
+      {
+        'action_type': actionType,
+        'retry_count': retryCount,
+        'elapsed_seconds_in_queue': elapsedSecondsInQueue,
+      },
+    _WorkoutSyncFailed(
+      :final actionType,
+      :final retryCount,
+      :final errorClass,
+      :final elapsedSecondsInQueue,
+    ) =>
+      {
+        'action_type': actionType,
+        'retry_count': retryCount,
+        'error_class': errorClass,
+        'elapsed_seconds_in_queue': elapsedSecondsInQueue,
+      },
   };
 }
