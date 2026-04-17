@@ -23,6 +23,7 @@ class PendingSyncNotifier extends Notifier<int> {
   @override
   int build() {
     _queue = ref.watch(offlineQueueServiceProvider);
+    _inFlight.clear();
     return _queue.pendingCount;
   }
 

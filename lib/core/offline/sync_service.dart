@@ -135,6 +135,7 @@ class SyncService extends Notifier<SyncState> {
     }
     ref.read(pendingSyncProvider.notifier).refreshCount();
     if (!_draining) state = const SyncState();
+    // Fire-and-forget: drain runs in background; state updates reactively.
     _drain();
   }
 
