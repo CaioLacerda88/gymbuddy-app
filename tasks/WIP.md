@@ -23,10 +23,10 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 **Phase 13 Exit Criteria still open:** #2 (image 404 walkthrough), #3 (new-user CTA E2E verification), #7 (full CI + 145/145 E2E + zero critical bugs). Remaining work is verification, not feature development.
 
-**Backlog status:** all items resolved. BL-1 closed (folded into BL-3). BL-2 deferred (Phase 15e). BL-3 closed (PR #71). `tasks/backlog.md` is empty.
+**Backlog status:** all items resolved. BL-1 closed (folded into BL-3). BL-2 deferred (Phase 15e observation in PLAN.md). BL-3 closed (PR #71). `tasks/backlog.md` removed — PLAN.md is the single source of truth for all specs and deferred work.
 
-**Local repo state:** on `main` at `966505f`, working tree clean post-merge.
+**Local repo state:** on `main` at `eae4aa9` (after PR #72 docs cleanup), working tree dirty (tasks/WIP.md edit + tasks/backlog.md deleted — uncommitted).
 
-**Hosted Supabase:** up to date through `00021_input_length_limits.sql`. Seed data still present on caiolacerda88@gmail.com: 11 Barbell Bench Press workouts, marker `notes='seed:bench-60d'`. Can be removed now that BL-3 shipped: `DELETE FROM public.workouts WHERE user_id = (SELECT id FROM auth.users WHERE email='caiolacerda88@gmail.com') AND notes='seed:bench-60d';`
+**Hosted Supabase:** up to date through `00021_input_length_limits.sql`. Seed data present on caiolacerda88@gmail.com: 11 Barbell Bench Press workouts, marker `notes='seed:bench-60d'` — kept for on-device visual verification.
 
 **Next:** no active WIP. Phase 13 wind-down is verification-only (exit criteria #2, #3, #7). Next feature sprint = Phase 14 (offline).
