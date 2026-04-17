@@ -260,8 +260,13 @@ class _ShellScaffold extends ConsumerWidget {
             surfaceTintColor: Colors.transparent,
             selectedIndex: isOnTab ? tabIndex : 0,
             onDestinationSelected: (index) {
-              final routes = ['/home', '/exercises', '/routines', '/profile'];
-              context.go(routes[index]);
+              const routes = ['/home', '/exercises', '/routines', '/profile'];
+              final target = routes[index];
+              // Guard against rapid tab switching: skip navigation when the
+              // target route already matches the current location.
+              final current = GoRouterState.of(context).matchedLocation;
+              if (current == target) return;
+              context.go(target);
             },
             destinations: const [
               NavigationDestination(

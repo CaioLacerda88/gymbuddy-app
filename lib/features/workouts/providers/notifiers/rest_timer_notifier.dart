@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:clock/clock.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Immutable state for the rest timer countdown.
@@ -57,8 +58,14 @@ class RestTimerState {
 ///
 /// State is `null` when no timer is active. The UI layer is responsible
 /// for haptic feedback / sound when the timer reaches zero.
+///
+/// Uses wall-clock time ([DateTime.now]) to compute remaining seconds on
+/// each tick. This ensures the countdown stays accurate even when the app
+/// is backgrounded and the periodic timer misses ticks.
 class RestTimerNotifier extends Notifier<RestTimerState?> {
   Timer? _timer;
+  DateTime? _startedAt;
+  int _totalSeconds = 0;
 
   @override
   RestTimerState? build() => null;
@@ -69,6 +76,8 @@ class RestTimerNotifier extends Notifier<RestTimerState?> {
   void start(int seconds, {String? exerciseName}) {
     if (seconds <= 0) return;
     _timer?.cancel();
+    _startedAt = clock.now();
+    _totalSeconds = seconds;
     state = RestTimerState(
       totalSeconds: seconds,
       remainingSeconds: seconds,
@@ -80,11 +89,13 @@ class RestTimerNotifier extends Notifier<RestTimerState?> {
 
   void _tick(Timer timer) {
     final current = state;
-    if (current == null || current.remainingSeconds <= 0) {
+    final startedAt = _startedAt;
+    if (current == null || startedAt == null) {
       stop();
       return;
     }
-    final next = current.remainingSeconds - 1;
+    final elapsed = clock.now().difference(startedAt).inSeconds;
+    final next = (_totalSeconds - elapsed).clamp(0, _totalSeconds);
     if (next <= 0) {
       state = current.copyWith(remainingSeconds: 0, isActive: false);
       _timer?.cancel();
@@ -96,13 +107,15 @@ class RestTimerNotifier extends Notifier<RestTimerState?> {
   /// Adjust the total timer duration by [deltaSeconds] (+30 or -30).
   ///
   /// Clamps the new total between 30 and 600 seconds. Recalculates remaining
-  /// based on elapsed time so the progress ring stays consistent.
+  /// based on wall-clock elapsed time so the progress ring stays consistent.
   void adjustTime(int deltaSeconds) {
     final current = state;
-    if (current == null) return;
-    final elapsed = current.totalSeconds - current.remainingSeconds;
+    final startedAt = _startedAt;
+    if (current == null || startedAt == null) return;
+    final elapsed = clock.now().difference(startedAt).inSeconds;
     final newTotal = (current.totalSeconds + deltaSeconds).clamp(30, 600);
     final newRemaining = (newTotal - elapsed).clamp(0, newTotal);
+    _totalSeconds = newTotal;
     state = current.copyWith(
       totalSeconds: newTotal,
       remainingSeconds: newRemaining,
@@ -112,12 +125,14 @@ class RestTimerNotifier extends Notifier<RestTimerState?> {
   /// Skip the current timer (dismisses immediately).
   void skip() {
     _timer?.cancel();
+    _startedAt = null;
     state = null;
   }
 
   /// Stop and clear the timer.
   void stop() {
     _timer?.cancel();
+    _startedAt = null;
     state = null;
   }
 }

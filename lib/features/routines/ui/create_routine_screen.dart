@@ -54,6 +54,10 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
     super.dispose();
   }
 
+  // The `_saving` flag is set to true synchronously before the first await,
+  // so the only double-tap window is a single frame (~16ms). This is not
+  // exploitable by human interaction and does not warrant a more complex
+  // debounce mechanism.
   Future<void> _save() async {
     if (!_canSave || _saving) return;
     setState(() => _saving = true);

@@ -50,17 +50,23 @@ class RoutineListScreen extends ConsumerWidget {
           final userRoutines = routines.where((r) => r.userId != null).toList();
           final defaultRoutines = routines.where((r) => r.isDefault).toList();
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // My Routines
-                const SectionHeader(title: 'MY ROUTINES'),
-                const SizedBox(height: 8),
-                if (userRoutines.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
+          return CustomScrollView(
+            slivers: [
+              const SliverPadding(
+                padding: EdgeInsets.only(left: 16, right: 16, top: 16),
+                sliver: SliverToBoxAdapter(
+                  child: SectionHeader(title: 'MY ROUTINES'),
+                ),
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 8)),
+              if (userRoutines.isEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(
+                      left: 16,
+                      right: 16,
+                      bottom: 8,
+                    ),
                     child: Text(
                       'No custom routines yet. Tap + to create one.',
                       style: theme.textTheme.bodyMedium?.copyWith(
@@ -69,40 +75,68 @@ class RoutineListScreen extends ConsumerWidget {
                         ),
                       ),
                     ),
-                  )
-                else
-                  ...userRoutines.map(
-                    (r) => Padding(
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  sliver: SliverList.builder(
+                    itemCount: userRoutines.length,
+                    itemBuilder: (context, index) => Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: RoutineCard(
-                        routine: r,
-                        onTap: () => startRoutineWorkout(context, ref, r),
-                        onLongPress: () =>
-                            showRoutineActionSheet(context, ref, r),
+                        routine: userRoutines[index],
+                        onTap: () => startRoutineWorkout(
+                          context,
+                          ref,
+                          userRoutines[index],
+                        ),
+                        onLongPress: () => showRoutineActionSheet(
+                          context,
+                          ref,
+                          userRoutines[index],
+                        ),
                       ),
                     ),
                   ),
+                ),
 
-                const SizedBox(height: 16),
-
-                // Starter Routines
-                if (defaultRoutines.isNotEmpty) ...[
-                  const SectionHeader(title: 'STARTER ROUTINES'),
-                  const SizedBox(height: 8),
-                  ...defaultRoutines.map(
-                    (r) => Padding(
+              if (defaultRoutines.isNotEmpty) ...[
+                const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                const SliverPadding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  sliver: SliverToBoxAdapter(
+                    child: SectionHeader(title: 'STARTER ROUTINES'),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 8)),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  sliver: SliverList.builder(
+                    itemCount: defaultRoutines.length,
+                    itemBuilder: (context, index) => Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: RoutineCard(
-                        routine: r,
-                        onTap: () => startRoutineWorkout(context, ref, r),
-                        onLongPress: () =>
-                            showRoutineActionSheet(context, ref, r),
+                        routine: defaultRoutines[index],
+                        onTap: () => startRoutineWorkout(
+                          context,
+                          ref,
+                          defaultRoutines[index],
+                        ),
+                        onLongPress: () => showRoutineActionSheet(
+                          context,
+                          ref,
+                          defaultRoutines[index],
+                        ),
                       ),
                     ),
                   ),
-                ],
+                ),
               ],
-            ),
+
+              // Bottom padding for safe area / FAB clearance.
+              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+            ],
           );
         },
       ),
