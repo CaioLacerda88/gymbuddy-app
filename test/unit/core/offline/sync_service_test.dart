@@ -566,6 +566,47 @@ void main() {
     );
 
     // ------------------------------------------------------------------
+    // Test: Drain skips items that are in-flight (manual retry)
+    // ------------------------------------------------------------------
+    test('drain skips items that are in-flight via manual retry', () async {
+      final container = createContainer(initialOnline: false);
+
+      final notifier = container.read(pendingSyncProvider.notifier);
+      await notifier.enqueue(_makeSaveWorkoutAction(id: 'w-manual'));
+
+      // Stub saveWorkout to take some time (simulates in-flight manual retry).
+      final completer = Completer<Workout>();
+      when(
+        () => mockWorkoutRepo.saveWorkout(
+          workout: any(named: 'workout'),
+          exercises: any(named: 'exercises'),
+          sets: any(named: 'sets'),
+        ),
+      ).thenAnswer((_) => completer.future);
+
+      // Start a manual retry (enters _inFlight set) — do NOT await.
+      final manualRetry = notifier.retryItem('w-manual');
+
+      // Now trigger offline→online drain.
+      connectivityController.add(true);
+      await _pumpAsync(100);
+
+      // Complete the manual retry.
+      completer.complete(Workout.fromJson(_workoutJson(id: 'w-manual')));
+      await manualRetry;
+      await _pumpAsync(50);
+
+      // saveWorkout should only be called once (the manual retry), not twice.
+      verify(
+        () => mockWorkoutRepo.saveWorkout(
+          workout: any(named: 'workout'),
+          exercises: any(named: 'exercises'),
+          sets: any(named: 'sets'),
+        ),
+      ).called(1);
+    });
+
+    // ------------------------------------------------------------------
     // Test: Concurrent drain calls are guarded
     // ------------------------------------------------------------------
     test('concurrent drain calls are guarded', () async {
