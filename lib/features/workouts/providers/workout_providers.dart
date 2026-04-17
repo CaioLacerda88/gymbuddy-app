@@ -28,11 +28,11 @@ final hasActiveWorkoutProvider = Provider<bool>((ref) {
 /// Keyed by a sorted, comma-joined string of exercise IDs for stable caching
 /// (two `List<String>` with identical contents are not `==` in Dart).
 /// Callers should pass `(exerciseIds..sort()).join(',')`.
-final lastWorkoutSetsProvider =
-    FutureProvider.family<Map<String, List<ExerciseSet>>, String>((
-      ref,
-      joinedIds,
-    ) {
+/// Uses `autoDispose` so cached entries are freed when the UI screen
+/// navigates away (e.g. finishing a workout). Without autoDispose, every
+/// distinct comma-joined ID key lives forever.
+final lastWorkoutSetsProvider = FutureProvider.autoDispose
+    .family<Map<String, List<ExerciseSet>>, String>((ref, joinedIds) {
       final repo = ref.watch(workoutRepositoryProvider);
       final ids = joinedIds.isEmpty ? <String>[] : joinedIds.split(',');
       return repo.getLastWorkoutSets(ids);

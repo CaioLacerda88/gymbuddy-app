@@ -55,12 +55,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
               child: Text('Exercises', style: theme.textTheme.headlineLarge),
             ),
             const SizedBox(height: 16),
-            _MuscleGroupSelector(
-              selected: ref.watch(selectedMuscleGroupProvider),
-              onSelected: (group) {
-                ref.read(selectedMuscleGroupProvider.notifier).state = group;
-              },
-            ),
+            const _MuscleGroupSelector(),
             const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -70,12 +65,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            _EquipmentFilter(
-              selected: ref.watch(selectedEquipmentTypeProvider),
-              onSelected: (type) {
-                ref.read(selectedEquipmentTypeProvider.notifier).state = type;
-              },
-            ),
+            const _EquipmentFilter(),
             const SizedBox(height: 8),
             Expanded(
               child: AsyncValueBuilder<List<Exercise>>(
@@ -95,7 +85,10 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                   return _ExerciseList(
                     exercises: list,
                     onRefresh: () async {
-                      ref.invalidate(filteredExerciseListProvider);
+                      // Invalidate the underlying family, not just the thin
+                      // wrapper, so all cached filter combinations are cleared
+                      // and a fresh Supabase query is issued (F2 fix).
+                      ref.invalidate(exerciseListProvider);
                     },
                   );
                 },
@@ -111,17 +104,17 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
   }
 }
 
-class _MuscleGroupSelector extends StatelessWidget {
-  const _MuscleGroupSelector({
-    required this.selected,
-    required this.onSelected,
-  });
-
-  final MuscleGroup? selected;
-  final ValueChanged<MuscleGroup?> onSelected;
+/// Self-contained filter selector that watches its own state provider (F3 fix).
+///
+/// Previously the parent build() passed `ref.watch(selectedMuscleGroupProvider)`
+/// as a constructor arg, causing the entire ExerciseListScreen to rebuild on
+/// every muscle-group tap. Now only this widget rebuilds.
+class _MuscleGroupSelector extends ConsumerWidget {
+  const _MuscleGroupSelector();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selected = ref.watch(selectedMuscleGroupProvider);
     final theme = Theme.of(context);
 
     return SizedBox(
@@ -135,7 +128,9 @@ class _MuscleGroupSelector extends StatelessWidget {
               label: 'All',
               icon: Icons.grid_view_rounded,
               isSelected: selected == null,
-              onTap: () => onSelected(null),
+              onTap: () {
+                ref.read(selectedMuscleGroupProvider.notifier).state = null;
+              },
               theme: theme,
             ),
             ...MuscleGroup.values.map(
@@ -143,7 +138,9 @@ class _MuscleGroupSelector extends StatelessWidget {
                 label: group.displayName,
                 icon: group.icon,
                 isSelected: selected == group,
-                onTap: () => onSelected(group),
+                onTap: () {
+                  ref.read(selectedMuscleGroupProvider.notifier).state = group;
+                },
                 theme: theme,
               ),
             ),
@@ -246,14 +243,16 @@ class _SearchBar extends StatelessWidget {
   }
 }
 
-class _EquipmentFilter extends StatelessWidget {
-  const _EquipmentFilter({required this.selected, required this.onSelected});
-
-  final EquipmentType? selected;
-  final ValueChanged<EquipmentType?> onSelected;
+/// Self-contained equipment filter that watches its own state provider (F3 fix).
+///
+/// Same rationale as [_MuscleGroupSelector] — isolates rebuilds so the parent
+/// ExerciseListScreen does not rebuild when equipment type changes.
+class _EquipmentFilter extends ConsumerWidget {
+  const _EquipmentFilter();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selected = ref.watch(selectedEquipmentTypeProvider);
     final theme = Theme.of(context);
 
     return SizedBox(
@@ -272,7 +271,11 @@ class _EquipmentFilter extends StatelessWidget {
                 child: FilterChip(
                   label: Text(type.displayName),
                   selected: isSelected,
-                  onSelected: (val) => onSelected(val ? type : null),
+                  onSelected: (val) {
+                    ref.read(selectedEquipmentTypeProvider.notifier).state = val
+                        ? type
+                        : null;
+                  },
                   selectedColor: theme.colorScheme.primary.withValues(
                     alpha: 0.15,
                   ),

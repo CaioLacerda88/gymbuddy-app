@@ -96,13 +96,14 @@ final hasAnyWorkoutProvider = Provider<bool>((ref) {
 });
 
 /// Fetch full workout detail for a specific workout.
-final workoutDetailProvider = FutureProvider.family<WorkoutDetail, String>((
-  ref,
-  workoutId,
-) {
-  final repo = ref.watch(workoutRepositoryProvider);
-  return repo.getWorkoutDetail(workoutId);
-});
+///
+/// Uses `autoDispose` so the detail is freed when the user navigates away
+/// from the workout detail screen.
+final workoutDetailProvider = FutureProvider.autoDispose
+    .family<WorkoutDetail, String>((ref, workoutId) {
+      final repo = ref.watch(workoutRepositoryProvider);
+      return repo.getWorkoutDetail(workoutId);
+    });
 
 /// Data about the user's most recent completed workout.
 ///

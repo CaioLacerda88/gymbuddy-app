@@ -46,8 +46,13 @@ final selectedEquipmentTypeProvider = StateProvider<EquipmentType?>(
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
 /// Fetches exercises based on an [ExerciseFilter].
-final exerciseListProvider =
-    FutureProvider.family<List<Exercise>, ExerciseFilter>((ref, filter) {
+///
+/// Uses `autoDispose` so cache entries are freed when no UI is listening
+/// (e.g. after a filter change creates a new entry and the old one loses
+/// its last subscriber). Without autoDispose every distinct filter
+/// combination lives forever — see F1 in the filter-performance fix.
+final exerciseListProvider = FutureProvider.autoDispose
+    .family<List<Exercise>, ExerciseFilter>((ref, filter) {
       final repo = ref.watch(exerciseRepositoryProvider);
       if (filter.searchQuery.isNotEmpty) {
         return repo.searchExercises(
