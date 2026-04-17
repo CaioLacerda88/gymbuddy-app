@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../connectivity/connectivity_provider.dart';
+import '../local_storage/cache_refresh_provider.dart';
 import '../observability/sentry_init.dart' show sanitizeRouteName;
 import '../../features/auth/providers/auth_providers.dart';
 import '../../features/auth/providers/onboarding_provider.dart';
@@ -243,6 +244,7 @@ class _ShellScaffold extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final activeState = ref.watch(activeWorkoutProvider).value;
     final isOnline = ref.watch(isOnlineProvider);
+    ref.watch(cacheRefreshProvider);
     final tabIndex = _currentIndex(context);
     // When on a non-tab route (e.g. /records, /plan/week), pass index 0 to
     // satisfy NavigationBar's range requirement but hide the indicator so no

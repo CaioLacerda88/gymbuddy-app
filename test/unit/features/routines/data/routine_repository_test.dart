@@ -15,6 +15,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/exceptions/app_exception.dart';
+import 'package:gymbuddy_app/core/local_storage/cache_service.dart';
 import 'package:gymbuddy_app/features/routines/data/routine_repository.dart';
 import 'package:gymbuddy_app/features/routines/models/routine.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
@@ -143,7 +144,7 @@ RoutineRepository _makeRepo({
     templatesBuilder: _FakeQueryBuilder(data: templates, error: templatesError),
     exercisesBuilder: _FakeQueryBuilder(data: exercises, error: exercisesError),
   );
-  return RoutineRepository(client);
+  return RoutineRepository(client, const CacheService());
 }
 
 // ---------------------------------------------------------------------------

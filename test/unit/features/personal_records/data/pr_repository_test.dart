@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymbuddy_app/core/local_storage/cache_service.dart';
 import 'package:gymbuddy_app/features/exercises/models/exercise.dart';
 import 'package:gymbuddy_app/features/personal_records/data/pr_repository.dart';
 import 'package:gymbuddy_app/features/personal_records/models/personal_record.dart';
@@ -192,7 +193,10 @@ void main() {
       ];
 
       final fakeBuilder = FakePRQueryBuilder(data: rows);
-      final repo = PRRepository(FakeSupabaseClient(fakeBuilder));
+      final repo = PRRepository(
+        FakeSupabaseClient(fakeBuilder),
+        const CacheService(),
+      );
 
       final result = await repo.getRecentRecordsWithExercises('user-001');
 
@@ -212,7 +216,10 @@ void main() {
 
     test('issues server-side LIMIT with default value of 3', () async {
       final fakeBuilder = FakePRQueryBuilder(data: []);
-      final repo = PRRepository(FakeSupabaseClient(fakeBuilder));
+      final repo = PRRepository(
+        FakeSupabaseClient(fakeBuilder),
+        const CacheService(),
+      );
 
       await repo.getRecentRecordsWithExercises('user-001');
 
@@ -221,7 +228,10 @@ void main() {
 
     test('issues server-side LIMIT with custom value', () async {
       final fakeBuilder = FakePRQueryBuilder(data: []);
-      final repo = PRRepository(FakeSupabaseClient(fakeBuilder));
+      final repo = PRRepository(
+        FakeSupabaseClient(fakeBuilder),
+        const CacheService(),
+      );
 
       await repo.getRecentRecordsWithExercises('user-001', limit: 5);
 
@@ -230,7 +240,10 @@ void main() {
 
     test('filters by user_id', () async {
       final fakeBuilder = FakePRQueryBuilder(data: []);
-      final repo = PRRepository(FakeSupabaseClient(fakeBuilder));
+      final repo = PRRepository(
+        FakeSupabaseClient(fakeBuilder),
+        const CacheService(),
+      );
 
       await repo.getRecentRecordsWithExercises('user-abc');
 
@@ -239,7 +252,10 @@ void main() {
 
     test('orders by achieved_at descending', () async {
       final fakeBuilder = FakePRQueryBuilder(data: []);
-      final repo = PRRepository(FakeSupabaseClient(fakeBuilder));
+      final repo = PRRepository(
+        FakeSupabaseClient(fakeBuilder),
+        const CacheService(),
+      );
 
       await repo.getRecentRecordsWithExercises('user-001');
 
@@ -248,7 +264,10 @@ void main() {
 
     test('returns empty list when no records exist', () async {
       final fakeBuilder = FakePRQueryBuilder(data: []);
-      final repo = PRRepository(FakeSupabaseClient(fakeBuilder));
+      final repo = PRRepository(
+        FakeSupabaseClient(fakeBuilder),
+        const CacheService(),
+      );
 
       final result = await repo.getRecentRecordsWithExercises('user-001');
 
@@ -258,7 +277,10 @@ void main() {
     test('uses Unknown Exercise when exercises data is null', () async {
       final row = {...TestPersonalRecordFactory.create(), 'exercises': null};
       final fakeBuilder = FakePRQueryBuilder(data: [row]);
-      final repo = PRRepository(FakeSupabaseClient(fakeBuilder));
+      final repo = PRRepository(
+        FakeSupabaseClient(fakeBuilder),
+        const CacheService(),
+      );
 
       final result = await repo.getRecentRecordsWithExercises('user-001');
 
@@ -268,7 +290,10 @@ void main() {
 
     test('return type is List of named record tuples', () async {
       final fakeBuilder = FakePRQueryBuilder(data: [_prRowWithExercise()]);
-      final repo = PRRepository(FakeSupabaseClient(fakeBuilder));
+      final repo = PRRepository(
+        FakeSupabaseClient(fakeBuilder),
+        const CacheService(),
+      );
 
       final result = await repo.getRecentRecordsWithExercises('user-001');
 
@@ -317,6 +342,7 @@ void main() {
           'sets': setsBuilder,
           'personal_records': prBuilder,
         }),
+        const CacheService(),
       );
 
       final result = await repo.getPRsForWorkout(workoutId, userId);
@@ -340,6 +366,7 @@ void main() {
           'sets': setsBuilder,
           'personal_records': prBuilder,
         }),
+        const CacheService(),
       );
 
       final result = await repo.getPRsForWorkout(workoutId, userId);
@@ -364,6 +391,7 @@ void main() {
           'sets': setsBuilder,
           'personal_records': prBuilder,
         }),
+        const CacheService(),
       );
 
       final result = await repo.getPRsForWorkout(workoutId, userId);
@@ -385,6 +413,7 @@ void main() {
           'sets': setsBuilder,
           'personal_records': prBuilder,
         }),
+        const CacheService(),
       );
 
       await repo.getPRsForWorkout(workoutId, userId);
@@ -405,6 +434,7 @@ void main() {
           'sets': setsBuilder,
           'personal_records': prBuilder,
         }),
+        const CacheService(),
       );
 
       await repo.getPRsForWorkout(workoutId, 'user-001');

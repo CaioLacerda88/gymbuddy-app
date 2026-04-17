@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymbuddy_app/core/local_storage/cache_service.dart';
 import 'package:gymbuddy_app/features/personal_records/data/pr_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
@@ -68,7 +69,10 @@ void main() {
   group('PRRepository.clearAllRecords', () {
     test('deletes all personal records for a user', () async {
       final fakeBuilder = FakeQueryBuilder();
-      final repo = PRRepository(FakeSupabaseClient(fakeBuilder));
+      final repo = PRRepository(
+        FakeSupabaseClient(fakeBuilder),
+        const CacheService(),
+      );
 
       await repo.clearAllRecords('user-001');
 
@@ -81,7 +85,10 @@ void main() {
       final fakeBuilder = FakeQueryBuilder(
         error: Exception('Connection failed'),
       );
-      final repo = PRRepository(FakeSupabaseClient(fakeBuilder));
+      final repo = PRRepository(
+        FakeSupabaseClient(fakeBuilder),
+        const CacheService(),
+      );
 
       expect(() => repo.clearAllRecords('user-001'), throwsA(isA<Exception>()));
     });

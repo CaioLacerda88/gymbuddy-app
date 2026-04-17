@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymbuddy_app/core/local_storage/cache_service.dart';
 import 'package:gymbuddy_app/features/workouts/data/workout_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
@@ -74,7 +75,10 @@ void main() {
   group('WorkoutRepository.clearHistory', () {
     test('deletes finished non-active workouts for a user', () async {
       final fakeBuilder = FakeQueryBuilder();
-      final repo = WorkoutRepository(FakeSupabaseClient(fakeBuilder));
+      final repo = WorkoutRepository(
+        FakeSupabaseClient(fakeBuilder),
+        const CacheService(),
+      );
 
       await repo.clearHistory('user-001');
 
@@ -87,7 +91,10 @@ void main() {
 
     test('does NOT delete active workouts', () async {
       final fakeBuilder = FakeQueryBuilder();
-      final repo = WorkoutRepository(FakeSupabaseClient(fakeBuilder));
+      final repo = WorkoutRepository(
+        FakeSupabaseClient(fakeBuilder),
+        const CacheService(),
+      );
 
       await repo.clearHistory('user-001');
 
@@ -99,7 +106,10 @@ void main() {
       final fakeBuilder = FakeQueryBuilder(
         error: Exception('Connection failed'),
       );
-      final repo = WorkoutRepository(FakeSupabaseClient(fakeBuilder));
+      final repo = WorkoutRepository(
+        FakeSupabaseClient(fakeBuilder),
+        const CacheService(),
+      );
 
       expect(() => repo.clearHistory('user-001'), throwsA(isA<Exception>()));
     });

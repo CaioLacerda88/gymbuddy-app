@@ -1,6 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 import '../../../core/data/base_repository.dart';
+import '../../../core/local_storage/cache_service.dart';
+import '../../../core/local_storage/hive_service.dart';
 import '../../exercises/models/exercise.dart';
 import '../models/exercise_set.dart';
 import '../models/workout.dart';
@@ -14,9 +16,10 @@ typedef WorkoutDetail = ({
 });
 
 class WorkoutRepository extends BaseRepository {
-  const WorkoutRepository(this._client);
+  const WorkoutRepository(this._client, this._cache);
 
   final supabase.SupabaseClient _client;
+  final CacheService _cache;
 
   supabase.SupabaseQueryBuilder get _workouts => _client.from('workouts');
 
@@ -69,7 +72,10 @@ class WorkoutRepository extends BaseRepository {
               .toList(),
         },
       );
-      return Workout.fromJson(result as Map<String, dynamic>);
+      final saved = Workout.fromJson(result as Map<String, dynamic>);
+      _cache.delete(HiveService.workoutHistoryCache, workout.userId);
+      _cache.clearBox(HiveService.lastSetsCache);
+      return saved;
     });
   }
 
@@ -110,21 +116,66 @@ class WorkoutRepository extends BaseRepository {
   ///
   /// Joins exercise names in a single query so each returned [Workout] has
   /// [Workout.exerciseSummary] pre-populated (e.g. "Bench Press, Squat +2").
+  ///
+  /// Only the first page (offset == 0) is cached, up to 50 workouts.
   Future<List<Workout>> getWorkoutHistory(
     String userId, {
     int limit = 20,
     int offset = 0,
-  }) {
-    return mapException(() async {
-      final data = await _workouts
-          .select('*, workout_exercises(order, exercise:exercises(name))')
-          .eq('user_id', userId)
-          .eq('is_active', false)
-          .not('finished_at', 'is', null)
-          .order('finished_at', ascending: false)
-          .range(offset, offset + limit - 1);
-      return data.map(_workoutFromHistoryRow).toList();
-    });
+  }) async {
+    // Only cache from the refresh pass (limit >= 50) to avoid a UI fetch
+    // (limit 20) regressing a richer 50-item cache entry.
+    final shouldCache = offset == 0 && limit >= 50;
+
+    final cached = shouldCache
+        ? _cache.read<List<Workout>>(HiveService.workoutHistoryCache, userId, (
+            json,
+          ) {
+            final list = json as List;
+            return list.map((e) {
+              final map = Map<String, dynamic>.from(e as Map<String, dynamic>);
+              final summary = map.remove('_exercise_summary') as String?;
+              final workout = Workout.fromJson(map);
+              return summary != null
+                  ? workout.copyWith(exerciseSummary: summary)
+                  : workout;
+            }).toList();
+          })
+        : null;
+
+    try {
+      final fresh = await mapException(() async {
+        final data = await _workouts
+            .select('*, workout_exercises(order, exercise:exercises(name))')
+            .eq('user_id', userId)
+            .eq('is_active', false)
+            .not('finished_at', 'is', null)
+            .order('finished_at', ascending: false)
+            .range(offset, offset + limit - 1);
+        return data.map(_workoutFromHistoryRow).toList();
+      });
+
+      if (shouldCache) {
+        // Cache up to 50 workouts with exerciseSummary preserved.
+        final toCache = fresh.take(50).toList();
+        _cache.write(
+          HiveService.workoutHistoryCache,
+          userId,
+          toCache.map((w) {
+            final json = w.toJson();
+            if (w.exerciseSummary != null) {
+              json['_exercise_summary'] = w.exerciseSummary;
+            }
+            return json;
+          }).toList(),
+        );
+      }
+
+      return fresh;
+    } catch (e) {
+      if (cached != null) return cached;
+      rethrow;
+    }
   }
 
   /// Maps a history query row (with joined workout_exercises) to a [Workout]
@@ -257,34 +308,71 @@ class WorkoutRepository extends BaseRepository {
   /// Note: relies on Supabase returning rows ordered by the `finished_at DESC`
   /// clause. The `seen` set deduplicates to keep only the first (most recent)
   /// entry per exercise.
+  ///
+  /// Uses read-through caching: returns cached data on network failure.
   Future<Map<String, List<ExerciseSet>>> getLastWorkoutSets(
     List<String> exerciseIds,
-  ) {
-    return mapException(() async {
-      if (exerciseIds.isEmpty) return {};
+  ) async {
+    if (exerciseIds.isEmpty) return {};
 
-      final data = await _client
-          .from('workout_exercises')
-          .select('exercise_id, sets(*), workouts!inner(finished_at)')
-          .inFilter('exercise_id', exerciseIds)
-          .not('workouts.finished_at', 'is', null)
-          .order('finished_at', referencedTable: 'workouts', ascending: false);
+    final key = (List<String>.from(exerciseIds)..sort()).join(',');
+    final cached = _cache.read<Map<String, List<ExerciseSet>>>(
+      HiveService.lastSetsCache,
+      key,
+      (json) {
+        final map = json as Map<String, dynamic>;
+        return map.map(
+          (k, v) => MapEntry(
+            k,
+            (v as List)
+                .map((e) => ExerciseSet.fromJson(e as Map<String, dynamic>))
+                .toList(),
+          ),
+        );
+      },
+    );
 
-      final result = <String, List<ExerciseSet>>{};
-      final seen = <String>{};
+    try {
+      final fresh = await mapException(() async {
+        final data = await _client
+            .from('workout_exercises')
+            .select('exercise_id, sets(*), workouts!inner(finished_at)')
+            .inFilter('exercise_id', exerciseIds)
+            .not('workouts.finished_at', 'is', null)
+            .order(
+              'finished_at',
+              referencedTable: 'workouts',
+              ascending: false,
+            );
 
-      for (final row in data) {
-        final exerciseId = row['exercise_id'] as String;
-        if (seen.contains(exerciseId)) continue;
-        seen.add(exerciseId);
+        final result = <String, List<ExerciseSet>>{};
+        final seen = <String>{};
 
-        final setsData = row['sets'] as List<dynamic>? ?? [];
-        result[exerciseId] = setsData
-            .map((s) => ExerciseSet.fromJson(s as Map<String, dynamic>))
-            .toList();
-      }
-      return result;
-    });
+        for (final row in data) {
+          final exerciseId = row['exercise_id'] as String;
+          if (seen.contains(exerciseId)) continue;
+          seen.add(exerciseId);
+
+          final setsData = row['sets'] as List<dynamic>? ?? [];
+          result[exerciseId] = setsData
+              .map((s) => ExerciseSet.fromJson(s as Map<String, dynamic>))
+              .toList();
+        }
+        return result;
+      });
+
+      // Fire-and-forget cache write.
+      _cache.write(
+        HiveService.lastSetsCache,
+        key,
+        fresh.map((k, v) => MapEntry(k, v.map((s) => s.toJson()).toList())),
+      );
+
+      return fresh;
+    } catch (e) {
+      if (cached != null) return cached;
+      rethrow;
+    }
   }
 
   /// Get the total count of finished workouts for a user.
@@ -318,6 +406,8 @@ class WorkoutRepository extends BaseRepository {
           .eq('user_id', userId)
           .eq('is_active', false)
           .not('finished_at', 'is', null);
+      _cache.delete(HiveService.workoutHistoryCache, userId);
+      _cache.clearBox(HiveService.lastSetsCache);
     });
   }
 
