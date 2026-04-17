@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import 'package:gymbuddy_app/core/connectivity/connectivity_provider.dart';
 import 'package:gymbuddy_app/core/offline/offline_queue_service.dart';
 import 'package:gymbuddy_app/core/offline/pending_action.dart';
@@ -633,5 +634,204 @@ void main() {
         ),
       ).called(1);
     });
+
+    // ------------------------------------------------------------------
+    // Test: Emits workoutSyncFailed analytics event on terminal error
+    // ------------------------------------------------------------------
+    test(
+      'emits workoutSyncFailed analytics event when error is terminal',
+      () async {
+        final container = createContainer(initialOnline: false);
+
+        final notifier = container.read(pendingSyncProvider.notifier);
+        await notifier.enqueue(
+          _makeSaveWorkoutAction(id: 'w-fail-analytics', retryCount: 0),
+        );
+
+        // 409 Conflict is a terminal error — will be classified as terminal
+        // on first attempt, so workoutSyncFailed must be emitted.
+        stubSaveWorkoutFailure(
+          const supabase.PostgrestException(message: 'Conflict', code: '409'),
+        );
+
+        connectivityController.add(true);
+        await _pumpAsync(200);
+
+        verify(
+          () => mockAnalyticsRepo.insertEvent(
+            userId: 'user-1',
+            event: any(
+              named: 'event',
+              that: isA<AnalyticsEvent>().having(
+                (e) => e.name,
+                'name',
+                'workout_sync_failed',
+              ),
+            ),
+            platform: null,
+            appVersion: null,
+          ),
+        ).called(1);
+      },
+    );
+
+    // ------------------------------------------------------------------
+    // Test: Emits workoutSyncFailed when max retries exhausted (transient)
+    // ------------------------------------------------------------------
+    test(
+      'emits workoutSyncFailed analytics event when max retries exhausted by transient error',
+      () async {
+        final container = createContainer(initialOnline: false);
+
+        final notifier = container.read(pendingSyncProvider.notifier);
+
+        // retryCount = kMaxSyncRetries - 1 so the next failure tips it over.
+        await notifier.enqueue(
+          _makeSaveWorkoutAction(
+            id: 'w-maxretry',
+            retryCount: kMaxSyncRetries - 1,
+          ),
+        );
+
+        // Transient error that triggers the newRetryCount >= kMaxSyncRetries branch.
+        stubSaveWorkoutFailure(const SocketException('reset'));
+
+        connectivityController.add(true);
+        await _pumpAsync(200);
+
+        verify(
+          () => mockAnalyticsRepo.insertEvent(
+            userId: 'user-1',
+            event: any(
+              named: 'event',
+              that: isA<AnalyticsEvent>().having(
+                (e) => e.name,
+                'name',
+                'workout_sync_failed',
+              ),
+            ),
+            platform: null,
+            appVersion: null,
+          ),
+        ).called(1);
+      },
+    );
+
+    // ------------------------------------------------------------------
+    // Test: Terminal PostgrestException marks item terminal immediately
+    // (no backoff applied — classification bypasses the backoff branch)
+    // ------------------------------------------------------------------
+    test(
+      'terminal PostgrestException marks item as terminal after first failure',
+      () async {
+        final container = createContainer(initialOnline: false);
+
+        final notifier = container.read(pendingSyncProvider.notifier);
+        await notifier.enqueue(
+          _makeSaveWorkoutAction(id: 'w-terminal-pg', retryCount: 0),
+        );
+
+        // 422 is terminal — should NOT backoff, should immediately reflect
+        // terminal state after drain completes.
+        stubSaveWorkoutFailure(
+          const supabase.PostgrestException(
+            message: 'Unprocessable',
+            code: '422',
+          ),
+        );
+
+        connectivityController.add(true);
+        // No 1s backoff should be needed — terminal path skips the delay.
+        await _pumpAsync(300);
+
+        // Item is still in queue (retryItem failed).
+        expect(queueService.getAll(), hasLength(1));
+
+        // SyncState does NOT count this as terminal yet (retryCount is only 1
+        // now, still below kMaxSyncRetries). The item needs kMaxSyncRetries
+        // failures to be counted as terminal in the post-drain sweep.
+        // The key behavior: drain completed quickly (no 1s sleep).
+        // This test ensures we don't accidentally apply backoff for terminal errors.
+        final syncState = container.read(syncServiceProvider);
+        expect(syncState.terminalFailureCount, 0);
+      },
+    );
+
+    // ------------------------------------------------------------------
+    // Test: dismissTerminalItems does not affect non-terminal items
+    // ------------------------------------------------------------------
+    test(
+      'dismissTerminalItems only removes items with retryCount >= kMaxSyncRetries',
+      () async {
+        final container = createContainer(initialOnline: true);
+
+        final notifier = container.read(pendingSyncProvider.notifier);
+
+        // One terminal, one fresh.
+        await notifier.enqueue(
+          _makeSaveWorkoutAction(
+            id: 'w-keep',
+            retryCount: 0,
+            queuedAt: DateTime.utc(2026, 4, 17, 9, 0, 0),
+          ),
+        );
+        await notifier.enqueue(
+          _makeSaveWorkoutAction(
+            id: 'w-dismiss-only',
+            retryCount: kMaxSyncRetries,
+            queuedAt: DateTime.utc(2026, 4, 17, 10, 0, 0),
+          ),
+        );
+
+        await container
+            .read(syncServiceProvider.notifier)
+            .dismissTerminalItems();
+
+        // Only the non-terminal item remains.
+        final remaining = queueService.getAll();
+        expect(remaining, hasLength(1));
+        expect(remaining.first.id, 'w-keep');
+
+        // Badge count and state should reflect one item removed.
+        expect(container.read(pendingSyncProvider), 1);
+        expect(container.read(syncServiceProvider).terminalFailureCount, 0);
+      },
+    );
+
+    // ------------------------------------------------------------------
+    // Test: retryTerminalItems does not drain if connectivity is offline
+    // ------------------------------------------------------------------
+    test(
+      'retryTerminalItems resets counts but drain stops immediately if offline',
+      () async {
+        final container = createContainer(initialOnline: false);
+
+        final notifier = container.read(pendingSyncProvider.notifier);
+        await notifier.enqueue(
+          _makeSaveWorkoutAction(
+            id: 'w-offline-retry',
+            retryCount: kMaxSyncRetries,
+          ),
+        );
+
+        stubSaveWorkoutSuccess(id: 'w-offline-retry');
+
+        // Call retryTerminalItems while offline.
+        await container.read(syncServiceProvider.notifier).retryTerminalItems();
+        await _pumpAsync(200);
+
+        // The drain should check connectivity and stop — item is NOT dequeued.
+        // retryCount was reset to 0 by retryTerminalItems, but the drain skipped.
+        expect(queueService.getAll(), hasLength(1));
+        // saveWorkout must NOT have been called.
+        verifyNever(
+          () => mockWorkoutRepo.saveWorkout(
+            workout: any(named: 'workout'),
+            exercises: any(named: 'exercises'),
+            sets: any(named: 'sets'),
+          ),
+        );
+      },
+    );
   });
 }

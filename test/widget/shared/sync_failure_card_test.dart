@@ -71,6 +71,60 @@ void main() {
       expect(find.text('Retry'), findsNothing);
       expect(find.text('Dismiss'), findsNothing);
     });
+
+    testWidgets('tapping Dismiss calls dismissTerminalItems on notifier', (
+      tester,
+    ) async {
+      final trackingService = _TrackingSyncService();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            syncServiceProvider.overrideWith(() => trackingService),
+            isOnlineProvider.overrideWithValue(true),
+            onlineStatusProvider.overrideWith((ref) => Stream.value(true)),
+          ],
+          child: const MaterialApp(home: Scaffold(body: SyncFailureCard())),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Dismiss'), findsOneWidget);
+      await tester.tap(find.text('Dismiss'));
+      await tester.pumpAndSettle();
+
+      expect(trackingService.dismissCalled, isTrue);
+    });
+
+    testWidgets('tapping Retry while online calls retryTerminalItems', (
+      tester,
+    ) async {
+      final trackingService = _TrackingSyncService();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            syncServiceProvider.overrideWith(() => trackingService),
+            isOnlineProvider.overrideWithValue(true),
+            onlineStatusProvider.overrideWith((ref) => Stream.value(true)),
+          ],
+          child: const MaterialApp(home: Scaffold(body: SyncFailureCard())),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Retry'), findsOneWidget);
+      await tester.tap(find.text('Retry'));
+      await tester.pumpAndSettle();
+
+      expect(trackingService.retryCalled, isTrue);
+    });
+
+    // Note: the "Retry while offline" snackbar path (_handleRetry guard) is not
+    // testable via the widget because the card hides itself (returns
+    // SizedBox.shrink) whenever isOnlineProvider is false, which means the
+    // Retry button is never rendered while the guard would trigger.
+    // The guard is a safety net for the edge case where connectivity drops
+    // between the card rendering and the tap completing. It is covered by
+    // code inspection; no additional widget test is warranted.
   });
 }
 
@@ -82,4 +136,24 @@ class _TestSyncService extends SyncService {
 
   @override
   SyncState build() => SyncState(terminalFailureCount: _count);
+}
+
+/// Tracking fake that records which action methods were called.
+class _TrackingSyncService extends SyncService {
+  bool dismissCalled = false;
+  bool retryCalled = false;
+
+  @override
+  SyncState build() => const SyncState(terminalFailureCount: 2);
+
+  @override
+  Future<void> dismissTerminalItems() async {
+    dismissCalled = true;
+    state = const SyncState();
+  }
+
+  @override
+  Future<void> retryTerminalItems() async {
+    retryCalled = true;
+  }
 }
