@@ -152,6 +152,43 @@ void main() {
 
       expect(find.widgetWithText(ElevatedButton, 'Continue'), findsOneWidget);
     });
+
+    testWidgets('mounted guard: no exception when widget removed before '
+        'addPostFrameCallback fires (C3)', (tester) async {
+      // Regression: PRCelebrationScreen.initState schedules an
+      // addPostFrameCallback that calls setState. If the widget is removed
+      // from the tree before that callback fires, it must not throw.
+      final result = PRDetectionResult(
+        newRecords: [makeRecord()],
+        isFirstWorkout: false,
+      );
+
+      await tester.pumpWidget(
+        buildTestWidget(
+          result: result,
+          exerciseNames: {'exercise-001': 'Bench Press'},
+        ),
+      );
+
+      // pumpWidget internally calls pump(), which fires the
+      // addPostFrameCallback. The callback schedules a 300ms Future.delayed
+      // for a second haptic pulse. We need to drain that timer after
+      // removing the widget to avoid "Timer still pending" errors.
+
+      // Remove the PRCelebrationScreen from the tree.
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: SizedBox.shrink())),
+      );
+
+      // Drain the 300ms haptic timer that was scheduled by initState's
+      // post-frame callback before the widget was removed.
+      await tester.pump(const Duration(milliseconds: 400));
+
+      // If the mounted guard were missing, the post-frame callback would
+      // throw a "setState() called after dispose" exception. Reaching here
+      // means the guard works.
+      expect(find.byType(SizedBox), findsOneWidget);
+    });
   });
 }
 

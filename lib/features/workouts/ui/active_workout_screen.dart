@@ -29,6 +29,14 @@ import 'widgets/finish_workout_dialog.dart';
 import 'widgets/rest_timer_overlay.dart';
 import 'widgets/set_row.dart';
 
+/// File-level guard preventing stacked discard dialogs.
+///
+/// Shared between [ActiveWorkoutScreen] (PopScope handler) and
+/// [_ActiveWorkoutBodyState._onBackPressed] (AppBar close button).
+/// Safe as a file-level variable because only one active workout screen
+/// exists at any time.
+bool _isShowingDiscardDialog = false;
+
 /// Full-screen active workout experience.
 ///
 /// Displayed outside the shell route (no bottom nav). Watches
@@ -74,9 +82,7 @@ class ActiveWorkoutScreen extends ConsumerWidget {
         children: [
           _ActiveWorkoutBody(state: displayState),
           if (asyncState.isLoading)
-            const ModalBarrier(dismissible: false, color: Colors.black54),
-          if (asyncState.isLoading)
-            const Center(child: CircularProgressIndicator()),
+            _LoadingOverlay(hasRestorable: asyncState.hasValue),
           if (timerState != null) const RestTimerOverlay(),
         ],
       ),
@@ -86,31 +92,40 @@ class ActiveWorkoutScreen extends ConsumerWidget {
   /// Shows the discard workout dialog and handles the result.
   ///
   /// Extracted to the top-level [ActiveWorkoutScreen] so PopScope can invoke it
-  /// regardless of the internal widget tree state.
+  /// regardless of the internal widget tree state. Uses the file-level
+  /// [_isShowingDiscardDialog] guard to prevent stacked dialogs.
   Future<void> _showDiscardDialog(
     BuildContext context,
     WidgetRef ref,
     ActiveWorkoutState state,
   ) async {
-    final elapsed = DateTime.now().toUtc().difference(state.workout.startedAt);
-    final shouldDiscard = await DiscardWorkoutDialog.show(
-      context,
-      elapsedDuration: elapsed,
-    );
-    if (shouldDiscard == true && context.mounted) {
-      await ref.read(activeWorkoutProvider.notifier).discardWorkout();
-      if (!context.mounted) return;
+    if (_isShowingDiscardDialog) return;
+    _isShowingDiscardDialog = true;
+    try {
+      final elapsed = DateTime.now().toUtc().difference(
+        state.workout.startedAt,
+      );
+      final shouldDiscard = await DiscardWorkoutDialog.show(
+        context,
+        elapsedDuration: elapsed,
+      );
+      if (shouldDiscard == true && context.mounted) {
+        await ref.read(activeWorkoutProvider.notifier).discardWorkout();
+        if (!context.mounted) return;
 
-      final result = ref.read(activeWorkoutProvider);
-      if (result.hasError) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to discard workout. Please retry.'),
-          ),
-        );
-        return;
+        final result = ref.read(activeWorkoutProvider);
+        if (result.hasError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to discard workout. Please retry.'),
+            ),
+          );
+          return;
+        }
+        context.go('/home');
       }
-      context.go('/home');
+    } finally {
+      _isShowingDiscardDialog = false;
     }
   }
 }
@@ -127,6 +142,11 @@ class _ActiveWorkoutBody extends ConsumerStatefulWidget {
 class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
   bool _reorderMode = false;
   bool _isEditingName = false;
+
+  /// Re-entrance guard for [_onFinish]. Prevents double-tap on "Finish Workout"
+  /// from opening two dialogs or firing two concurrent saves.
+  bool _finishing = false;
+
   late TextEditingController _nameController;
 
   @override
@@ -172,101 +192,115 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
       widget.state.exercises.any((e) => e.sets.any((s) => s.isCompleted));
 
   Future<void> _onBackPressed() async {
-    final elapsed = DateTime.now().toUtc().difference(
-      widget.state.workout.startedAt,
-    );
-    final shouldDiscard = await DiscardWorkoutDialog.show(
-      context,
-      elapsedDuration: elapsed,
-    );
-    if (shouldDiscard == true && mounted) {
-      await ref.read(activeWorkoutProvider.notifier).discardWorkout();
-      if (!mounted) return;
+    if (_isShowingDiscardDialog) return;
+    _isShowingDiscardDialog = true;
+    try {
+      final elapsed = DateTime.now().toUtc().difference(
+        widget.state.workout.startedAt,
+      );
+      final shouldDiscard = await DiscardWorkoutDialog.show(
+        context,
+        elapsedDuration: elapsed,
+      );
+      if (shouldDiscard == true && mounted) {
+        await ref.read(activeWorkoutProvider.notifier).discardWorkout();
+        if (!mounted) return;
 
-      final result = ref.read(activeWorkoutProvider);
-      if (result.hasError) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to discard workout. Please retry.'),
-          ),
-        );
-        return;
+        final result = ref.read(activeWorkoutProvider);
+        if (result.hasError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to discard workout. Please retry.'),
+            ),
+          );
+          return;
+        }
+        context.go('/home');
       }
-      context.go('/home');
+    } finally {
+      _isShowingDiscardDialog = false;
     }
   }
 
   Future<void> _onFinish() async {
-    final notifier = ref.read(activeWorkoutProvider.notifier);
-    final incompleteCount = notifier.incompleteSetsCount;
+    if (_finishing) return;
+    _finishing = true;
+    try {
+      final notifier = ref.read(activeWorkoutProvider.notifier);
+      final incompleteCount = notifier.incompleteSetsCount;
 
-    final result = await FinishWorkoutDialog.show(
-      context,
-      incompleteCount: incompleteCount,
-    );
-    if (result == null || !mounted) return;
+      final result = await FinishWorkoutDialog.show(
+        context,
+        incompleteCount: incompleteCount,
+      );
+      if (result == null || !mounted) return;
 
-    // Capture exercise names before finishing (state is cleared after).
-    final currentState = ref.read(activeWorkoutProvider).value;
-    final exerciseNames = <String, String>{};
-    if (currentState != null) {
-      for (final e in currentState.exercises) {
-        final ex = e.workoutExercise.exercise;
-        if (ex != null) {
-          exerciseNames[e.workoutExercise.exerciseId] = ex.name;
+      // Capture exercise names before finishing (state is cleared after).
+      final currentState = ref.read(activeWorkoutProvider).value;
+      final exerciseNames = <String, String>{};
+      if (currentState != null) {
+        for (final e in currentState.exercises) {
+          final ex = e.workoutExercise.exercise;
+          if (ex != null) {
+            exerciseNames[e.workoutExercise.exerciseId] = ex.name;
+          }
         }
       }
-    }
 
-    // Capture routine context before finishing (state is cleared after).
-    // Look up the immutable routine name from the provider — workout.name
-    // is mutable (user can rename mid-session).
-    final routineId = currentState?.routineId;
-    final routineName = routineId != null
-        ? ref
-              .read(routineListProvider)
-              .value
-              ?.where((r) => r.id == routineId)
-              .firstOrNull
-              ?.name
-        : null;
+      // Capture routine context before finishing (state is cleared after).
+      // Look up the immutable routine name from the provider — workout.name
+      // is mutable (user can rename mid-session).
+      final routineId = currentState?.routineId;
+      final routineName = routineId != null
+          ? ref
+                .read(routineListProvider)
+                .value
+                ?.where((r) => r.id == routineId)
+                .firstOrNull
+                ?.name
+          : null;
 
-    final prResult = await notifier.finishWorkout(notes: result.notes);
-    if (!mounted) return;
+      final prResult = await notifier.finishWorkout(notes: result.notes);
+      if (!mounted) return;
 
-    final state = ref.read(activeWorkoutProvider);
-    if (state.hasError) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to save workout. Please retry.')),
-      );
-      return;
-    }
+      final state = ref.read(activeWorkoutProvider);
+      if (state.hasError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to save workout. Please retry.'),
+          ),
+        );
+        return;
+      }
 
-    // Invalidate caches so stat cards and lists reflect the new workout.
-    ref.invalidate(workoutHistoryProvider);
-    ref.invalidate(workoutCountProvider);
-    ref.invalidate(prListProvider);
-    ref.invalidate(prCountProvider);
-    ref.invalidate(recentPRsProvider);
+      // Invalidate caches so stat cards and lists reflect the new workout.
+      ref.invalidate(workoutHistoryProvider);
+      ref.invalidate(workoutCountProvider);
+      ref.invalidate(prListProvider);
+      ref.invalidate(prCountProvider);
+      ref.invalidate(recentPRsProvider);
 
-    // Determine if we should prompt to add this routine to the plan.
-    final shouldPrompt = _shouldShowPlanPrompt(routineId);
+      // Determine if we should prompt to add this routine to the plan.
+      final shouldPrompt = _shouldShowPlanPrompt(routineId);
 
-    // Navigate to PR celebration if there are new records, otherwise go home.
-    if (prResult != null && prResult.hasNewRecords) {
-      context.go(
-        '/pr-celebration',
-        extra: {
-          'result': prResult,
-          'exerciseNames': exerciseNames,
-          if (shouldPrompt) 'planPromptRoutineId': routineId,
-          if (shouldPrompt) 'planPromptRoutineName': routineName,
-        },
-      );
-    } else if (shouldPrompt) {
-      await _showPlanPromptAndGoHome(routineId!, routineName!);
-    } else {
-      context.go('/home');
+      // Navigate to PR celebration if there are new records, otherwise go home.
+      if (prResult != null && prResult.hasNewRecords) {
+        context.go(
+          '/pr-celebration',
+          extra: {
+            'result': prResult,
+            'exerciseNames': exerciseNames,
+            if (shouldPrompt) 'planPromptRoutineId': routineId,
+            if (shouldPrompt) 'planPromptRoutineName': routineName,
+          },
+        );
+      } else if (shouldPrompt) {
+        await _showPlanPromptAndGoHome(routineId!, routineName!);
+      } else {
+        context.go('/home');
+      }
+    } finally {
+      _finishing = false;
     }
   }
 
@@ -430,6 +464,76 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
       floatingActionButton: widget.state.exercises.isNotEmpty
           ? _AddExerciseFab(onPressed: _onAddExercise)
           : null,
+    );
+  }
+}
+
+/// Loading overlay shown during async operations (finish/discard workout).
+///
+/// Initially shows only a spinner. After [_cancelTimeout] seconds a "Cancel"
+/// button appears so the user is not permanently trapped if the network stalls.
+///
+/// [hasRestorable] indicates whether the notifier has a previous valid state
+/// to restore. When false (initial Hive load), the cancel button is never
+/// shown because there is nothing to restore to.
+class _LoadingOverlay extends ConsumerStatefulWidget {
+  const _LoadingOverlay({required this.hasRestorable});
+
+  final bool hasRestorable;
+
+  @override
+  ConsumerState<_LoadingOverlay> createState() => _LoadingOverlayState();
+}
+
+class _LoadingOverlayState extends ConsumerState<_LoadingOverlay> {
+  /// Duration before the cancel button appears.
+  static const _cancelTimeout = Duration(seconds: 10);
+
+  bool _showCancel = false;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(_cancelTimeout, () {
+      if (mounted) setState(() => _showCancel = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        const ModalBarrier(dismissible: false, color: Colors.black54),
+        Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              if (_showCancel && widget.hasRestorable) ...[
+                const SizedBox(height: 24),
+                TextButton(
+                  onPressed: () {
+                    ref.read(activeWorkoutProvider.notifier).cancelLoading();
+                  },
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

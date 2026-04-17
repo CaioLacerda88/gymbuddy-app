@@ -276,6 +276,41 @@ void main() {
       });
     });
 
+    group('long-press cancel', () {
+      testWidgets('decrement GestureDetector has onLongPressCancel set', (
+        tester,
+      ) async {
+        await tester.pumpWidget(
+          buildTestWidget(WeightStepper(value: 100.0, onChanged: (_) {})),
+        );
+
+        // Find GestureDetectors that have onLongPressStart — these are the
+        // stepper wrappers. Material InkWell/IconButton do not set this.
+        final longPressGestures = tester
+            .widgetList<GestureDetector>(find.byType(GestureDetector))
+            .where((g) => g.onLongPressStart != null)
+            .toList();
+        expect(longPressGestures, hasLength(2));
+        // First is decrement, second is increment.
+        expect(longPressGestures[0].onLongPressCancel, isNotNull);
+      });
+
+      testWidgets('increment GestureDetector has onLongPressCancel set', (
+        tester,
+      ) async {
+        await tester.pumpWidget(
+          buildTestWidget(WeightStepper(value: 100.0, onChanged: (_) {})),
+        );
+
+        final longPressGestures = tester
+            .widgetList<GestureDetector>(find.byType(GestureDetector))
+            .where((g) => g.onLongPressStart != null)
+            .toList();
+        expect(longPressGestures, hasLength(2));
+        expect(longPressGestures[1].onLongPressCancel, isNotNull);
+      });
+    });
+
     group('custom increment', () {
       testWidgets('uses default increment of 2.5 when not specified', (
         tester,
