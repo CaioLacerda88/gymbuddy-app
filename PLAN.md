@@ -44,6 +44,7 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 13-QA3 | QA Monkey Testing: Minor Polish (wall-clock timer, nav guards, list virtualization) | DONE | #76 |
 | 13 | Launch — last phase before Play Store (all sprints + QA DONE; verification gates open) | IN PROGRESS | - |
 | 14a | Connectivity + Read-Through Cache Foundation | DONE | #78, #79 |
+| 14b | Offline Workout Capture + Queue | DONE | #81 |
 | 14 | Offline Support | IN PROGRESS | - |
 | 15 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
 | 16 | Gamification Advanced (Quests, Stats Panel) | TODO | - |
@@ -665,19 +666,14 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 - **Serialization gotchas solved:** `RoutineExercise.exercise` (`@JsonKey(includeToJson: false)`) → envelope pattern. `Workout.exerciseSummary` (excluded from both toJson/fromJson) → custom field + `copyWith`.
 - **Not in scope:** writes still online-only (14b).
 
-### 14b: Offline Workout Capture + Queue
+### 14b: Offline Workout Capture + Queue (DONE — #81)
 
-**Goal:** Finishing a workout offline persists locally and surfaces as "pending sync".
-
-- **Precondition audit (first task of the phase):** Re-verify `save_workout` replay semantics against the migration (`00005_save_workout_rpc.sql`). Current state: replay-safe **given the `workouts` row exists on server**. Document this in a test fixture so it can't regress silently.
-- New Freezed model `PendingWorkoutSave` — full RPC payload (`workout`, `exercises`, `sets`) + `queued_at` + `retry_count` + `last_error?`.
-- Refactor `WorkoutRepository.saveWorkout()` — always write to `offline_queue` first, then attempt network. On success, delete from queue and return the server `Workout`. On network failure, leave in queue and return a locally-constructed `Workout` (copy of the input with `isActive=false`, `finishedAt` set) so the UI can proceed.
-- `ActiveWorkoutNotifier.finishWorkout()` — unchanged at the caller level. Semantics become "may be locally-committed, may be server-committed". Downstream (`prRepo.getRecordsForExercises`, `_repo.getFinishedWorkoutCount`, `prRepo.upsertRecords`, `weeklyPlanProvider.markRoutineComplete`) all need to handle offline:
-  - `getRecordsForExercises` → read through `pr_cache` (14a covers the cache).
-  - `getFinishedWorkoutCount` → read from cached counter in `user_prefs`, increment locally.
-  - `upsertRecords` → enqueue in `offline_queue` as a separate item type.
-  - `markRoutineComplete` → enqueue in `offline_queue`; accept "best-effort" semantics on drain (current code already tolerates failure).
-- "Pending sync" badge in the home stat strip (amber, "1 workout pending sync"). Tap → list view with manual retry per item.
+- **`PendingAction` Freezed sealed class** (`lib/core/offline/pending_action.dart`) with 3 variants: `saveWorkout` (full RPC JSON payload), `upsertRecords`, `markRoutineComplete`. Uses `@Freezed(unionKey: 'type')` for discriminated union serialization.
+- **`OfflineQueueService`** + **`PendingSyncNotifier`** manage Hive-backed queue with reactive count. Retry executes via repos, validates `planId` for stale plans, dequeues on success.
+- **`finishWorkout()` offline path**: catches saveWorkout network failure → enqueues → evicts history caches → increments cached workout count → continues PR detection (from cache) + weekly plan (enqueues on failure). Each downstream call independently degrades.
+- **Pending sync badge** below `HomeStatusLine` (tertiary color, `cloud_upload_outlined`, count). Tap opens modal bottom sheet with per-item retry.
+- **Offline snackbar**: "Workout saved. Will sync when back online." (`tertiaryContainer` for M3 contrast).
+- 40 new tests (1275 total). Key design: repository stays pure (network-only), queueing lives in notifier layer.
 
 ### 14c: Sync Service + Backoff + Observability
 
