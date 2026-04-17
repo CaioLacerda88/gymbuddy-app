@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/local_storage/cache_service.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../exercises/models/exercise.dart';
 import '../data/pr_repository.dart';
@@ -16,7 +17,10 @@ typedef PRWithExercise = ({
 
 /// Provides the [PRRepository] singleton.
 final prRepositoryProvider = Provider<PRRepository>((ref) {
-  return PRRepository(Supabase.instance.client);
+  return PRRepository(
+    Supabase.instance.client,
+    ref.watch(cacheServiceProvider),
+  );
 });
 
 /// Provides the [PRDetectionService] singleton.

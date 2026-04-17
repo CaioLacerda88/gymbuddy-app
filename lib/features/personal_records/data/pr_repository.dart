@@ -1,13 +1,16 @@
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 import '../../../core/data/base_repository.dart';
+import '../../../core/local_storage/cache_service.dart';
+import '../../../core/local_storage/hive_service.dart';
 import '../../exercises/models/exercise.dart';
 import '../models/personal_record.dart';
 
 class PRRepository extends BaseRepository {
-  const PRRepository(this._client);
+  const PRRepository(this._client, this._cache);
 
   final supabase.SupabaseClient _client;
+  final CacheService _cache;
 
   supabase.SupabaseQueryBuilder get _records =>
       _client.from('personal_records');
@@ -15,33 +18,93 @@ class PRRepository extends BaseRepository {
   /// Fetch personal records for a list of exercise IDs.
   ///
   /// Returns a map of exerciseId -> list of [PersonalRecord].
+  /// Uses read-through caching: returns cached data on network failure.
   Future<Map<String, List<PersonalRecord>>> getRecordsForExercises(
     List<String> exerciseIds,
-  ) {
-    return mapException(() async {
-      if (exerciseIds.isEmpty) return {};
+  ) async {
+    if (exerciseIds.isEmpty) return {};
 
-      final data = await _records.select().inFilter('exercise_id', exerciseIds);
+    final key =
+        'exercises:${(List<String>.from(exerciseIds)..sort()).join(',')}';
+    final cached = _cache.read<Map<String, List<PersonalRecord>>>(
+      HiveService.prCache,
+      key,
+      (json) {
+        final map = json as Map<String, dynamic>;
+        return map.map(
+          (k, v) => MapEntry(
+            k,
+            (v as List)
+                .map((e) => PersonalRecord.fromJson(e as Map<String, dynamic>))
+                .toList(),
+          ),
+        );
+      },
+    );
 
-      final result = <String, List<PersonalRecord>>{};
-      for (final row in data) {
-        final record = PersonalRecord.fromJson(row);
-        (result[record.exerciseId] ??= []).add(record);
-      }
-      return result;
-    });
+    try {
+      final fresh = await mapException(() async {
+        final data = await _records.select().inFilter(
+          'exercise_id',
+          exerciseIds,
+        );
+
+        final result = <String, List<PersonalRecord>>{};
+        for (final row in data) {
+          final record = PersonalRecord.fromJson(row);
+          (result[record.exerciseId] ??= []).add(record);
+        }
+        return result;
+      });
+
+      // Fire-and-forget cache write.
+      _cache.write(
+        HiveService.prCache,
+        key,
+        fresh.map((k, v) => MapEntry(k, v.map((r) => r.toJson()).toList())),
+      );
+
+      return fresh;
+    } catch (e) {
+      if (cached != null) return cached;
+      rethrow;
+    }
   }
 
   /// Fetch all personal records for a user, ordered by most recent first.
-  Future<List<PersonalRecord>> getRecordsForUser(String userId) {
-    return mapException(() async {
-      final data = await _records
-          .select()
-          .eq('user_id', userId)
-          .order('achieved_at', ascending: false);
+  ///
+  /// Uses read-through caching: returns cached data on network failure.
+  Future<List<PersonalRecord>> getRecordsForUser(String userId) async {
+    final cached = _cache.read<List<PersonalRecord>>(
+      HiveService.prCache,
+      userId,
+      (json) => (json as List)
+          .map((e) => PersonalRecord.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
 
-      return data.map(PersonalRecord.fromJson).toList();
-    });
+    try {
+      final fresh = await mapException(() async {
+        final data = await _records
+            .select()
+            .eq('user_id', userId)
+            .order('achieved_at', ascending: false);
+
+        return data.map(PersonalRecord.fromJson).toList();
+      });
+
+      // Fire-and-forget cache write.
+      _cache.write(
+        HiveService.prCache,
+        userId,
+        fresh.map((r) => r.toJson()).toList(),
+      );
+
+      return fresh;
+    } catch (e) {
+      if (cached != null) return cached;
+      rethrow;
+    }
   }
 
   /// Fetch all personal records for a user with exercise details (name, equipment).
@@ -159,6 +222,7 @@ class PRRepository extends BaseRepository {
   Future<void> clearAllRecords(String userId) {
     return mapException(() async {
       await _records.delete().eq('user_id', userId);
+      _cache.clearBox(HiveService.prCache);
     });
   }
 
@@ -175,6 +239,7 @@ class PRRepository extends BaseRepository {
         rows,
         onConflict: 'user_id, exercise_id, record_type',
       );
+      _cache.clearBox(HiveService.prCache);
     });
   }
 }

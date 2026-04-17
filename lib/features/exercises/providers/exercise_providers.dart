@@ -2,12 +2,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/local_storage/cache_service.dart';
 import '../data/exercise_repository.dart';
 import '../models/exercise.dart';
 
 /// Provides the [ExerciseRepository] singleton.
 final exerciseRepositoryProvider = Provider<ExerciseRepository>((ref) {
-  return ExerciseRepository(Supabase.instance.client);
+  return ExerciseRepository(
+    Supabase.instance.client,
+    ref.watch(cacheServiceProvider),
+  );
 });
 
 /// Filter state for the exercise list.

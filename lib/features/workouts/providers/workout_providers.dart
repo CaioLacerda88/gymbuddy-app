@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/local_storage/cache_service.dart';
 import '../data/workout_local_storage.dart';
 import '../data/workout_repository.dart';
 import '../models/exercise_set.dart';
@@ -10,7 +11,10 @@ export 'notifiers/rest_timer_notifier.dart';
 
 /// Provides the [WorkoutRepository] singleton.
 final workoutRepositoryProvider = Provider<WorkoutRepository>((ref) {
-  return WorkoutRepository(Supabase.instance.client);
+  return WorkoutRepository(
+    Supabase.instance.client,
+    ref.watch(cacheServiceProvider),
+  );
 });
 
 /// Provides the [WorkoutLocalStorage] singleton.

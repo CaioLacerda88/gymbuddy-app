@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/exceptions/app_exception.dart';
+import 'package:gymbuddy_app/core/local_storage/cache_service.dart';
 import 'package:gymbuddy_app/features/exercises/data/exercise_repository.dart';
 import 'package:gymbuddy_app/features/exercises/models/exercise.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
@@ -147,7 +148,10 @@ void main() {
             ),
           ],
         );
-        final repo = ExerciseRepository(FakeSupabaseClient(fakeBuilder));
+        final repo = ExerciseRepository(
+          FakeSupabaseClient(fakeBuilder),
+          const CacheService(),
+        );
 
         final result = await repo.getExercises();
 
@@ -162,7 +166,10 @@ void main() {
         final fakeBuilder = FakeQueryBuilder(
           data: [TestExerciseFactory.create()],
         );
-        final repo = ExerciseRepository(FakeSupabaseClient(fakeBuilder));
+        final repo = ExerciseRepository(
+          FakeSupabaseClient(fakeBuilder),
+          const CacheService(),
+        );
 
         final result = await repo.getExercises(muscleGroup: MuscleGroup.chest);
 
@@ -174,7 +181,10 @@ void main() {
         final fakeBuilder = FakeQueryBuilder(
           data: [TestExerciseFactory.create()],
         );
-        final repo = ExerciseRepository(FakeSupabaseClient(fakeBuilder));
+        final repo = ExerciseRepository(
+          FakeSupabaseClient(fakeBuilder),
+          const CacheService(),
+        );
 
         final result = await repo.getExercises(
           equipmentType: EquipmentType.barbell,
@@ -193,7 +203,10 @@ void main() {
         final fakeBuilder = FakeQueryBuilder(
           data: [TestExerciseFactory.create()],
         );
-        final repo = ExerciseRepository(FakeSupabaseClient(fakeBuilder));
+        final repo = ExerciseRepository(
+          FakeSupabaseClient(fakeBuilder),
+          const CacheService(),
+        );
 
         final result = await repo.searchExercises('bench');
 
@@ -203,7 +216,10 @@ void main() {
 
       test('escapes special LIKE characters in search query', () async {
         final fakeBuilder = FakeQueryBuilder(data: []);
-        final repo = ExerciseRepository(FakeSupabaseClient(fakeBuilder));
+        final repo = ExerciseRepository(
+          FakeSupabaseClient(fakeBuilder),
+          const CacheService(),
+        );
 
         await repo.searchExercises('100%_effort');
 
@@ -217,7 +233,10 @@ void main() {
         final fakeBuilder = FakeQueryBuilder(
           data: [TestExerciseFactory.create()],
         );
-        final repo = ExerciseRepository(FakeSupabaseClient(fakeBuilder));
+        final repo = ExerciseRepository(
+          FakeSupabaseClient(fakeBuilder),
+          const CacheService(),
+        );
 
         final result = await repo.searchExercises(
           'press',
@@ -240,7 +259,10 @@ void main() {
         final fakeBuilder = FakeQueryBuilder(
           data: [TestExerciseFactory.create()],
         );
-        final repo = ExerciseRepository(FakeSupabaseClient(fakeBuilder));
+        final repo = ExerciseRepository(
+          FakeSupabaseClient(fakeBuilder),
+          const CacheService(),
+        );
 
         final result = await repo.getExerciseById('exercise-001');
 
@@ -262,7 +284,10 @@ void main() {
             ),
           ],
         );
-        final repo = ExerciseRepository(FakeSupabaseClient(fakeBuilder));
+        final repo = ExerciseRepository(
+          FakeSupabaseClient(fakeBuilder),
+          const CacheService(),
+        );
 
         final result = await repo.createExercise(
           name: 'My Exercise',
@@ -286,7 +311,10 @@ void main() {
             code: '23505',
           ),
         );
-        final repo = ExerciseRepository(FakeSupabaseClient(fakeBuilder));
+        final repo = ExerciseRepository(
+          FakeSupabaseClient(fakeBuilder),
+          const CacheService(),
+        );
 
         await expectLater(
           () => repo.createExercise(
@@ -311,7 +339,10 @@ void main() {
     group('softDeleteExercise', () {
       test('updates deleted_at for the exercise', () async {
         final fakeBuilder = FakeQueryBuilder();
-        final repo = ExerciseRepository(FakeSupabaseClient(fakeBuilder));
+        final repo = ExerciseRepository(
+          FakeSupabaseClient(fakeBuilder),
+          const CacheService(),
+        );
 
         await repo.softDeleteExercise('exercise-001', userId: 'user-001');
 
