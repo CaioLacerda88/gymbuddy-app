@@ -751,6 +751,7 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
       // saved sets. Invalidating the whole family is correct — a finished
       // workout may touch any exercise, and the family is small per user.
       if (!savedOffline) {
+        _repo.incrementCachedWorkoutCount(_userId);
         ref.invalidate(exerciseProgressProvider);
       }
 

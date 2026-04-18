@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import 'package:gymbuddy_app/core/connectivity/connectivity_provider.dart';
-import 'package:gymbuddy_app/core/local_storage/cache_service.dart';
 import 'package:gymbuddy_app/core/offline/offline_queue_service.dart';
 import 'package:gymbuddy_app/core/offline/pending_action.dart';
 import 'package:gymbuddy_app/core/offline/pending_sync_provider.dart';
@@ -32,8 +31,6 @@ class _MockWorkoutRepository extends Mock implements WorkoutRepository {}
 class _MockPRRepository extends Mock implements PRRepository {}
 
 class _MockAnalyticsRepository extends Mock implements AnalyticsRepository {}
-
-class _MockCacheService extends Mock implements CacheService {}
 
 // ---------------------------------------------------------------------------
 // Fakes (for registerFallbackValue)
@@ -839,20 +836,6 @@ void main() {
     // Phase 14d: SyncService reconciles PR cache after upsertRecords drain
     // ------------------------------------------------------------------
     group('PR cache reconciliation after upsertRecords drain', () {
-      late _MockCacheService mockCacheService;
-
-      setUp(() {
-        mockCacheService = _MockCacheService();
-        // Default: cache reads return null (no cached data).
-        when(
-          () => mockCacheService.read<List<Map<String, dynamic>>>(
-            any(),
-            any(),
-            any(),
-          ),
-        ).thenReturn(null);
-      });
-
       /// Builds a minimal [PendingUpsertRecords] with userId for reconciliation.
       PendingUpsertRecords makeUpsertAction({
         String id = 'pr-action-1',
@@ -869,7 +852,7 @@ void main() {
             as PendingUpsertRecords;
       }
 
-      /// Creates a container with CacheService + PRRepo mock overrides.
+      /// Creates a container with PRRepo mock overrides for reconciliation tests.
       ProviderContainer createReconcileContainer({bool initialOnline = true}) {
         final container = ProviderContainer(
           overrides: [
@@ -883,7 +866,6 @@ void main() {
             workoutRepositoryProvider.overrideWithValue(mockWorkoutRepo),
             prRepositoryProvider.overrideWithValue(mockPRRepo),
             analyticsRepositoryProvider.overrideWithValue(mockAnalyticsRepo),
-            cacheServiceProvider.overrideWithValue(mockCacheService),
           ],
         );
         addTearDown(container.dispose);
@@ -970,10 +952,10 @@ void main() {
         },
       );
 
-      // Phase 14d: each upsertRecords item that drains successfully triggers
-      // its own reconciliation call — reconciliation is per-item, not per-drain.
+      // Reconciliation is batched after the drain loop — once per unique userId,
+      // not once per item. Two items for different users trigger two calls.
       test(
-        'calls getRecordsForUser once per upsertRecords item when multiple drain',
+        'calls getRecordsForUser once per unique userId when multiple drain',
         () async {
           final container = createReconcileContainer(initialOnline: false);
 
@@ -1003,9 +985,46 @@ void main() {
           connectivityController.add(true);
           await _pumpAsync(300);
 
-          // Two upsertRecords items → two reconciliation calls.
+          // Two unique userIds → two reconciliation calls (batched after loop).
           verify(() => mockPRRepo.getRecordsForUser('user-a')).called(1);
           verify(() => mockPRRepo.getRecordsForUser('user-b')).called(1);
+        },
+      );
+
+      // Two items for the SAME user should only trigger one reconciliation call.
+      test(
+        'calls getRecordsForUser only once for duplicate userId across items',
+        () async {
+          final container = createReconcileContainer(initialOnline: false);
+
+          final notifier = container.read(pendingSyncProvider.notifier);
+
+          // Two upsertRecords items for the same user.
+          await notifier.enqueue(
+            makeUpsertAction(
+              id: 'pr-dup-1',
+              userId: 'user-same',
+              queuedAt: DateTime.utc(2026, 4, 17, 10, 0, 0),
+            ),
+          );
+          await notifier.enqueue(
+            makeUpsertAction(
+              id: 'pr-dup-2',
+              userId: 'user-same',
+              queuedAt: DateTime.utc(2026, 4, 17, 11, 0, 0),
+            ),
+          );
+
+          when(() => mockPRRepo.upsertRecords(any())).thenAnswer((_) async {});
+          when(
+            () => mockPRRepo.getRecordsForUser(any()),
+          ).thenAnswer((_) async => <PersonalRecord>[]);
+
+          connectivityController.add(true);
+          await _pumpAsync(300);
+
+          // Same userId for both items → only one reconciliation call.
+          verify(() => mockPRRepo.getRecordsForUser('user-same')).called(1);
         },
       );
     });

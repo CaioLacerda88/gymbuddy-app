@@ -7,8 +7,6 @@ import '../../features/analytics/data/models/analytics_event.dart';
 import '../../features/analytics/providers/analytics_providers.dart';
 import '../../features/personal_records/providers/pr_providers.dart';
 import '../connectivity/connectivity_provider.dart';
-import '../local_storage/cache_service.dart';
-import '../local_storage/hive_service.dart';
 import '../observability/sentry_report.dart';
 import 'offline_queue_service.dart';
 import 'pending_action.dart';
@@ -67,6 +65,10 @@ class SyncService extends Notifier<SyncState> {
       final queue = ref.read(offlineQueueServiceProvider);
       final actions = queue.getAll(); // FIFO (sorted by queuedAt)
 
+      // Collect unique userIds from successfully drained upsertRecords items
+      // so we can batch reconciliation after the loop.
+      final reconciledUserIds = <String>{};
+
       for (final action in actions) {
         // Stop if connectivity dropped mid-drain.
         if (!ref.read(isOnlineProvider)) {
@@ -95,9 +97,9 @@ class SyncService extends Notifier<SyncState> {
           // Success — emit analytics event.
           _trackSyncSucceeded(action);
 
-          // Post-drain: reconcile PR cache after upsertRecords.
-          if (action is PendingUpsertRecords) {
-            await _reconcilePrCache(action.userId);
+          // Collect userId for batched post-drain PR cache reconciliation.
+          if (action is PendingUpsertRecords && action.userId.isNotEmpty) {
+            reconciledUserIds.add(action.userId);
           }
         } catch (e) {
           SentryReport.addBreadcrumb(
@@ -119,6 +121,11 @@ class SyncService extends Notifier<SyncState> {
             await Future<void>.delayed(_backoffDuration(newRetryCount));
           }
         }
+      }
+
+      // Batch PR cache reconciliation — once per unique userId.
+      for (final uid in reconciledUserIds) {
+        await _reconcilePrCache(uid);
       }
 
       // Count terminal items and update state.
@@ -245,40 +252,21 @@ class SyncService extends Notifier<SyncState> {
   }
 
   /// Refresh the PR cache from the server after a successful `upsertRecords`
-  /// drain. Compares server-returned records against the optimistic cache and
-  /// logs any divergence as a Sentry breadcrumb (not error). Failures here
-  /// must never break the drain loop.
+  /// drain. The optimistic cache written during `finishWorkout()` uses a
+  /// different key than the one read here, and `prRepo.upsertRecords()` clears
+  /// the entire box before this runs, so a divergence comparison is meaningless.
+  /// We simply refresh the cache from the server and log a breadcrumb.
   Future<void> _reconcilePrCache(String userId) async {
+    if (userId.isEmpty) return;
     try {
       final prRepo = ref.read(prRepositoryProvider);
-      final cache = ref.read(cacheServiceProvider);
-
-      // Read the optimistic cache snapshot before the server refresh.
-      final cachedRecords = cache.read<List<Map<String, dynamic>>>(
-        HiveService.prCache,
-        userId,
-        (json) => (json as List).map((e) => e as Map<String, dynamic>).toList(),
-      );
-      final cachedCount = cachedRecords?.length ?? 0;
-
-      // Refresh from server — this writes to cache as a side effect.
       final serverRecords = await prRepo.getRecordsForUser(userId);
-      final serverCount = serverRecords.length;
-
-      // Log divergence if any.
-      if (cachedCount != serverCount) {
-        SentryReport.addBreadcrumb(
-          category: 'sync.reconcile',
-          message: 'PR cache divergence after upsertRecords drain',
-          data: {
-            'cached_count': cachedCount,
-            'server_count': serverCount,
-            'delta': serverCount - cachedCount,
-          },
-        );
-      }
+      SentryReport.addBreadcrumb(
+        category: 'sync.reconcile',
+        message: 'PR cache refreshed after upsertRecords drain',
+        data: {'server_record_count': serverRecords.length},
+      );
     } catch (e) {
-      // Refresh failure must not break the drain loop.
       log(
         'PR cache reconciliation failed: $e',
         name: 'SyncService',
