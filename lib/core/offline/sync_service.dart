@@ -5,7 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/analytics/data/models/analytics_event.dart';
 import '../../features/analytics/providers/analytics_providers.dart';
+import '../../features/personal_records/providers/pr_providers.dart';
 import '../connectivity/connectivity_provider.dart';
+import '../local_storage/cache_service.dart';
+import '../local_storage/hive_service.dart';
 import '../observability/sentry_report.dart';
 import 'offline_queue_service.dart';
 import 'pending_action.dart';
@@ -91,6 +94,11 @@ class SyncService extends Notifier<SyncState> {
 
           // Success — emit analytics event.
           _trackSyncSucceeded(action);
+
+          // Post-drain: reconcile PR cache after upsertRecords.
+          if (action is PendingUpsertRecords) {
+            await _reconcilePrCache(action.userId);
+          }
         } catch (e) {
           SentryReport.addBreadcrumb(
             category: 'sync',
@@ -231,9 +239,52 @@ class SyncService extends Notifier<SyncState> {
   static String _userId(PendingAction action) {
     return switch (action) {
       PendingSaveWorkout(:final userId) => userId,
-      PendingUpsertRecords() => 'unknown',
+      PendingUpsertRecords(:final userId) => userId,
       PendingMarkRoutineComplete() => 'unknown',
     };
+  }
+
+  /// Refresh the PR cache from the server after a successful `upsertRecords`
+  /// drain. Compares server-returned records against the optimistic cache and
+  /// logs any divergence as a Sentry breadcrumb (not error). Failures here
+  /// must never break the drain loop.
+  Future<void> _reconcilePrCache(String userId) async {
+    try {
+      final prRepo = ref.read(prRepositoryProvider);
+      final cache = ref.read(cacheServiceProvider);
+
+      // Read the optimistic cache snapshot before the server refresh.
+      final cachedRecords = cache.read<List<Map<String, dynamic>>>(
+        HiveService.prCache,
+        userId,
+        (json) => (json as List).map((e) => e as Map<String, dynamic>).toList(),
+      );
+      final cachedCount = cachedRecords?.length ?? 0;
+
+      // Refresh from server — this writes to cache as a side effect.
+      final serverRecords = await prRepo.getRecordsForUser(userId);
+      final serverCount = serverRecords.length;
+
+      // Log divergence if any.
+      if (cachedCount != serverCount) {
+        SentryReport.addBreadcrumb(
+          category: 'sync.reconcile',
+          message: 'PR cache divergence after upsertRecords drain',
+          data: {
+            'cached_count': cachedCount,
+            'server_count': serverCount,
+            'delta': serverCount - cachedCount,
+          },
+        );
+      }
+    } catch (e) {
+      // Refresh failure must not break the drain loop.
+      log(
+        'PR cache reconciliation failed: $e',
+        name: 'SyncService',
+        level: 900,
+      );
+    }
   }
 }
 

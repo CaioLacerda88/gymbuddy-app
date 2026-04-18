@@ -27,6 +27,7 @@ sealed class PendingAction with _$PendingAction {
   const factory PendingAction.upsertRecords({
     required String id,
     required List<Map<String, dynamic>> recordsJson,
+    required String userId,
     required DateTime queuedAt,
     @Default(0) int retryCount,
     String? lastError,

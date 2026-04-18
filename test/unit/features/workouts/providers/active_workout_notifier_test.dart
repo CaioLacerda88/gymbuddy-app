@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/data/base_repository.dart';
+import 'package:gymbuddy_app/core/local_storage/cache_service.dart';
 import 'package:gymbuddy_app/core/offline/offline_queue_service.dart';
 import 'package:gymbuddy_app/core/offline/pending_action.dart';
 import 'package:gymbuddy_app/core/offline/pending_sync_provider.dart';
@@ -11,11 +12,18 @@ import 'package:gymbuddy_app/features/analytics/data/models/analytics_event.dart
 import 'package:gymbuddy_app/features/analytics/providers/analytics_providers.dart';
 import 'package:gymbuddy_app/features/auth/data/auth_repository.dart';
 import 'package:gymbuddy_app/features/auth/providers/auth_providers.dart';
+import 'package:gymbuddy_app/features/personal_records/data/pr_repository.dart';
+import 'package:gymbuddy_app/features/personal_records/domain/pr_detection_service.dart';
+import 'package:gymbuddy_app/features/personal_records/models/personal_record.dart';
+import 'package:gymbuddy_app/features/personal_records/models/record_type.dart';
+import 'package:gymbuddy_app/features/personal_records/providers/pr_providers.dart';
 import 'package:gymbuddy_app/features/workouts/data/workout_local_storage.dart';
 import 'package:gymbuddy_app/features/workouts/data/workout_repository.dart';
 import 'package:gymbuddy_app/features/workouts/models/active_workout_state.dart';
+import 'package:gymbuddy_app/features/workouts/models/exercise_set.dart';
 import 'package:gymbuddy_app/features/workouts/models/set_type.dart';
 import 'package:gymbuddy_app/features/workouts/models/workout.dart';
+import 'package:gymbuddy_app/features/workouts/models/workout_exercise.dart';
 import 'package:gymbuddy_app/features/workouts/providers/workout_providers.dart';
 import 'package:gymbuddy_app/features/exercises/models/exercise.dart';
 import 'package:gymbuddy_app/features/exercises/providers/exercise_progress_provider.dart';
@@ -31,6 +39,10 @@ class MockWorkoutLocalStorage extends Mock implements WorkoutLocalStorage {}
 class MockAuthRepository extends Mock implements AuthRepository {}
 
 class MockOfflineQueueService extends Mock implements OfflineQueueService {}
+
+class MockPRRepository extends Mock implements PRRepository {}
+
+class MockCacheService extends Mock implements CacheService {}
 
 class FakeActiveWorkoutState extends Fake implements ActiveWorkoutState {}
 
@@ -2404,6 +2416,469 @@ void main() {
         expect(afterComplete, isA<AsyncData<ActiveWorkoutState?>>());
         expect(afterComplete.value, isNotNull);
         expect(afterComplete.value!.workout.id, initial.workout.id);
+      },
+    );
+  });
+
+  // --------------------------------------------------------------------------
+  // Phase 14d: PR detection reads from cache, always enqueues, updates cache
+  // --------------------------------------------------------------------------
+  group('ActiveWorkoutNotifier — PR detection (Phase 14d)', () {
+    late MockWorkoutRepository mockRepo;
+    late MockWorkoutLocalStorage mockStorage;
+    late MockAuthRepository mockAuth;
+    late MockCacheService mockCache;
+    late MockPRRepository mockPRRepo;
+    late _CapturingPendingSyncNotifier capturedNotifier;
+
+    /// Builds a container with all PR-related mocks wired up.
+    ProviderContainer makePRContainer(ActiveWorkoutState initialState) {
+      mockRepo = MockWorkoutRepository();
+      mockStorage = MockWorkoutLocalStorage();
+      mockAuth = MockAuthRepository();
+      mockCache = MockCacheService();
+      mockPRRepo = MockPRRepository();
+      capturedNotifier = _CapturingPendingSyncNotifier();
+
+      when(() => mockStorage.loadActiveWorkout()).thenReturn(initialState);
+      when(() => mockStorage.saveActiveWorkout(any())).thenAnswer((_) async {});
+      when(() => mockStorage.clearActiveWorkout()).thenAnswer((_) async {});
+      when(() => mockAuth.currentUser).thenReturn(fakeUser());
+      when(() => mockRepo.getCachedWorkoutCount(any())).thenReturn(5);
+
+      // Default: cache write is fire-and-forget.
+      when(() => mockCache.write(any(), any(), any())).thenAnswer((_) async {});
+
+      return ProviderContainer(
+        overrides: [
+          workoutRepositoryProvider.overrideWithValue(mockRepo),
+          workoutLocalStorageProvider.overrideWithValue(mockStorage),
+          authRepositoryProvider.overrideWithValue(mockAuth),
+          analyticsRepositoryProvider.overrideWithValue(
+            const _FakeAnalyticsRepository(),
+          ),
+          pendingSyncProvider.overrideWith(() => capturedNotifier),
+          cacheServiceProvider.overrideWithValue(mockCache),
+          prRepositoryProvider.overrideWithValue(mockPRRepo),
+          prDetectionServiceProvider.overrideWithValue(PRDetectionService()),
+        ],
+      );
+    }
+
+    /// Returns a state with one exercise (barbell, completed sets) that
+    /// will trigger PR detection. The Exercise model is embedded in the
+    /// WorkoutExercise so `detectPRs` does not skip it.
+    ActiveWorkoutState stateWithCompletedSets() {
+      final exercise = Exercise.fromJson(
+        TestExerciseFactory.create(
+          id: 'exercise-1',
+          name: 'Bench Press',
+          equipmentType: 'barbell',
+        ),
+      );
+      final we = WorkoutExercise(
+        id: 'we-1',
+        workoutId: 'workout-001',
+        exerciseId: 'exercise-1',
+        order: 0,
+        exercise: exercise,
+      );
+      final sets = [
+        ExerciseSet.fromJson(
+          TestSetFactory.create(
+            id: 'set-1',
+            workoutExerciseId: 'we-1',
+            setNumber: 1,
+            weight: 100.0,
+            reps: 8,
+            isCompleted: true,
+          ),
+        ),
+        ExerciseSet.fromJson(
+          TestSetFactory.create(
+            id: 'set-2',
+            workoutExerciseId: 'we-1',
+            setNumber: 2,
+            weight: 110.0,
+            reps: 6,
+            isCompleted: true,
+          ),
+        ),
+      ];
+      return ActiveWorkoutState(
+        workout: Workout.fromJson(TestWorkoutFactory.create(isActive: true)),
+        exercises: [ActiveWorkoutExercise(workoutExercise: we, sets: sets)],
+      );
+    }
+
+    test(
+      'finishWorkout reads existing records from pr_cache, not PRRepository',
+      () async {
+        final initial = stateWithCompletedSets();
+        final container = makePRContainer(initial);
+        addTearDown(container.dispose);
+
+        // Stub saveWorkout to succeed.
+        when(
+          () => mockRepo.saveWorkout(
+            workout: any(named: 'workout'),
+            exercises: any(named: 'exercises'),
+            sets: any(named: 'sets'),
+          ),
+        ).thenAnswer(
+          (_) async => Workout.fromJson(TestWorkoutFactory.create()),
+        );
+
+        // Cache returns empty records (no existing PRs).
+        when(
+          () => mockCache.read<Map<String, List<PersonalRecord>>>(
+            any(),
+            any(),
+            any(),
+          ),
+        ).thenReturn(<String, List<PersonalRecord>>{});
+
+        await container.read(activeWorkoutProvider.future);
+        await container.read(activeWorkoutProvider.notifier).finishWorkout();
+
+        // CacheService.read must have been called for the pr_cache.
+        verify(
+          () => mockCache.read<Map<String, List<PersonalRecord>>>(
+            'pr_cache',
+            any(),
+            any(),
+          ),
+        ).called(1);
+
+        // PRRepository.getRecordsForExercises must NOT be called (cache hit).
+        verifyNever(() => mockPRRepo.getRecordsForExercises(any()));
+      },
+    );
+
+    test(
+      'finishWorkout falls back to PRRepository when cache misses',
+      () async {
+        final initial = stateWithCompletedSets();
+        final container = makePRContainer(initial);
+        addTearDown(container.dispose);
+
+        when(
+          () => mockRepo.saveWorkout(
+            workout: any(named: 'workout'),
+            exercises: any(named: 'exercises'),
+            sets: any(named: 'sets'),
+          ),
+        ).thenAnswer(
+          (_) async => Workout.fromJson(TestWorkoutFactory.create()),
+        );
+
+        // Cache returns null (miss).
+        when(
+          () => mockCache.read<Map<String, List<PersonalRecord>>>(
+            any(),
+            any(),
+            any(),
+          ),
+        ).thenReturn(null);
+
+        // PRRepository fallback returns empty records.
+        when(
+          () => mockPRRepo.getRecordsForExercises(any()),
+        ).thenAnswer((_) async => <String, List<PersonalRecord>>{});
+
+        await container.read(activeWorkoutProvider.future);
+        await container.read(activeWorkoutProvider.notifier).finishWorkout();
+
+        // PRRepository must be called as fallback.
+        verify(() => mockPRRepo.getRecordsForExercises(any())).called(1);
+      },
+    );
+
+    test(
+      'finishWorkout always enqueues PendingUpsertRecords (never direct write)',
+      () async {
+        final initial = stateWithCompletedSets();
+        final container = makePRContainer(initial);
+        addTearDown(container.dispose);
+
+        when(
+          () => mockRepo.saveWorkout(
+            workout: any(named: 'workout'),
+            exercises: any(named: 'exercises'),
+            sets: any(named: 'sets'),
+          ),
+        ).thenAnswer(
+          (_) async => Workout.fromJson(TestWorkoutFactory.create()),
+        );
+
+        // Cache returns empty records so all sets produce new PRs.
+        when(
+          () => mockCache.read<Map<String, List<PersonalRecord>>>(
+            any(),
+            any(),
+            any(),
+          ),
+        ).thenReturn(<String, List<PersonalRecord>>{});
+
+        await container.read(activeWorkoutProvider.future);
+        await container.read(activeWorkoutProvider.notifier).finishWorkout();
+
+        // upsertRecords must NOT be called directly.
+        verifyNever(() => mockPRRepo.upsertRecords(any()));
+
+        // At least one PendingUpsertRecords must be enqueued.
+        final upsertActions = capturedNotifier.enqueued
+            .whereType<PendingUpsertRecords>()
+            .toList();
+        expect(upsertActions, isNotEmpty);
+
+        // The enqueued action must carry the userId.
+        expect(upsertActions.first.userId, 'user-test-001');
+      },
+    );
+
+    test(
+      'finishWorkout updates pr_cache optimistically after detecting new PRs',
+      () async {
+        final initial = stateWithCompletedSets();
+        final container = makePRContainer(initial);
+        addTearDown(container.dispose);
+
+        when(
+          () => mockRepo.saveWorkout(
+            workout: any(named: 'workout'),
+            exercises: any(named: 'exercises'),
+            sets: any(named: 'sets'),
+          ),
+        ).thenAnswer(
+          (_) async => Workout.fromJson(TestWorkoutFactory.create()),
+        );
+
+        // Cache returns empty records — all sets should trigger new PRs.
+        when(
+          () => mockCache.read<Map<String, List<PersonalRecord>>>(
+            any(),
+            any(),
+            any(),
+          ),
+        ).thenReturn(<String, List<PersonalRecord>>{});
+
+        await container.read(activeWorkoutProvider.future);
+        await container.read(activeWorkoutProvider.notifier).finishWorkout();
+
+        // Cache must have been written with the merged records.
+        verify(() => mockCache.write('pr_cache', any(), any())).called(1);
+      },
+    );
+
+    test('finishWorkout uses getCachedWorkoutCount unconditionally', () async {
+      final initial = stateWithCompletedSets();
+      final container = makePRContainer(initial);
+      addTearDown(container.dispose);
+
+      when(
+        () => mockRepo.saveWorkout(
+          workout: any(named: 'workout'),
+          exercises: any(named: 'exercises'),
+          sets: any(named: 'sets'),
+        ),
+      ).thenAnswer((_) async => Workout.fromJson(TestWorkoutFactory.create()));
+
+      when(
+        () => mockCache.read<Map<String, List<PersonalRecord>>>(
+          any(),
+          any(),
+          any(),
+        ),
+      ).thenReturn(<String, List<PersonalRecord>>{});
+
+      await container.read(activeWorkoutProvider.future);
+      await container.read(activeWorkoutProvider.notifier).finishWorkout();
+
+      // getCachedWorkoutCount must be called.
+      verify(() => mockRepo.getCachedWorkoutCount(any())).called(1);
+
+      // getFinishedWorkoutCount must NOT be called (no network).
+      verifyNever(() => mockRepo.getFinishedWorkoutCount(any()));
+    });
+
+    // Edge case: workout with no exercises (or no completed sets) produces
+    // no new PRs — cache.write must NOT be called.
+    test(
+      'finishWorkout does not write pr_cache when no new PRs are detected',
+      () async {
+        // Build a state with no exercises at all.
+        final emptyState = ActiveWorkoutState(
+          workout: Workout.fromJson(TestWorkoutFactory.create(isActive: true)),
+          exercises: const [],
+        );
+        final container = makePRContainer(emptyState);
+        addTearDown(container.dispose);
+
+        when(
+          () => mockRepo.saveWorkout(
+            workout: any(named: 'workout'),
+            exercises: any(named: 'exercises'),
+            sets: any(named: 'sets'),
+          ),
+        ).thenAnswer(
+          (_) async => Workout.fromJson(TestWorkoutFactory.create()),
+        );
+
+        // Cache returns empty map — but no exercises means no detection.
+        when(
+          () => mockCache.read<Map<String, List<PersonalRecord>>>(
+            any(),
+            any(),
+            any(),
+          ),
+        ).thenReturn(<String, List<PersonalRecord>>{});
+
+        await container.read(activeWorkoutProvider.future);
+        final prResult = await container
+            .read(activeWorkoutProvider.notifier)
+            .finishWorkout();
+
+        // No new records → no cache write.
+        verifyNever(() => mockCache.write(any(), any(), any()));
+
+        // No PendingUpsertRecords enqueued.
+        expect(
+          capturedNotifier.enqueued.whereType<PendingUpsertRecords>(),
+          isEmpty,
+        );
+
+        // finishWorkout still succeeds (returns null or empty prResult).
+        expect(prResult?.hasNewRecords ?? false, isFalse);
+      },
+    );
+
+    // Edge case: cache misses AND prRepo.getRecordsForExercises throws.
+    // PR detection error must be swallowed — workout save must still succeed.
+    test(
+      'finishWorkout swallows error when both cache and prRepo fail',
+      () async {
+        final initial = stateWithCompletedSets();
+        final container = makePRContainer(initial);
+        addTearDown(container.dispose);
+
+        when(
+          () => mockRepo.saveWorkout(
+            workout: any(named: 'workout'),
+            exercises: any(named: 'exercises'),
+            sets: any(named: 'sets'),
+          ),
+        ).thenAnswer(
+          (_) async => Workout.fromJson(TestWorkoutFactory.create()),
+        );
+
+        // Cache misses.
+        when(
+          () => mockCache.read<Map<String, List<PersonalRecord>>>(
+            any(),
+            any(),
+            any(),
+          ),
+        ).thenReturn(null);
+
+        // Fallback prRepo also throws.
+        when(
+          () => mockPRRepo.getRecordsForExercises(any()),
+        ).thenThrow(Exception('Network unreachable'));
+
+        await container.read(activeWorkoutProvider.future);
+
+        // Must not throw — workout finishes even when PR detection is broken.
+        final prResult = await container
+            .read(activeWorkoutProvider.notifier)
+            .finishWorkout();
+
+        // State is null (workout cleared).
+        expect(container.read(activeWorkoutProvider).value, isNull);
+
+        // PR result is null because detection threw.
+        expect(prResult, isNull);
+
+        // upsertRecords must NOT be enqueued (detection never produced records).
+        expect(
+          capturedNotifier.enqueued.whereType<PendingUpsertRecords>(),
+          isEmpty,
+        );
+      },
+    );
+
+    test(
+      'optimistic cache merge replaces existing record with same recordType',
+      () async {
+        final initial = stateWithCompletedSets();
+        final container = makePRContainer(initial);
+        addTearDown(container.dispose);
+
+        when(
+          () => mockRepo.saveWorkout(
+            workout: any(named: 'workout'),
+            exercises: any(named: 'exercises'),
+            sets: any(named: 'sets'),
+          ),
+        ).thenAnswer(
+          (_) async => Workout.fromJson(TestWorkoutFactory.create()),
+        );
+
+        // Cache already contains a lower-value maxWeight record for exercise-1.
+        // The new workout has weight=110 which beats 90 → new PR detected.
+        final existingRecord = PersonalRecord(
+          id: 'pr-old',
+          userId: 'user-test-001',
+          exerciseId: 'exercise-1',
+          recordType: RecordType.maxWeight,
+          value: 90.0,
+          achievedAt: DateTime.utc(2026, 1, 1),
+        );
+        when(
+          () => mockCache.read<Map<String, List<PersonalRecord>>>(
+            any(),
+            any(),
+            any(),
+          ),
+        ).thenReturn({
+          'exercise-1': [existingRecord],
+        });
+
+        // Capture what gets written to the cache.
+        Map<String, dynamic>? writtenValue;
+        when(() => mockCache.write(any(), any(), any())).thenAnswer((
+          invocation,
+        ) async {
+          writtenValue =
+              invocation.positionalArguments[2] as Map<String, dynamic>;
+        });
+
+        await container.read(activeWorkoutProvider.future);
+        await container.read(activeWorkoutProvider.notifier).finishWorkout();
+
+        // Cache write must have occurred.
+        verify(() => mockCache.write('pr_cache', any(), any())).called(1);
+
+        expect(writtenValue, isNotNull);
+        final mergedList =
+            writtenValue!['exercise-1'] as List<Map<String, dynamic>>;
+        // PRDetectionService produces 3 records (maxWeight, maxReps,
+        // maxVolume). The old maxWeight (90) is replaced by the new one;
+        // the other two are new additions → 3 total, not 4.
+        expect(mergedList.length, equals(3));
+        final maxWeightRecords = mergedList
+            .where((r) => r['record_type'] == 'max_weight')
+            .toList();
+        expect(
+          maxWeightRecords.length,
+          equals(1),
+          reason: 'Old maxWeight should be replaced, not duplicated',
+        );
+        expect(
+          (maxWeightRecords.first['value'] as num) > 90,
+          isTrue,
+          reason: 'Merged maxWeight should be the new higher-value PR',
+        );
       },
     );
   });

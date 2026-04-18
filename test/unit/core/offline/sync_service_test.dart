@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import 'package:gymbuddy_app/core/connectivity/connectivity_provider.dart';
+import 'package:gymbuddy_app/core/local_storage/cache_service.dart';
 import 'package:gymbuddy_app/core/offline/offline_queue_service.dart';
 import 'package:gymbuddy_app/core/offline/pending_action.dart';
 import 'package:gymbuddy_app/core/offline/pending_sync_provider.dart';
@@ -31,6 +32,8 @@ class _MockWorkoutRepository extends Mock implements WorkoutRepository {}
 class _MockPRRepository extends Mock implements PRRepository {}
 
 class _MockAnalyticsRepository extends Mock implements AnalyticsRepository {}
+
+class _MockCacheService extends Mock implements CacheService {}
 
 // ---------------------------------------------------------------------------
 // Fakes (for registerFallbackValue)
@@ -831,5 +834,180 @@ void main() {
         );
       },
     );
+
+    // ------------------------------------------------------------------
+    // Phase 14d: SyncService reconciles PR cache after upsertRecords drain
+    // ------------------------------------------------------------------
+    group('PR cache reconciliation after upsertRecords drain', () {
+      late _MockCacheService mockCacheService;
+
+      setUp(() {
+        mockCacheService = _MockCacheService();
+        // Default: cache reads return null (no cached data).
+        when(
+          () => mockCacheService.read<List<Map<String, dynamic>>>(
+            any(),
+            any(),
+            any(),
+          ),
+        ).thenReturn(null);
+      });
+
+      /// Builds a minimal [PendingUpsertRecords] with userId for reconciliation.
+      PendingUpsertRecords makeUpsertAction({
+        String id = 'pr-action-1',
+        String userId = 'user-1',
+        DateTime? queuedAt,
+      }) {
+        final now = queuedAt ?? DateTime.utc(2026, 4, 17, 12, 0, 0);
+        return PendingAction.upsertRecords(
+              id: id,
+              recordsJson: const [],
+              userId: userId,
+              queuedAt: now,
+            )
+            as PendingUpsertRecords;
+      }
+
+      /// Creates a container with CacheService + PRRepo mock overrides.
+      ProviderContainer createReconcileContainer({bool initialOnline = true}) {
+        final container = ProviderContainer(
+          overrides: [
+            onlineStatusProvider.overrideWith(
+              (ref) => connectivityController.stream,
+            ),
+            isOnlineProvider.overrideWith((ref) {
+              return ref.watch(onlineStatusProvider).value ?? initialOnline;
+            }),
+            offlineQueueServiceProvider.overrideWithValue(queueService),
+            workoutRepositoryProvider.overrideWithValue(mockWorkoutRepo),
+            prRepositoryProvider.overrideWithValue(mockPRRepo),
+            analyticsRepositoryProvider.overrideWithValue(mockAnalyticsRepo),
+            cacheServiceProvider.overrideWithValue(mockCacheService),
+          ],
+        );
+        addTearDown(container.dispose);
+        container.listen(syncServiceProvider, (_, _) {});
+        return container;
+      }
+
+      test(
+        'calls prRepo.getRecordsForUser after successful upsertRecords drain',
+        () async {
+          final container = createReconcileContainer(initialOnline: false);
+
+          final notifier = container.read(pendingSyncProvider.notifier);
+          await notifier.enqueue(makeUpsertAction(id: 'pr-reconcile'));
+
+          // Stub upsertRecords to succeed.
+          when(() => mockPRRepo.upsertRecords(any())).thenAnswer((_) async {});
+
+          // Stub getRecordsForUser to succeed.
+          when(
+            () => mockPRRepo.getRecordsForUser(any()),
+          ).thenAnswer((_) async => <PersonalRecord>[]);
+
+          // Transition: offline -> online
+          connectivityController.add(true);
+          await _pumpAsync(200);
+
+          // prRepo.getRecordsForUser must have been called for reconciliation.
+          verify(() => mockPRRepo.getRecordsForUser('user-1')).called(1);
+        },
+      );
+
+      test('reconciliation failure does not break the drain loop', () async {
+        final container = createReconcileContainer(initialOnline: false);
+
+        final notifier = container.read(pendingSyncProvider.notifier);
+
+        // Enqueue an upsertRecords then a saveWorkout.
+        await notifier.enqueue(
+          makeUpsertAction(
+            id: 'pr-fail-reconcile',
+            queuedAt: DateTime.utc(2026, 4, 17, 10, 0, 0),
+          ),
+        );
+        await notifier.enqueue(
+          _makeSaveWorkoutAction(
+            id: 'w-after-pr',
+            queuedAt: DateTime.utc(2026, 4, 17, 11, 0, 0),
+          ),
+        );
+
+        when(() => mockPRRepo.upsertRecords(any())).thenAnswer((_) async {});
+
+        // Reconciliation throws — must not break drain.
+        when(
+          () => mockPRRepo.getRecordsForUser(any()),
+        ).thenThrow(Exception('Network error during reconciliation'));
+
+        stubSaveWorkoutSuccess(id: 'w-after-pr');
+
+        // Transition: offline -> online
+        connectivityController.add(true);
+        await _pumpAsync(300);
+
+        // Both items should be dequeued (drain completed despite reconcile failure).
+        expect(container.read(pendingSyncProvider), 0);
+      });
+
+      test(
+        'does NOT call getRecordsForUser after a saveWorkout drain',
+        () async {
+          final container = createReconcileContainer(initialOnline: false);
+
+          final notifier = container.read(pendingSyncProvider.notifier);
+          await notifier.enqueue(_makeSaveWorkoutAction(id: 'w-no-reconcile'));
+
+          stubSaveWorkoutSuccess(id: 'w-no-reconcile');
+
+          connectivityController.add(true);
+          await _pumpAsync(200);
+
+          // getRecordsForUser must NOT be called for saveWorkout items.
+          verifyNever(() => mockPRRepo.getRecordsForUser(any()));
+        },
+      );
+
+      // Phase 14d: each upsertRecords item that drains successfully triggers
+      // its own reconciliation call — reconciliation is per-item, not per-drain.
+      test(
+        'calls getRecordsForUser once per upsertRecords item when multiple drain',
+        () async {
+          final container = createReconcileContainer(initialOnline: false);
+
+          final notifier = container.read(pendingSyncProvider.notifier);
+
+          // Two upsertRecords items for different users.
+          await notifier.enqueue(
+            makeUpsertAction(
+              id: 'pr-multi-1',
+              userId: 'user-a',
+              queuedAt: DateTime.utc(2026, 4, 17, 10, 0, 0),
+            ),
+          );
+          await notifier.enqueue(
+            makeUpsertAction(
+              id: 'pr-multi-2',
+              userId: 'user-b',
+              queuedAt: DateTime.utc(2026, 4, 17, 11, 0, 0),
+            ),
+          );
+
+          when(() => mockPRRepo.upsertRecords(any())).thenAnswer((_) async {});
+          when(
+            () => mockPRRepo.getRecordsForUser(any()),
+          ).thenAnswer((_) async => <PersonalRecord>[]);
+
+          connectivityController.add(true);
+          await _pumpAsync(300);
+
+          // Two upsertRecords items → two reconciliation calls.
+          verify(() => mockPRRepo.getRecordsForUser('user-a')).called(1);
+          verify(() => mockPRRepo.getRecordsForUser('user-b')).called(1);
+        },
+      );
+    });
   });
 }

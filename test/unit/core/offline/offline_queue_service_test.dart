@@ -105,6 +105,7 @@ void main() {
         PendingAction.upsertRecords(
           id: 'pr-1',
           recordsJson: const [],
+          userId: 'user-1',
           queuedAt: now,
         ),
       );
@@ -127,6 +128,7 @@ void main() {
         PendingAction.upsertRecords(
           id: 'pr-1',
           recordsJson: const [],
+          userId: 'user-1',
           queuedAt: now.add(const Duration(seconds: 1)),
         ),
       );

@@ -75,6 +75,7 @@ void main() {
               'achieved_at': now.toIso8601String(),
             },
           ],
+          userId: 'u-1',
           queuedAt: now,
         );
 
@@ -88,6 +89,40 @@ void main() {
         expect(typed.recordsJson.first['value'], 100.0);
         expect(typed.queuedAt, now);
         expect(typed.retryCount, 0);
+      });
+
+      // Phase 14d: userId must survive JSON round-trip so SyncService can
+      // pass it to _reconcilePrCache after a successful upsertRecords drain.
+      test('userId field round-trips correctly through toJson/fromJson', () {
+        final action = PendingAction.upsertRecords(
+          id: 'pr-action-userId',
+          recordsJson: const [],
+          userId: 'user-xyz-789',
+          queuedAt: now,
+        );
+
+        final json = action.toJson();
+        final restored = PendingAction.fromJson(json);
+
+        final typed = restored as PendingUpsertRecords;
+        expect(typed.userId, 'user-xyz-789');
+      });
+
+      test('preserves retryCount and lastError through toJson/fromJson', () {
+        final action = PendingAction.upsertRecords(
+          id: 'pr-action-retry',
+          recordsJson: const [],
+          userId: 'u-1',
+          queuedAt: now,
+          retryCount: 4,
+          lastError: 'RPC failed',
+        );
+
+        final json = action.toJson();
+        final restored = PendingAction.fromJson(json) as PendingUpsertRecords;
+
+        expect(restored.retryCount, 4);
+        expect(restored.lastError, 'RPC failed');
       });
     });
 
@@ -130,6 +165,7 @@ void main() {
         PendingAction.upsertRecords(
           id: '2',
           recordsJson: const [],
+          userId: 'u',
           queuedAt: now,
         ).toJson()['type'],
         'upsertRecords',
