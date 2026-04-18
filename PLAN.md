@@ -45,6 +45,8 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 13 | Launch — last phase before Play Store (all sprints + QA DONE; verification gates open) | IN PROGRESS | - |
 | 14a | Connectivity + Read-Through Cache Foundation | DONE | #78, #79 |
 | 14b | Offline Workout Capture + Queue | DONE | #81 |
+| 14c | Sync Service + Backoff + Observability | DONE | #83 |
+| 14d | Local PR Detection + Reconciliation | DONE | #84 |
 | 14 | Offline Support | IN PROGRESS | - |
 | 15 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
 | 16 | Gamification Advanced (Quests, Stats Panel) | TODO | - |
@@ -685,20 +687,13 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 - **Sentry breadcrumbs** on drain attempt and failure (PII-safe).
 - 40 new tests (14 classifier + 18 service + 1 notifier + 7 widget), 7 E2E tests. 1315 unit/widget total.
 
-### 14d: Local PR Detection + Reconciliation
+### 14d: Local PR Detection + Reconciliation ✅ PR #84
 
-**Goal:** Celebrate PRs immediately on finish, even offline, without getting them wrong on reconnect.
-
-- **No service extraction needed** — `PRDetectionService.detectPRs(...)` is already a pure-function Dart service. Phase 14d is purely about routing its inputs through caches and deferring its outputs through the queue.
-- Reroute `ActiveWorkoutNotifier.finishWorkout()` PR block:
-  - `existingRecords` ← read from `pr_cache` (14a) instead of live `prRepo.getRecordsForExercises()`.
-  - `totalFinishedWorkouts` ← read from cached `user_prefs.finishedWorkoutCount`, then increment.
-  - Run `PRDetectionService.detectPRs(...)` → show celebration immediately.
-  - `prRepo.upsertRecords(newRecords)` → enqueue in `offline_queue`.
-  - Update `pr_cache` optimistically with `newRecords` so subsequent offline finishes see them.
-- On sync drain success, refresh `pr_cache` from the server (`prRepo.getRecordsForUser`) to pick up any server-side corrections. Compare against optimistic cache state:
-  - Drift is expected to be near-zero in single-user single-device usage (detection is deterministic). Log any divergence as a Sentry breadcrumb (not an error).
-  - Do NOT re-celebrate server-only PRs; accept rare false-positive client PRs as cost of instant feedback.
+- **Offline-first PR detection**: `finishWorkout()` reads existing records from `pr_cache` directly (no network), celebrates immediately, always enqueues `upsertRecords` via offline queue.
+- **Optimistic cache update** with replace-by-`recordType` semantics prevents stale/duplicate records across consecutive offline finishes.
+- **Post-drain reconciliation**: `SyncService` batches unique userIds from drained `upsertRecords` items, refreshes `pr_cache` from server once per user after the loop. Sentry breadcrumb logged.
+- **Backward-compatible `userId`** on `PendingAction.upsertRecords` (`@Default('')`) — pre-14d queued items deserialize safely.
+- 15 new tests (1330 total). Key review fixes: batched reconciliation, online save count increment, removed broken divergence comparison.
 
 ### 14e: Polish + Edge Cases
 
