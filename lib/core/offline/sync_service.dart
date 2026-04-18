@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/analytics/data/models/analytics_event.dart';
 import '../../features/analytics/providers/analytics_providers.dart';
+import '../../features/personal_records/providers/pr_providers.dart';
 import '../connectivity/connectivity_provider.dart';
 import '../observability/sentry_report.dart';
 import 'offline_queue_service.dart';
@@ -64,6 +65,10 @@ class SyncService extends Notifier<SyncState> {
       final queue = ref.read(offlineQueueServiceProvider);
       final actions = queue.getAll(); // FIFO (sorted by queuedAt)
 
+      // Collect unique userIds from successfully drained upsertRecords items
+      // so we can batch reconciliation after the loop.
+      final reconciledUserIds = <String>{};
+
       for (final action in actions) {
         // Stop if connectivity dropped mid-drain.
         if (!ref.read(isOnlineProvider)) {
@@ -91,6 +96,11 @@ class SyncService extends Notifier<SyncState> {
 
           // Success — emit analytics event.
           _trackSyncSucceeded(action);
+
+          // Collect userId for batched post-drain PR cache reconciliation.
+          if (action is PendingUpsertRecords && action.userId.isNotEmpty) {
+            reconciledUserIds.add(action.userId);
+          }
         } catch (e) {
           SentryReport.addBreadcrumb(
             category: 'sync',
@@ -111,6 +121,11 @@ class SyncService extends Notifier<SyncState> {
             await Future<void>.delayed(_backoffDuration(newRetryCount));
           }
         }
+      }
+
+      // Batch PR cache reconciliation — once per unique userId.
+      for (final uid in reconciledUserIds) {
+        await _reconcilePrCache(uid);
       }
 
       // Count terminal items and update state.
@@ -231,9 +246,33 @@ class SyncService extends Notifier<SyncState> {
   static String _userId(PendingAction action) {
     return switch (action) {
       PendingSaveWorkout(:final userId) => userId,
-      PendingUpsertRecords() => 'unknown',
+      PendingUpsertRecords(:final userId) => userId,
       PendingMarkRoutineComplete() => 'unknown',
     };
+  }
+
+  /// Refresh the PR cache from the server after a successful `upsertRecords`
+  /// drain. The optimistic cache written during `finishWorkout()` uses a
+  /// different key than the one read here, and `prRepo.upsertRecords()` clears
+  /// the entire box before this runs, so a divergence comparison is meaningless.
+  /// We simply refresh the cache from the server and log a breadcrumb.
+  Future<void> _reconcilePrCache(String userId) async {
+    if (userId.isEmpty) return;
+    try {
+      final prRepo = ref.read(prRepositoryProvider);
+      final serverRecords = await prRepo.getRecordsForUser(userId);
+      SentryReport.addBreadcrumb(
+        category: 'sync.reconcile',
+        message: 'PR cache refreshed after upsertRecords drain',
+        data: {'server_record_count': serverRecords.length},
+      );
+    } catch (e) {
+      log(
+        'PR cache reconciliation failed: $e',
+        name: 'SyncService',
+        level: 900,
+      );
+    }
   }
 }
 
