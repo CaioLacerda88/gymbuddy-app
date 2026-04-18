@@ -47,7 +47,8 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 14b | Offline Workout Capture + Queue | DONE | #81 |
 | 14c | Sync Service + Backoff + Observability | DONE | #83 |
 | 14d | Local PR Detection + Reconciliation | DONE | #84 |
-| 14 | Offline Support | IN PROGRESS | - |
+| 14e | Polish + Edge Cases | DONE | #85 |
+| 14 | Offline Support | DONE | #78-#85 |
 | 15 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
 | 16 | Gamification Advanced (Quests, Stats Panel) | TODO | - |
 | 17 | Nice-to-Have (v2.0+) | BACKLOG | - |
@@ -695,17 +696,13 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 - **Backward-compatible `userId`** on `PendingAction.upsertRecords` (`@Default('')`) — pre-14d queued items deserialize safely.
 - 15 new tests (1330 total). Key review fixes: batched reconciliation, online save count increment, removed broken divergence comparison.
 
-### 14e: Polish + Edge Cases
+### 14e: Polish + Edge Cases ✅ PR #85
 
-- Offline app open: skip network auth refresh, use last-known-good session, show offline banner.
-- Starting a workout from a cached routine offline: works as long as `createActiveWorkout` succeeded online previously — but `createActiveWorkout` is itself a network call. **For full offline-start to work, `createActiveWorkout` must also be queued OR the `save_workout` RPC must be upgraded to upsert the workout row.** v1 scope: starting a workout requires connectivity; finishing does not. Show a clear snackbar when `startWorkout`/`startFromRoutine` fails offline.
-- Starting from an uncached routine: snackbar "This routine is not cached — open it online first."
-- Queue persists across restarts (Hive is disk-backed — free).
-- Sign-out cascades cache clear through `HiveService.clearAll()` — update `clearAll()` to include the new caches.
-- Test coverage:
-  - Unit: `SyncService` backoff/retry, queue model serialization, cache read-through fallback, `finishWorkout` offline path through `PRDetectionService`.
-  - Widget: `OfflineBanner`, pending-sync badge states, failed-sync banner, celebration with local detection + cached records.
-  - E2E: Playwright network-offline simulation (`context.setOffline(true)`) → start workout online → go offline → finish → restore network → verify queue drains + workout appears in history.
+- **Sign-out cache clear**: `AuthNotifier.signOut()` and `deleteAccount()` call `HiveService.clearAll()` (best-effort — swallowed on failure so Hive I/O never blocks sign-out). `hiveServiceProvider` added for DI/mocking.
+- **Start-workout offline guard**: `startRoutineWorkout()` and `_startQuickWorkout()` check `isOnlineProvider`, show snackbar "Starting a workout requires an internet connection", return early. `kOfflineStartWorkoutMessage` shared constant.
+- **Auth startup already offline-safe**: `authStateProvider` reads from local Supabase session cache (no network call). `cacheRefreshProvider` skips when offline.
+- **E2E boundary**: Playwright can't trigger `connectivity_plus` (OS-level); offline guards covered by widget tests instead. 7 existing E2E tests from 14c cover the testable sync paths.
+- 9 new tests (1339 total).
 
 ### Out of Scope (defer)
 
