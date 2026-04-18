@@ -675,21 +675,15 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 - **Offline snackbar**: "Workout saved. Will sync when back online." (`tertiaryContainer` for M3 contrast).
 - 40 new tests (1275 total). Key design: repository stays pure (network-only), queueing lives in notifier layer.
 
-### 14c: Sync Service + Backoff + Observability
+### 14c: Sync Service + Backoff + Observability ✅ PR #83
 
-**Goal:** When connectivity returns, the queue drains reliably and visibly.
-
-- New `SyncService` (Riverpod `AsyncNotifier`):
-  - Watches `onlineStatusProvider`.
-  - On offline→online transition, drains `offline_queue` FIFO.
-  - Exponential backoff: 1s → 2s → 4s → 8s → max 30s, max 6 attempts per item.
-  - Distinguish transient (5xx, network, timeout) from terminal (4xx, auth) — terminal items move to `failed_queue` box with captured error.
-  - `SentryReport.addBreadcrumb()` per retry attempt.
-  - Analytics events: `workout_sync_queued`, `workout_sync_succeeded`, `workout_sync_failed` (with `retry_count`, `elapsed_seconds_in_queue`, `error_class`). Emitted via the existing `AnalyticsRepository.insertEvent()` pipeline that Phase 13a PR 5 establishes.
-- UX:
-  - Home header pill: "Syncing 2 workouts…" → "All synced ✓" → auto-hide after 3s.
-  - Tap pending badge → details list with "Retry now" per item.
-  - Terminal failures: persistent warning banner + "Contact support" CTA.
+- **SyncService** (`sync_service.dart`) — Riverpod Notifier watches connectivity, drains queue FIFO on offline→online transition. Exponential backoff 1s→30s cap, max 6 retries.
+- **SyncErrorClassifier** (`sync_error_classifier.dart`) — terminal (400/403/404/409/422) vs transient (5xx, network, timeout, auth). 401 treated as transient (JWT auto-refresh).
+- **Transparent sync UX** (design pivot from original spec): silent background drain, no visible syncing animation. PendingSyncBadge 200ms fade-out. Terminal-only UI via SyncFailureCard (red accent, Retry + Dismiss).
+- **In-flight guard** on PendingSyncNotifier prevents manual/auto retry race.
+- **Analytics**: 3 Freezed events (workoutSyncQueued/Succeeded/Failed) with action type, retry count, queue duration.
+- **Sentry breadcrumbs** on drain attempt and failure (PII-safe).
+- 40 new tests (14 classifier + 18 service + 1 notifier + 7 widget), 7 E2E tests. 1315 unit/widget total.
 
 ### 14d: Local PR Detection + Reconciliation
 
