@@ -680,6 +680,47 @@ export const PROFILE_WEEKLY_GOAL = {
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
+// Offline sync — OfflineBanner, PendingSyncBadge, SyncFailureCard (Phase 14)
+// ---------------------------------------------------------------------------
+export const OFFLINE = {
+  /**
+   * OfflineBanner text — rendered in _MainScaffold when isOnlineProvider is
+   * false. The em-dash (U+2014) is part of the literal text.
+   */
+  banner: "text=Offline \u2014 changes will sync when you're back online",
+  /**
+   * PendingSyncBadge — Semantics(button: true, label: 'N workout(s) pending
+   * sync. Tap to manage.'). Flutter 3.41.6+ exposes this as role=button via
+   * AOM. The name* substring matches both singular and plural forms.
+   */
+  pendingSyncBadge: 'role=button[name*="pending sync"]',
+  /**
+   * PendingSyncBadge singular form — "1 workout pending sync. Tap to manage."
+   */
+  pendingSyncBadgeSingular: 'role=button[name*="1 workout pending sync"]',
+  /**
+   * SyncFailureCard singular — "Workout couldn't sync"
+   */
+  failureCardSingular: "text=Workout couldn't sync",
+  /**
+   * SyncFailureCard plural — "{n} workouts couldn't sync"
+   */
+  failureCardPlural: (n: number) => `text=${n} workouts couldn't sync`,
+  /**
+   * Subtitle inside SyncFailureCard
+   */
+  failureCardSubtitle: 'text=Saved locally. Retry or dismiss.',
+  /**
+   * Retry TextButton inside SyncFailureCard
+   */
+  retryButton: 'text=Retry',
+  /**
+   * Dismiss TextButton inside SyncFailureCard
+   */
+  dismissButton: 'text=Dismiss',
+} as const;
+
+// ---------------------------------------------------------------------------
 // First-run beginner routine CTA — _BeginnerRoutineCta in WeekBucketSection (P8).
 //
 // Rendered when plan is null or empty AND workoutCount == 0 AND a default

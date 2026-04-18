@@ -55,6 +55,8 @@ const TEST_USERS = [
   'e2e-full-ex-detail-sheet@test.local',
   // Exercise progress chart smoke (P1) — needs a seeded completed working set
   'e2e-smoke-exercise-progress@test.local',
+  // Offline sync smoke (Phase 14) — offline-sync.spec.ts
+  'e2e-smoke-offline-sync@test.local',
 ];
 
 /**
@@ -623,6 +625,8 @@ async function globalSetup(): Promise<void> {
     'e2e-smoke-pr@test.local',
     // P8 beginner CTA requires zero workouts for the CTA to render
     'e2e-smoke-first-workout@test.local',
+    // Offline sync — clean Hive queue state on each run
+    'e2e-smoke-offline-sync@test.local',
   ];
 
   for (const email of freshStateUsers) {
@@ -793,6 +797,8 @@ async function globalSetup(): Promise<void> {
     'e2e-full-pr@test.local',
     'e2e-full-crash@test.local',
     'e2e-full-ex-detail-sheet@test.local',
+    // Offline sync — needs lapsed state so startEmptyWorkout() finds Quick workout
+    'e2e-smoke-offline-sync@test.local',
   ];
   for (const email of usersNeedingSeededWorkoutForP8) {
     const uid = await getUserId(supabase, email);

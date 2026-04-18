@@ -86,6 +86,13 @@ export const TEST_USERS = {
     email: 'e2e-smoke-exercise-progress@test.local',
     password: 'TestPassword123!',
   },
+  // Offline sync (Phase 14) — dedicated user for offline-sync.spec.ts.
+  // Needs a profile row + one prior workout (lapsed state) so startEmptyWorkout
+  // finds "Quick workout" rather than the brand-new beginner CTA.
+  smokeOfflineSync: {
+    email: 'e2e-smoke-offline-sync@test.local',
+    password: 'TestPassword123!',
+  },
 
   // -------------------------------------------------------------------------
   // Full suite users (one per spec file)
