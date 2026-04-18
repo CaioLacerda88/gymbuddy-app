@@ -1,4 +1,10 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+
+/// Provides a [HiveService] instance via Riverpod.
+final hiveServiceProvider = Provider<HiveService>((ref) {
+  return const HiveService();
+});
 
 class HiveService {
   const HiveService();

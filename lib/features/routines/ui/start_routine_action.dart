@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/connectivity/connectivity_provider.dart';
 import '../../workouts/models/routine_start_config.dart';
 import '../../workouts/providers/workout_providers.dart';
 import '../../workouts/ui/widgets/resume_workout_dialog.dart';
 import '../models/routine.dart';
+
+const kOfflineStartWorkoutMessage =
+    'Starting a workout requires an internet connection';
 
 /// Builds a [RoutineStartConfig] from a routine and starts an active workout.
 ///
@@ -17,6 +21,17 @@ Future<void> startRoutineWorkout(
   WidgetRef ref,
   Routine routine,
 ) async {
+  // Guard: starting a workout requires a network call to create it.
+  final isOnline = ref.read(isOnlineProvider);
+  if (!isOnline) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(kOfflineStartWorkoutMessage)),
+      );
+    }
+    return;
+  }
+
   // Guard: check for an active workout before overwriting.
   final existingWorkout = ref.read(activeWorkoutProvider).value;
   if (existingWorkout != null) {
