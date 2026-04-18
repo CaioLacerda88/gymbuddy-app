@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/device/platform_info.dart';
+import '../../../../core/local_storage/hive_service.dart';
 import '../../../../core/observability/sentry_report.dart';
 import '../../data/auth_repository.dart';
 import '../auth_providers.dart';
@@ -12,10 +13,12 @@ import '../signup_state_provider.dart';
 /// Manages auth actions (sign in, sign up, sign out).
 class AuthNotifier extends AsyncNotifier<Session?> {
   late AuthRepository _repo;
+  late HiveService _hive;
 
   @override
   FutureOr<Session?> build() {
     _repo = ref.watch(authRepositoryProvider);
+    _hive = ref.watch(hiveServiceProvider);
     return _repo.currentSession;
   }
 
@@ -70,6 +73,13 @@ class AuthNotifier extends AsyncNotifier<Session?> {
       SentryReport.addBreadcrumb(category: 'auth', message: 'sign_out');
       return null;
     });
+    // Best-effort cache clear — a Hive I/O failure must never prevent
+    // sign-out from completing. Mirrors the deleteAccount() pattern.
+    try {
+      await _hive.clearAll();
+    } catch (_) {
+      // Intentionally swallowed.
+    }
   }
 
   /// Resend the confirmation email for a pending signup.
@@ -121,6 +131,9 @@ class AuthNotifier extends AsyncNotifier<Session?> {
     if (state.hasError) return;
 
     SentryReport.addBreadcrumb(category: 'auth', message: 'account_deleted');
+
+    // Clear all offline caches so the next sign-in starts with a clean slate.
+    await _hive.clearAll();
 
     // Account deleted successfully — best-effort local sign-out. Any error
     // here is ignored because the server-side user is already gone and the

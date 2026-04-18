@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/connectivity/connectivity_provider.dart';
 import '../../../../core/theme/radii.dart';
 import '../../../routines/models/routine.dart';
 import '../../../routines/providers/notifiers/routine_list_notifier.dart';
@@ -106,6 +107,17 @@ class ActionHero extends ConsumerWidget {
   ///
   /// When there is no existing workout we just start one and navigate.
   Future<void> _startQuickWorkout(BuildContext context, WidgetRef ref) async {
+    // Guard: starting a workout requires a network call to create it.
+    final isOnline = ref.read(isOnlineProvider);
+    if (!isOnline) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(kOfflineStartWorkoutMessage)),
+        );
+      }
+      return;
+    }
+
     final existingWorkout = ref.read(activeWorkoutProvider).value;
     if (existingWorkout != null) {
       if (!context.mounted) return;
