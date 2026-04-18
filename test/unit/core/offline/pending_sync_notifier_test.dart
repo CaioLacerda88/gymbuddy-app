@@ -75,6 +75,7 @@ PendingUpsertRecords makeUpsertRecordsAction({
   return PendingAction.upsertRecords(
         id: id,
         recordsJson: const [],
+        userId: 'user-1',
         queuedAt: now,
       )
       as PendingUpsertRecords;

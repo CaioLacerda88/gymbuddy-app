@@ -6,9 +6,12 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/device/platform_info.dart';
 import '../../../../core/exceptions/app_exception.dart' as app;
+import '../../../../core/local_storage/cache_service.dart';
+import '../../../../core/local_storage/hive_service.dart';
 import '../../../../core/offline/pending_action.dart';
 import '../../../../core/offline/pending_sync_provider.dart';
 import '../../../../core/observability/sentry_report.dart';
+import '../../../personal_records/models/personal_record.dart';
 import '../../../analytics/data/models/analytics_event.dart';
 import '../../../analytics/providers/analytics_providers.dart';
 import '../../../auth/providers/auth_providers.dart';
@@ -748,29 +751,50 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
       // saved sets. Invalidating the whole family is correct — a finished
       // workout may touch any exercise, and the family is small per user.
       if (!savedOffline) {
+        _repo.incrementCachedWorkoutCount(_userId);
         ref.invalidate(exerciseProgressProvider);
       }
 
-      // PR detection: batch-fetch existing records, then detect new ones.
-      // When offline, getRecordsForExercises falls back to pr_cache (14a).
+      // PR detection: read existing records from local cache (never network),
+      // detect new PRs, celebrate immediately, and always enqueue writes.
+      // Phase 14d: fully offline-first PR detection.
       try {
-        final prRepo = ref.read(prRepositoryProvider);
         final prService = ref.read(prDetectionServiceProvider);
+        final cache = ref.read(cacheServiceProvider);
 
-        final existingRecords = await prRepo.getRecordsForExercises(
-          exerciseIds,
+        // Build the same cache key that PRRepository uses.
+        final cacheKey =
+            'exercises:${(List<String>.from(exerciseIds)..sort()).join(',')}';
+
+        // Always read from local pr_cache — no network call.
+        var existingRecords = cache.read<Map<String, List<PersonalRecord>>>(
+          HiveService.prCache,
+          cacheKey,
+          (json) {
+            final map = json as Map<String, dynamic>;
+            return map.map(
+              (k, v) => MapEntry(
+                k,
+                (v as List)
+                    .map(
+                      (e) => PersonalRecord.fromJson(e as Map<String, dynamic>),
+                    )
+                    .toList(),
+              ),
+            );
+          },
         );
 
-        // Fetch total finished workout count for accurate first-workout detection.
-        if (savedOffline) {
-          workoutCount = _repo.getCachedWorkoutCount(_userId) ?? 1;
-        } else {
-          try {
-            workoutCount = await _repo.getFinishedWorkoutCount(_userId);
-          } catch (_) {
-            workoutCount = _repo.getCachedWorkoutCount(_userId) ?? 1;
-          }
+        // If cache misses, fall back to PRRepository (which has its own
+        // cache fallback). This covers the first-ever workout before any
+        // cache has been populated.
+        if (existingRecords == null) {
+          final prRepo = ref.read(prRepositoryProvider);
+          existingRecords = await prRepo.getRecordsForExercises(exerciseIds);
         }
+
+        // Always use cached workout count — no network call.
+        workoutCount = _repo.getCachedWorkoutCount(_userId) ?? 1;
 
         prResult = prService.detectPRs(
           userId: _userId,
@@ -780,28 +804,37 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
         );
 
         if (prResult!.hasNewRecords) {
-          try {
-            await prRepo.upsertRecords(prResult!.newRecords);
-          } catch (e) {
-            log(
-              'PR record save failed, queueing offline: $e',
-              name: 'ActiveWorkoutNotifier',
-              level: 900,
-            );
-            // Queue upsert for later sync.
-            await ref
-                .read(pendingSyncProvider.notifier)
-                .enqueue(
-                  PendingAction.upsertRecords(
-                    id: _uuid.v4(),
-                    recordsJson: prResult!.newRecords
-                        .map((r) => r.toJson())
-                        .toList(),
-                    queuedAt: now,
-                  ),
-                );
-            // prResult is still set — user sees celebration even if save failed.
+          // Always enqueue — all PR writes go through the offline queue.
+          await ref
+              .read(pendingSyncProvider.notifier)
+              .enqueue(
+                PendingAction.upsertRecords(
+                  id: _uuid.v4(),
+                  recordsJson: prResult!.newRecords
+                      .map((r) => r.toJson())
+                      .toList(),
+                  userId: _userId,
+                  queuedAt: now,
+                ),
+              );
+
+          // Optimistically update pr_cache so subsequent offline finishes
+          // see the new records immediately.
+          final merged = Map<String, List<PersonalRecord>>.from(
+            existingRecords,
+          );
+          for (final record in prResult!.newRecords) {
+            final list = merged[record.exerciseId] ??= [];
+            list.removeWhere((r) => r.recordType == record.recordType);
+            list.add(record);
           }
+          cache.write(
+            HiveService.prCache,
+            cacheKey,
+            merged.map(
+              (k, v) => MapEntry(k, v.map((r) => r.toJson()).toList()),
+            ),
+          );
         }
       } catch (e) {
         // PR detection failure should NOT fail the workout save.
