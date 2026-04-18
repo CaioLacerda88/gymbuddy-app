@@ -1,41 +1,39 @@
-/**
- * Offline sync — E2E tests for Phase 14 offline-first capabilities.
- *
- * Phase 14 added:
- *   14a — ConnectivityService (connectivity_plus OS-level detection) + read-through cache
- *   14b — Offline workout capture: queue PendingAction in Hive when save fails offline
- *   14c — SyncService auto-drain on reconnection, SyncFailureCard, PendingSyncBadge
- *
- * -----------------------------------------------------------------------
- * How offline simulation works in Playwright
- * -----------------------------------------------------------------------
- * The app's ConnectivityService uses `connectivity_plus` which queries the OS
- * network stack — NOT an HTTP health check. Playwright's `page.route()` blocks
- * HTTP requests but does NOT change what the OS reports to `connectivity_plus`.
- * Therefore, blocking `**/rest/v1/**` alone does NOT trigger `isOnlineProvider`
- * to become false and does NOT show the OfflineBanner.
- *
- * What blocking Supabase REST DOES do:
- *   - The WorkoutRepository.saveWorkout() call throws a network error.
- *   - ActiveWorkoutNotifier catches that error and enqueues a PendingAction.
- *   - PendingSyncNotifier increments its count → PendingSyncBadge becomes visible.
- *   - After unrouting, subsequent save attempts (manual retry) succeed.
- *
- * What we CANNOT test via Playwright:
- *   - OfflineBanner appearance (requires OS-level network loss)
- *   - SyncService auto-drain on reconnection (requires an OS offline→online
- *     transition so `isOnlineProvider` emits false then true)
- *
- * These gaps are documented per-test so future test authors know the boundary.
- *
- * -----------------------------------------------------------------------
- * Test user
- * -----------------------------------------------------------------------
- * smokeOfflineSync — dedicated user in test-users.ts and global-setup.ts.
- * Seeded with one prior workout (lapsed state) so startEmptyWorkout() finds
- * "Quick workout" rather than the brand-new beginner CTA.
- * Cleaned on every run (freshStateUsers) so queue state doesn't accumulate.
- */
+// Offline sync — E2E tests for Phase 14 offline-first capabilities.
+//
+// Phase 14 added:
+//   14a — ConnectivityService (connectivity_plus OS-level detection) + read-through cache
+//   14b — Offline workout capture: queue PendingAction in Hive when save fails offline
+//   14c — SyncService auto-drain on reconnection, SyncFailureCard, PendingSyncBadge
+//
+// -----------------------------------------------------------------------
+// How offline simulation works in Playwright
+// -----------------------------------------------------------------------
+// The app's ConnectivityService uses connectivity_plus which queries the OS
+// network stack — NOT an HTTP health check. Playwright's page.route() blocks
+// HTTP requests but does NOT change what the OS reports to connectivity_plus.
+// Therefore, blocking the REST endpoint glob alone does NOT trigger
+// isOnlineProvider to become false and does NOT show the OfflineBanner.
+//
+// What blocking Supabase REST DOES do:
+//   - WorkoutRepository.saveWorkout() throws a network error.
+//   - ActiveWorkoutNotifier catches that error and enqueues a PendingAction.
+//   - PendingSyncNotifier increments its count → PendingSyncBadge becomes visible.
+//   - After unrouting, subsequent save attempts (manual retry) succeed.
+//
+// What we CANNOT test via Playwright:
+//   - OfflineBanner appearance (requires OS-level network loss)
+//   - SyncService auto-drain on reconnection (requires an OS offline→online
+//     transition so isOnlineProvider emits false then true)
+//
+// These gaps are documented per-test so future test authors know the boundary.
+//
+// -----------------------------------------------------------------------
+// Test user
+// -----------------------------------------------------------------------
+// smokeOfflineSync — dedicated user in test-users.ts and global-setup.ts.
+// Seeded with one prior workout (lapsed state) so startEmptyWorkout() finds
+// "Quick workout" rather than the brand-new beginner CTA.
+// Cleaned on every run (freshStateUsers) so queue state doesn't accumulate.
 
 import { test, expect, Page } from '@playwright/test';
 import { login } from '../helpers/auth';
@@ -107,20 +105,18 @@ test.describe('Offline sync', { tag: '@smoke' }, () => {
   test('should show pending sync badge after workout save is queued offline (OFFLINE-001)', async ({
     page,
   }) => {
-    // Block Supabase REST before starting the workout so the save will fail.
-    await blockSupabaseRest(page);
-
-    // Start a workout and add a set.
+    // Start a workout and add a set with REST available (home screen and
+    // exercise picker need Supabase to load data).
     await startEmptyWorkout(page);
     await addExercise(page, SEED_EXERCISES.benchPress);
     await setWeight(page, '80');
     await setReps(page, '5');
     await completeSet(page, 0);
 
-    // Finish the workout. The save call hits the blocked REST endpoint,
-    // fails, and the ActiveWorkoutNotifier enqueues it in Hive.
-    // The app then navigates back to Home (bypassing the PR celebration
-    // screen, which requires a successful server response to compute PRs).
+    // Block REST just before finishing so the save call fails and the
+    // ActiveWorkoutNotifier enqueues the workout in Hive.
+    await blockSupabaseRest(page);
+
     await page.click('text=Finish Workout');
 
     // The finish confirmation dialog appears — confirm save.
@@ -166,14 +162,14 @@ test.describe('Offline sync', { tag: '@smoke' }, () => {
   test('should show pending sync badge with correct label format (OFFLINE-002)', async ({
     page,
   }) => {
-    // Block REST so the save gets queued.
-    await blockSupabaseRest(page);
-
     await startEmptyWorkout(page);
     await addExercise(page, SEED_EXERCISES.squat);
     await setWeight(page, '60');
     await setReps(page, '3');
     await completeSet(page, 0);
+
+    // Block REST just before finishing so the save gets queued.
+    await blockSupabaseRest(page);
 
     await page.click('text=Finish Workout');
     const dialogFinish = page.locator('text=Save & Finish');
@@ -183,21 +179,24 @@ test.describe('Offline sync', { tag: '@smoke' }, () => {
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 20_000 });
 
     // The badge must be visible with some pending count.
+    // The role=button[name*="pending sync"] selector already validates the
+    // accessible name via Playwright's AOM query. Flutter 3.41.6+ does not
+    // expose aria-label as a DOM attribute, so getAttribute returns null.
     const badge = page.locator(OFFLINE.pendingSyncBadge);
     await expect(badge).toBeVisible({ timeout: 15_000 });
 
-    // The accessible name must match the expected pattern:
-    //   "N workout(s) pending sync. Tap to manage."
-    // Both singular ("1 workout pending sync") and plural
-    // ("N workouts pending sync") are valid here.
-    const badgeName = await badge.getAttribute('aria-label').catch(() => null)
-      ?? await badge.evaluate((el: Element) => (el as any).ariaLabel ?? '').catch(() => '');
+    // Verify the label matches singular or plural form by checking that
+    // one of the specific name patterns is visible in the AOM tree.
+    const isSingular = await page
+      .locator(OFFLINE.pendingSyncBadgeSingular)
+      .isVisible({ timeout: 3_000 })
+      .catch(() => false);
+    const isPlural = await page
+      .locator('role=button[name*="workouts pending sync"]')
+      .isVisible({ timeout: 3_000 })
+      .catch(() => false);
 
-    // The name must contain "pending sync" — confirms the label pattern.
-    // We use the role selector name* match as the assertion (already
-    // confirmed by toBeVisible above), and additionally assert the text
-    // contains either "workout pending sync" or "workouts pending sync".
-    expect(badgeName).toMatch(/\d+ workouts? pending sync/);
+    expect(isSingular || isPlural).toBe(true);
 
     await restoreSupabaseRest(page);
   });
@@ -287,14 +286,15 @@ test.describe('Offline sync — badge interaction', () => {
   test('should open sync management sheet when tapping the pending sync badge (OFFLINE-005)', async ({
     page,
   }) => {
-    // Queue a workout by blocking REST during save.
-    await blockSupabaseRest(page);
-
+    // Queue a workout by completing one with REST blocked during save.
     await startEmptyWorkout(page);
     await addExercise(page, SEED_EXERCISES.benchPress);
     await setWeight(page, '100');
     await setReps(page, '3');
     await completeSet(page, 0);
+
+    // Block REST just before finishing so the save gets queued.
+    await blockSupabaseRest(page);
 
     await page.click('text=Finish Workout');
     const dialogFinish = page.locator('text=Save & Finish');
@@ -373,13 +373,14 @@ test.describe('Offline sync — badge interaction', () => {
   test('should navigate to home after finishing a workout that is queued offline (OFFLINE-007)', async ({
     page,
   }) => {
-    await blockSupabaseRest(page);
-
     await startEmptyWorkout(page);
     await addExercise(page, SEED_EXERCISES.deadlift);
     await setWeight(page, '120');
     await setReps(page, '5');
     await completeSet(page, 0);
+
+    // Block REST just before finishing so the save gets queued.
+    await blockSupabaseRest(page);
 
     await page.click('text=Finish Workout');
     const dialogFinish = page.locator('text=Save & Finish');
