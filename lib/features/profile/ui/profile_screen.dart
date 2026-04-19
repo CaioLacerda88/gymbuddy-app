@@ -29,7 +29,11 @@ class ProfileScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 16),
-            Text('Profile', style: theme.textTheme.headlineMedium),
+            Semantics(
+              container: true,
+              identifier: 'profile-heading',
+              child: Text('Profile', style: theme.textTheme.headlineMedium),
+            ),
             const SizedBox(height: 32),
             // Identity card
             profileAsync.when(
@@ -62,7 +66,11 @@ class ProfileScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
             // Weekly goal section
-            Text('Weekly Goal', style: theme.textTheme.titleMedium),
+            Semantics(
+              container: true,
+              identifier: 'profile-goal-label',
+              child: Text('Weekly Goal', style: theme.textTheme.titleMedium),
+            ),
             const SizedBox(height: 12),
             profileAsync.when(
               data: (profile) => _WeeklyGoalRow(
@@ -86,26 +94,31 @@ class ProfileScreen extends ConsumerWidget {
               child: InkWell(
                 borderRadius: BorderRadius.circular(kRadiusMd),
                 onTap: () => context.go('/profile/manage-data'),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Manage Data',
-                          style: theme.textTheme.titleMedium,
+                // No container: true — identifier merges into the parent InkWell's
+                // semantics node so Playwright can click-target it.
+                child: Semantics(
+                  identifier: 'profile-manage-data',
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Manage Data',
+                            style: theme.textTheme.titleMedium,
+                          ),
                         ),
-                      ),
-                      Icon(
-                        Icons.chevron_right,
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.3,
+                        Icon(
+                          Icons.chevron_right,
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.3,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -328,9 +341,23 @@ class _WeightUnitToggle extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return SegmentedButton<String>(
-      segments: const [
-        ButtonSegment(value: 'kg', label: Text('kg')),
-        ButtonSegment(value: 'lbs', label: Text('lbs')),
+      segments: [
+        ButtonSegment(
+          value: 'kg',
+          label: Semantics(
+            container: true,
+            identifier: 'profile-kg',
+            child: const Text('kg'),
+          ),
+        ),
+        ButtonSegment(
+          value: 'lbs',
+          label: Semantics(
+            container: true,
+            identifier: 'profile-lbs',
+            child: const Text('lbs'),
+          ),
+        ),
       ],
       selected: {weightUnit},
       onSelectionChanged: (selection) {
@@ -509,10 +536,16 @@ class _WeeklyGoalRow extends ConsumerWidget {
               children: [
                 Text('Weekly Goal', style: theme.textTheme.titleLarge),
                 const SizedBox(height: 4),
-                Text(
-                  'How many times per week do you want to train?',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                Semantics(
+                  container: true,
+                  identifier: 'profile-goal-sheet-title',
+                  child: Text(
+                    'How many times per week do you want to train?',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.55,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -604,14 +637,18 @@ class _LogoutButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return OutlinedButton(
-      style: OutlinedButton.styleFrom(
-        foregroundColor: Theme.of(context).colorScheme.error,
-        side: BorderSide(color: Theme.of(context).colorScheme.error),
-        padding: const EdgeInsets.symmetric(vertical: 16),
+    return Semantics(
+      container: true,
+      identifier: 'profile-logout-btn',
+      child: OutlinedButton(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Theme.of(context).colorScheme.error,
+          side: BorderSide(color: Theme.of(context).colorScheme.error),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+        ),
+        onPressed: () => _confirmLogout(context, ref),
+        child: const Text('Log Out'),
       ),
-      onPressed: () => _confirmLogout(context, ref),
-      child: const Text('Log Out'),
     );
   }
 
@@ -620,11 +657,19 @@ class _LogoutButton extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Log Out'),
-        content: const Text('Are you sure you want to log out?'),
+        content: Semantics(
+          container: true,
+          identifier: 'profile-logout-dialog',
+          child: const Text('Are you sure you want to log out?'),
+        ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+          Semantics(
+            container: true,
+            identifier: 'profile-cancel-btn',
+            child: TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel'),
+            ),
           ),
           TextButton(
             style: TextButton.styleFrom(

@@ -18,12 +18,20 @@ class RoutineListScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Routines'),
+        title: Semantics(
+          container: true,
+          identifier: 'routine-heading',
+          child: const Text('Routines'),
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'Create routine',
-            onPressed: () => context.go('/routines/create'),
+          Semantics(
+            container: true,
+            identifier: 'routine-mgmt-create-btn',
+            child: IconButton(
+              icon: const Icon(Icons.add),
+              tooltip: 'Create routine',
+              onPressed: () => context.go('/routines/create'),
+            ),
           ),
         ],
       ),
@@ -55,7 +63,10 @@ class RoutineListScreen extends ConsumerWidget {
               const SliverPadding(
                 padding: EdgeInsets.only(left: 16, right: 16, top: 16),
                 sliver: SliverToBoxAdapter(
-                  child: SectionHeader(title: 'MY ROUTINES'),
+                  child: SectionHeader(
+                    title: 'MY ROUTINES',
+                    semanticsIdentifier: 'routine-my-section',
+                  ),
                 ),
               ),
               const SliverToBoxAdapter(child: SizedBox(height: 8)),
@@ -106,7 +117,10 @@ class RoutineListScreen extends ConsumerWidget {
                 const SliverPadding(
                   padding: EdgeInsets.symmetric(horizontal: 16),
                   sliver: SliverToBoxAdapter(
-                    child: SectionHeader(title: 'STARTER ROUTINES'),
+                    child: SectionHeader(
+                      title: 'STARTER ROUTINES',
+                      semanticsIdentifier: 'routine-starter-section',
+                    ),
                   ),
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 8)),

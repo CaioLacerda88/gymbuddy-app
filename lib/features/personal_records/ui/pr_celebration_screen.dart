@@ -204,9 +204,13 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen>
                   const SizedBox(height: 40),
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _onContinue,
-                      child: const Text('Continue'),
+                    child: Semantics(
+                      container: true,
+                      identifier: 'pr-continue-btn',
+                      child: ElevatedButton(
+                        onPressed: _onContinue,
+                        child: const Text('Continue'),
+                      ),
                     ),
                   ),
                 ],
@@ -252,10 +256,14 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen>
           ),
         ),
         const SizedBox(height: 16),
-        Text(
-          'First Workout Complete!',
-          style: theme.textTheme.headlineLarge,
-          textAlign: TextAlign.center,
+        Semantics(
+          container: true,
+          identifier: 'pr-first-workout',
+          child: Text(
+            'First Workout Complete!',
+            style: theme.textTheme.headlineLarge,
+            textAlign: TextAlign.center,
+          ),
         ),
         const SizedBox(height: 8),
         Text(
@@ -283,17 +291,21 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen>
       children: [
         ScaleTransition(
           scale: _scaleAnimation,
-          child: Text(
-            'NEW PR',
-            style: theme.textTheme.displayMedium?.copyWith(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.w900,
-              shadows: [
-                Shadow(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.6),
-                  blurRadius: 20,
-                ),
-              ],
+          child: Semantics(
+            container: true,
+            identifier: 'pr-new-heading',
+            child: Text(
+              'NEW PR',
+              style: theme.textTheme.displayMedium?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w900,
+                shadows: [
+                  Shadow(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.6),
+                    blurRadius: 20,
+                  ),
+                ],
+              ),
             ),
           ),
         ),

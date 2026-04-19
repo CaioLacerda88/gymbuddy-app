@@ -936,7 +936,31 @@ test.describe('Routine regressions', () => {
   test('should start Push Day dumbbell exercises with non-zero weight (BUG-004)', async ({
     page,
   }) => {
-    await page.locator(ROUTINE.routineName('Push Day')).first().click();
+    // Push Day may be below the fold due to viewport culling in Flutter's
+    // ListView.builder. Position mouse over the list and scroll in steps.
+    const pushDay = page.locator(ROUTINE.routineName('Push Day')).first();
+    const alreadyVisible = await pushDay
+      .waitFor({ state: 'visible', timeout: 3_000 })
+      .then(() => true)
+      .catch(() => false);
+
+    if (!alreadyVisible) {
+      const vp = page.viewportSize();
+      const cx = vp ? vp.width / 2 : 400;
+      const cy = vp ? vp.height * 0.6 : 400;
+      await page.mouse.move(cx, cy);
+
+      for (let i = 0; i < 6; i++) {
+        await page.mouse.wheel(0, 200);
+        await page.waitForTimeout(300);
+        const found = await pushDay
+          .waitFor({ state: 'visible', timeout: 1_500 })
+          .then(() => true)
+          .catch(() => false);
+        if (found) break;
+      }
+    }
+    await pushDay.click();
 
     await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
       timeout: 20_000,

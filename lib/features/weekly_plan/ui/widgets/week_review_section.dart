@@ -56,23 +56,36 @@ class WeekReviewSection extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Text(
-                isAllComplete ? 'WEEK COMPLETE' : 'THIS WEEK',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: isAllComplete
-                      ? _primaryGreen
-                      : theme.colorScheme.onSurface.withValues(alpha: 0.85),
-                  fontWeight: FontWeight.w700,
+              child: Semantics(
+                container: true,
+                identifier: isAllComplete
+                    ? 'weekly-plan-complete'
+                    : 'weekly-plan-this-week',
+                child: Text(
+                  isAllComplete ? 'WEEK COMPLETE' : 'THIS WEEK',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: isAllComplete
+                        ? _primaryGreen
+                        : theme.colorScheme.onSurface.withValues(alpha: 0.85),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
             if (onNewWeek != null)
-              GestureDetector(
+              InkWell(
                 onTap: onNewWeek,
-                child: Text(
-                  'NEW WEEK',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: _primaryGreen,
+                borderRadius: BorderRadius.circular(4),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
+                  ),
+                  child: Text(
+                    'NEW WEEK',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: _primaryGreen,
+                    ),
                   ),
                 ),
               ),

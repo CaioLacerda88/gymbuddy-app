@@ -46,18 +46,30 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
             borderRadius: BorderRadius.circular(16),
           ),
           title: const Text('Delete Exercise'),
-          content: Text('Are you sure you want to delete "${exercise.name}"?'),
+          content: Semantics(
+            container: true,
+            identifier: 'exercise-detail-delete-dialog',
+            child: Text('Are you sure you want to delete "${exercise.name}"?'),
+          ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              style: TextButton.styleFrom(
-                foregroundColor: dialogTheme.colorScheme.error,
+            Semantics(
+              container: true,
+              identifier: 'exercise-detail-delete-cancel',
+              child: TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Cancel'),
               ),
-              child: const Text('Delete'),
+            ),
+            Semantics(
+              container: true,
+              identifier: 'exercise-detail-delete-confirm',
+              child: TextButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                style: TextButton.styleFrom(
+                  foregroundColor: dialogTheme.colorScheme.error,
+                ),
+                child: const Text('Delete'),
+              ),
             ),
           ],
         );
@@ -98,7 +110,13 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
     final asyncExercise = ref.watch(exerciseByIdProvider(widget.exerciseId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Exercise Details')),
+      appBar: AppBar(
+        title: Semantics(
+          container: true,
+          identifier: 'exercise-detail-title',
+          child: const Text('Exercise Details'),
+        ),
+      ),
       body: asyncExercise.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(
@@ -167,12 +185,16 @@ class _ExerciseDetailBody extends ConsumerWidget {
           Text(exercise.name, style: theme.textTheme.headlineLarge),
           if (!exercise.isDefault) ...[
             const SizedBox(height: 4),
-            Text(
-              'Custom exercise',
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: primary.withValues(alpha: 0.8),
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.5,
+            Semantics(
+              container: true,
+              identifier: 'exercise-detail-custom-badge',
+              child: Text(
+                'Custom exercise',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: primary.withValues(alpha: 0.8),
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
+                ),
               ),
             ),
           ],
@@ -227,6 +249,8 @@ class _ExerciseDetailBody extends ConsumerWidget {
             SizedBox(
               width: double.infinity,
               child: Semantics(
+                container: true,
+                identifier: 'exercise-detail-delete-btn',
                 label: 'Delete exercise',
                 child: OutlinedButton.icon(
                   onPressed: isDeleting ? null : onDelete,

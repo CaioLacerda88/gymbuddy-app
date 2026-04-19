@@ -4,7 +4,7 @@
 
 Gym training app for logging workouts, tracking personal records, and managing exercises. Flutter + Supabase + Riverpod. Android-first, iOS deferred. Dark bold theme, gym-floor UX (one-handed, glanceable, sweat-proof).
 
-**Market context:** $12B+ fitness app market, 70% abandoned within 90 days. Core differentiator: RPG gamification tightly coupled to real training data (see Phase 15-16).
+**Market context:** $12B+ fitness app market, 70% abandoned within 90 days. Core differentiator: RPG gamification tightly coupled to real training data (see Phase 16-17). Brazilian fitness market $1.32B — pt-BR localization in Phase 15.
 
 ### Progress
 
@@ -49,9 +49,15 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 14d | Local PR Detection + Reconciliation | DONE | #84 |
 | 14e | Polish + Edge Cases | DONE | #85 |
 | 14 | Offline Support | DONE | #78-#85 |
-| 15 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
-| 16 | Gamification Advanced (Quests, Stats Panel) | TODO | - |
-| 17 | Nice-to-Have (v2.0+) | BACKLOG | - |
+| 15a | i18n Infrastructure + E2E Selector Migration | TODO | - |
+| 15b | Full String Extraction | TODO | - |
+| 15c | Portuguese Translations + Exercise Content | TODO | - |
+| 15d | Language Picker UI + Persistence | TODO | - |
+| 15e | QA + E2E + Overflow Polish | TODO | - |
+| 15 | Portuguese (Brazil) Localization | TODO | - |
+| 16 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
+| 17 | Gamification Advanced (Quests, Stats Panel) | TODO | - |
+| 18 | Nice-to-Have (v2.0+) | BACKLOG | - |
 
 ### Section Index
 
@@ -66,7 +72,8 @@ Read only what you need:
 | Step 12.3: UX Polish & Content Expansion | Implementing Step 12.3 |
 | Phase 13: Launch | Final work before Play Store submission |
 | Phase 14: Offline Support | Implementing offline-first workout capture |
-| Phase 15-16: Gamification | Implementing RPG system |
+| Phase 15: Localization | Implementing pt-BR support |
+| Phase 16-17: Gamification | Implementing RPG system |
 | QA Status | Doing QA or review |
 | Verification & Testing | Writing tests |
 | UX Design Direction | Building UI |
@@ -743,7 +750,149 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 
 ---
 
-## Phase 15: Gamification Foundation
+## Phase 15: Portuguese (Brazil) Localization
+
+Full pt-BR localization with language switcher in profile settings. Official `flutter_localizations` + `gen-l10n` with ARB files. DB stays English — default exercise/routine content translated client-side via ARB keyed by slug. Locale stored in Hive `user_prefs` (instant offline) + Supabase `profiles.locale` (cross-device). E2E selectors migrated from text-based to locale-independent identifiers.
+
+### Architecture Decisions
+
+1. **i18n approach:** `flutter_localizations` + `gen-l10n` with ARB files. Already have `intl: ^0.20.0`. Type-safe, zero new deps.
+2. **DB content:** Keep DB in English. Translate default exercises/routines client-side via ARB keyed by slug. User-created content stays in user's language.
+3. **Locale storage:** Hive `user_prefs` key `locale` (instant cold-start) + `locale` column in Supabase `profiles` (cross-device sync).
+4. **Locale provider:** Riverpod `Notifier<Locale>` watching Hive, drives `MaterialApp.locale`. Immediate switch, no restart.
+5. **E2E selectors:** Migrate from text-based (`name*="English text"`) to locale-independent identifiers via `Semantics(identifier: ...)`. Validate mechanism with Flutter AOM in 15a spike.
+
+### 15a: i18n Infrastructure + E2E Selector Migration
+
+**Goal:** Wire Flutter i18n pipeline end-to-end. Migrate E2E selectors to locale-independent identifiers. Zero visible behavior change.
+
+**Acceptance Criteria:**
+- [ ] `flutter_localizations` added to `pubspec.yaml`
+- [ ] `l10n.yaml` created (`arb-dir: lib/l10n`, `template-arb-file: app_en.arb`, `nullable-getter: false`)
+- [ ] `lib/l10n/app_en.arb` with ~50 core strings (nav labels, common buttons, shared widgets)
+- [ ] `lib/l10n/app_pt.arb` with same ~50 keys, Portuguese values
+- [ ] `make gen-l10n` target added to Makefile, wired into `make gen` and `make ci`
+- [ ] `MaterialApp.router()` in `lib/app.dart` wired with `localizationsDelegates`, `supportedLocales`, `locale` from `localeProvider`
+- [ ] `LocaleNotifier` provider (`lib/core/l10n/locale_provider.dart`) — reads Hive, defaults to `Locale('en')`, exposes `setLocale()`
+- [ ] `locale` field added to `Profile` Freezed model (`@Default('en') String locale`)
+- [ ] Supabase migration: `ALTER TABLE profiles ADD COLUMN locale TEXT NOT NULL DEFAULT 'en'`
+- [ ] Widget test harness pinned: shared helper with `locale: const Locale('en')` + localization delegates
+- [ ] E2E selector migration: Add `Semantics(identifier: ...)` to interactive widgets (~94 selectors). Update `selectors.ts` to use locale-independent identifiers
+- [ ] All existing tests pass unchanged
+
+**Key files to create:** `l10n.yaml`, `lib/l10n/app_en.arb`, `lib/l10n/app_pt.arb`, `lib/core/l10n/locale_provider.dart`, `supabase/migrations/00022_add_locale_to_profiles.sql`, `test/helpers/localized_widget.dart`
+
+**Key files to modify:** `pubspec.yaml`, `lib/app.dart`, `lib/features/profile/models/profile.dart`, `lib/features/profile/data/profile_repository.dart`, `Makefile`, `test/e2e/helpers/selectors.ts`, ~20 UI widget files (add Semantics identifiers), ~56 widget test files (add locale pinning)
+
+### 15b: Full String Extraction
+
+**Goal:** Extract ALL remaining UI strings to ARB. English-only (pt values are stubs). High-churn PR.
+
+**Acceptance Criteria:**
+- [ ] Zero hardcoded user-visible English strings in `lib/` (except AppTheme, routes, constants)
+- [ ] All ~20 UI screens + ~15 shared widgets use `AppLocalizations.of(context)`
+- [ ] Enum `displayName` refactored: `String localizedName(AppLocalizations l10n)` via switch expression for `MuscleGroup`, `EquipmentType`, `SetType`, `RecordType`, `WeightUnit`
+- [ ] `WorkoutFormatters` date strings ("Today", "Yesterday", "N days ago") moved to ARB
+- [ ] `AuthErrorMessages` ~10 strings moved to ARB
+- [ ] `NumberFormat` locale-aware (comma decimal for pt-BR: `80,5 kg`)
+- [ ] `DateFormat` locale-aware (dd/MM/yyyy for pt-BR)
+- [ ] `maxLines: 1` + `overflow: TextOverflow.ellipsis` added to overflow-risk widgets
+- [ ] `app_en.arb` grows to ~350-400 keys; `app_pt.arb` has same keys (placeholders)
+- [ ] All tests pass
+
+**String estimates:** Auth ~40, Home ~25, Exercises ~35, Workouts ~60, Routines ~30, Profile ~35, Records ~20, Weekly Plan ~35, Shared ~15, Enums ~25, Formatters ~15. Total ~335.
+
+### 15c: Portuguese Translations + Exercise Content
+
+**Goal:** Complete all pt-BR translations. App has full Portuguese content, no UI to switch yet.
+
+**Acceptance Criteria:**
+- [ ] `app_pt.arb` complete with all ~350-400 Portuguese translations
+- [ ] Exercise names/descriptions/form_tips translated in ARB keyed by slug (~150 entries)
+- [ ] Default routine names translated
+- [ ] "PR" kept untranslated (Brazilian gym culture uses it)
+- [ ] PT-BR strings intentionally shorter where overflow risk exists
+- [ ] ARB completeness unit test (every en key exists in pt_BR)
+- [ ] All tests pass
+
+**Exercise lookup:** `localizedExerciseName(exercise, l10n)` — if `isDefault`, derive slug from English name, look up ARB; else return `exercise.name`.
+
+**Key files to create:** `lib/core/l10n/exercise_l10n.dart`, `test/unit/core/l10n/arb_completeness_test.dart`
+
+**Brazilian gym terminology:** Supino Reto (Bench Press), Agachamento (Squat), Levantamento Terra (Deadlift), Serie (Set), Repeticao (Rep), Treino (Workout), Peito (Chest), Costas (Back), Pernas (Legs), Ombros (Shoulders), Bracos (Arms).
+
+### 15d: Language Picker UI + Persistence
+
+**Goal:** Users switch language from profile. Immediate change, persisted locally and to Supabase.
+
+**Acceptance Criteria:**
+- [ ] PREFERENCES section in `ProfileScreen` between Weekly Goal and DATA MANAGEMENT
+- [ ] "Language" row showing current language in that language ("English" / "Portugues (Brasil)")
+- [ ] Bottom sheet modal on tap (same pattern as `_showFrequencySheet`)
+- [ ] Immediate locale switch via `LocaleNotifier.setLocale()`, no restart
+- [ ] Hive persistence (offline-safe) + Supabase sync (best-effort)
+- [ ] On startup: Hive first, reconcile with Supabase on login
+- [ ] Language switcher widget tests + locale persistence unit tests
+
+**Key files to create:** `lib/features/profile/ui/widgets/language_picker_sheet.dart`
+
+### 15e: QA + E2E + Overflow Polish
+
+**Goal:** Verify pt-BR renders correctly, fix overflows, add targeted E2E coverage.
+
+**Acceptance Criteria:**
+- [ ] `test/e2e/specs/localization.spec.ts` with ~8 pt-BR tests
+- [ ] `setLocale()` E2E helper in `helpers/app.ts`
+- [ ] Text overflow test at 320dp width with pt-BR (widget test)
+- [ ] All overflow issues fixed
+- [ ] All 148+ existing E2E tests pass (locale-independent selectors from 15a)
+- [ ] Full regression: ~1339 unit/widget tests pass
+- [ ] Number formatting: "80,5 kg" in pt-BR; Date: "18/04/2026"
+- [ ] New test user `smokeLocalization` in test fixtures
+
+### Cultural UX Requirements
+
+- **Decimal:** Comma for pt-BR (`80,5 kg`). `NumberFormat` with locale.
+- **Dates:** dd/MM/yyyy for pt-BR. All `DateFormat` calls locale-aware.
+- **Weight:** kg default, standard in Brazil. No change.
+- **"PR":** Keep untranslated — Brazilian gym culture uses it.
+- **Exercise names:** Portuguese primary for defaults. User-created untranslated.
+
+### Overflow Risk Map
+
+| Severity | Widget | Fix |
+|----------|--------|-----|
+| Critical | Bottom nav labels | `maxLines: 1` + `ellipsis`, test at 320dp |
+| High | "Weight Unit" label → "Peso" | Shorter copy or `ellipsis` |
+| High | `_StatCard` labels | `maxLines: 1` + `ellipsis` |
+| Medium | SnackBar / dialog buttons | SnackBars scroll; buttons full-width |
+| Low | Rest timer buttons | Numeric, immune |
+
+### Risks
+
+| Risk | Mitigation |
+|------|------------|
+| Semantics.identifier + AOM mechanism | Validate in 15a spike before full migration |
+| Widget test breakage (missing delegates) | Shared helper + pin `locale: Locale('en')` |
+| Enum displayName refactor (~42 call sites) | Mechanical grep-replace, CI catches regressions |
+| PT-BR overflow | Proactive `maxLines`+`ellipsis` in 15b + regression in 15e |
+| ARB key drift en/pt | Completeness unit test in CI |
+| Hive/Supabase locale desync | Hive authoritative, Supabase best-effort |
+
+### Effort Estimate
+
+| Sub-phase | Days |
+|-----------|------|
+| 15a: Infrastructure + selector migration | 3-4 |
+| 15b: String extraction | 4-5 |
+| 15c: Portuguese translations + content | 3-4 |
+| 15d: Language picker UI | 1-2 |
+| 15e: QA + E2E + polish | 2-3 |
+| **Total** | **~2.5-3 weeks** |
+
+---
+
+## Phase 16: Gamification Foundation
 
 > Adapted from GAMIFICATION.md. RPG layer tightly coupled to real training data — "your strength IS your character."
 
@@ -755,7 +904,7 @@ Not auto-discard. When app opens and `startedAt` is >6 hours ago, show prominent
 - Beginners see only XP bar + level for first 30 days
 - Stats normalized to personal best (0-100 scale), not population norms
 
-### 15a: PR Celebration Overlay (Phase 1)
+### 16a: PR Celebration Overlay (Phase 1)
 
 Full-screen overlay (not dialog). Background `#0F0F23` at 0.96 opacity. Dismissible with tap.
 - XP animation: `+N XP` tween from 0 to final over 600ms, color `#FFFFFF60` -> `#00E676`
@@ -763,7 +912,7 @@ Full-screen overlay (not dialog). Background `#0F0F23` at 0.96 opacity. Dismissi
 - PR section: amber `#FFD54F` band, `NEW RECORD` label, exercise name + new value
 - Level up: green vignette glow, scale punch animation, `LEVEL UP` label
 
-### 15b: XP & Level System (Phase 2)
+### 16b: XP & Level System (Phase 2)
 
 **XP formula:** `Base(50) + Volume(floor(kg/500)) + Intensity((rpe-5)*10) + PR(+100/+50) + Quest(+75)`
 **Level curve:** `XP for Level N = 500 * N^1.5` (fast early, meaningful later)
@@ -771,35 +920,35 @@ Full-screen overlay (not dialog). Background `#0F0F23` at 0.96 opacity. Dismissi
 
 Computed from existing data — retroactive for existing users. Never decreases, never paywalled.
 
-### 15c: Weekly Streak (Phase 1)
+### 16c: Weekly Streak (Phase 1)
 
 - Weekly consistency meter: 7 segments (Mon-Sun), trained=green, not-trained=neutral (NOT red)
 - Streak: consecutive weeks meeting training frequency goal. Resets only if entire week missed
 - Comeback bonus (2x XP) instead of shame on miss
 - Lives on Profile screen (character sheet)
 
-### 15d: Profile -> Character Sheet
+### 16d: Profile -> Character Sheet
 
 Same `/profile` URL. Identity block with `LVL N` badge, XP bar (6dp height, `#00E676`), weekly consistency band.
 
-### 15e: Home Screen Integration
+### 16e: Home Screen Integration
 
 One line replacing date subtitle: `[LVL 12] . [14d streak] . [Mon, Apr 7]`
 Daily quest chip (44dp, dismissible) between stat cards and routine list.
 
-**Observation from B6 smoke (2026-04-16) — factor into 15e scope:** On the `active-plan` home state (Samsung S25 Ultra), the top ~30% of the screen holds the plan counter + hero banner + week strip; the bottom ~70% down to the bottom nav is dead space. `Last: <routine>, Today` is a token text gesture with no data payload. The highest-dopamine moment in a training app is seeing your own work reflected back — right now we don't. When scoping 15e, the daily quest chip + LVL/streak line alone likely will not fill the returning-lifter gap; consider a post-workout recap surface (last-session best-set-per-exercise, trailing 7-day volume, PR-of-the-week) as part of the same pass so XP/streak/quest additions and the recap fill compose into one coherent design rather than two disjoint passes. Anti-generic-AI: do NOT ship a vanilla "Recent workouts" list — whatever lands must feel like GymBuddy (dark, bold, data-forward, glance-first).
+**Observation from B6 smoke (2026-04-16) — factor into 16e scope:** On the `active-plan` home state (Samsung S25 Ultra), the top ~30% of the screen holds the plan counter + hero banner + week strip; the bottom ~70% down to the bottom nav is dead space. `Last: <routine>, Today` is a token text gesture with no data payload. The highest-dopamine moment in a training app is seeing your own work reflected back — right now we don't. When scoping 16e, the daily quest chip + LVL/streak line alone likely will not fill the returning-lifter gap; consider a post-workout recap surface (last-session best-set-per-exercise, trailing 7-day volume, PR-of-the-week) as part of the same pass so XP/streak/quest additions and the recap fill compose into one coherent design rather than two disjoint passes. Anti-generic-AI: do NOT ship a vanilla "Recent workouts" list — whatever lands must feel like GymBuddy (dark, bold, data-forward, glance-first).
 
 ---
 
-## Phase 16: Gamification Advanced
+## Phase 17: Gamification Advanced
 
-### 16a: Weekly Smart Quests (Phase 3)
+### 17a: Weekly Smart Quests (Phase 3)
 
 3 auto-generated per week: one improvement, one exploration, one consistency. Never expire with failure state. Completion gives bonus XP, never access to core features.
 
 New schema: `quests` table (`user_id`, `week`, `type`, `target`, `completed_at`).
 
-### 16b: Training Stats Panel (Phase 4)
+### 17b: Training Stats Panel (Phase 4)
 
 Six stats computed from real workout data:
 - Strength (`#FF6B6B`), Endurance (`#40C4FF`), Power (`#FF9F43`), Consistency (`#00E676`), Volume (`#9B8DFF`), Mobility (`#26C6DA`)
@@ -812,7 +961,7 @@ Confetti, streak flames/emoji, badge walls, multiple progress bars on home, leve
 
 ---
 
-## Phase 17: Nice-to-Have (v2.0+)
+## Phase 18: Nice-to-Have (v2.0+)
 
 | Feature | Notes |
 |---------|-------|
@@ -823,7 +972,6 @@ Confetti, streak flames/emoji, badge walls, multiple progress bars on home, leve
 | Body weight tracking | Correlate volume with weight changes |
 | Dark/Light mode toggle | Some users prefer light in bright gyms |
 | WearOS integration | Not critical for launch |
-| Localization (i18n) | English-only for launch |
 | App review prompt | Ask happy users for store review |
 | Seasonal content | Battle passes, dungeon/boss — only if v1.0 research shows demand |
 

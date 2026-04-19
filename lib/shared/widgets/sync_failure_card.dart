@@ -26,55 +26,74 @@ class SyncFailureCard extends ConsumerWidget {
         ? "Workout couldn't sync"
         : "$count workouts couldn't sync";
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Container(
-        decoration: BoxDecoration(
-          color: theme.cardTheme.color ?? theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(kRadiusMd),
-          border: Border(
-            left: BorderSide(color: theme.colorScheme.error, width: 4),
+    return Semantics(
+      container: true,
+      identifier: 'offline-failure-card',
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Container(
+          decoration: BoxDecoration(
+            color: theme.cardTheme.color ?? theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(kRadiusMd),
+            border: Border(
+              left: BorderSide(color: theme.colorScheme.error, width: 4),
+            ),
           ),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      color: theme.colorScheme.error,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: theme.colorScheme.error,
+                      ),
                     ),
-                  ),
-                  Text(
-                    'Saved locally. Retry or dismiss.',
-                    style: theme.textTheme.bodySmall?.copyWith(
+                    Semantics(
+                      container: true,
+                      identifier: 'offline-failure-subtitle',
+                      child: Text(
+                        'Saved locally. Retry or dismiss.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.65,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Semantics(
+                container: true,
+                identifier: 'offline-dismiss',
+                child: TextButton(
+                  onPressed: () => ref
+                      .read(syncServiceProvider.notifier)
+                      .dismissTerminalItems(),
+                  child: Text(
+                    'Dismiss',
+                    style: TextStyle(
                       color: theme.colorScheme.onSurface.withValues(
                         alpha: 0.65,
                       ),
                     ),
                   ),
-                ],
-              ),
-            ),
-            TextButton(
-              onPressed: () =>
-                  ref.read(syncServiceProvider.notifier).dismissTerminalItems(),
-              child: Text(
-                'Dismiss',
-                style: TextStyle(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
                 ),
               ),
-            ),
-            TextButton(
-              onPressed: () => _handleRetry(context, ref),
-              child: const Text('Retry'),
-            ),
-          ],
+              Semantics(
+                container: true,
+                identifier: 'offline-retry',
+                child: TextButton(
+                  onPressed: () => _handleRetry(context, ref),
+                  child: const Text('Retry'),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

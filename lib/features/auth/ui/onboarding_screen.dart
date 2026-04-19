@@ -184,31 +184,49 @@ class _WelcomePage extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.fitness_center,
-            size: 80,
-            color: theme.colorScheme.primary,
-          ),
-          const SizedBox(height: 32),
-          Text(
-            'Track every rep,\nevery time',
-            style: theme.textTheme.displayMedium?.copyWith(
-              color: theme.colorScheme.primary,
+          // Wrap passive content in a semantics boundary so it does not
+          // merge into the GradientButton's semantics node (which would
+          // drop the button's `identifier` in the DOM).
+          Semantics(
+            container: true,
+            child: Column(
+              children: [
+                Icon(
+                  Icons.fitness_center,
+                  size: 80,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(height: 32),
+                Semantics(
+                  container: true,
+                  identifier: 'onboarding-welcome',
+                  child: Text(
+                    'Track every rep,\nevery time',
+                    style: theme.textTheme.displayMedium?.copyWith(
+                      color: theme.colorScheme.primary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Log workouts, crush personal records, and build the physique you want.',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Log workouts, crush personal records, and build the physique you want.',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-            ),
-            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 48),
           SizedBox(
             width: double.infinity,
-            child: GradientButton(label: 'GET STARTED', onPressed: onNext),
+            child: GradientButton(
+              label: 'GET STARTED',
+              onPressed: onNext,
+              semanticsIdentifier: 'onboarding-get-started',
+            ),
           ),
         ],
       ),
@@ -271,6 +289,7 @@ class _ProfileSetupPage extends StatelessWidget {
             prefixIcon: Icons.person_outlined,
             maxLength: 50,
             showCounter: false,
+            semanticsIdentifier: 'onboarding-display-name',
           ),
           const SizedBox(height: 24),
           Text('Fitness level', style: theme.textTheme.titleMedium),
@@ -279,21 +298,25 @@ class _ProfileSetupPage extends StatelessWidget {
             spacing: 12,
             children: _fitnessLevels.map((level) {
               final isSelected = level == fitnessLevel;
-              return ChoiceChip(
-                label: Text(level[0].toUpperCase() + level.substring(1)),
-                selected: isSelected,
-                onSelected: (_) => onFitnessLevelChanged(level),
-                selectedColor: theme.colorScheme.primary,
-                labelStyle: TextStyle(
-                  color: isSelected
-                      ? theme.colorScheme.onPrimary
-                      : theme.colorScheme.onSurface,
-                  fontWeight: FontWeight.w600,
-                ),
-                side: BorderSide(
-                  color: isSelected
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurface.withValues(alpha: 0.3),
+              return Semantics(
+                container: true,
+                identifier: 'onboarding-$level',
+                child: ChoiceChip(
+                  label: Text(level[0].toUpperCase() + level.substring(1)),
+                  selected: isSelected,
+                  onSelected: (_) => onFitnessLevelChanged(level),
+                  selectedColor: theme.colorScheme.primary,
+                  labelStyle: TextStyle(
+                    color: isSelected
+                        ? theme.colorScheme.onPrimary
+                        : theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  side: BorderSide(
+                    color: isSelected
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                  ),
                 ),
               );
             }).toList(),
@@ -335,13 +358,21 @@ class _ProfileSetupPage extends StatelessWidget {
             }).toList(),
           ),
           const Spacer(),
-          GradientButton(label: "LET'S GO", onPressed: onFinish),
+          GradientButton(
+            label: "LET'S GO",
+            onPressed: onFinish,
+            semanticsIdentifier: 'onboarding-lets-go',
+          ),
           const SizedBox(height: 12),
           Center(
-            child: TextButton.icon(
-              onPressed: onBack,
-              icon: const Icon(Icons.arrow_back, size: 18),
-              label: const Text('Back'),
+            child: Semantics(
+              container: true,
+              identifier: 'onboarding-back',
+              child: TextButton.icon(
+                onPressed: onBack,
+                icon: const Icon(Icons.arrow_back, size: 18),
+                label: const Text('Back'),
+              ),
             ),
           ),
           const SizedBox(height: 16),

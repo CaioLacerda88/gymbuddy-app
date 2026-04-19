@@ -260,11 +260,12 @@ test.describe('Exercises', { tag: '@smoke' }, () => {
     await page.click(EXERCISE_LIST.equipmentFilter('Barbell'));
     await page.waitForTimeout(500);
 
-    // Verify the filter is now selected.
-    const barbellFilter = page.locator(
-      EXERCISE_LIST.equipmentFilter('Barbell'),
-    );
-    await expect(barbellFilter).toBeChecked();
+    // Verify the filter is now selected. The identifier resolves to the
+    // Semantics group wrapper; the actual checkbox is inside it.
+    const barbellCheckbox = page
+      .locator(EXERCISE_LIST.equipmentFilter('Barbell'))
+      .locator('role=checkbox');
+    await expect(barbellCheckbox).toBeChecked();
   });
 
   test('should filter exercises by name via search input', async ({ page }) => {
@@ -590,10 +591,11 @@ test.describe('Exercise library', () => {
     await page.click(EXERCISE_LIST.equipmentFilter('Barbell'));
     await page.waitForTimeout(600);
 
-    // Equipment filters are checkboxes — use aria-checked, not aria-current.
+    // Equipment filters are checkboxes — the identifier resolves to the
+    // Semantics group wrapper; target the checkbox inside it.
     await expect(
-      page.locator(EXERCISE_LIST.equipmentFilter('Barbell')),
-    ).toHaveAttribute('aria-checked', 'true');
+      page.locator(EXERCISE_LIST.equipmentFilter('Barbell')).locator('role=checkbox'),
+    ).toBeChecked();
 
     const countAfter = await allCards.count();
     expect(countAfter).toBeGreaterThanOrEqual(1);

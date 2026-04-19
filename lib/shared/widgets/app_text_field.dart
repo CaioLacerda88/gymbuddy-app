@@ -15,6 +15,7 @@ class AppTextField extends StatefulWidget {
     this.onFieldSubmitted,
     this.maxLength,
     this.showCounter = true,
+    this.semanticsIdentifier,
   });
 
   final String label;
@@ -36,6 +37,10 @@ class AppTextField extends StatefulWidget {
   /// `counterText: ''` directly.
   final bool showCounter;
 
+  /// Optional Semantics identifier for locale-independent E2E selectors.
+  /// When non-null, wraps the field in `Semantics(container: true, identifier: ...)`.
+  final String? semanticsIdentifier;
+
   @override
   State<AppTextField> createState() => _AppTextFieldState();
 }
@@ -51,7 +56,7 @@ class _AppTextFieldState extends State<AppTextField> {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
+    Widget field = TextFormField(
       controller: widget.controller,
       validator: widget.validator,
       obscureText: _obscured,
@@ -73,5 +78,15 @@ class _AppTextFieldState extends State<AppTextField> {
             : null,
       ),
     );
+
+    if (widget.semanticsIdentifier != null) {
+      field = Semantics(
+        container: true,
+        identifier: widget.semanticsIdentifier!,
+        child: field,
+      );
+    }
+
+    return field;
   }
 }

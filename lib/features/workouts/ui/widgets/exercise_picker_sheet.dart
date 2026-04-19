@@ -96,6 +96,8 @@ class _SheetBodyState extends ConsumerState<_SheetBody> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Semantics(
+              container: true,
+              identifier: 'exercise-picker-search',
               label: 'Search exercises to add',
               child: TextField(
                 controller: _searchController,

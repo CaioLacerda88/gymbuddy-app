@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/exceptions/app_exception.dart';
 import '../../../core/theme/app_theme.dart';
@@ -27,7 +28,13 @@ class ManageDataScreen extends ConsumerWidget {
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Manage Data')),
+      appBar: AppBar(
+        title: Semantics(
+          container: true,
+          identifier: 'manage-data-heading',
+          child: const Text('Manage Data'),
+        ),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -46,6 +53,7 @@ class ManageDataScreen extends ConsumerWidget {
               subtitle: '$workoutCountText workouts will be removed',
               onTap: () =>
                   _showDeleteHistoryDialog(context, ref, workoutCountValue),
+              semanticsIdentifier: 'manage-data-delete-history',
             ),
             const SizedBox(height: 24),
             // DANGER section
@@ -60,6 +68,7 @@ class ManageDataScreen extends ConsumerWidget {
               title: 'Reset All Account Data',
               subtitle: 'Removes everything. Permanent.',
               onTap: () => _showResetAllModal(context, ref),
+              semanticsIdentifier: 'manage-data-reset-all',
               danger: true,
               titleStyle: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
@@ -102,12 +111,16 @@ class ManageDataScreen extends ConsumerWidget {
             onPressed: () => Navigator.of(ctx).pop(false),
             child: const Text('Cancel'),
           ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: theme.colorScheme.error,
+          Semantics(
+            container: true,
+            identifier: 'manage-data-delete-confirm',
+            child: TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              style: TextButton.styleFrom(
+                foregroundColor: theme.colorScheme.error,
+              ),
+              child: const Text('Delete History'),
             ),
-            child: const Text('Delete History'),
           ),
         ],
       ),
@@ -126,12 +139,16 @@ class ManageDataScreen extends ConsumerWidget {
             onPressed: () => Navigator.of(ctx).pop(false),
             child: const Text('Cancel'),
           ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: theme.colorScheme.error,
+          Semantics(
+            container: true,
+            identifier: 'manage-data-yes-delete',
+            child: TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              style: TextButton.styleFrom(
+                foregroundColor: theme.colorScheme.error,
+              ),
+              child: const Text('Yes, Delete'),
             ),
-            child: const Text('Yes, Delete'),
           ),
         ],
       ),
@@ -150,9 +167,15 @@ class ManageDataScreen extends ConsumerWidget {
       return;
     }
     if (!context.mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Workout history cleared')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Semantics(
+          container: true,
+          identifier: 'manage-data-history-cleared',
+          child: const Text('Workout history cleared'),
+        ),
+      ),
+    );
   }
 
   Future<void> _showResetAllModal(BuildContext context, WidgetRef ref) async {
@@ -175,9 +198,15 @@ class ManageDataScreen extends ConsumerWidget {
       return;
     }
     if (!context.mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Account data reset')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Semantics(
+          container: true,
+          identifier: 'manage-data-account-reset',
+          child: const Text('Account data reset'),
+        ),
+      ),
+    );
   }
 
   Future<void> _showDeleteAccountModal(
@@ -226,8 +255,17 @@ class ManageDataScreen extends ConsumerWidget {
       );
       return;
     }
-    // On success, the auth state listener will redirect to login — no
-    // snackbar needed since the screen is about to be unmounted.
+    // Explicitly redirect — the auth state listener should also trigger a
+    // redirect, but navigating here avoids race conditions with the loading
+    // dialog and stream timing.
+    if (context.mounted) {
+      try {
+        context.go('/login');
+      } on FlutterError catch (_) {
+        // GoRouter.of throws FlutterError when no GoRouter is in context
+        // (widget tests). Auth listener handles the redirect instead.
+      }
+    }
   }
 }
 
@@ -239,6 +277,7 @@ class _DataManagementTile extends StatelessWidget {
     required this.onTap,
     this.danger = false,
     this.titleStyle,
+    this.semanticsIdentifier,
   });
 
   final String title;
@@ -247,6 +286,9 @@ class _DataManagementTile extends StatelessWidget {
   final bool danger;
   final TextStyle? titleStyle;
 
+  /// Optional Semantics identifier for locale-independent E2E selectors.
+  final String? semanticsIdentifier;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -254,7 +296,7 @@ class _DataManagementTile extends StatelessWidget {
         ? theme.colorScheme.error.withValues(alpha: 0.12)
         : theme.cardTheme.color ?? theme.colorScheme.surface;
 
-    return Material(
+    Widget tile = Material(
       color: backgroundColor,
       borderRadius: BorderRadius.circular(12),
       child: ListTile(
@@ -264,6 +306,14 @@ class _DataManagementTile extends StatelessWidget {
         onTap: onTap,
       ),
     );
+    if (semanticsIdentifier != null) {
+      tile = Semantics(
+        container: true,
+        identifier: semanticsIdentifier,
+        child: tile,
+      );
+    }
+    return tile;
   }
 }
 
@@ -305,10 +355,14 @@ class _ResetAllDialogState extends State<_ResetAllDialog> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Reset Account Data'),
-          leading: IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () => Navigator.of(context).pop(false),
-            tooltip: 'Cancel',
+          leading: Semantics(
+            container: true,
+            identifier: 'manage-data-reset-cancel',
+            child: IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () => Navigator.of(context).pop(false),
+              tooltip: 'Cancel',
+            ),
           ),
         ),
         body: Padding(
@@ -364,6 +418,7 @@ class _ResetAllDialogState extends State<_ResetAllDialog> {
                           ? () => Navigator.of(context).pop(true)
                           : null,
                       gradient: AppTheme.destructiveGradient,
+                      semanticsIdentifier: 'manage-data-reset-btn',
                     ),
                   ),
                 ],

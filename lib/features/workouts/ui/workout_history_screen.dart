@@ -49,7 +49,13 @@ class _WorkoutHistoryScreenState extends ConsumerState<WorkoutHistoryScreen> {
     final asyncWorkouts = ref.watch(workoutHistoryProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('History')),
+      appBar: AppBar(
+        title: Semantics(
+          container: true,
+          identifier: 'history-heading',
+          child: const Text('History'),
+        ),
+      ),
       body: asyncWorkouts.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(
@@ -61,10 +67,14 @@ class _WorkoutHistoryScreenState extends ConsumerState<WorkoutHistoryScreen> {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 8),
-              FilledButton(
-                onPressed: () =>
-                    ref.read(workoutHistoryProvider.notifier).refresh(),
-                child: const Text('Retry'),
+              Semantics(
+                container: true,
+                identifier: 'history-retry',
+                child: FilledButton(
+                  onPressed: () =>
+                      ref.read(workoutHistoryProvider.notifier).refresh(),
+                  child: const Text('Retry'),
+                ),
               ),
             ],
           ),
@@ -126,10 +136,14 @@ class _EmptyHistoryBody extends StatelessWidget {
               color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
             ),
             const SizedBox(height: 16),
-            Text(
-              'No workouts yet',
-              style: theme.textTheme.titleLarge?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+            Semantics(
+              container: true,
+              identifier: 'history-empty',
+              child: Text(
+                'No workouts yet',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -140,10 +154,14 @@ class _EmptyHistoryBody extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: onStartWorkout,
-              icon: const Icon(Icons.play_arrow),
-              label: const Text('Start your first workout'),
+            Semantics(
+              container: true,
+              identifier: 'history-empty-cta',
+              child: FilledButton.icon(
+                onPressed: onStartWorkout,
+                icon: const Icon(Icons.play_arrow),
+                label: const Text('Start your first workout'),
+              ),
             ),
           ],
         ),

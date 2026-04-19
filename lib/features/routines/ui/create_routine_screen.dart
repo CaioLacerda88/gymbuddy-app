@@ -124,17 +124,27 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? 'Edit Routine' : 'Create Routine'),
+        title: Semantics(
+          container: true,
+          identifier: _isEditing
+              ? 'routine-mgmt-edit-title'
+              : 'routine-mgmt-create-title',
+          child: Text(_isEditing ? 'Edit Routine' : 'Create Routine'),
+        ),
         actions: [
-          TextButton(
-            onPressed: _canSave && !_saving ? _save : null,
-            child: _saving
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Save'),
+          Semantics(
+            container: true,
+            identifier: 'create-routine-save',
+            child: TextButton(
+              onPressed: _canSave && !_saving ? _save : null,
+              child: _saving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Save'),
+            ),
           ),
         ],
       ),
@@ -168,17 +178,21 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
               ),
               const SizedBox(height: 8),
             ],
-            OutlinedButton.icon(
-              onPressed: _addExercise,
-              icon: const Icon(Icons.add),
-              label: const Text('Add Exercise'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                side: BorderSide(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.5),
+            Semantics(
+              container: true,
+              identifier: 'create-routine-add-exercise',
+              child: OutlinedButton.icon(
+                onPressed: _addExercise,
+                icon: const Icon(Icons.add),
+                label: const Text('Add Exercise'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  side: BorderSide(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.5),
+                  ),
                 ),
               ),
             ),
@@ -282,7 +296,11 @@ class _ExerciseCard extends StatelessWidget {
               // Set count stepper
               Row(
                 children: [
-                  Text('Sets', style: theme.textTheme.bodyMedium),
+                  Semantics(
+                    container: true,
+                    identifier: 'create-routine-sets',
+                    child: Text('Sets', style: theme.textTheme.bodyMedium),
+                  ),
                   const Spacer(),
                   IconButton(
                     icon: const Icon(Icons.remove, size: 20),
@@ -311,7 +329,11 @@ class _ExerciseCard extends StatelessWidget {
               const SizedBox(height: 8),
 
               // Rest time chips
-              Text('Rest', style: theme.textTheme.bodyMedium),
+              Semantics(
+                container: true,
+                identifier: 'create-routine-rest',
+                child: Text('Rest', style: theme.textTheme.bodyMedium),
+              ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,

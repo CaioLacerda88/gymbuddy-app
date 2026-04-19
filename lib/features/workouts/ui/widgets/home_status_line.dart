@@ -42,33 +42,41 @@ class HomeStatusLine extends ConsumerWidget {
       // hero content directly below — the hero reads as a consequence of the
       // status, not a sibling. Lapsed (further down) stays at titleMedium.
       if (isComplete) {
-        return Text(
-          'Week complete \u2014 $total of $total done',
-          style: theme.textTheme.titleLarge?.copyWith(
-            color: theme.colorScheme.primary,
-            fontWeight: FontWeight.w700,
+        return Semantics(
+          container: true,
+          identifier: 'home-status-line',
+          child: Text(
+            'Week complete \u2014 $total of $total done',
+            style: theme.textTheme.titleLarge?.copyWith(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         );
       }
 
-      return Text.rich(
-        TextSpan(
-          children: [
-            TextSpan(
-              text: '$completed',
-              style: theme.textTheme.titleLarge?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.w700,
+      return Semantics(
+        container: true,
+        identifier: 'home-status-line',
+        child: Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: '$completed',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
-            TextSpan(
-              text: ' of $total this week',
-              style: theme.textTheme.titleLarge?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
-                fontWeight: FontWeight.w600,
+              TextSpan(
+                text: ' of $total this week',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     }
@@ -81,11 +89,15 @@ class HomeStatusLine extends ConsumerWidget {
     final hasHistory = ref.watch(hasAnyWorkoutProvider);
 
     if (hasHistory) {
-      return Text(
-        'No plan this week',
-        style: theme.textTheme.titleMedium?.copyWith(
-          color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
-          fontWeight: FontWeight.w600,
+      return Semantics(
+        container: true,
+        identifier: 'home-status-line',
+        child: Text(
+          'No plan this week',
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+            fontWeight: FontWeight.w600,
+          ),
         ),
       );
     }
@@ -96,6 +108,10 @@ class HomeStatusLine extends ConsumerWidget {
       return const SizedBox.shrink();
     }
 
-    return Text(displayName, style: theme.textTheme.headlineMedium);
+    return Semantics(
+      container: true,
+      identifier: 'home-status-line',
+      child: Text(displayName, style: theme.textTheme.headlineMedium),
+    );
   }
 }

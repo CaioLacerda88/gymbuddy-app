@@ -194,10 +194,14 @@ class _ChartBody extends StatelessWidget {
             ),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Text(
-            'Log your first set to start tracking',
-            style: theme.textTheme.bodyMedium?.copyWith(color: onSurface70),
-            textAlign: TextAlign.center,
+          child: Semantics(
+            container: true,
+            identifier: 'exercise-detail-chart-empty',
+            child: Text(
+              'Log your first set to start tracking',
+              style: theme.textTheme.bodyMedium?.copyWith(color: onSurface70),
+              textAlign: TextAlign.center,
+            ),
           ),
         ),
       );

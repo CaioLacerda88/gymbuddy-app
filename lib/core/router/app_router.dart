@@ -280,26 +280,42 @@ class _ShellScaffold extends ConsumerWidget {
               if (current == target) return;
               context.go(target);
             },
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.home),
-                label: 'Home',
-                tooltip: '',
+            destinations: [
+              Semantics(
+                container: true,
+                identifier: 'nav-home',
+                child: const NavigationDestination(
+                  icon: Icon(Icons.home),
+                  label: 'Home',
+                  tooltip: '',
+                ),
               ),
-              NavigationDestination(
-                icon: Icon(Icons.fitness_center),
-                label: 'Exercises',
-                tooltip: '',
+              Semantics(
+                container: true,
+                identifier: 'nav-exercises',
+                child: const NavigationDestination(
+                  icon: Icon(Icons.fitness_center),
+                  label: 'Exercises',
+                  tooltip: '',
+                ),
               ),
-              NavigationDestination(
-                icon: Icon(Icons.calendar_today),
-                label: 'Routines',
-                tooltip: '',
+              Semantics(
+                container: true,
+                identifier: 'nav-routines',
+                child: const NavigationDestination(
+                  icon: Icon(Icons.calendar_today),
+                  label: 'Routines',
+                  tooltip: '',
+                ),
               ),
-              NavigationDestination(
-                icon: Icon(Icons.person),
-                label: 'Profile',
-                tooltip: '',
+              Semantics(
+                container: true,
+                identifier: 'nav-profile',
+                child: const NavigationDestination(
+                  icon: Icon(Icons.person),
+                  label: 'Profile',
+                  tooltip: '',
+                ),
               ),
             ],
           ),
@@ -320,6 +336,8 @@ class _ActiveWorkoutBanner extends ConsumerWidget {
     final elapsed = ref.watch(elapsedTimerProvider(state.workout.startedAt));
 
     return Semantics(
+      container: true,
+      identifier: 'home-active-banner',
       button: true,
       label: 'Active workout: ${state.workout.name}',
       excludeSemantics: true,

@@ -264,6 +264,25 @@ void main() {
         expect(builder.capturedUpsert!['weight_unit'], 'lbs');
       });
 
+      test('includes locale in upsert payload when provided', () async {
+        final builder = _builderFor(row: _profileRow());
+        final repo = ProfileRepository(_FakeSupabaseClient(builder));
+
+        await repo.upsertProfile(userId: 'user-1', locale: 'pt');
+
+        expect(builder.capturedUpsert, isNotNull);
+        expect(builder.capturedUpsert!['locale'], 'pt');
+      });
+
+      test('omits locale from payload when null', () async {
+        final builder = _builderFor(row: _profileRow());
+        final repo = ProfileRepository(_FakeSupabaseClient(builder));
+
+        await repo.upsertProfile(userId: 'user-1', displayName: 'Bob');
+
+        expect(builder.capturedUpsert!.containsKey('locale'), isFalse);
+      });
+
       test('maps Supabase exception to AppException', () async {
         final repo = _makeRepo(
           error: const supabase.PostgrestException(message: 'unique violation'),
@@ -271,6 +290,43 @@ void main() {
 
         expect(
           () => repo.upsertProfile(userId: 'user-1'),
+          throwsA(isA<app.AppException>()),
+        );
+      });
+    });
+
+    // -------------------------------------------------------------------
+    // updateLocale
+    // -------------------------------------------------------------------
+    group('updateLocale', () {
+      test('calls update with locale value and eq filter for userId', () async {
+        final builder = _builderFor(row: null);
+        final repo = ProfileRepository(_FakeSupabaseClient(builder));
+
+        await repo.updateLocale('user-1', 'pt');
+
+        expect(builder.calledMethods, contains('update'));
+        expect(builder.calledMethods, contains('eq:id=user-1'));
+        expect(builder.capturedUpdate, isNotNull);
+        expect(builder.capturedUpdate!['locale'], 'pt');
+      });
+
+      test('completes without error on success', () async {
+        final repo = _makeRepo(row: null);
+
+        await expectLater(
+          () => repo.updateLocale('user-1', 'en'),
+          returnsNormally,
+        );
+      });
+
+      test('maps Supabase exception to AppException', () async {
+        final repo = _makeRepo(
+          error: const supabase.PostgrestException(message: 'rls violation'),
+        );
+
+        expect(
+          () => repo.updateLocale('user-1', 'pt'),
           throwsA(isA<app.AppException>()),
         );
       });

@@ -1,6 +1,9 @@
-.PHONY: gen gen-watch format analyze test build-android-debug build-android-release-arm64 ci
+.PHONY: gen gen-l10n gen-watch format analyze test build-android-debug build-android-release-arm64 ci
 
-gen:
+gen-l10n:
+	flutter gen-l10n
+
+gen: gen-l10n
 	dart run build_runner build --delete-conflicting-outputs
 
 gen-watch:

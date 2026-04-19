@@ -181,6 +181,7 @@ class _ActivePlanHero extends ConsumerWidget {
       headline: routine.name,
       subline: metadata,
       onTap: () => startRoutineWorkout(context, ref, routine),
+      semanticsIdentifier: 'home-up-next',
     );
   }
 }
@@ -234,14 +235,19 @@ class _LapsedHero extends StatelessWidget {
           headline: 'Plan your week',
           subline: 'Pick routines for the week',
           onTap: onPlanWeek,
+          semanticsIdentifier: 'home-plan-your-week',
         ),
         const SizedBox(height: 8),
-        OutlinedButton(
-          onPressed: onQuickWorkout,
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size(double.infinity, 48),
+        Semantics(
+          container: true,
+          identifier: 'home-quick-workout',
+          child: OutlinedButton(
+            onPressed: onQuickWorkout,
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 48),
+            ),
+            child: const Text('Quick workout'),
           ),
-          child: const Text('Quick workout'),
         ),
       ],
     );
@@ -265,6 +271,7 @@ class _WeekCompleteHero extends ConsumerWidget {
       headline: 'Start new week',
       subline: total > 0 ? '$total of $total done' : null,
       onTap: onTap,
+      semanticsIdentifier: 'home-start-new-week',
     );
   }
 }
@@ -294,6 +301,8 @@ class _BeginnerCta extends StatelessWidget {
       headline: routine.name,
       subline: stats,
       onTap: onTap,
+      semanticsIdentifier: 'first-workout-card',
+      labelIdentifier: 'first-workout-label',
     );
   }
 }
@@ -313,6 +322,8 @@ class _HeroBanner extends StatelessWidget {
     required this.headline,
     this.subline,
     required this.onTap,
+    this.semanticsIdentifier,
+    this.labelIdentifier,
   });
 
   /// Small uppercase label, e.g. "UP NEXT", "YOUR FIRST WORKOUT", "NO PLAN",
@@ -327,6 +338,12 @@ class _HeroBanner extends StatelessWidget {
   /// done", etc.). When null the banner renders only the label + headline.
   final String? subline;
 
+  /// Optional Semantics identifier for locale-independent E2E selectors.
+  final String? semanticsIdentifier;
+
+  /// Optional Semantics identifier for the label Text widget.
+  final String? labelIdentifier;
+
   final VoidCallback onTap;
 
   @override
@@ -334,69 +351,85 @@ class _HeroBanner extends StatelessWidget {
     final theme = Theme.of(context);
     final mutedColor = theme.colorScheme.onSurface.withValues(alpha: 0.55);
 
-    return Material(
-      color: theme.cardTheme.color ?? theme.colorScheme.surface,
-      borderRadius: BorderRadius.circular(kRadiusMd),
-      child: InkWell(
+    return Semantics(
+      container: true,
+      identifier: semanticsIdentifier,
+      child: Material(
+        color: theme.cardTheme.color ?? theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(kRadiusMd),
-        onTap: onTap,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 80),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(kRadiusMd),
-              border: Border(
-                left: BorderSide(color: theme.colorScheme.primary, width: 4),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(kRadiusMd),
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 80),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(kRadiusMd),
+                border: Border(
+                  left: BorderSide(color: theme.colorScheme.primary, width: 4),
+                ),
               ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          label,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: mutedColor,
-                            letterSpacing: 1.2,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          headline,
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            color: theme.colorScheme.onSurface,
-                            fontWeight: FontWeight.w700,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                        if (subline != null) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            subline!,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: mutedColor,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Semantics(
+                            container: true,
+                            identifier: labelIdentifier,
+                            child: Text(
+                              label,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: mutedColor,
+                                letterSpacing: 1.2,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
                           ),
+                          const SizedBox(height: 2),
+                          // Bare container prevents AOM merging headline
+                          // into the label's accessible text node.
+                          Semantics(
+                            container: true,
+                            child: Text(
+                              headline,
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                color: theme.colorScheme.onSurface,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
+                          if (subline != null) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              subline!,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: mutedColor,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Icon(
-                    Icons.play_arrow,
-                    color: theme.colorScheme.primary,
-                    size: 28,
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    Icon(
+                      Icons.play_arrow,
+                      color: theme.colorScheme.primary,
+                      size: 28,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

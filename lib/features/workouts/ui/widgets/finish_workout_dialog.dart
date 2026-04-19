@@ -72,6 +72,8 @@ class _FinishWorkoutDialogState extends State<FinishWorkoutDialog> {
             const SizedBox(height: 16),
           ],
           Semantics(
+            container: true,
+            identifier: 'workout-notes',
             label: 'Workout notes',
             child: TextField(
               controller: _notesController,
@@ -88,11 +90,17 @@ class _FinishWorkoutDialogState extends State<FinishWorkoutDialog> {
         ],
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Keep Going'),
+        Semantics(
+          container: true,
+          identifier: 'workout-keep-going',
+          child: TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Keep Going'),
+          ),
         ),
         Semantics(
+          container: true,
+          identifier: 'workout-dialog-finish',
           label: 'Save and finish workout',
           child: FilledButton(
             onPressed: () {

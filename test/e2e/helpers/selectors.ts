@@ -29,28 +29,28 @@
 // so we target visible text / placeholder text.
 // ---------------------------------------------------------------------------
 export const AUTH = {
-  /** AppTextField with label "Email" — Flutter renders <input> in HTML mode */
-  emailInput: '[aria-label="Email"]',
-  /** AppTextField with label "Password" */
-  passwordInput: '[aria-label="Password"]',
-  /** AppButton label "LOG IN" — nth=0 avoids strict-mode on nested flt-semantics */
-  loginButton: 'role=button[name="LOG IN"] >> nth=0',
-  /** AppButton label "SIGN UP" — nth=0 avoids strict-mode on nested flt-semantics */
-  signUpButton: 'role=button[name="SIGN UP"] >> nth=0',
-  /** TextButton "Don't have an account? Sign up" */
-  toggleToSignUp: "text=Don't have an account? Sign up",
-  /** TextButton "Already have an account? Log in" */
-  toggleToLogIn: 'text=Already have an account? Log in',
-  /** OutlinedButton.icon "Continue with Google" */
-  googleButton: 'text=Continue with Google',
-  /** TextButton "Forgot password?" */
-  forgotPasswordButton: 'text=Forgot password?',
-  /** "Send Reset Email" button in the forgot password confirmation dialog */
-  sendResetEmailButton: 'text=Send Reset Email',
+  /** AppTextField with label "Email" — Semantics(identifier: 'auth-email-input') */
+  emailInput: '[flt-semantics-identifier="auth-email-input"]',
+  /** AppTextField with label "Password" — Semantics(identifier: 'auth-password-input') */
+  passwordInput: '[flt-semantics-identifier="auth-password-input"]',
+  /** GradientButton label "LOG IN" — Semantics(identifier: 'auth-login-btn') */
+  loginButton: '[flt-semantics-identifier="auth-login-btn"]',
+  /** GradientButton label "SIGN UP" — Semantics(identifier: 'auth-signup-btn') */
+  signUpButton: '[flt-semantics-identifier="auth-signup-btn"]',
+  /** TextButton "Don't have an account? Sign up" — Semantics(identifier: 'auth-toggle-signup') */
+  toggleToSignUp: '[flt-semantics-identifier="auth-toggle-signup"]',
+  /** TextButton "Already have an account? Log in" — Semantics(identifier: 'auth-toggle-login') */
+  toggleToLogIn: '[flt-semantics-identifier="auth-toggle-login"]',
+  /** OutlinedButton.icon "Continue with Google" — Semantics(identifier: 'auth-google-btn') */
+  googleButton: '[flt-semantics-identifier="auth-google-btn"]',
+  /** TextButton "Forgot password?" — Semantics(identifier: 'auth-forgot-pwd') */
+  forgotPasswordButton: '[flt-semantics-identifier="auth-forgot-pwd"]',
+  /** "Send Reset Email" button in dialog — Semantics(identifier: 'auth-send-reset') */
+  sendResetEmailButton: '[flt-semantics-identifier="auth-send-reset"]',
   /** The "GymBuddy" headline present on the login screen */
   appTitle: 'text=GymBuddy',
-  /** "Welcome back" subtitle (sign-in mode) */
-  welcomeBack: 'text=Welcome back',
+  /** "Welcome back" subtitle (sign-in mode) — Semantics(identifier: 'auth-welcome-back') */
+  welcomeBack: '[flt-semantics-identifier="auth-welcome-back"]',
   /** Inline error message — Semantics(liveRegion: true) sets aria-live */
   errorMessage: '[aria-live="polite"]',
 } as const;
@@ -65,18 +65,18 @@ export const AUTH = {
 // The old NEXT button and workout-choice page (page 3) were removed.
 // ---------------------------------------------------------------------------
 export const ONBOARDING = {
-  /** Page 1 CTA — takes user to profile setup */
-  getStartedButton: 'text=GET STARTED',
+  /** Page 1 CTA — takes user to profile setup — Semantics(identifier: 'onboarding-get-started') */
+  getStartedButton: '[flt-semantics-identifier="onboarding-get-started"]',
   /**
    * NEXT button — was used on page 2 of the old 3-page flow.
    * After Step 5e this button no longer exists. The selector is kept here
    * so tests can assert `not.toBeVisible()` on it.
    */
   nextButton: 'text=NEXT',
-  /** Display name input on page 2 */
-  displayNameInput: '[aria-label="Display name"]',
-  /** Page 2 final CTA — submits onboarding profile and navigates to home */
-  letsGoButton: "text=LET'S GO",
+  /** Display name input on page 2 — Semantics(identifier: 'onboarding-display-name') */
+  displayNameInput: '[flt-semantics-identifier="onboarding-display-name"]',
+  /** Page 2 final CTA — Semantics(identifier: 'onboarding-lets-go') */
+  letsGoButton: '[flt-semantics-identifier="onboarding-lets-go"]',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -86,58 +86,62 @@ export const ONBOARDING = {
 // Tabs: Home, Exercises, Routines, Profile.
 // ---------------------------------------------------------------------------
 export const NAV = {
-  homeTab: 'role=tab[name="Home"]',
-  exercisesTab: 'role=tab[name="Exercises"]',
-  routinesTab: 'role=tab[name="Routines"]',
-  profileTab: 'role=tab[name="Profile"]',
+  homeTab: '[flt-semantics-identifier="nav-home"]',
+  exercisesTab: '[flt-semantics-identifier="nav-exercises"]',
+  routinesTab: '[flt-semantics-identifier="nav-routines"]',
+  profileTab: '[flt-semantics-identifier="nav-profile"]',
 } as const;
 
 // ---------------------------------------------------------------------------
 // Exercise list — ExerciseListScreen
 // ---------------------------------------------------------------------------
 export const EXERCISE_LIST = {
-  /** Page heading — use first() to avoid strict-mode collision with nav tab */
-  heading: 'text=Exercises',
-  /** Search field — role selector matches computed accessible name */
-  searchInput: 'role=textbox[name*="Search exercises"]',
-  /** "All" muscle group filter — role selector matches computed accessible name */
-  allMuscleGroupFilter: 'role=button[name*="All muscle group filter"]',
-  /** Muscle group filter buttons — role selector for computed accessible name */
+  /** Page heading "Exercises" — Semantics(identifier: 'exercise-list-heading') */
+  heading: '[flt-semantics-identifier="exercise-list-heading"]',
+  /** Search field — Semantics(identifier: 'exercise-list-search') */
+  searchInput: '[flt-semantics-identifier="exercise-list-search"]',
+  /** "All" muscle group filter — Semantics(identifier: 'exercise-filter-all') */
+  allMuscleGroupFilter: '[flt-semantics-identifier="exercise-filter-all"]',
+  /**
+   * Muscle group filter buttons — Semantics(identifier: 'exercise-filter-{name}').
+   * The name is the lowercase display name with spaces replaced by hyphens.
+   */
   muscleGroupFilter: (name: string) =>
-    `role=button[name*="${name} muscle group filter"]`,
-  /** Equipment FilterChip — role selector for computed accessible name */
-  equipmentFilter: (name: string) =>
-    `role=checkbox[name*="${name}"]`,
+    `[flt-semantics-identifier="exercise-filter-${name.toLowerCase().replace(/ /g, '-')}"]`,
+  /**
+   * Equipment FilterChip — Semantics(identifier: 'exercise-equip-{enumName}').
+   * The name is the enum name (e.g. "barbell", "dumbbell", "cable", "machine", "bodyweight").
+   */
+  equipmentFilter: (enumName: string) =>
+    `[flt-semantics-identifier="exercise-equip-${enumName.toLowerCase()}"]`,
   /** Individual exercise card — role selector for computed accessible name */
   exerciseCard: (name: string) => `role=button[name*="Exercise: ${name}"]`,
-  /** FAB — role selector for computed accessible name */
-  createFab: 'role=button[name*="Create new exercise"]',
-  /** Empty state when no filters applied */
-  emptyStateNoFilter: 'text=Your exercises will appear here',
-  /** Empty state when filters yield no results */
-  emptyStateFiltered: 'text=No exercises match your filters',
-  /** Clear Filters button in filtered empty state */
-  clearFiltersButton: 'text=Clear Filters',
+  /** FAB — Semantics(identifier: 'exercise-list-create-fab') */
+  createFab: '[flt-semantics-identifier="exercise-list-create-fab"]',
+  /** Empty state when no filters applied — Semantics(identifier: 'exercise-list-empty-no-filter') */
+  emptyStateNoFilter: '[flt-semantics-identifier="exercise-list-empty-no-filter"]',
+  /** Empty state when filters yield no results — Semantics(identifier: 'exercise-list-empty-filtered') */
+  emptyStateFiltered: '[flt-semantics-identifier="exercise-list-empty-filtered"]',
+  /** Clear Filters button — Semantics(identifier: 'exercise-list-clear-filters') */
+  clearFiltersButton: '[flt-semantics-identifier="exercise-list-clear-filters"]',
 } as const;
 
 // ---------------------------------------------------------------------------
 // Exercise detail — ExerciseDetailScreen
 // ---------------------------------------------------------------------------
 export const EXERCISE_DETAIL = {
-  /** AppBar title */
-  appBarTitle: 'text=Exercise Details',
-  /** "Custom exercise" badge (only on user-created exercises) */
-  customBadge: 'text=Custom exercise',
-  /** Delete button — case-insensitive match for "Delete Exercise" / "Delete exercise" */
-  deleteButton: 'role=button[name=/delete exercise/i]',
-  /** Confirmation dialog content — unique to the dialog, avoids collision with
-   *  "Delete Exercise" button text which also matches 'text=Delete Exercise' */
-  deleteDialogContent: 'text=Are you sure you want to delete',
-  /** Confirm delete action in the dialog — scoped to alertdialog to avoid
-   *  matching the "Delete Exercise" button on the detail screen itself */
-  deleteConfirmButton: 'role=alertdialog >> role=button[name="Delete"]',
-  /** Cancel delete action in dialog */
-  deleteCancelButton: 'text=Cancel',
+  /** AppBar title "Exercise Details" — Semantics(identifier: 'exercise-detail-title') */
+  appBarTitle: '[flt-semantics-identifier="exercise-detail-title"]',
+  /** "Custom exercise" badge — Semantics(identifier: 'exercise-detail-custom-badge') */
+  customBadge: '[flt-semantics-identifier="exercise-detail-custom-badge"]',
+  /** Delete button — Semantics(identifier: 'exercise-detail-delete-btn') */
+  deleteButton: '[flt-semantics-identifier="exercise-detail-delete-btn"]',
+  /** Confirmation dialog content — Semantics(identifier: 'exercise-detail-delete-dialog') */
+  deleteDialogContent: '[flt-semantics-identifier="exercise-detail-delete-dialog"]',
+  /** Confirm delete action in dialog — Semantics(identifier: 'exercise-detail-delete-confirm') */
+  deleteConfirmButton: '[flt-semantics-identifier="exercise-detail-delete-confirm"]',
+  /** Cancel delete action in dialog — Semantics(identifier: 'exercise-detail-delete-cancel') */
+  deleteCancelButton: '[flt-semantics-identifier="exercise-detail-delete-cancel"]',
   /** Coming-soon placeholder text */
   prPlaceholder: 'text=Personal records & workout history coming soon',
   /**
@@ -174,7 +178,7 @@ export const EXERCISE_DETAIL = {
    * New empty-state copy (BL-3 acceptance #12).
    * Rendered when workoutCount == 0 and no points exist.
    */
-  progressChartEmptyCopy: 'text=Log your first set to start tracking',
+  progressChartEmptyCopy: '[flt-semantics-identifier="exercise-detail-chart-empty"]',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -182,41 +186,43 @@ export const EXERCISE_DETAIL = {
 // AppTextField label is "Exercise Name", button label is "CREATE EXERCISE"
 // ---------------------------------------------------------------------------
 export const CREATE_EXERCISE = {
-  nameInput: 'role=textbox[name*="Exercise Name"]',
-  /** Case-sensitive exact match avoids collision with heading "Create Exercise" */
-  saveButton: 'text="CREATE EXERCISE"',
+  /** Name text field — Semantics(identifier: 'create-exercise-name') */
+  nameInput: '[flt-semantics-identifier="create-exercise-name"]',
+  /** CREATE EXERCISE button — Semantics(identifier: 'create-exercise-save') */
+  saveButton: '[flt-semantics-identifier="create-exercise-save"]',
 } as const;
 
 // ---------------------------------------------------------------------------
 // Active workout — ActiveWorkoutScreen
 // ---------------------------------------------------------------------------
 export const WORKOUT = {
-  /** "Start Empty Workout" button on the Home screen launchpad */
+  /** "Start Empty Workout" button on the Home screen launchpad — deprecated, use HOME.quickWorkout */
   startEmpty: 'text=Start Empty Workout',
-  /** "Finish Workout" button in the persistent bottom bar */
-  finishButton: 'text=Finish Workout',
-  /** "Save & Finish" button in the finish workout confirmation dialog */
-  dialogFinishButton: 'text=Save & Finish',
-  /** "Add Exercise" FAB on the active workout screen */
-  addExerciseFab: 'text=Add Exercise',
-  /** "Add Set" button within an exercise card */
-  addSetButton: 'text=Add Set',
-  /** Checkbox to mark a set as done — unchecked state */
-  markSetDone: 'role=checkbox[name="Mark set as done"]',
-  /** Checkbox to mark a set as done — checked state */
-  setCompleted: 'role=checkbox[name="Set completed"]',
-  /** Close / discard icon button in the AppBar — Semantics label "Discard workout" */
-  discardButton: 'role=button[name="Discard workout"]',
-  /** "Discard" confirm button inside the DiscardWorkoutDialog */
-  discardConfirmButton: 'role=button[name="Discard"]',
-  /** "Keep Going" button in the finish confirmation dialog (cancels finish) */
-  keepGoingButton: 'text=Keep Going',
+  /** "Finish Workout" button — Semantics(identifier: 'workout-finish-btn') */
+  finishButton: '[flt-semantics-identifier="workout-finish-btn"]',
+  /** "Save & Finish" button in dialog — Semantics(identifier: 'workout-dialog-finish') */
+  dialogFinishButton: '[flt-semantics-identifier="workout-dialog-finish"]',
+  // Identifier appears on both the empty-state FilledButton and the FAB
+  // (shown when exercises exist). The two widgets are mutually exclusive.
+  addExerciseFab: '[flt-semantics-identifier="workout-add-exercise"]',
+  /** "Add Set" button — Semantics(identifier: 'workout-add-set') */
+  addSetButton: '[flt-semantics-identifier="workout-add-set"]',
+  /** Checkbox to mark set as done — Semantics(identifier: 'workout-set-done') */
+  markSetDone: '[flt-semantics-identifier="workout-set-done"]',
+  /** Checkbox set completed — Semantics(identifier: 'workout-set-completed') */
+  setCompleted: '[flt-semantics-identifier="workout-set-completed"]',
+  /** Discard workout icon button — Semantics(identifier: 'workout-discard-btn') */
+  discardButton: '[flt-semantics-identifier="workout-discard-btn"]',
+  /** "Discard" confirm in dialog — Semantics(identifier: 'workout-discard-confirm') */
+  discardConfirmButton: '[flt-semantics-identifier="workout-discard-confirm"]',
+  /** "Keep Going" button — Semantics(identifier: 'workout-keep-going') */
+  keepGoingButton: '[flt-semantics-identifier="workout-keep-going"]',
   /** Tappable weight value that opens the weight entry dialog */
   enterWeightDialog: 'text=Enter weight',
   /** Tappable reps value that opens the reps entry dialog */
   enterRepsDialog: 'text=Enter reps',
-  /** Optional notes input on the active workout screen */
-  notesInput: 'role=textbox[name="Workout notes"]',
+  /** Workout notes input — Semantics(identifier: 'workout-notes') */
+  notesInput: '[flt-semantics-identifier="workout-notes"]',
   /**
    * Exercise name tappable area inside an exercise card during an active workout.
    *
@@ -235,8 +241,8 @@ export const WORKOUT = {
 // Exercise picker — bottom sheet shown when adding exercises to a workout
 // ---------------------------------------------------------------------------
 export const EXERCISE_PICKER = {
-  /** Search field — role selector matches computed accessible name */
-  searchInput: 'role=textbox[name*="Search exercises to add"]',
+  /** Search field — Semantics(identifier: 'exercise-picker-search') */
+  searchInput: '[flt-semantics-identifier="exercise-picker-search"]',
   /** "Add <name>" tile — role selector for computed accessible name */
   addExerciseButton: (name: string) =>
     `role=button[name*="Add ${name}"]`,
@@ -259,15 +265,12 @@ export const HOME = {
    * was started from a routine (name = routine name) or manually (name =
    * "Workout \u2014 <date>").
    */
-  activeBanner: 'role=button[name*="Active workout:"]',
+  activeBanner: '[flt-semantics-identifier="home-active-banner"]',
   /**
    * HomeStatusLine — the single-line state-aware status at the top of Home.
-   * Rendered as Text.rich (active/complete) or Text (lapsed/"No plan this
-   * week") or display-name only (brand-new). Match on the shared keyword
-   * "week" which appears in all non-brand-new states.
-   * For brand-new state use `HOME.statusDisplayName` instead.
+   * Semantics(identifier: 'home-status-line') wraps every return branch.
    */
-  statusLine: 'text=/this week|Week complete|No plan/',
+  statusLine: '[flt-semantics-identifier="home-status-line"]',
   /**
    * Brand-new state: HomeStatusLine shows the user's display name only.
    * Used to confirm the brand-new home state without relying on workout data.
@@ -292,40 +295,42 @@ export const HOME = {
    * InkWell. The AOM exposes this as a button with accessible name starting with
    * "Last session:". Use the role+name selector for reliable matching.
    */
-  lastSessionLine: 'role=button[name*="Last session:"]',
+  lastSessionLine: '[flt-semantics-identifier="home-last-session"]',
   /**
    * "See all" TextButton in _HomeRoutinesList — routes to /routines.
    * Only visible when the user has more than 3 user routines and no active plan.
    */
-  myRoutinesSeeAll: 'text=See all',
+  myRoutinesSeeAll: '[flt-semantics-identifier="home-see-all-routines"]',
   /**
-   * "Plan your week" FilledButton.icon in the lapsed-state ActionHero.
+   * "Plan your week" _HeroBanner in the lapsed-state ActionHero.
+   * Semantics(identifier: 'home-plan-your-week') wraps the banner.
    * Navigates to /plan/week.
    */
-  planYourWeek: 'text=Plan your week',
+  planYourWeek: '[flt-semantics-identifier="home-plan-your-week"]',
   /**
    * "Quick workout" OutlinedButton in the lapsed-state ActionHero secondary CTA.
    * Navigates to /workout/active (starts an empty workout).
    */
-  quickWorkout: 'text=Quick workout',
+  quickWorkout: '[flt-semantics-identifier="home-quick-workout"]',
   /**
-   * "Start new week" headline inside the week-complete _HeroBanner.
-   * Tapping the banner navigates to /plan/week.
+   * "Start new week" _HeroBanner inside the week-complete ActionHero.
+   * Semantics(identifier: 'home-start-new-week') wraps the banner.
+   * Tapping navigates to /plan/week.
    */
-  startNewWeek: 'text=Start new week',
+  startNewWeek: '[flt-semantics-identifier="home-start-new-week"]',
 } as const;
 
 // ---------------------------------------------------------------------------
 // Personal Records — celebration screen and records list
 // ---------------------------------------------------------------------------
 export const PR = {
-  /** Heading shown when a new personal record is set */
-  newPRHeading: 'text=NEW PR',
-  /** Heading shown when the user completes their first workout */
-  firstWorkoutHeading: 'text=First Workout Complete!',
-  /** "Continue" button on the PR celebration screen */
-  continueButton: 'text=Continue',
-  /** "RECENT RECORDS" section on the progress tab */
+  /** Heading shown when a new personal record is set — Semantics(identifier: 'pr-new-heading') */
+  newPRHeading: '[flt-semantics-identifier="pr-new-heading"]',
+  /** Heading shown when the user completes their first workout — Semantics(identifier: 'pr-first-workout') */
+  firstWorkoutHeading: '[flt-semantics-identifier="pr-first-workout"]',
+  /** "Continue" button on the PR celebration screen — Semantics(identifier: 'pr-continue-btn') */
+  continueButton: '[flt-semantics-identifier="pr-continue-btn"]',
+  /** "RECENT RECORDS" section on the progress tab — not yet implemented in the UI */
   recentRecordsSection: 'text=RECENT RECORDS',
 } as const;
 
@@ -333,26 +338,26 @@ export const PR = {
 // Routines list — RoutinesScreen
 // ---------------------------------------------------------------------------
 export const ROUTINE = {
-  /** Page heading — use .first() to avoid strict-mode collision with nav tab */
-  heading: 'text=Routines',
-  /** "MY ROUTINES" section header */
-  myRoutinesSection: 'text=MY ROUTINES',
-  /** "STARTER ROUTINES" section header */
-  starterRoutinesSection: 'text=STARTER ROUTINES',
-  /** AppBar action button or on-screen CTA to create a routine */
-  createButton: 'text=Create Routine',
+  /** Page heading — Semantics(identifier: 'routine-heading') on AppBar title */
+  heading: '[flt-semantics-identifier="routine-heading"]',
+  /** "MY ROUTINES" section header — SectionHeader(semanticsIdentifier: 'routine-my-section') */
+  myRoutinesSection: '[flt-semantics-identifier="routine-my-section"]',
+  /** "STARTER ROUTINES" section header — SectionHeader(semanticsIdentifier: 'routine-starter-section') */
+  starterRoutinesSection: '[flt-semantics-identifier="routine-starter-section"]',
+  /** AppBar + IconButton to create a routine — same as ROUTINE_MANAGEMENT.createIconButton */
+  createButton: '[flt-semantics-identifier="routine-mgmt-create-btn"]',
   /** Routine card identified by name */
   routineName: (name: string) => `text=${name}`,
-  /** Context menu or overflow "Edit" option */
-  editOption: 'text=Edit',
-  /** Context menu or overflow "Delete" option */
-  deleteOption: 'text=Delete',
-  /** Delete confirmation dialog title */
-  deleteDialogTitle: 'text=Delete Routine',
-  /** "Cancel" button in delete dialog */
-  cancelButton: 'text=Cancel',
-  /** "Delete" confirm button in delete dialog — exact match to avoid title collision */
-  deleteConfirmButton: 'text="Delete"',
+  /** Context menu "Edit" option — Semantics(identifier: 'routine-edit-option') */
+  editOption: '[flt-semantics-identifier="routine-edit-option"]',
+  /** Context menu "Delete" option — Semantics(identifier: 'routine-delete-option') */
+  deleteOption: '[flt-semantics-identifier="routine-delete-option"]',
+  /** Delete confirmation dialog title — Semantics(identifier: 'routine-delete-dialog-title') */
+  deleteDialogTitle: '[flt-semantics-identifier="routine-delete-dialog-title"]',
+  /** "Cancel" button in delete dialog — Semantics(identifier: 'routine-cancel-btn') */
+  cancelButton: '[flt-semantics-identifier="routine-cancel-btn"]',
+  /** "Delete" confirm button in delete dialog — Semantics(identifier: 'routine-delete-confirm') */
+  deleteConfirmButton: '[flt-semantics-identifier="routine-delete-confirm"]',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -363,171 +368,116 @@ export const CREATE_ROUTINE = {
    *  text-field element directly via its data attribute to avoid the raw
    *  HTML input proxy that gets intercepted by the semantics overlay. */
   nameInput: 'input[data-semantics-role="text-field"]',
-  /** "Add Exercise" button */
-  addExerciseButton: 'text=Add Exercise',
-  /** "Save" button */
-  saveButton: 'text=Save',
-  /** Sets label in set configuration row */
-  setsLabel: 'text=Sets',
-  /** Rest label in set configuration row */
-  restLabel: 'text=Rest',
+  /** "Add Exercise" button — Semantics(identifier: 'create-routine-add-exercise') */
+  addExerciseButton: '[flt-semantics-identifier="create-routine-add-exercise"]',
+  /** "Save" button — Semantics(identifier: 'create-routine-save') */
+  saveButton: '[flt-semantics-identifier="create-routine-save"]',
+  /** Sets label in set configuration row — Semantics(identifier: 'create-routine-sets') */
+  setsLabel: '[flt-semantics-identifier="create-routine-sets"]',
+  /** Rest label in set configuration row — Semantics(identifier: 'create-routine-rest') */
+  restLabel: '[flt-semantics-identifier="create-routine-rest"]',
 } as const;
 
 // ---------------------------------------------------------------------------
 // Workout history — HistoryScreen
 // ---------------------------------------------------------------------------
 export const HISTORY = {
-  /** Page heading */
-  heading: 'role=heading[name="History"]',
-  /** Empty state message when no workouts have been logged */
-  emptyState: 'text=No workouts yet',
-  /** CTA in empty state */
-  emptyStateCta: 'text=Start your first workout',
-  /** Retry button shown on error state */
-  retryButton: 'text=Retry',
+  /** Page heading — Semantics(identifier: 'history-heading') on AppBar title */
+  heading: '[flt-semantics-identifier="history-heading"]',
+  /** Empty state message — Semantics(identifier: 'history-empty') */
+  emptyState: '[flt-semantics-identifier="history-empty"]',
+  /** CTA in empty state — Semantics(identifier: 'history-empty-cta') */
+  emptyStateCta: '[flt-semantics-identifier="history-empty-cta"]',
+  /** Retry button shown on error state — Semantics(identifier: 'history-retry') */
+  retryButton: '[flt-semantics-identifier="history-retry"]',
 } as const;
 
 // ---------------------------------------------------------------------------
 // Profile screen — ProfileScreen
 // ---------------------------------------------------------------------------
 export const PROFILE = {
-  /** Page heading — use .first() to avoid strict-mode collision with nav tab */
-  heading: 'text=Profile',
-  /** Primary "Log Out" button */
-  logOutButton: 'text=Log Out',
-  /** Confirmation dialog body text */
-  logOutConfirmDialog: 'text=Are you sure you want to log out?',
-  /** Cancel button in the confirmation dialog */
-  cancelButton: 'text=Cancel',
-  /** Weight unit "kg" option */
-  kgOption: 'text=kg',
-  /** Weight unit "lbs" option */
-  lbsOption: 'text=lbs',
+  /** Page heading — Semantics(identifier: 'profile-heading') */
+  heading: '[flt-semantics-identifier="profile-heading"]',
+  /** Primary "Log Out" button — Semantics(identifier: 'profile-logout-btn') */
+  logOutButton: '[flt-semantics-identifier="profile-logout-btn"]',
+  /** Confirmation dialog body text — Semantics(identifier: 'profile-logout-dialog') */
+  logOutConfirmDialog: '[flt-semantics-identifier="profile-logout-dialog"]',
+  /** Cancel button in the confirmation dialog — Semantics(identifier: 'profile-cancel-btn') */
+  cancelButton: '[flt-semantics-identifier="profile-cancel-btn"]',
+  /** Weight unit "kg" option — Semantics(identifier: 'profile-kg') */
+  kgOption: '[flt-semantics-identifier="profile-kg"]',
+  /** Weight unit "lbs" option — Semantics(identifier: 'profile-lbs') */
+  lbsOption: '[flt-semantics-identifier="profile-lbs"]',
   /**
-   * "Manage Data" row in the DATA MANAGEMENT section.
-   * ProfileScreen renders this as a plain Text widget — match on visible text.
+   * "Manage Data" row — Semantics(identifier: 'profile-manage-data')
    */
-  manageData: 'text=Manage Data',
+  manageData: '[flt-semantics-identifier="profile-manage-data"]',
 } as const;
 
 // ---------------------------------------------------------------------------
 // Manage Data screen — ManageDataScreen
 // ---------------------------------------------------------------------------
 export const MANAGE_DATA = {
-  /** AppBar title */
-  heading: 'text=Manage Data',
-  /**
-   * "Delete Workout History" list tile.
-   * Rendered as a ListTile with title Text — match on visible text.
-   */
-  deleteHistory: 'text=Delete Workout History',
-  /**
-   * "Reset All Account Data" list tile.
-   * Rendered as a ListTile with title Text — match on visible text.
-   */
-  resetAll: 'text=Reset All Account Data',
-  /**
-   * "Delete History" button inside the first confirmation dialog.
-   * Exact match avoids collision with the tile text "Delete Workout History".
-   */
-  deleteHistoryConfirmButton: 'text="Delete History"',
-  /**
-   * "Yes, Delete" button inside the second confirmation dialog.
-   */
-  yesDeleteButton: 'text="Yes, Delete"',
+  /** AppBar title — Semantics(identifier: 'manage-data-heading') */
+  heading: '[flt-semantics-identifier="manage-data-heading"]',
+  /** "Delete Workout History" list tile — Semantics(identifier: 'manage-data-delete-history') */
+  deleteHistory: '[flt-semantics-identifier="manage-data-delete-history"]',
+  /** "Reset All Account Data" list tile — Semantics(identifier: 'manage-data-reset-all') */
+  resetAll: '[flt-semantics-identifier="manage-data-reset-all"]',
+  /** "Delete History" button in first confirmation dialog — Semantics(identifier: 'manage-data-delete-confirm') */
+  deleteHistoryConfirmButton: '[flt-semantics-identifier="manage-data-delete-confirm"]',
+  /** "Yes, Delete" button in second confirmation dialog — Semantics(identifier: 'manage-data-yes-delete') */
+  yesDeleteButton: '[flt-semantics-identifier="manage-data-yes-delete"]',
   /**
    * TextField inside the Reset Account full-screen dialog.
    * Flutter renders a hidden <input> when the TextField is focused; we use the
    * hint text to identify it via role selector.
    */
   resetInput: 'role=textbox[name*="RESET"]',
-  /**
-   * "Reset Account" GradientButton inside the Reset Account dialog.
-   * Match on visible text.
-   */
-  resetButton: 'role=button[name="Reset Account"]',
-  /**
-   * Close / cancel icon button in the Reset Account full-screen dialog.
-   * The IconButton has tooltip: 'Cancel'.
-   */
-  resetCancelButton: 'role=button[name="Cancel"]',
-  /** SnackBar confirmation after successful history deletion */
-  historyCleared: 'text=Workout history cleared',
-  /** SnackBar confirmation after successful reset */
-  accountReset: 'text=Account data reset',
+  /** "Reset Account" GradientButton — Semantics(identifier: 'manage-data-reset-btn') via semanticsIdentifier */
+  resetButton: '[flt-semantics-identifier="manage-data-reset-btn"]',
+  /** Close / cancel icon button in Reset Account dialog — Semantics(identifier: 'manage-data-reset-cancel') */
+  resetCancelButton: '[flt-semantics-identifier="manage-data-reset-cancel"]',
+  /** SnackBar after successful history deletion — Semantics(identifier: 'manage-data-history-cleared') */
+  historyCleared: '[flt-semantics-identifier="manage-data-history-cleared"]',
+  /** SnackBar after successful reset — Semantics(identifier: 'manage-data-account-reset') */
+  accountReset: '[flt-semantics-identifier="manage-data-account-reset"]',
 } as const;
 
 // ---------------------------------------------------------------------------
 // Weekly plan — WeekBucketSection (Home screen) and PlanManagementScreen
 // ---------------------------------------------------------------------------
 export const WEEKLY_PLAN = {
+  /** "THIS WEEK" header in WeekReviewSection — Semantics(identifier: 'weekly-plan-this-week') */
+  thisWeekHeader: '[flt-semantics-identifier="weekly-plan-this-week"]',
+  /** "WEEK COMPLETE" header in WeekReviewSection — Semantics(identifier: 'weekly-plan-complete') */
+  weekCompleteHeader: '[flt-semantics-identifier="weekly-plan-complete"]',
   /**
-   * "THIS WEEK" section header on the home screen.
-   * _ActiveBucketSection renders Text('THIS WEEK') as a labelLarge.
+   * "Plan your week" CTA — same as HOME.planYourWeek.
+   * _EmptyBucketState was removed; lapsed hero banner uses Semantics(identifier: 'home-plan-your-week').
    */
-  thisWeekHeader: 'text=THIS WEEK',
-  /**
-   * "WEEK COMPLETE" header shown in WeekReviewSection when all buckets done.
-   * WeekReviewSection renders isAllComplete ? 'WEEK COMPLETE' : 'THIS WEEK'.
-   */
-  weekCompleteHeader: 'text=WEEK COMPLETE',
-  /**
-   * "Plan your week" CTA tappable text in _EmptyBucketState.
-   * Rendered when a plan is not set but the user has at least one routine.
-   * _EmptyBucketState renders Text('Plan your week') — no trailing arrow.
-   */
-  planYourWeekCta: 'text=Plan your week',
-  /**
-   * AppBar title of PlanManagementScreen.
-   * Scaffold AppBar title: Text("This Week's Plan").
-   */
-  planManagementTitle: "text=This Week's Plan",
-  /**
-   * "Add Routines" FilledButton in the empty state of PlanManagementScreen.
-   * _EmptyState renders FilledButton.icon with label Text('Add Routines').
-   */
-  addRoutinesButton: 'text=Add Routines',
-  /**
-   * "Add Routine" row at the bottom of the ReorderableListView when items exist.
-   * _AddRoutineRow renders Text('Add Routine').
-   */
-  addRoutineRow: 'text=Add Routine',
-  /**
-   * "Add Routines" bottom sheet title in AddRoutinesSheet.
-   * Rendered as titleLarge Text('Add Routines').
-   */
-  addRoutinesSheetTitle: 'text=Add Routines',
-  /**
-   * "ADD 1 ROUTINE" / "ADD N ROUTINES" confirm button in AddRoutinesSheet.
-   * Match on the "ADD" prefix — the count varies.
-   */
-  addConfirmButton: 'role=button[name*="ADD "]',
-  /**
-   * PopupMenuButton overflow icon (three dots) in the AppBar.
-   * Wrapped in Semantics(label: 'More options') — renders as role="group"
-   * with aria-label="More options". The child button has no aria-label itself.
-   */
-  overflowMenuButton: 'role=button[name="More options"]',
-  /**
-   * "Clear Week" option in the PopupMenuButton overflow menu.
-   * PopupMenuItem renders as role="menuitem" with aria-label="Clear Week".
-   * The textContent is empty (Flutter CanvasKit), so `text=` won't match.
-   */
-  clearWeekOption: 'role=menuitem[name="Clear Week"]',
-  /**
-   * "Clear" confirm button in the _confirmClear AlertDialog.
-   * TextButton child: Text('Clear'). Use role=button to avoid matching the
-   * "Clear Week" span from the popup menu (text= does substring matching).
-   */
-  clearConfirmButton: 'role=button[name="Clear"]',
-  /**
-   * "NEW WEEK" GestureDetector text in WeekReviewSection.
-   * Rendered as labelLarge Text('NEW WEEK') when onNewWeek is provided.
-   */
-  newWeekButton: 'text=NEW WEEK',
+  planYourWeekCta: '[flt-semantics-identifier="home-plan-your-week"]',
+  /** AppBar title of PlanManagementScreen — Semantics(identifier: 'weekly-plan-title') */
+  planManagementTitle: '[flt-semantics-identifier="weekly-plan-title"]',
+  /** "Add Routines" FilledButton in empty state — Semantics(identifier: 'weekly-plan-add-routines') */
+  addRoutinesButton: '[flt-semantics-identifier="weekly-plan-add-routines"]',
+  /** "Add Routine" row in ReorderableListView — Semantics(identifier: 'weekly-plan-add-routine-row') */
+  addRoutineRow: '[flt-semantics-identifier="weekly-plan-add-routine-row"]',
+  /** "Add Routines" sheet title — Semantics(identifier: 'weekly-plan-add-sheet-title') */
+  addRoutinesSheetTitle: '[flt-semantics-identifier="weekly-plan-add-sheet-title"]',
+  /** "ADD N ROUTINE(S)" confirm button in sheet — Semantics(identifier: 'weekly-plan-add-confirm') */
+  addConfirmButton: '[flt-semantics-identifier="weekly-plan-add-confirm"]',
+  /** PopupMenuButton overflow icon — Semantics(identifier: 'weekly-plan-overflow') */
+  overflowMenuButton: '[flt-semantics-identifier="weekly-plan-overflow"]',
+  /** "Clear Week" PopupMenuItem — Semantics(identifier: 'weekly-plan-clear-week') */
+  clearWeekOption: '[flt-semantics-identifier="weekly-plan-clear-week"]',
+  /** "Clear" confirm button in dialog — Semantics(identifier: 'weekly-plan-clear-confirm') */
+  clearConfirmButton: '[flt-semantics-identifier="weekly-plan-clear-confirm"]',
+  /** "Start new week" banner in ActionHero — Semantics(identifier: 'home-start-new-week') */
+  newWeekButton: '[flt-semantics-identifier="home-start-new-week"]',
   /**
    * Stats text in WeekReviewSection — contains "sessions" substring.
-   * _buildStatsText always starts with "{n} sessions".
+   * _buildStatsText always starts with "{n} sessions". Dynamic content — keep text= selector.
    */
   sessionsStatsText: 'text=/sessions/',
 } as const;
@@ -541,35 +491,19 @@ export const WEEKLY_PLAN = {
 export const ONBOARDING_FLOW = {
   /**
    * Page 1 welcome headline: "Track every rep,\nevery time".
-   * _WelcomePage renders this as displayMedium Text.
-   *
-   * Flutter merges the entire _WelcomePage Column into a single semantics
-   * button node, so the headline text appears only in the parent button's
-   * aria-label — not as a standalone text element. The `text=` engine does
-   * not match parent aria-labels when child nodes exist. Use `role=button`
-   * with a `name` substring match instead.
+   * Semantics(identifier: 'onboarding-welcome') wraps the Text.
    */
-  welcomeHeadline: 'role=button[name*="Track every rep"]',
+  welcomeHeadline: '[flt-semantics-identifier="onboarding-welcome"]',
   /**
-   * Page 2 indicator: the "Beginner" ChoiceChip is unique to the profile
-   * setup page and has a reliable aria-label in the semantics tree.
-   *
-   * The "Set up your profile" headline text is rendered to canvas only —
-   * it does NOT appear as an aria-label or text content in the DOM. Flutter
-   * does not create a semantics node for non-interactive Text widgets on
-   * this page. The ChoiceChips are the most reliable page 2 indicator.
+   * Page 2 indicator: the "Beginner" ChoiceChip.
+   * Semantics(identifier: 'onboarding-beginner') wraps the ChoiceChip.
    */
-  profileSetupHeadline: 'role=checkbox[name="Beginner"]',
+  profileSetupHeadline: '[flt-semantics-identifier="onboarding-beginner"]',
   /**
    * Display name AppTextField on page 2.
-   *
-   * Flutter merges the text field with surrounding non-interactive elements.
-   * The flt-semantics node does NOT get an aria-label="Display name" — instead,
-   * the hidden native <input> proxy gets a merged aria-label containing all page
-   * text. We target the input via its data-semantics-role attribute since there
-   * is only one text field on the profile setup page.
+   * Semantics(identifier: 'onboarding-display-name') wraps the AppTextField.
    */
-  displayNameInput: 'input[data-semantics-role="text-field"]',
+  displayNameInput: '[flt-semantics-identifier="onboarding-display-name"]',
   /**
    * "3x" frequency ChoiceChip — the default selection.
    */
@@ -578,95 +512,56 @@ export const ONBOARDING_FLOW = {
    * Back TextButton.icon on page 2.
    * TextButton label: Text('Back').
    */
-  backButton: 'text=Back',
+  backButton: '[flt-semantics-identifier="onboarding-back"]',
 } as const;
 
 // ---------------------------------------------------------------------------
 // Routine management — additional selectors for create/edit/delete flow
 // ---------------------------------------------------------------------------
 export const ROUTINE_MANAGEMENT = {
-  /**
-   * + IconButton in the RoutineListScreen AppBar.
-   * IconButton icon: Icons.add. Flutter exposes this as an icon button with
-   * accessible name derived from the tooltip or semantics label.
-   * We match on the role and the known AppBar position.
-   */
-  createIconButton: 'role=button[name="Create routine"]',
-  /**
-   * AppBar title on CreateRoutineScreen when creating a new routine.
-   * AppBar title: Text('Create Routine').
-   */
-  createRoutineScreenTitle: 'role=heading[name="Create Routine"]',
-  /**
-   * AppBar title on CreateRoutineScreen when editing an existing routine.
-   * AppBar title: Text('Edit Routine').
-   */
-  editRoutineScreenTitle: 'role=heading[name="Edit Routine"]',
+  /** + IconButton in RoutineListScreen AppBar — Semantics(identifier: 'routine-mgmt-create-btn') */
+  createIconButton: '[flt-semantics-identifier="routine-mgmt-create-btn"]',
+  /** AppBar title when creating — Semantics(identifier: 'routine-mgmt-create-title') */
+  createRoutineScreenTitle: '[flt-semantics-identifier="routine-mgmt-create-title"]',
+  /** AppBar title when editing — Semantics(identifier: 'routine-mgmt-edit-title') */
+  editRoutineScreenTitle: '[flt-semantics-identifier="routine-mgmt-edit-title"]',
 } as const;
 
 // ---------------------------------------------------------------------------
 // PR display — Personal Records screen selectors
 // ---------------------------------------------------------------------------
 export const PR_DISPLAY = {
-  /**
-   * AppBar title of PRListScreen.
-   * AppBar title: Text('Personal Records').
-   */
-  screenTitle: 'text=Personal Records',
-  /**
-   * Empty state title when no records exist.
-   * _EmptyState renders headlineMedium Text('No Records Yet').
-   */
-  emptyStateTitle: 'text=No Records Yet',
-  /**
-   * Empty state container — use to check if the screen is in empty state.
-   * Text('Complete a workout to start tracking records').
-   */
-  emptyState: 'text=Complete a workout to start tracking records',
-  /**
-   * "Max Weight" label in _RecordTile.
-   * RecordType.maxWeight.displayName — typically "Max Weight".
-   */
-  maxWeightLabel: 'text=Max Weight',
-  /**
-   * Exercise record card — the Card wrapping each exercise's PR data.
-   * _ExerciseRecordCard renders as an InkWell inside a Card. The tappable
-   * area navigates to /exercises/<id>. We select all flt-semantics with
-   * role=button inside the records screen — use .first() in tests.
-   * This selector targets any button that has text content (exercise name).
-   */
-  exerciseRecordCard: 'flt-semantics[role="button"]',
+  /** AppBar title — Semantics(identifier: 'pr-display-title') */
+  screenTitle: '[flt-semantics-identifier="pr-display-title"]',
+  /** Empty state title — Semantics(identifier: 'pr-display-empty-title') */
+  emptyStateTitle: '[flt-semantics-identifier="pr-display-empty-title"]',
+  /** Empty state body text — Semantics(identifier: 'pr-display-empty') */
+  emptyState: '[flt-semantics-identifier="pr-display-empty"]',
+  /** "Max Weight" label in _RecordTile — Semantics(identifier: 'pr-display-max-weight') */
+  maxWeightLabel: '[flt-semantics-identifier="pr-display-max-weight"]',
+  exerciseRecordCard: '[flt-semantics-identifier="pr-exercise-card"]',
 } as const;
 
 // ---------------------------------------------------------------------------
 // Profile Weekly Goal — selectors for _WeeklyGoalRow and frequency sheet
 // ---------------------------------------------------------------------------
 export const PROFILE_WEEKLY_GOAL = {
-  /**
-   * "Weekly Goal" section label above the _WeeklyGoalRow.
-   * ProfileScreen renders titleMedium Text('Weekly Goal').
-   */
-  sectionLabel: 'text=Weekly Goal',
+  /** "Weekly Goal" section label — Semantics(identifier: 'profile-goal-label') */
+  sectionLabel: '[flt-semantics-identifier="profile-goal-label"]',
   /**
    * The _WeeklyGoalRow InkWell — matches on the "{n}x per week" text pattern.
-   * We target the container text because there's no Semantics label.
+   * Dynamic content — keep role= selector.
    */
   frequencyRow: 'role=button[name=/per week/]',
   /**
    * Frequency row with a specific value, e.g. "3x per week".
-   * Returns a selector for the row showing the given frequency number.
+   * Dynamic content — keep role= selector.
    */
   frequencyRowWithValue: (freq: number) => `role=button[name="${freq}x per week"]`,
-  /**
-   * Description text in the frequency selection bottom sheet.
-   * Unique to the sheet — the section label on the Profile page is different.
-   * Using this as a proxy for "sheet is open" avoids ambiguity with sectionLabel.
-   */
-  sheetTitle: 'text=How many times per week do you want to train?',
-  /**
-   * How many times per week description in the sheet.
-   */
-  sheetDescription: 'text=How many times per week do you want to train?',
+  /** Description text in frequency sheet — Semantics(identifier: 'profile-goal-sheet-title') */
+  sheetTitle: '[flt-semantics-identifier="profile-goal-sheet-title"]',
+  /** Same as sheetTitle — Semantics(identifier: 'profile-goal-sheet-title') */
+  sheetDescription: '[flt-semantics-identifier="profile-goal-sheet-title"]',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -683,41 +578,22 @@ export const PROFILE_WEEKLY_GOAL = {
 // Offline sync — OfflineBanner, PendingSyncBadge, SyncFailureCard (Phase 14)
 // ---------------------------------------------------------------------------
 export const OFFLINE = {
-  /**
-   * OfflineBanner text — rendered in _MainScaffold when isOnlineProvider is
-   * false. The em-dash (U+2014) is part of the literal text.
-   */
-  banner: "text=Offline \u2014 changes will sync when you're back online",
-  /**
-   * PendingSyncBadge — Semantics(button: true, label: 'N workout(s) pending
-   * sync. Tap to manage.'). Flutter 3.41.6+ exposes this as role=button via
-   * AOM. The name* substring matches both singular and plural forms.
-   */
-  pendingSyncBadge: 'role=button[name*="pending sync"]',
-  /**
-   * PendingSyncBadge singular form — "1 workout pending sync. Tap to manage."
-   */
-  pendingSyncBadgeSingular: 'role=button[name*="1 workout pending sync"]',
-  /**
-   * SyncFailureCard singular — "Workout couldn't sync"
-   */
-  failureCardSingular: "text=Workout couldn't sync",
-  /**
-   * SyncFailureCard plural — "{n} workouts couldn't sync"
-   */
-  failureCardPlural: (n: number) => `text=${n} workouts couldn't sync`,
-  /**
-   * Subtitle inside SyncFailureCard
-   */
-  failureCardSubtitle: 'text=Saved locally. Retry or dismiss.',
-  /**
-   * Retry TextButton inside SyncFailureCard
-   */
-  retryButton: 'text=Retry',
-  /**
-   * Dismiss TextButton inside SyncFailureCard
-   */
-  dismissButton: 'text=Dismiss',
+  /** OfflineBanner — Semantics(identifier: 'offline-banner') */
+  banner: '[flt-semantics-identifier="offline-banner"]',
+  /** PendingSyncBadge — Semantics(identifier: 'offline-pending-badge') */
+  pendingSyncBadge: '[flt-semantics-identifier="offline-pending-badge"]',
+  /** PendingSyncBadge singular — same identifier, use with singular assertion */
+  pendingSyncBadgeSingular: '[flt-semantics-identifier="offline-pending-badge"]',
+  /** SyncFailureCard — Semantics(identifier: 'offline-failure-card') */
+  failureCardSingular: '[flt-semantics-identifier="offline-failure-card"]',
+  /** SyncFailureCard plural — same identifier, card renders both singular/plural */
+  failureCardPlural: (_n: number) => '[flt-semantics-identifier="offline-failure-card"]',
+  /** Subtitle inside SyncFailureCard — Semantics(identifier: 'offline-failure-subtitle') */
+  failureCardSubtitle: '[flt-semantics-identifier="offline-failure-subtitle"]',
+  /** Retry TextButton inside SyncFailureCard — Semantics(identifier: 'offline-retry') */
+  retryButton: '[flt-semantics-identifier="offline-retry"]',
+  /** Dismiss TextButton inside SyncFailureCard — Semantics(identifier: 'offline-dismiss') */
+  dismissButton: '[flt-semantics-identifier="offline-dismiss"]',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -733,10 +609,10 @@ export const OFFLINE = {
 // WORKOUT" substring is the most stable selector.
 // ---------------------------------------------------------------------------
 export const FIRST_WORKOUT_CTA = {
-  /** The "YOUR FIRST WORKOUT" label text — unique to the beginner CTA */
-  label: 'text=YOUR FIRST WORKOUT',
-  /** The whole card tap target — InkWell with merged semantics */
-  card: 'role=button[name*="YOUR FIRST WORKOUT"]',
+  /** The "YOUR FIRST WORKOUT" label text — Semantics(identifier: 'first-workout-label') */
+  label: '[flt-semantics-identifier="first-workout-label"]',
+  /** The whole card tap target — Semantics(identifier: 'first-workout-card') */
+  card: '[flt-semantics-identifier="first-workout-card"]',
   /** Routine name displayed as the headline — parameterized for flexibility */
   routineName: (name: string) => `text=${name}`,
 } as const;
