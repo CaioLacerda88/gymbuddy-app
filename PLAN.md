@@ -49,7 +49,7 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 14d | Local PR Detection + Reconciliation | DONE | #84 |
 | 14e | Polish + Edge Cases | DONE | #85 |
 | 14 | Offline Support | DONE | #78-#85 |
-| 15a | i18n Infrastructure + E2E Selector Migration | TODO | - |
+| 15a | i18n Infrastructure + E2E Selector Migration | DONE | #86 |
 | 15b | Full String Extraction | TODO | - |
 | 15c | Portuguese Translations + Exercise Content | TODO | - |
 | 15d | Language Picker UI + Persistence | TODO | - |
@@ -762,27 +762,13 @@ Full pt-BR localization with language switcher in profile settings. Official `fl
 4. **Locale provider:** Riverpod `Notifier<Locale>` watching Hive, drives `MaterialApp.locale`. Immediate switch, no restart.
 5. **E2E selectors:** Migrate from text-based (`name*="English text"`) to locale-independent identifiers via `Semantics(identifier: ...)`. Validate mechanism with Flutter AOM in 15a spike.
 
-### 15a: i18n Infrastructure + E2E Selector Migration
+### 15a: i18n Infrastructure + E2E Selector Migration (DONE — PR #86)
 
-**Goal:** Wire Flutter i18n pipeline end-to-end. Migrate E2E selectors to locale-independent identifiers. Zero visible behavior change.
-
-**Acceptance Criteria:**
-- [ ] `flutter_localizations` added to `pubspec.yaml`
-- [ ] `l10n.yaml` created (`arb-dir: lib/l10n`, `template-arb-file: app_en.arb`, `nullable-getter: false`)
-- [ ] `lib/l10n/app_en.arb` with ~50 core strings (nav labels, common buttons, shared widgets)
-- [ ] `lib/l10n/app_pt.arb` with same ~50 keys, Portuguese values
-- [ ] `make gen-l10n` target added to Makefile, wired into `make gen` and `make ci`
-- [ ] `MaterialApp.router()` in `lib/app.dart` wired with `localizationsDelegates`, `supportedLocales`, `locale` from `localeProvider`
-- [ ] `LocaleNotifier` provider (`lib/core/l10n/locale_provider.dart`) — reads Hive, defaults to `Locale('en')`, exposes `setLocale()`
-- [ ] `locale` field added to `Profile` Freezed model (`@Default('en') String locale`)
-- [ ] Supabase migration: `ALTER TABLE profiles ADD COLUMN locale TEXT NOT NULL DEFAULT 'en'`
-- [ ] Widget test harness pinned: shared helper with `locale: const Locale('en')` + localization delegates
-- [ ] E2E selector migration: Add `Semantics(identifier: ...)` to interactive widgets (~94 selectors). Update `selectors.ts` to use locale-independent identifiers
-- [ ] All existing tests pass unchanged
-
-**Key files to create:** `l10n.yaml`, `lib/l10n/app_en.arb`, `lib/l10n/app_pt.arb`, `lib/core/l10n/locale_provider.dart`, `supabase/migrations/00022_add_locale_to_profiles.sql`, `test/helpers/localized_widget.dart`
-
-**Key files to modify:** `pubspec.yaml`, `lib/app.dart`, `lib/features/profile/models/profile.dart`, `lib/features/profile/data/profile_repository.dart`, `Makefile`, `test/e2e/helpers/selectors.ts`, ~20 UI widget files (add Semantics identifiers), ~56 widget test files (add locale pinning)
+- Wired Flutter i18n pipeline: `flutter_localizations`, `l10n.yaml`, ARB files (50 keys en + pt), `gen-l10n` Makefile target, `LocaleNotifier` Riverpod provider
+- Added `locale` field to `Profile` model + `updateLocale()` repository method + migration `00022_add_locale_to_profiles.sql`
+- Migrated ~135 E2E selectors from text-based to `Semantics(identifier: ...)` with `[flt-semantics-identifier="xxx"]` DOM attribute; fixed 14 AOM edge cases (click interception, text merge, viewport culling, GestureDetector→InkWell)
+- Widget test harness created (`test/helpers/localized_widget.dart`); widget test migration deferred to 15b
+- 1357 unit/widget tests, 155 E2E tests pass
 
 ### 15b: Full String Extraction
 
