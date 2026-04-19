@@ -76,18 +76,15 @@ class WeekReviewSection extends StatelessWidget {
               InkWell(
                 onTap: onNewWeek,
                 borderRadius: BorderRadius.circular(4),
-                child: Semantics(
-                  identifier: 'weekly-plan-new-week',
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 2,
-                    ),
-                    child: Text(
-                      'NEW WEEK',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: _primaryGreen,
-                      ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
+                  ),
+                  child: Text(
+                    'NEW WEEK',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: _primaryGreen,
                     ),
                   ),
                 ),

@@ -59,7 +59,7 @@
   "sendResetEmail": "Send Reset Email",
   "@sendResetEmail": { "description": "Send password reset email button label" },
 
-  "offlineBanner": "You are offline",
+  "offlineBanner": "Offline \u2014 changes will sync when you're back online",
   "@offlineBanner": { "description": "Offline connectivity banner text" },
   "pendingSyncSingular": "{count} change pending sync",
   "@pendingSyncSingular": {

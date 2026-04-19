@@ -202,7 +202,8 @@ export const WORKOUT = {
   finishButton: '[flt-semantics-identifier="workout-finish-btn"]',
   /** "Save & Finish" button in dialog — Semantics(identifier: 'workout-dialog-finish') */
   dialogFinishButton: '[flt-semantics-identifier="workout-dialog-finish"]',
-  /** "Add Exercise" FAB — Semantics(identifier: 'workout-add-exercise') */
+  // Identifier appears on both the empty-state FilledButton and the FAB
+  // (shown when exercises exist). The two widgets are mutually exclusive.
   addExerciseFab: '[flt-semantics-identifier="workout-add-exercise"]',
   /** "Add Set" button — Semantics(identifier: 'workout-add-set') */
   addSetButton: '[flt-semantics-identifier="workout-add-set"]',

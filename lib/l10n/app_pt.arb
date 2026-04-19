@@ -32,7 +32,7 @@
   "forgotPassword": "Esqueceu a senha?",
   "sendResetEmail": "Enviar E-mail de Recuperação",
 
-  "offlineBanner": "Você está offline",
+  "offlineBanner": "Offline \u2014 alterações serão sincronizadas quando você voltar a ficar online",
   "pendingSyncSingular": "{count} alteração pendente",
   "pendingSyncPlural": "{count} alterações pendentes",
 
