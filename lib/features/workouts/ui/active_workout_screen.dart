@@ -374,6 +374,8 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
     return Scaffold(
       appBar: AppBar(
         leading: Semantics(
+          container: true,
+          identifier: 'workout-discard-btn',
           label: 'Discard workout',
           child: IconButton(
             onPressed: _onBackPressed,
@@ -462,15 +464,19 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
                     ),
                   ),
                 ),
-              FilledButton.icon(
-                onPressed: _hasCompletedSet ? _onFinish : null,
-                icon: const Icon(Icons.check_circle),
-                label: const Text('Finish Workout'),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 56),
-                  textStyle: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
+              Semantics(
+                container: true,
+                identifier: 'workout-finish-btn',
+                child: FilledButton.icon(
+                  onPressed: _hasCompletedSet ? _onFinish : null,
+                  icon: const Icon(Icons.check_circle),
+                  label: const Text('Finish Workout'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 56),
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
@@ -631,10 +637,14 @@ class _EmptyWorkoutBody extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: onAddExercise,
-              icon: const Icon(Icons.add),
-              label: const Text('Add Exercise'),
+            Semantics(
+              container: true,
+              identifier: 'workout-add-exercise',
+              child: FilledButton.icon(
+                onPressed: onAddExercise,
+                icon: const Icon(Icons.add),
+                label: const Text('Add Exercise'),
+              ),
             ),
           ],
         ),
@@ -929,37 +939,52 @@ class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
             const SizedBox(height: 8),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  // Smart defaults priority chain:
-                  // 1. Previous session set at matching position
-                  // 2. Last set in current session (skip warmup->working)
-                  // 3. Equipment-type defaults
-                  // 4. 0/0
-                  final newSetIndex = activeExercise.sets.length;
-                  double? defaultWeight;
-                  int? defaultReps;
+              child: Semantics(
+                container: true,
+                identifier: 'workout-add-set',
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    // Smart defaults priority chain:
+                    // 1. Previous session set at matching position
+                    // 2. Last set in current session (skip warmup->working)
+                    // 3. Equipment-type defaults
+                    // 4. 0/0
+                    final newSetIndex = activeExercise.sets.length;
+                    double? defaultWeight;
+                    int? defaultReps;
 
-                  // Priority 1: previous session at matching position
-                  final lastSetForNewRow = newSetIndex < lastSets.length
-                      ? lastSets[newSetIndex]
-                      : null;
+                    // Priority 1: previous session at matching position
+                    final lastSetForNewRow = newSetIndex < lastSets.length
+                        ? lastSets[newSetIndex]
+                        : null;
 
-                  if (lastSetForNewRow != null) {
-                    defaultWeight = lastSetForNewRow.weight ?? 0;
-                    defaultReps = lastSetForNewRow.reps ?? 0;
-                  } else if (activeExercise.sets.isNotEmpty) {
-                    // Priority 2: last set in current session (not just
-                    // last completed — always copy from the most recent set
-                    // so weight is never lost).
-                    final prevSet = activeExercise.sets.last;
-                    // Skip if previous set is warmup (new set defaults to
-                    // working, so don't carry warmup weights forward).
-                    if (prevSet.setType != SetType.warmup) {
-                      defaultWeight = prevSet.weight ?? 0;
-                      defaultReps = prevSet.reps ?? 0;
+                    if (lastSetForNewRow != null) {
+                      defaultWeight = lastSetForNewRow.weight ?? 0;
+                      defaultReps = lastSetForNewRow.reps ?? 0;
+                    } else if (activeExercise.sets.isNotEmpty) {
+                      // Priority 2: last set in current session (not just
+                      // last completed — always copy from the most recent set
+                      // so weight is never lost).
+                      final prevSet = activeExercise.sets.last;
+                      // Skip if previous set is warmup (new set defaults to
+                      // working, so don't carry warmup weights forward).
+                      if (prevSet.setType != SetType.warmup) {
+                        defaultWeight = prevSet.weight ?? 0;
+                        defaultReps = prevSet.reps ?? 0;
+                      } else {
+                        // Warmup -> working: use equipment defaults
+                        final equipType = exercise?.equipmentType;
+                        if (equipType != null) {
+                          final defaults = defaultSetValues(
+                            equipType,
+                            weightUnit,
+                          );
+                          defaultWeight = defaults.weight;
+                          defaultReps = defaults.reps;
+                        }
+                      }
                     } else {
-                      // Warmup -> working: use equipment defaults
+                      // Priority 3: equipment-type defaults for first-ever set
                       final equipType = exercise?.equipmentType;
                       if (equipType != null) {
                         final defaults = defaultSetValues(
@@ -970,53 +995,45 @@ class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
                         defaultReps = defaults.reps;
                       }
                     }
-                  } else {
-                    // Priority 3: equipment-type defaults for first-ever set
-                    final equipType = exercise?.equipmentType;
-                    if (equipType != null) {
-                      final defaults = defaultSetValues(equipType, weightUnit);
-                      defaultWeight = defaults.weight;
-                      defaultReps = defaults.reps;
-                    }
-                  }
 
-                  // Record the current set count before adding.
-                  final setCountBefore = activeExercise.sets.length;
-                  ref
-                      .read(activeWorkoutProvider.notifier)
-                      .addSet(
-                        weId,
-                        defaultWeight: defaultWeight,
-                        defaultReps: defaultReps,
-                      );
+                    // Record the current set count before adding.
+                    final setCountBefore = activeExercise.sets.length;
+                    ref
+                        .read(activeWorkoutProvider.notifier)
+                        .addSet(
+                          weId,
+                          defaultWeight: defaultWeight,
+                          defaultReps: defaultReps,
+                        );
 
-                  // Mark the newly added set as new after state updates.
-                  // The notifier adds the set synchronously, so we can
-                  // read back the updated state to find the new set ID.
-                  final updated = ref.read(activeWorkoutProvider).value;
-                  if (updated != null) {
-                    final updatedExercise = updated.exercises
-                        .where((e) => e.workoutExercise.id == weId)
-                        .firstOrNull;
-                    if (updatedExercise != null &&
-                        updatedExercise.sets.length > setCountBefore) {
-                      setState(() {
-                        _newSetIds.add(updatedExercise.sets.last.id);
-                      });
-                      // Clear after the frame so SetRow.initState captures isNew
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        _newSetIds.remove(updatedExercise.sets.last.id);
-                      });
+                    // Mark the newly added set as new after state updates.
+                    // The notifier adds the set synchronously, so we can
+                    // read back the updated state to find the new set ID.
+                    final updated = ref.read(activeWorkoutProvider).value;
+                    if (updated != null) {
+                      final updatedExercise = updated.exercises
+                          .where((e) => e.workoutExercise.id == weId)
+                          .firstOrNull;
+                      if (updatedExercise != null &&
+                          updatedExercise.sets.length > setCountBefore) {
+                        setState(() {
+                          _newSetIds.add(updatedExercise.sets.last.id);
+                        });
+                        // Clear after the frame so SetRow.initState captures isNew
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          _newSetIds.remove(updatedExercise.sets.last.id);
+                        });
+                      }
                     }
-                  }
-                },
-                onLongPress: () => _fillRemaining(context),
-                icon: const Icon(Icons.add, size: 20),
-                label: const Text('Add Set'),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 48),
-                  side: BorderSide(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                  },
+                  onLongPress: () => _fillRemaining(context),
+                  icon: const Icon(Icons.add, size: 20),
+                  label: const Text('Add Set'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 48),
+                    side: BorderSide(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                    ),
                   ),
                 ),
               ),
@@ -1090,6 +1107,8 @@ class _AddExerciseFab extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Semantics(
+      container: true,
+      identifier: 'workout-add-exercise',
       label: 'Add exercise to workout',
       button: true,
       child: Container(

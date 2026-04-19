@@ -105,9 +105,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               onPressed: () => Navigator.of(ctx).pop(false),
               child: const Text('Cancel'),
             ),
-            FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Send Reset Email'),
+            Semantics(
+              container: true,
+              identifier: 'auth-send-reset',
+              child: FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Send Reset Email'),
+              ),
             ),
           ],
         );
@@ -182,12 +186,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    _isSignUp ? 'Create your account' : 'Welcome back',
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  Semantics(
+                    container: true,
+                    identifier: 'auth-welcome-back',
+                    child: Text(
+                      _isSignUp ? 'Create your account' : 'Welcome back',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.7,
+                        ),
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 40),
                   // Inline error message
@@ -236,6 +246,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
                     prefixIcon: Icons.email_outlined,
+                    semanticsIdentifier: 'auth-email-input',
                   ),
                   const SizedBox(height: 16),
                   AppTextField(
@@ -246,20 +257,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     textInputAction: TextInputAction.done,
                     prefixIcon: Icons.lock_outlined,
                     onFieldSubmitted: (_) => _submit(),
+                    semanticsIdentifier: 'auth-password-input',
                   ),
                   if (!_isSignUp) ...[
                     Align(
                       alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: isLoading ? null : _forgotPassword,
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                        ),
-                        child: Text(
-                          'Forgot password?',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.primary.withValues(
-                              alpha: 0.8,
+                      child: Semantics(
+                        container: true,
+                        identifier: 'auth-forgot-pwd',
+                        child: TextButton(
+                          onPressed: isLoading ? null : _forgotPassword,
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                          ),
+                          child: Text(
+                            'Forgot password?',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.primary.withValues(
+                                alpha: 0.8,
+                              ),
                             ),
                           ),
                         ),
@@ -271,6 +287,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     label: _isSignUp ? 'SIGN UP' : 'LOG IN',
                     onPressed: isLoading ? null : _submit,
                     isLoading: isLoading,
+                    semanticsIdentifier: _isSignUp
+                        ? 'auth-signup-btn'
+                        : 'auth-login-btn',
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -303,33 +322,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  OutlinedButton.icon(
-                    onPressed: isLoading ? null : _signInWithGoogle,
-                    icon: SvgPicture.asset(
-                      'assets/icons/google_logo.svg',
-                      width: 20,
-                      height: 20,
-                    ),
-                    label: const Text('Continue with Google'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      side: BorderSide(
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.3,
-                        ),
+                  Semantics(
+                    container: true,
+                    identifier: 'auth-google-btn',
+                    child: OutlinedButton.icon(
+                      onPressed: isLoading ? null : _signInWithGoogle,
+                      icon: SvgPicture.asset(
+                        'assets/icons/google_logo.svg',
+                        width: 20,
+                        height: 20,
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                      label: const Text('Continue with Google'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        side: BorderSide(
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.3,
+                          ),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 24),
-                  TextButton(
-                    onPressed: isLoading ? null : _toggleMode,
-                    child: Text(
-                      _isSignUp
-                          ? 'Already have an account? Log in'
-                          : "Don't have an account? Sign up",
+                  Semantics(
+                    container: true,
+                    identifier: _isSignUp
+                        ? 'auth-toggle-login'
+                        : 'auth-toggle-signup',
+                    child: TextButton(
+                      onPressed: isLoading ? null : _toggleMode,
+                      child: Text(
+                        _isSignUp
+                            ? 'Already have an account? Log in'
+                            : "Don't have an account? Sign up",
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),

@@ -349,8 +349,8 @@ test.describe('Personal records', { tag: '@smoke' }, () => {
       return;
     }
 
-    // A record card for Barbell Bench Press should be present.
-    await expect(page.locator('text=Barbell Bench Press').first()).toBeVisible({
+    // A record card should be present (we already verified not empty state).
+    await expect(page.locator(PR_DISPLAY.exerciseRecordCard).first()).toBeVisible({
       timeout: 10_000,
     });
   });

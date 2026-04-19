@@ -23,6 +23,8 @@ class LastSessionLine extends ConsumerWidget {
     if (last == null) return const SizedBox.shrink();
 
     return Semantics(
+      container: true,
+      identifier: 'home-last-session',
       button: true,
       label: 'Last session: ${last.name}, ${last.relativeDate}',
       child: InkWell(

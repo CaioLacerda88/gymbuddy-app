@@ -133,6 +133,7 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
                   textInputAction: TextInputAction.done,
                   prefixIcon: Icons.fitness_center,
                   maxLength: 80,
+                  semanticsIdentifier: 'create-exercise-name',
                   onChanged: (_) {
                     if (_nameError != null) {
                       setState(() => _nameError = null);
@@ -195,6 +196,7 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
                   label: 'CREATE EXERCISE',
                   onPressed: _isLoading ? null : _submit,
                   isLoading: _isLoading,
+                  semanticsIdentifier: 'create-exercise-save',
                 ),
               ],
             ),

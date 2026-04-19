@@ -1,0 +1,104 @@
+{
+  "@@locale": "en",
+
+  "navHome": "Home",
+  "@navHome": { "description": "Bottom navigation label for home tab" },
+  "navExercises": "Exercises",
+  "@navExercises": { "description": "Bottom navigation label for exercises tab" },
+  "navRoutines": "Routines",
+  "@navRoutines": { "description": "Bottom navigation label for routines tab" },
+  "navProfile": "Profile",
+  "@navProfile": { "description": "Bottom navigation label for profile tab" },
+
+  "save": "Save",
+  "@save": { "description": "Save button label" },
+  "cancel": "Cancel",
+  "@cancel": { "description": "Cancel button label" },
+  "delete": "Delete",
+  "@delete": { "description": "Delete button label" },
+  "confirm": "Confirm",
+  "@confirm": { "description": "Confirm button label" },
+  "retry": "Retry",
+  "@retry": { "description": "Retry button label" },
+  "dismiss": "Dismiss",
+  "@dismiss": { "description": "Dismiss button label" },
+  "continueLabel": "Continue",
+  "@continueLabel": { "description": "Continue button label (continueLabel avoids Dart keyword)" },
+  "logOut": "Log Out",
+  "@logOut": { "description": "Log out button label" },
+  "done": "Done",
+  "@done": { "description": "Done button label" },
+  "edit": "Edit",
+  "@edit": { "description": "Edit button label" },
+  "create": "Create",
+  "@create": { "description": "Create button label" },
+  "add": "Add",
+  "@add": { "description": "Add button label" },
+
+  "loading": "Loading...",
+  "@loading": { "description": "Generic loading indicator text" },
+  "error": "Something went wrong",
+  "@error": { "description": "Generic error message" },
+  "noResults": "No results found",
+  "@noResults": { "description": "Empty search results message" },
+  "emptyState": "Nothing here yet",
+  "@emptyState": { "description": "Generic empty state message" },
+  "search": "Search",
+  "@search": { "description": "Search field placeholder" },
+
+  "email": "Email",
+  "@email": { "description": "Email field label" },
+  "password": "Password",
+  "@password": { "description": "Password field label" },
+  "logIn": "LOG IN",
+  "@logIn": { "description": "Log in button label" },
+  "signUp": "SIGN UP",
+  "@signUp": { "description": "Sign up button label" },
+  "forgotPassword": "Forgot password?",
+  "@forgotPassword": { "description": "Forgot password link text" },
+  "sendResetEmail": "Send Reset Email",
+  "@sendResetEmail": { "description": "Send password reset email button label" },
+
+  "offlineBanner": "You are offline",
+  "@offlineBanner": { "description": "Offline connectivity banner text" },
+  "pendingSyncSingular": "{count} change pending sync",
+  "@pendingSyncSingular": {
+    "description": "Singular form: number of offline changes pending sync",
+    "placeholders": {
+      "count": { "type": "int", "example": "1" }
+    }
+  },
+  "pendingSyncPlural": "{count} changes pending sync",
+  "@pendingSyncPlural": {
+    "description": "Plural form: number of offline changes pending sync",
+    "placeholders": {
+      "count": { "type": "int", "example": "5" }
+    }
+  },
+
+  "today": "Today",
+  "@today": { "description": "Relative date: today" },
+  "yesterday": "Yesterday",
+  "@yesterday": { "description": "Relative date: yesterday" },
+  "daysAgo": "{count} days ago",
+  "@daysAgo": {
+    "description": "Relative date: N days ago",
+    "placeholders": {
+      "count": { "type": "int", "example": "3" }
+    }
+  },
+  "weeksAgo": "{count} weeks ago",
+  "@weeksAgo": {
+    "description": "Relative date: N weeks ago",
+    "placeholders": {
+      "count": { "type": "int", "example": "2" }
+    }
+  },
+  "monthsAgo": "{count} months ago",
+  "@monthsAgo": {
+    "description": "Relative date: N months ago",
+    "placeholders": {
+      "count": { "type": "int", "example": "3" }
+    }
+  }
+}

@@ -26,6 +26,7 @@ class ProfileRepository extends BaseRepository {
     String? fitnessLevel,
     String? weightUnit,
     int? trainingFrequencyPerWeek,
+    String? locale,
   }) {
     return mapException(() async {
       final updates = <String, dynamic>{
@@ -39,6 +40,8 @@ class ProfileRepository extends BaseRepository {
         // ignore: use_null_aware_elements
         if (trainingFrequencyPerWeek != null)
           'training_frequency_per_week': trainingFrequencyPerWeek,
+        // ignore: use_null_aware_elements
+        if (locale != null) 'locale': locale,
       };
       final data = await _client
           .from('profiles')
@@ -63,6 +66,15 @@ class ProfileRepository extends BaseRepository {
       await _client
           .from('profiles')
           .update({'weight_unit': unit})
+          .eq('id', userId);
+    });
+  }
+
+  Future<void> updateLocale(String userId, String locale) {
+    return mapException(() async {
+      await _client
+          .from('profiles')
+          .update({'locale': locale})
           .eq('id', userId);
     });
   }

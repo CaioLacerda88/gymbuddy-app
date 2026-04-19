@@ -1,0 +1,44 @@
+{
+  "@@locale": "pt",
+
+  "navHome": "Início",
+  "navExercises": "Exercícios",
+  "navRoutines": "Rotinas",
+  "navProfile": "Perfil",
+
+  "save": "Salvar",
+  "cancel": "Cancelar",
+  "delete": "Excluir",
+  "confirm": "Confirmar",
+  "retry": "Tentar novamente",
+  "dismiss": "Dispensar",
+  "continueLabel": "Continuar",
+  "logOut": "Sair",
+  "done": "Concluir",
+  "edit": "Editar",
+  "create": "Criar",
+  "add": "Adicionar",
+
+  "loading": "Carregando...",
+  "error": "Algo deu errado",
+  "noResults": "Nenhum resultado encontrado",
+  "emptyState": "Nada aqui ainda",
+  "search": "Buscar",
+
+  "email": "E-mail",
+  "password": "Senha",
+  "logIn": "ENTRAR",
+  "signUp": "CADASTRAR",
+  "forgotPassword": "Esqueceu a senha?",
+  "sendResetEmail": "Enviar E-mail de Recuperação",
+
+  "offlineBanner": "Você está offline",
+  "pendingSyncSingular": "{count} alteração pendente",
+  "pendingSyncPlural": "{count} alterações pendentes",
+
+  "today": "Hoje",
+  "yesterday": "Ontem",
+  "daysAgo": "{count} dias atrás",
+  "weeksAgo": "{count} semanas atrás",
+  "monthsAgo": "{count} meses atrás"
+}

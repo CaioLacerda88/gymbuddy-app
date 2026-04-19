@@ -52,7 +52,11 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Text('Exercises', style: theme.textTheme.headlineLarge),
+              child: Semantics(
+                container: true,
+                identifier: 'exercise-list-heading',
+                child: Text('Exercises', style: theme.textTheme.headlineLarge),
+              ),
             ),
             const SizedBox(height: 16),
             const _MuscleGroupSelector(),
@@ -173,6 +177,9 @@ class _MuscleGroupButton extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: Semantics(
+        container: true,
+        identifier:
+            'exercise-filter-${label.toLowerCase().replaceAll(' ', '-')}',
         label: '$label muscle group filter',
         selected: isSelected,
         child: Material(
@@ -230,6 +237,8 @@ class _SearchBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
+      container: true,
+      identifier: 'exercise-list-search',
       label: 'Search exercises',
       child: TextField(
         controller: controller,
@@ -266,6 +275,8 @@ class _EquipmentFilter extends ConsumerWidget {
             return Padding(
               padding: const EdgeInsets.only(right: 8),
               child: Semantics(
+                container: true,
+                identifier: 'exercise-equip-${type.name}',
                 label: '${type.displayName} equipment filter',
                 selected: isSelected,
                 child: FilterChip(
@@ -460,22 +471,32 @@ class _EmptyState extends StatelessWidget {
               color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
-            Text(
-              hasFilters
-                  ? 'No exercises match your filters'
-                  : 'Your exercises will appear here',
-              style: theme.textTheme.bodyLarge?.copyWith(
-                fontWeight: FontWeight.w500,
+            Semantics(
+              container: true,
+              identifier: hasFilters
+                  ? 'exercise-list-empty-filtered'
+                  : 'exercise-list-empty-no-filter',
+              child: Text(
+                hasFilters
+                    ? 'No exercises match your filters'
+                    : 'Your exercises will appear here',
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             if (hasFilters)
-              TextButton(
-                onPressed: onClearFilters,
-                child: Text(
-                  'Clear Filters',
-                  style: TextStyle(color: theme.colorScheme.primary),
+              Semantics(
+                container: true,
+                identifier: 'exercise-list-clear-filters',
+                child: TextButton(
+                  onPressed: onClearFilters,
+                  child: Text(
+                    'Clear Filters',
+                    style: TextStyle(color: theme.colorScheme.primary),
+                  ),
                 ),
               )
             else
@@ -503,6 +524,8 @@ class _CreateExerciseFab extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Semantics(
+      container: true,
+      identifier: 'exercise-list-create-fab',
       label: 'Create new exercise',
       button: true,
       child: Container(

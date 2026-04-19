@@ -55,7 +55,14 @@ class _AddRoutinesSheetState extends State<AddRoutinesSheet> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
-                  Text('Add Routines', style: theme.textTheme.titleLarge),
+                  Semantics(
+                    container: true,
+                    identifier: 'weekly-plan-add-sheet-title',
+                    child: Text(
+                      'Add Routines',
+                      style: theme.textTheme.titleLarge,
+                    ),
+                  ),
                   const Spacer(),
                   if (widget.availableRoutines.isEmpty)
                     Text(
@@ -113,11 +120,15 @@ class _AddRoutinesSheetState extends State<AddRoutinesSheet> {
                   padding: const EdgeInsets.all(16),
                   child: SizedBox(
                     width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () =>
-                          Navigator.of(context).pop(_selected.toList()),
-                      child: Text(
-                        'ADD ${_selected.length} ROUTINE${_selected.length > 1 ? 'S' : ''}',
+                    child: Semantics(
+                      container: true,
+                      identifier: 'weekly-plan-add-confirm',
+                      child: FilledButton(
+                        onPressed: () =>
+                            Navigator.of(context).pop(_selected.toList()),
+                        child: Text(
+                          'ADD ${_selected.length} ROUTINE${_selected.length > 1 ? 'S' : ''}',
+                        ),
                       ),
                     ),
                   ),

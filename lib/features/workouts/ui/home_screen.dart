@@ -221,9 +221,13 @@ class _HomeRoutinesList extends ConsumerWidget {
             if (hasMore)
               Align(
                 alignment: Alignment.centerLeft,
-                child: TextButton(
-                  onPressed: () => context.go('/routines'),
-                  child: const Text('See all'),
+                child: Semantics(
+                  container: true,
+                  identifier: 'home-see-all-routines',
+                  child: TextButton(
+                    onPressed: () => context.go('/routines'),
+                    child: const Text('See all'),
+                  ),
                 ),
               ),
           ],

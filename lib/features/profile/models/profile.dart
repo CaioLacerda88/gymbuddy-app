@@ -13,6 +13,7 @@ abstract class Profile with _$Profile {
     String? fitnessLevel,
     @Default('kg') String weightUnit,
     @Default(3) int trainingFrequencyPerWeek,
+    @Default('en') String locale,
     DateTime? createdAt,
   }) = _Profile;
 

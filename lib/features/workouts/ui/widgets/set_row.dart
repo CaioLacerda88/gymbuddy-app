@@ -306,6 +306,10 @@ class _SetRowState extends ConsumerState<SetRow> {
 
                 // Completion checkbox
                 Semantics(
+                  container: true,
+                  identifier: set.isCompleted
+                      ? 'workout-set-completed'
+                      : 'workout-set-done',
                   label: set.isCompleted ? 'Set completed' : 'Mark set as done',
                   child: SizedBox(
                     width: 48,

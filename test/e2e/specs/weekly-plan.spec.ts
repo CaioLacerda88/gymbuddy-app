@@ -12,7 +12,7 @@ import { test, expect } from '@playwright/test';
 import { Page } from '@playwright/test';
 import { login } from '../helpers/auth';
 import { navigateToTab } from '../helpers/app';
-import { WEEKLY_PLAN } from '../helpers/selectors';
+import { HOME, WEEKLY_PLAN } from '../helpers/selectors';
 import { TEST_USERS } from '../fixtures/test-users';
 
 /**
@@ -249,14 +249,14 @@ test.describe('Weekly Plan', { tag: '@smoke' }, () => {
     // Navigate to Home.
     await navigateToTab(page, 'Home');
 
-    // The THIS WEEK section should now show and Push Day chip should be visible.
-    // Use .first() to avoid strict mode violation if multiple "THIS WEEK"
-    // text nodes exist in the semantics tree.
-    await expect(page.locator(WEEKLY_PLAN.thisWeekHeader).first()).toBeVisible({
+    // The home status line should be visible (e.g. "0 of 1 this week").
+    // The old thisWeekHeader identifier is only on WeekReviewSection which
+    // renders in week-complete state — use the always-visible status line.
+    await expect(page.locator(HOME.statusLine).first()).toBeVisible({
       timeout: 15_000,
     });
-    // The chip text content includes the routine name.
-    await expect(page.locator(`text=${PUSH_DAY}`).first()).toBeVisible({
+    // The chip button includes the routine name in its accessible label.
+    await expect(page.getByRole('button', { name: new RegExp(PUSH_DAY) })).toBeVisible({
       timeout: 10_000,
     });
   });

@@ -29,6 +29,8 @@ class PendingSyncBadge extends ConsumerWidget {
               key: const ValueKey('badge'),
               padding: const EdgeInsets.only(bottom: 12),
               child: Semantics(
+                container: true,
+                identifier: 'offline-pending-badge',
                 label: '$label. Tap to manage.',
                 button: true,
                 child: Material(

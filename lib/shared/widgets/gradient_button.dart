@@ -15,6 +15,7 @@ class GradientButton extends StatelessWidget {
     this.isLoading = false,
     this.icon,
     this.gradient = AppTheme.primaryGradient,
+    this.semanticsIdentifier,
   });
 
   final String label;
@@ -22,6 +23,9 @@ class GradientButton extends StatelessWidget {
   final bool isLoading;
   final IconData? icon;
   final LinearGradient gradient;
+
+  /// Optional Semantics identifier for locale-independent E2E selectors.
+  final String? semanticsIdentifier;
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +52,8 @@ class GradientButton extends StatelessWidget {
     }
 
     return Semantics(
+      container: true,
+      identifier: semanticsIdentifier,
       label: label,
       button: true,
       child: Container(

@@ -38,21 +38,29 @@ Future<void> showRoutineActionSheet(
               onTap: () => Navigator.pop(context, RoutineAction.duplicate),
             ),
           ] else ...[
-            ListTile(
-              leading: const Icon(Icons.edit_outlined),
-              title: const Text('Edit'),
-              onTap: () => Navigator.pop(context, RoutineAction.edit),
+            Semantics(
+              container: true,
+              identifier: 'routine-edit-option',
+              child: ListTile(
+                leading: const Icon(Icons.edit_outlined),
+                title: const Text('Edit'),
+                onTap: () => Navigator.pop(context, RoutineAction.edit),
+              ),
             ),
-            ListTile(
-              leading: Icon(
-                Icons.delete_outline,
-                color: Theme.of(context).colorScheme.error,
+            Semantics(
+              container: true,
+              identifier: 'routine-delete-option',
+              child: ListTile(
+                leading: Icon(
+                  Icons.delete_outline,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+                title: Text(
+                  'Delete',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+                onTap: () => Navigator.pop(context, RoutineAction.delete),
               ),
-              title: Text(
-                'Delete',
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-              onTap: () => Navigator.pop(context, RoutineAction.delete),
             ),
           ],
         ],
@@ -80,19 +88,31 @@ Future<void> showRoutineActionSheet(
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Delete Routine'),
+          title: Semantics(
+            container: true,
+            identifier: 'routine-delete-dialog-title',
+            child: const Text('Delete Routine'),
+          ),
           content: Text('Delete "${routine.name}"? This cannot be undone.'),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error,
+            Semantics(
+              container: true,
+              identifier: 'routine-cancel-btn',
+              child: TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
               ),
-              child: const Text('Delete'),
+            ),
+            Semantics(
+              container: true,
+              identifier: 'routine-delete-confirm',
+              child: FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                ),
+                child: const Text('Delete'),
+              ),
             ),
           ],
         ),

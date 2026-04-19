@@ -66,6 +66,46 @@ void main() {
       expect(a, isNot(equals(b)));
     });
 
+    test('defaults locale to en when not specified', () {
+      final profile = Profile.fromJson({'id': 'user-123'});
+      expect(profile.locale, 'en');
+    });
+
+    test('defaults locale to en when constructed without locale', () {
+      const profile = Profile(id: 'user-123');
+      expect(profile.locale, 'en');
+    });
+
+    test('locale can be set to pt', () {
+      const profile = Profile(id: 'user-123', locale: 'pt');
+      expect(profile.locale, 'pt');
+    });
+
+    test('fromJson parses locale from JSON', () {
+      final json = {'id': 'user-123', 'locale': 'pt'};
+      final profile = Profile.fromJson(json);
+      expect(profile.locale, 'pt');
+    });
+
+    test('toJson includes locale field', () {
+      const profile = Profile(id: 'user-123', locale: 'pt');
+      final json = profile.toJson();
+      expect(json['locale'], 'pt');
+    });
+
+    test('toJson includes default locale en', () {
+      const profile = Profile(id: 'user-123');
+      final json = profile.toJson();
+      expect(json['locale'], 'en');
+    });
+
+    test('copyWith updates locale', () {
+      const profile = Profile(id: 'user-123', locale: 'en');
+      final updated = profile.copyWith(locale: 'pt');
+      expect(updated.locale, 'pt');
+      expect(profile.locale, 'en');
+    });
+
     test('parses createdAt datetime correctly', () {
       final json = {'id': 'user-1', 'created_at': '2026-03-15T08:30:00.000Z'};
       final profile = Profile.fromJson(json);

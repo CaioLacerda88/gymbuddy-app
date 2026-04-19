@@ -43,10 +43,16 @@ class DiscardWorkoutDialog extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(false),
           child: const Text('Cancel'),
         ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
-          child: const Text('Discard'),
+        Semantics(
+          container: true,
+          identifier: 'workout-discard-confirm',
+          child: TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: theme.colorScheme.error,
+            ),
+            child: const Text('Discard'),
+          ),
         ),
       ],
     );

@@ -148,8 +148,8 @@ test.describe('Auth — edge cases', () => {
   });
 
   test('should show error message for wrong password', async ({ page }) => {
-    await page.fill(AUTH.emailInput, TEST_USERS.fullAuth.email);
-    await page.fill(AUTH.passwordInput, 'definitely-wrong-password');
+    await flutterFill(page, AUTH.emailInput, TEST_USERS.fullAuth.email);
+    await flutterFill(page, AUTH.passwordInput, 'definitely-wrong-password');
     await page.click(AUTH.loginButton);
 
     // The LoginScreen renders an inline error container on auth failure.
@@ -164,8 +164,8 @@ test.describe('Auth — edge cases', () => {
   test('should show error message for non-existent email login', async ({
     page,
   }) => {
-    await page.fill(AUTH.emailInput, 'no-such-user-xyz@test.local');
-    await page.fill(AUTH.passwordInput, 'AnyPassword123!');
+    await flutterFill(page, AUTH.emailInput, 'no-such-user-xyz@test.local');
+    await flutterFill(page, AUTH.passwordInput, 'AnyPassword123!');
     await page.click(AUTH.loginButton);
 
     await expect(page.locator(AUTH.errorMessage)).toBeVisible({
@@ -206,8 +206,8 @@ test.describe('Auth — edge cases', () => {
     page,
   }) => {
     // Enter an email that is clearly malformed — no "@" symbol.
-    await page.fill(AUTH.emailInput, 'notanemail');
-    await page.fill(AUTH.passwordInput, 'AnyPassword123!');
+    await flutterFill(page, AUTH.emailInput, 'notanemail');
+    await flutterFill(page, AUTH.passwordInput, 'AnyPassword123!');
     await page.click(AUTH.loginButton);
 
     // LoginScreen._validateEmail returns 'Enter a valid email' for this case.
@@ -262,8 +262,8 @@ test.describe('Auth — edge cases', () => {
     await expect(page.locator(AUTH.signUpButton)).toBeVisible({ timeout: 5_000 });
 
     // Attempt to create an account with an email that already exists.
-    await page.fill(AUTH.emailInput, TEST_USERS.fullAuth.email);
-    await page.fill(AUTH.passwordInput, TEST_USERS.fullAuth.password);
+    await flutterFill(page, AUTH.emailInput, TEST_USERS.fullAuth.email);
+    await flutterFill(page, AUTH.passwordInput, TEST_USERS.fullAuth.password);
     await page.click(AUTH.signUpButton);
 
     // Supabase returns a "User already registered" error that surfaces as an

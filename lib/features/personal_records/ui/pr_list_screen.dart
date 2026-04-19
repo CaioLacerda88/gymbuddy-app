@@ -16,7 +16,13 @@ class PRListScreen extends ConsumerWidget {
     final asyncPRs = ref.watch(prListWithExercisesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Personal Records')),
+      appBar: AppBar(
+        title: Semantics(
+          container: true,
+          identifier: 'pr-display-title',
+          child: const Text('Personal Records'),
+        ),
+      ),
       body: asyncPRs.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(
@@ -51,14 +57,25 @@ class _EmptyState extends StatelessWidget {
               color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
             ),
             const SizedBox(height: 16),
-            Text('No Records Yet', style: theme.textTheme.headlineMedium),
-            const SizedBox(height: 8),
-            Text(
-              'Complete a workout to start tracking records',
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            Semantics(
+              container: true,
+              identifier: 'pr-display-empty-title',
+              child: Text(
+                'No Records Yet',
+                style: theme.textTheme.headlineMedium,
               ),
-              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Semantics(
+              container: true,
+              identifier: 'pr-display-empty',
+              child: Text(
+                'Complete a workout to start tracking records',
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+                textAlign: TextAlign.center,
+              ),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
@@ -147,34 +164,38 @@ class _ExerciseRecordCard extends StatelessWidget {
     final theme = Theme.of(context);
     final first = records.first;
 
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(kRadiusLg),
-        onTap: () => context.go('/exercises/${first.record.exerciseId}'),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(first.exerciseName, style: theme.textTheme.titleLarge),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 12,
-                runSpacing: 8,
-                children: records.map((pr) {
-                  return _RecordTile(
-                    icon: _iconForType(pr.record.recordType),
-                    label: pr.record.recordType.displayName,
-                    value: _formatValue(
-                      pr.record.recordType,
-                      pr.record.value,
-                      weightUnit,
-                      reps: pr.record.reps,
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
+    return Semantics(
+      container: true,
+      identifier: 'pr-exercise-card',
+      child: Card(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(kRadiusLg),
+          onTap: () => context.go('/exercises/${first.record.exerciseId}'),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(first.exerciseName, style: theme.textTheme.titleLarge),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  children: records.map((pr) {
+                    return _RecordTile(
+                      icon: _iconForType(pr.record.recordType),
+                      label: pr.record.recordType.displayName,
+                      value: _formatValue(
+                        pr.record.recordType,
+                        pr.record.value,
+                        weightUnit,
+                        reps: pr.record.reps,
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -208,10 +229,15 @@ class _RecordTile extends StatelessWidget {
         children: [
           Icon(icon, size: 20, color: theme.colorScheme.primary),
           const SizedBox(height: 4),
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+          Semantics(
+            container: true,
+            identifier:
+                'pr-display-${label.toLowerCase().replaceAll(' ', '-')}',
+            child: Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
             ),
           ),
           const SizedBox(height: 2),

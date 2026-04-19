@@ -133,9 +133,15 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("This Week's Plan"),
+        title: Semantics(
+          container: true,
+          identifier: 'weekly-plan-title',
+          child: const Text("This Week's Plan"),
+        ),
         actions: [
           Semantics(
+            container: true,
+            identifier: 'weekly-plan-overflow',
             label: 'More options',
             child: PopupMenuButton<String>(
               tooltip: 'More options',
@@ -150,7 +156,14 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
                   value: 'autofill',
                   child: Text('Auto-fill'),
                 ),
-                const PopupMenuItem(value: 'clear', child: Text('Clear Week')),
+                PopupMenuItem(
+                  value: 'clear',
+                  child: Semantics(
+                    container: true,
+                    identifier: 'weekly-plan-clear-week',
+                    child: const Text('Clear Week'),
+                  ),
+                ),
               ],
             ),
           ),
@@ -382,9 +395,13 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
             onPressed: () => Navigator.of(dialogCtx).pop(false),
             child: const Text('Cancel'),
           ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogCtx).pop(true),
-            child: const Text('Clear'),
+          Semantics(
+            container: true,
+            identifier: 'weekly-plan-clear-confirm',
+            child: TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(true),
+              child: const Text('Clear'),
+            ),
           ),
         ],
       ),
@@ -642,11 +659,15 @@ class _AddRoutineRow extends StatelessWidget {
                       size: 20,
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      'Add Routine',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: atSoftCap ? 0.3 : 0.55,
+                    Semantics(
+                      container: true,
+                      identifier: 'weekly-plan-add-routine-row',
+                      child: Text(
+                        'Add Routine',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: atSoftCap ? 0.3 : 0.55,
+                          ),
                         ),
                       ),
                     ),
@@ -698,10 +719,14 @@ class _EmptyState extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: onAddRoutines,
-            icon: const Icon(Icons.add),
-            label: const Text('Add Routines'),
+          Semantics(
+            container: true,
+            identifier: 'weekly-plan-add-routines',
+            child: FilledButton.icon(
+              onPressed: onAddRoutines,
+              icon: const Icon(Icons.add),
+              label: const Text('Add Routines'),
+            ),
           ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
