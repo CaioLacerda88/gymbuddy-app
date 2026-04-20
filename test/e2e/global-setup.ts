@@ -863,8 +863,10 @@ async function globalSetup(): Promise<void> {
   }
 
   // ── Seed en-default profile for smokeLocalizationEn user ──────────────
-  // No locale field is set — the app defaults to English. One minimal workout
-  // is seeded so the app lands in lapsed state (Quick workout button visible).
+  // locale is explicitly set to 'en' (the column is NOT NULL DEFAULT 'en').
+  // Omitting the field would leave stale values if a prior run wrote 'pt' — an
+  // upsert only overwrites columns that are present in the payload.
+  // One minimal workout is seeded so the app lands in lapsed state.
   const localizationEnUserId = await getUserId(
     supabase,
     'e2e-smoke-localization-en@test.local',
@@ -877,6 +879,7 @@ async function globalSetup(): Promise<void> {
           id: localizationEnUserId,
           display_name: 'Localization En User',
           fitness_level: 'intermediate',
+          locale: 'en',
         },
         { onConflict: 'id' },
       );

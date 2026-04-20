@@ -40,6 +40,13 @@ void main() {
       expect(AppNumberFormat.weight(0, locale: 'en'), '0');
       expect(AppNumberFormat.weight(0, locale: 'pt'), '0');
     });
+
+    test('negative weight preserves sign with locale-aware decimal separator', () {
+      // The UI prevents users from entering negative weights, but the formatter
+      // must not silently alter values that reach it (e.g. from direct API calls).
+      expect(AppNumberFormat.weight(-80.5, locale: 'en'), '-80.5');
+      expect(AppNumberFormat.weight(-80.5, locale: 'pt'), '-80,5');
+    });
   });
 
   group('AppNumberFormat.weightWithUnit', () {
@@ -100,6 +107,13 @@ void main() {
 
     test('renders <1000 as integer (pt)', () {
       expect(AppNumberFormat.compactVolume(500, locale: 'pt'), '500');
+    });
+
+    test('exactly 1000 renders as "1.0k" (en) and "1,0k" (pt)', () {
+      // Boundary: 1000 is the first value >= 1000, so it enters the compact branch.
+      // 1000 / 1000 = 1.0, formatted with one decimal → "1.0k" (en) / "1,0k" (pt).
+      expect(AppNumberFormat.compactVolume(1000.0, locale: 'en'), '1.0k');
+      expect(AppNumberFormat.compactVolume(1000.0, locale: 'pt'), '1,0k');
     });
   });
 }
