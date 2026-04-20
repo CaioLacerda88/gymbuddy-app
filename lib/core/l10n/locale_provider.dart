@@ -1,17 +1,15 @@
+import 'dart:developer' as developer;
 import 'dart:ui';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import '../../features/auth/providers/auth_providers.dart';
+import '../../features/profile/providers/profile_providers.dart';
 import '../local_storage/hive_service.dart';
 
 const _hiveKey = 'locale';
 
-/// Notifier for the app locale. Backed by the `user_prefs` Hive box.
-/// Defaults to `Locale('en')` when no preference has been persisted.
-///
-/// Changing the locale updates both Hive (for next launch) and provider
-/// state (for immediate rebuild).
 class LocaleNotifier extends Notifier<Locale> {
   @override
   Locale build() {
@@ -24,6 +22,40 @@ class LocaleNotifier extends Notifier<Locale> {
     final box = Hive.box(HiveService.userPrefs);
     await box.put(_hiveKey, locale.languageCode);
     state = locale;
+
+    _syncToRemote(locale.languageCode);
+  }
+
+  Future<void> reconcileWithRemote(String remoteCode) async {
+    final localCode = state.languageCode;
+    if (remoteCode == localCode) return;
+
+    final box = Hive.box(HiveService.userPrefs);
+    await box.put(_hiveKey, remoteCode);
+    state = Locale(remoteCode);
+  }
+
+  void _syncToRemote(String languageCode) {
+    try {
+      final userId = ref.read(currentUserIdProvider);
+      if (userId == null) return;
+
+      final repo = ref.read(profileRepositoryProvider);
+
+      repo.updateLocale(userId, languageCode).catchError((Object e) {
+        developer.log(
+          'Failed to sync locale to remote (async)',
+          error: e,
+          name: 'LocaleNotifier',
+        );
+      });
+    } catch (e) {
+      developer.log(
+        'Failed to sync locale to remote (sync)',
+        error: e,
+        name: 'LocaleNotifier',
+      );
+    }
   }
 }
 

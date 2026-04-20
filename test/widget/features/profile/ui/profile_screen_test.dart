@@ -357,9 +357,9 @@ void main() {
       await tester.pumpWidget(buildTestWidget(profile: profile));
       await tester.pump();
 
-      // Weekly Goal, Manage Data, Privacy Policy, and Terms of Service rows
-      // each render a chevron icon.
-      expect(find.byIcon(Icons.chevron_right), findsNWidgets(4));
+      // Weekly Goal, Language, Manage Data, Privacy Policy, and Terms of
+      // Service rows each render a chevron icon.
+      expect(find.byIcon(Icons.chevron_right), findsNWidgets(5));
     });
 
     // PO-039: The display name must show an edit icon and be tappable, opening
@@ -559,6 +559,66 @@ void main() {
         expect(switchTile.value, isTrue);
       },
     );
+
+    // -----------------------------------------------------------------------
+    // Language / PREFERENCES section
+    // -----------------------------------------------------------------------
+
+    testWidgets('shows PREFERENCES section header and Language row', (
+      tester,
+    ) async {
+      const profile = Profile(
+        id: 'user-1',
+        displayName: 'Jane',
+        weightUnit: 'kg',
+      );
+
+      await tester.pumpWidget(buildTestWidget(profile: profile));
+      await tester.pump();
+
+      expect(find.text('PREFERENCES'), findsOneWidget);
+      expect(find.text('Language'), findsOneWidget);
+    });
+
+    testWidgets('Language row shows current language display name (English)', (
+      tester,
+    ) async {
+      const profile = Profile(
+        id: 'user-1',
+        displayName: 'Jane',
+        weightUnit: 'kg',
+      );
+
+      await tester.pumpWidget(buildTestWidget(profile: profile));
+      await tester.pump();
+
+      // The default locale is English, so it should show "English".
+      expect(find.text('English'), findsOneWidget);
+    });
+
+    testWidgets('tapping Language row opens the language picker bottom sheet', (
+      tester,
+    ) async {
+      const profile = Profile(
+        id: 'user-1',
+        displayName: 'Jane',
+        weightUnit: 'kg',
+      );
+
+      await tester.pumpWidget(buildTestWidget(profile: profile));
+      await tester.pump();
+
+      // Scroll to the Language row (it may be off-screen).
+      await tester.ensureVisible(find.text('Language'));
+      await tester.pumpAndSettle();
+
+      // Tap the Language row.
+      await tester.tap(find.text('Language'));
+      await tester.pumpAndSettle();
+
+      // The bottom sheet should show both language options.
+      expect(find.text('Portugu\u00eas (Brasil)'), findsOneWidget);
+    });
 
     testWidgets(
       'PO-039: cancelling the edit dialog does not close the profile screen',

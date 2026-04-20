@@ -161,16 +161,16 @@ Each PLAN.md step follows this pipeline. **No step is skippable.**
 
 ### Debugging Protocol
 
-When ANY failure occurs during the pipeline (CI red, E2E failure, unexpected behavior, review-found bugs):
+When ANY non-obvious failure occurs during the pipeline (CI red, E2E failure, unexpected behavior, review-found bugs):
 
-1. **Invoke `superpowers:systematic-debugging`** — no guessing, no "quick fixes"
-2. **Phase 1 (Root Cause):** Read the actual error output. Reproduce. Check what changed. Trace data flow backward from the symptom.
+1. **IMMEDIATELY deploy `tech-lead` with `superpowers:systematic-debugging`** — no ad-hoc guessing, no trial-and-error. Non-obvious bugs waste massive time when investigated without systematic analysis.
+2. **Phase 1 (Root Cause):** Read the actual error output. Reproduce. Check what changed. Trace data flow backward from the symptom. **Dispatch the tech-lead agent to investigate architecture-level root causes** — don't just grep and patch.
 3. **Phase 2 (Pattern):** Find working examples in the codebase. Compare broken vs working.
 4. **Phase 3 (Hypothesis):** Form ONE specific theory ("X causes Y because Z"). Test minimally — one variable at a time.
 5. **Phase 4 (Fix):** Fix root cause, not symptom. Verify with tests.
 6. **If 3+ fix attempts fail:** Stop. Question the architecture. Discuss with user before continuing.
 
-**This applies to the orchestrator, not just agents.** When investigating CI failures, E2E regressions, or review feedback — follow the phases, don't ad-hoc grep around hoping to stumble on the answer.
+**This applies to the orchestrator, not just agents.** When investigating CI failures, E2E regressions, or review feedback — follow the phases, don't ad-hoc grep around hoping to stumble on the answer. The instinct to "just try something" wastes context window and time. Invest in understanding first.
 
 ### PLAN.md Lifecycle
 

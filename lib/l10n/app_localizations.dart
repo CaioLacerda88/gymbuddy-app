@@ -3433,6 +3433,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Kettlebell Windmill'**
   String get exerciseName_kettlebell_windmill;
+
+  /// Section header: preferences
+  ///
+  /// In en, this message translates to:
+  /// **'PREFERENCES'**
+  String get preferences;
+
+  /// Language preference row label
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get language;
 }
 
 class _AppLocalizationsDelegate
