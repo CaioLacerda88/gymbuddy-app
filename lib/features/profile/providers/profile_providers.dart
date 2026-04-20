@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../core/l10n/locale_provider.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../data/profile_repository.dart';
 import '../models/profile.dart';
@@ -15,24 +14,12 @@ final profileProvider = AsyncNotifierProvider<ProfileNotifier, Profile?>(
 );
 
 class ProfileNotifier extends AsyncNotifier<Profile?> {
-  bool _hasReconciled = false;
-
   @override
   Future<Profile?> build() async {
     final userId = ref.read(currentUserIdProvider);
-    if (userId == null) {
-      _hasReconciled = false;
-      return null;
-    }
+    if (userId == null) return null;
     final repo = ref.read(profileRepositoryProvider);
-    final profile = await repo.getProfile(userId);
-    if (profile != null && !_hasReconciled) {
-      _hasReconciled = true;
-      await ref
-          .read(localeProvider.notifier)
-          .reconcileWithRemote(profile.locale);
-    }
-    return profile;
+    return repo.getProfile(userId);
   }
 
   Future<void> saveOnboardingProfile({
