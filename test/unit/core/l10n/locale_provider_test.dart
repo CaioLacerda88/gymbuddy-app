@@ -5,7 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/l10n/locale_provider.dart';
 import 'package:gymbuddy_app/core/local_storage/hive_service.dart';
+import 'package:gymbuddy_app/features/auth/providers/auth_providers.dart';
+import 'package:gymbuddy_app/features/profile/data/profile_repository.dart';
+import 'package:gymbuddy_app/features/profile/models/profile.dart';
+import 'package:gymbuddy_app/features/profile/providers/profile_providers.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:mocktail/mocktail.dart';
+
+class _MockProfileRepository extends Mock implements ProfileRepository {}
 
 void main() {
   group('LocaleNotifier', () {
@@ -80,6 +87,159 @@ void main() {
 
       final box = Hive.box<dynamic>(HiveService.userPrefs);
       expect(box.get('locale'), 'pt');
+    });
+  });
+
+  group('LocaleNotifier.reconcileWithRemote', () {
+    late Directory tempDir;
+    late _MockProfileRepository mockRepo;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('locale_reconcile_');
+      Hive.init(tempDir.path);
+      await Hive.openBox<dynamic>(HiveService.userPrefs);
+      mockRepo = _MockProfileRepository();
+    });
+
+    tearDown(() async {
+      await Hive.close();
+      await tempDir.delete(recursive: true);
+    });
+
+    ProviderContainer createContainer({String? userId}) {
+      final c = ProviderContainer(
+        overrides: [
+          currentUserIdProvider.overrideWithValue(userId),
+          profileRepositoryProvider.overrideWithValue(mockRepo),
+        ],
+      );
+      addTearDown(c.dispose);
+      return c;
+    }
+
+    test('remote locale differs from local — Supabase wins', () async {
+      // Local Hive has 'en', remote profile has 'pt'.
+      final c = createContainer(userId: 'user-1');
+      when(
+        () => mockRepo.getProfile('user-1'),
+      ).thenAnswer((_) async => const Profile(id: 'user-1', locale: 'pt'));
+
+      expect(c.read(localeProvider), const Locale('en'));
+
+      await c.read(localeProvider.notifier).reconcileWithRemote();
+
+      expect(c.read(localeProvider), const Locale('pt'));
+      final box = Hive.box<dynamic>(HiveService.userPrefs);
+      expect(box.get('locale'), 'pt');
+    });
+
+    test('Supabase unreachable — silently keeps local value', () async {
+      final c = createContainer(userId: 'user-1');
+      when(
+        () => mockRepo.getProfile('user-1'),
+      ).thenThrow(Exception('network error'));
+
+      await c.read(localeProvider.notifier).reconcileWithRemote();
+
+      // Should still be 'en' (the default).
+      expect(c.read(localeProvider), const Locale('en'));
+    });
+
+    test('user not logged in — returns early without calling repo', () async {
+      final c = createContainer(userId: null);
+
+      await c.read(localeProvider.notifier).reconcileWithRemote();
+
+      expect(c.read(localeProvider), const Locale('en'));
+      verifyNever(() => mockRepo.getProfile(any()));
+    });
+
+    test('remote locale same as local — no state change', () async {
+      final c = createContainer(userId: 'user-1');
+      when(
+        () => mockRepo.getProfile('user-1'),
+      ).thenAnswer((_) async => const Profile(id: 'user-1', locale: 'en'));
+
+      await c.read(localeProvider.notifier).reconcileWithRemote();
+
+      expect(c.read(localeProvider), const Locale('en'));
+    });
+
+    test('remote profile is null — keeps local value', () async {
+      final c = createContainer(userId: 'user-1');
+      when(() => mockRepo.getProfile('user-1')).thenAnswer((_) async => null);
+
+      await c.read(localeProvider.notifier).reconcileWithRemote();
+
+      expect(c.read(localeProvider), const Locale('en'));
+    });
+  });
+
+  group('LocaleNotifier.setLocale remote sync', () {
+    late Directory tempDir;
+    late _MockProfileRepository mockRepo;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('locale_sync_');
+      Hive.init(tempDir.path);
+      await Hive.openBox<dynamic>(HiveService.userPrefs);
+      mockRepo = _MockProfileRepository();
+    });
+
+    tearDown(() async {
+      await Hive.close();
+      await tempDir.delete(recursive: true);
+    });
+
+    ProviderContainer createContainer({String? userId}) {
+      final c = ProviderContainer(
+        overrides: [
+          currentUserIdProvider.overrideWithValue(userId),
+          profileRepositoryProvider.overrideWithValue(mockRepo),
+        ],
+      );
+      addTearDown(c.dispose);
+      return c;
+    }
+
+    test('setLocale calls updateLocale on the profile repository', () async {
+      when(
+        () => mockRepo.updateLocale('user-1', 'pt'),
+      ).thenAnswer((_) async {});
+
+      final c = createContainer(userId: 'user-1');
+      await c.read(localeProvider.notifier).setLocale(const Locale('pt'));
+
+      // Give the fire-and-forget future a chance to complete.
+      await Future<void>.delayed(Duration.zero);
+
+      verify(() => mockRepo.updateLocale('user-1', 'pt')).called(1);
+    });
+
+    test('setLocale succeeds even when remote sync fails', () async {
+      when(
+        () => mockRepo.updateLocale('user-1', 'pt'),
+      ).thenThrow(Exception('network error'));
+
+      final c = createContainer(userId: 'user-1');
+      await c.read(localeProvider.notifier).setLocale(const Locale('pt'));
+
+      // State and Hive should still be updated despite remote failure.
+      expect(c.read(localeProvider), const Locale('pt'));
+      final box = Hive.box<dynamic>(HiveService.userPrefs);
+      expect(box.get('locale'), 'pt');
+    });
+
+    test('setLocale does not call repo when user is not logged in', () async {
+      final c = createContainer(userId: null);
+      await c.read(localeProvider.notifier).setLocale(const Locale('pt'));
+
+      // Give the fire-and-forget future a chance to complete.
+      await Future<void>.delayed(Duration.zero);
+
+      verifyNever(() => mockRepo.updateLocale(any(), any()));
+      // State should still update locally.
+      expect(c.read(localeProvider), const Locale('pt'));
     });
   });
 }

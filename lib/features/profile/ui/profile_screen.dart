@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/l10n/locale_provider.dart';
 import '../../../core/theme/radii.dart';
 import '../../../features/auth/providers/auth_providers.dart';
 import '../../../features/auth/providers/notifiers/auth_notifier.dart';
@@ -13,6 +14,7 @@ import '../../workouts/providers/workout_history_providers.dart'
     show workoutCountProvider;
 import '../providers/crash_reports_enabled_provider.dart';
 import '../providers/profile_providers.dart';
+import 'widgets/language_picker_sheet.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -81,6 +83,16 @@ class ProfileScreen extends ConsumerWidget {
               loading: () => const _WeeklyGoalRow(frequency: 3),
               error: (_, _) => const _WeeklyGoalRow(frequency: 3),
             ),
+            const SizedBox(height: 32),
+            // Preferences section
+            Text(
+              l10n.preferences,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _LanguageRow(locale: ref.watch(localeProvider)),
             const SizedBox(height: 32),
             // Data management section
             Text(
@@ -596,6 +608,69 @@ class _WeeklyGoalRow extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _LanguageRow extends StatelessWidget {
+  const _LanguageRow({required this.locale});
+
+  final Locale locale;
+
+  /// Display names in the language's own script (never translated).
+  static const _displayNames = {
+    'en': 'English',
+    'pt': 'Portugu\u00eas (Brasil)',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final displayName =
+        _displayNames[locale.languageCode] ?? locale.languageCode;
+
+    return Material(
+      color: theme.cardTheme.color ?? theme.colorScheme.surface,
+      borderRadius: BorderRadius.circular(kRadiusMd),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(kRadiusMd),
+        onTap: () => _showLanguagePicker(context),
+        child: Semantics(
+          identifier: 'profile-language-row',
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l10n.language,
+                    style: theme.textTheme.titleMedium,
+                  ),
+                ),
+                Text(
+                  displayName,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.chevron_right,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showLanguagePicker(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (_) => const LanguagePickerSheet(),
     );
   }
 }

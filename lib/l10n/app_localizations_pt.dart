@@ -1877,4 +1877,10 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get exerciseName_kettlebell_windmill => 'Moinho com Kettlebell';
+
+  @override
+  String get preferences => 'PREFERÊNCIAS';
+
+  @override
+  String get language => 'Idioma';
 }

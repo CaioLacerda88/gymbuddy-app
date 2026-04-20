@@ -790,5 +790,8 @@
   "exerciseName_heel_touch": "Toque no Calcanhar",
   "@exerciseName_heel_touch": { "description": "Exercise name: Heel Touch" },
   "exerciseName_kettlebell_windmill": "Moinho com Kettlebell",
-  "@exerciseName_kettlebell_windmill": { "description": "Exercise name: Kettlebell Windmill" }
+  "@exerciseName_kettlebell_windmill": { "description": "Exercise name: Kettlebell Windmill" },
+
+  "preferences": "PREFERÊNCIAS",
+  "language": "Idioma"
 }

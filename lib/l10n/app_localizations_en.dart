@@ -1860,4 +1860,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get exerciseName_kettlebell_windmill => 'Kettlebell Windmill';
+
+  @override
+  String get preferences => 'PREFERENCES';
+
+  @override
+  String get language => 'Language';
 }

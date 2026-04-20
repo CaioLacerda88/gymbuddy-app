@@ -1509,5 +1509,10 @@
   "exerciseName_heel_touch": "Heel Touch",
   "@exerciseName_heel_touch": { "description": "Exercise name: Heel Touch" },
   "exerciseName_kettlebell_windmill": "Kettlebell Windmill",
-  "@exerciseName_kettlebell_windmill": { "description": "Exercise name: Kettlebell Windmill" }
+  "@exerciseName_kettlebell_windmill": { "description": "Exercise name: Kettlebell Windmill" },
+
+  "preferences": "PREFERENCES",
+  "@preferences": { "description": "Section header: preferences" },
+  "language": "Language",
+  "@language": { "description": "Language preference row label" }
 }
