@@ -57,40 +57,40 @@ class AppLocalizationsPt extends AppLocalizations {
   String get add => 'Adicionar';
 
   @override
-  String get skip => 'Skip';
+  String get skip => 'Pular';
 
   @override
-  String get back => 'Back';
+  String get back => 'Voltar';
 
   @override
-  String get close => 'Close';
+  String get close => 'Fechar';
 
   @override
-  String get start => 'Start';
+  String get start => 'Iniciar';
 
   @override
-  String get remove => 'Remove';
+  String get remove => 'Remover';
 
   @override
-  String get discard => 'Discard';
+  String get discard => 'Descartar';
 
   @override
-  String get resume => 'Resume';
+  String get resume => 'Retomar';
 
   @override
-  String get clear => 'Clear';
+  String get clear => 'Limpar';
 
   @override
-  String get replace => 'Replace';
+  String get replace => 'Substituir';
 
   @override
-  String get undo => 'Undo';
+  String get undo => 'Desfazer';
 
   @override
-  String get all => 'All';
+  String get all => 'Todos';
 
   @override
-  String get or => 'OR';
+  String get or => 'OU';
 
   @override
   String get loading => 'Carregando...';
@@ -161,67 +161,67 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get muscleGroupChest => 'Chest';
+  String get muscleGroupChest => 'Peito';
 
   @override
-  String get muscleGroupBack => 'Back';
+  String get muscleGroupBack => 'Costas';
 
   @override
-  String get muscleGroupLegs => 'Legs';
+  String get muscleGroupLegs => 'Pernas';
 
   @override
-  String get muscleGroupShoulders => 'Shoulders';
+  String get muscleGroupShoulders => 'Ombros';
 
   @override
-  String get muscleGroupArms => 'Arms';
+  String get muscleGroupArms => 'Braços';
 
   @override
-  String get muscleGroupCore => 'Core';
+  String get muscleGroupCore => 'Núcleo';
 
   @override
   String get muscleGroupCardio => 'Cardio';
 
   @override
-  String get equipmentBarbell => 'Barbell';
+  String get equipmentBarbell => 'Barra';
 
   @override
-  String get equipmentDumbbell => 'Dumbbell';
+  String get equipmentDumbbell => 'Halter';
 
   @override
-  String get equipmentCable => 'Cable';
+  String get equipmentCable => 'Cabo';
 
   @override
-  String get equipmentMachine => 'Machine';
+  String get equipmentMachine => 'Máquina';
 
   @override
-  String get equipmentBodyweight => 'Bodyweight';
+  String get equipmentBodyweight => 'Peso Corporal';
 
   @override
-  String get equipmentBands => 'Bands';
+  String get equipmentBands => 'Faixas Elásticas';
 
   @override
   String get equipmentKettlebell => 'Kettlebell';
 
   @override
-  String get setTypeWorking => 'Working';
+  String get setTypeWorking => 'Normal';
 
   @override
-  String get setTypeWarmup => 'Warm-up';
+  String get setTypeWarmup => 'Aquecimento';
 
   @override
   String get setTypeDropset => 'Drop Set';
 
   @override
-  String get setTypeFailure => 'To Failure';
+  String get setTypeFailure => 'Até a Falha';
 
   @override
-  String get recordTypeMaxWeight => 'Max Weight';
+  String get recordTypeMaxWeight => 'Peso Máximo';
 
   @override
-  String get recordTypeMaxReps => 'Max Reps';
+  String get recordTypeMaxReps => 'Reps Máximo';
 
   @override
-  String get recordTypeMaxVolume => 'Max Volume';
+  String get recordTypeMaxVolume => 'Volume Máximo';
 
   @override
   String get weightUnitKg => 'KG';
@@ -233,280 +233,283 @@ class AppLocalizationsPt extends AppLocalizations {
   String get appName => 'GymBuddy';
 
   @override
-  String get welcomeBack => 'Welcome back';
+  String get welcomeBack => 'Bem-vindo de volta';
 
   @override
-  String get createYourAccount => 'Create your account';
+  String get createYourAccount => 'Crie sua conta';
 
   @override
-  String get emailRequired => 'Email is required';
+  String get emailRequired => 'E-mail é obrigatório';
 
   @override
-  String get emailInvalid => 'Enter a valid email';
+  String get emailInvalid => 'Insira um e-mail válido';
 
   @override
-  String get passwordRequired => 'Password is required';
+  String get passwordRequired => 'Senha é obrigatória';
 
   @override
-  String get passwordTooShort => 'Password must be at least 6 characters';
+  String get passwordTooShort => 'A senha deve ter pelo menos 6 caracteres';
 
   @override
   String get forgotPasswordHint =>
-      'Enter your email above, then tap \"Forgot password?\"';
+      'Digite seu e-mail acima e toque em \"Esqueceu a senha?\"';
 
   @override
-  String get resetPassword => 'Reset Password';
+  String get resetPassword => 'Redefinir Senha';
 
   @override
   String sendResetEmailTo(String email) {
-    return 'Send a password reset email to $email?';
+    return 'Enviar e-mail de redefinição de senha para $email?';
   }
 
   @override
-  String get resetEmailSent => 'Password reset email sent. Check your inbox.';
+  String get resetEmailSent =>
+      'E-mail de redefinição enviado. Verifique sua caixa de entrada.';
 
   @override
-  String get continueWithGoogle => 'Continue with Google';
+  String get continueWithGoogle => 'Continuar com Google';
 
   @override
-  String get alreadyHaveAccount => 'Already have an account? Log in';
+  String get alreadyHaveAccount => 'Já tem uma conta? Entrar';
 
   @override
-  String get dontHaveAccount => 'Don\'t have an account? Sign up';
+  String get dontHaveAccount => 'Não tem uma conta? Cadastrar';
 
   @override
-  String get legalAgreePrefix => 'By continuing, you agree to our ';
+  String get legalAgreePrefix => 'Ao continuar, você concorda com nossos ';
 
   @override
-  String get termsOfService => 'Terms of Service';
+  String get termsOfService => 'Termos de Serviço';
 
   @override
-  String get andSeparator => ' and ';
+  String get andSeparator => ' e ';
 
   @override
-  String get privacyPolicy => 'Privacy Policy';
+  String get privacyPolicy => 'Política de Privacidade';
 
   @override
   String get authErrorInvalidCredentials =>
-      'Wrong email or password. Please try again.';
+      'E-mail ou senha incorretos. Tente novamente.';
 
   @override
   String get authErrorEmailNotConfirmed =>
-      'Please check your inbox and confirm your email first.';
+      'Verifique sua caixa de entrada e confirme seu e-mail primeiro.';
 
   @override
   String get authErrorAlreadyRegistered =>
-      'An account with this email already exists. Try logging in instead.';
+      'Uma conta com este e-mail já existe. Tente entrar.';
 
   @override
   String get authErrorRateLimit =>
-      'Too many attempts. Please wait a moment and try again.';
+      'Muitas tentativas. Aguarde um momento e tente novamente.';
 
   @override
   String get authErrorWeakPassword =>
-      'Password is too weak. Use at least 6 characters.';
+      'A senha é muito fraca. Use pelo menos 6 caracteres.';
 
   @override
   String get authErrorNetwork =>
-      'No internet connection. Check your network and try again.';
+      'Sem conexão com a internet. Verifique sua rede e tente novamente.';
 
   @override
-  String get authErrorTimeout => 'Request timed out. Please try again.';
+  String get authErrorTimeout => 'A solicitação expirou. Tente novamente.';
 
   @override
   String get authErrorTokenExpired =>
-      'The confirmation link has expired. Please request a new one.';
+      'O link de confirmação expirou. Solicite um novo.';
 
   @override
-  String get authErrorGeneric => 'Something went wrong. Please try again.';
+  String get authErrorGeneric => 'Algo deu errado. Tente novamente.';
 
   @override
-  String get checkYourInbox => 'Check your inbox';
+  String get checkYourInbox => 'Verifique sua caixa de entrada';
 
   @override
-  String get confirmationSentTo => 'We sent a confirmation email to';
+  String get confirmationSentTo => 'Enviamos um e-mail de confirmação para';
 
   @override
-  String get confirmationSent => 'We sent you a confirmation email';
+  String get confirmationSent => 'Enviamos um e-mail de confirmação';
 
   @override
   String get tapLinkToVerify =>
-      'Tap the link in the email to verify your account, then come back and log in.';
+      'Toque no link do e-mail para verificar sua conta, depois volte e faça login.';
 
   @override
-  String get emailResent => 'Email resent! Check your inbox.';
+  String get emailResent => 'E-mail reenviado! Verifique sua caixa de entrada.';
 
   @override
-  String get backToLogin => 'BACK TO LOGIN';
+  String get backToLogin => 'VOLTAR PARA LOGIN';
 
   @override
-  String get didntReceiveResend => 'Didn\'t receive it? Resend email';
+  String get didntReceiveResend => 'Não recebeu? Reenviar e-mail';
 
   @override
-  String get onboardingHeadline => 'Track every rep,\nevery time';
+  String get onboardingHeadline => 'Registre cada rep,\nsempre';
 
   @override
   String get onboardingSubtitle =>
-      'Log workouts, crush personal records, and build the physique you want.';
+      'Registre treinos, quebre recordes pessoais e construa o físico que você deseja.';
 
   @override
-  String get getStarted => 'GET STARTED';
+  String get getStarted => 'COMEÇAR';
 
   @override
-  String get setupProfile => 'Set up your profile';
+  String get setupProfile => 'Configure seu perfil';
 
   @override
-  String get tellUsAboutYourself => 'Tell us a bit about yourself';
+  String get tellUsAboutYourself => 'Conte um pouco sobre você';
 
   @override
-  String get displayName => 'Display name';
+  String get displayName => 'Nome de exibição';
 
   @override
-  String get fitnessLevel => 'Fitness level';
+  String get fitnessLevel => 'Nível de condicionamento';
 
   @override
-  String get howOftenTrain => 'How often do you plan to train?';
+  String get howOftenTrain => 'Com que frequência você planeja treinar?';
 
   @override
-  String get weeklyGoalHint => 'Your weekly goal — you can change this anytime';
+  String get weeklyGoalHint =>
+      'Sua meta semanal — você pode alterar a qualquer momento';
 
   @override
-  String get letsGo => 'LET\'S GO';
+  String get letsGo => 'VAMOS LÁ';
 
   @override
-  String get pleaseEnterName => 'Please enter your name.';
+  String get pleaseEnterName => 'Por favor, insira seu nome.';
 
   @override
-  String get failedToSaveProfile => 'Failed to save profile. Please try again.';
+  String get failedToSaveProfile => 'Falha ao salvar perfil. Tente novamente.';
 
   @override
-  String get fitnessLevelBeginner => 'Beginner';
+  String get fitnessLevelBeginner => 'Iniciante';
 
   @override
-  String get fitnessLevelIntermediate => 'Intermediate';
+  String get fitnessLevelIntermediate => 'Intermediário';
 
   @override
-  String get fitnessLevelAdvanced => 'Advanced';
+  String get fitnessLevelAdvanced => 'Avançado';
 
   @override
   String homeStatusWeekComplete(int count) {
-    return 'Week complete — $count of $count done';
+    return 'Semana completa — $count de $count concluídos';
   }
 
   @override
   String homeStatusProgress(int total) {
-    return ' of $total this week';
+    return ' de $total esta semana';
   }
 
   @override
-  String get noPlanThisWeek => 'No plan this week';
+  String get noPlanThisWeek => 'Sem plano esta semana';
 
   @override
-  String get samePlanThisWeek => 'Same plan this week?';
+  String get samePlanThisWeek => 'Mesmo plano esta semana?';
 
   @override
-  String get myRoutines => 'MY ROUTINES';
+  String get myRoutines => 'MINHAS ROTINAS';
 
   @override
-  String get seeAll => 'See all';
+  String get seeAll => 'Ver tudo';
 
   @override
-  String get createYourFirstRoutine => 'Create Your First Routine';
+  String get createYourFirstRoutine => 'Crie Sua Primeira Rotina';
 
   @override
-  String get heroUpNext => 'UP NEXT';
+  String get heroUpNext => 'PRÓXIMO';
 
   @override
-  String get heroYourFirstWorkout => 'YOUR FIRST WORKOUT';
+  String get heroYourFirstWorkout => 'SEU PRIMEIRO TREINO';
 
   @override
-  String get heroNoPlan => 'NO PLAN';
+  String get heroNoPlan => 'SEM PLANO';
 
   @override
-  String get heroNewWeek => 'NEW WEEK';
+  String get heroNewWeek => 'NOVA SEMANA';
 
   @override
-  String get planYourWeek => 'Plan your week';
+  String get planYourWeek => 'Planeje sua semana';
 
   @override
-  String get pickRoutinesForWeek => 'Pick routines for the week';
+  String get pickRoutinesForWeek => 'Escolha rotinas para a semana';
 
   @override
-  String get quickWorkout => 'Quick workout';
+  String get quickWorkout => 'Treino rápido';
 
   @override
-  String get startNewWeek => 'Start new week';
+  String get startNewWeek => 'Começar nova semana';
 
   @override
   String nOfNDone(int completed, int total) {
-    return '$completed of $total done';
+    return '$completed de $total concluídos';
   }
 
   @override
   String exerciseCountDuration(int count, int minutes) {
-    return '$count exercises · ~$minutes min';
+    return '$count exercícios · ~$minutes min';
   }
 
   @override
   String get offlineStartWorkout =>
-      'Starting a workout requires an internet connection';
+      'Iniciar um treino requer conexão com a internet';
 
   @override
   String get couldNotLoadExercises =>
-      'Could not load exercises. Please try again.';
+      'Não foi possível carregar exercícios. Tente novamente.';
 
   @override
-  String get lastSessionPrefix => 'Last: ';
+  String get lastSessionPrefix => 'Último: ';
 
   @override
-  String get exercises => 'Exercises';
+  String get exercises => 'Exercícios';
 
   @override
-  String get searchExercises => 'Search exercises...';
+  String get searchExercises => 'Buscar exercícios...';
 
   @override
-  String get noExercisesMatchFilters => 'No exercises match your filters';
+  String get noExercisesMatchFilters =>
+      'Nenhum exercício corresponde aos filtros';
 
   @override
-  String get yourExercisesWillAppear => 'Your exercises will appear here';
+  String get yourExercisesWillAppear => 'Seus exercícios aparecerão aqui';
 
   @override
-  String get clearFilters => 'Clear Filters';
+  String get clearFilters => 'Limpar Filtros';
 
   @override
-  String get createExercise => 'Create Exercise';
+  String get createExercise => 'Criar Exercício';
 
   @override
-  String get exerciseDetails => 'Exercise Details';
+  String get exerciseDetails => 'Detalhes do Exercício';
 
   @override
-  String get failedToLoadExercise => 'Failed to load exercise';
+  String get failedToLoadExercise => 'Falha ao carregar exercício';
 
   @override
-  String get customExercise => 'Custom exercise';
+  String get customExercise => 'Exercício personalizado';
 
   @override
-  String get personalRecords => 'Personal Records';
+  String get personalRecords => 'Recordes Pessoais';
 
   @override
-  String get noRecordsYet => 'No records yet';
+  String get noRecordsYet => 'Nenhum recorde ainda';
 
   @override
-  String get deleteExercise => 'Delete Exercise';
+  String get deleteExercise => 'Excluir Exercício';
 
   @override
   String deleteExerciseConfirm(String name) {
-    return 'Are you sure you want to delete \"$name\"?';
+    return 'Tem certeza que deseja excluir \"$name\"?';
   }
 
   @override
-  String get deleting => 'Deleting...';
+  String get deleting => 'Excluindo...';
 
   @override
-  String get imageStart => 'Start';
+  String get imageStart => 'Início';
 
   @override
-  String get imageEnd => 'End';
+  String get imageEnd => 'Fim';
 
   @override
   String repsUnit(int count) {
@@ -514,288 +517,289 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get exerciseName => 'Exercise Name';
+  String get exerciseName => 'Nome do Exercício';
 
   @override
-  String get nameRequired => 'Name is required';
+  String get nameRequired => 'Nome é obrigatório';
 
   @override
-  String get nameTooShort => 'Name must be at least 2 characters';
+  String get nameTooShort => 'O nome deve ter pelo menos 2 caracteres';
 
   @override
-  String get muscleGroup => 'Muscle Group';
+  String get muscleGroup => 'Grupo Muscular';
 
   @override
-  String get equipmentType => 'Equipment Type';
+  String get equipmentType => 'Tipo de Equipamento';
 
   @override
   String get selectMuscleAndEquipment =>
-      'Please select a muscle group and equipment type';
+      'Selecione um grupo muscular e tipo de equipamento';
 
   @override
-  String get sessionExpired => 'Session expired. Please log in again.';
+  String get sessionExpired => 'Sessão expirada. Faça login novamente.';
 
   @override
-  String get exerciseCreated => 'Exercise created successfully';
+  String get exerciseCreated => 'Exercício criado com sucesso';
 
   @override
-  String get createExerciseButton => 'CREATE EXERCISE';
+  String get createExerciseButton => 'CRIAR EXERCÍCIO';
 
   @override
-  String get description => 'Description';
+  String get description => 'Descrição';
 
   @override
-  String get descriptionHint => 'Brief description of the exercise (optional)';
+  String get descriptionHint => 'Breve descrição do exercício (opcional)';
 
   @override
-  String get formTips => 'Form Tips';
+  String get formTips => 'Dicas de Forma';
 
   @override
-  String get formTipsHint => 'Form cues, one per line (optional)';
+  String get formTipsHint => 'Dicas de execução, uma por linha (opcional)';
 
   @override
-  String get formTipsHelper => 'Enter each tip on a new line';
+  String get formTipsHelper => 'Insira cada dica em uma nova linha';
 
   @override
-  String get aboutSection => 'ABOUT';
+  String get aboutSection => 'SOBRE';
 
   @override
-  String get formTipsSection => 'FORM TIPS';
+  String get formTipsSection => 'DICAS DE FORMA';
 
   @override
-  String get finishWorkout => 'Finish Workout';
+  String get finishWorkout => 'Finalizar Treino';
 
   @override
-  String get completeOneSet => 'Complete at least one set to finish';
+  String get completeOneSet => 'Complete pelo menos uma série para finalizar';
 
   @override
-  String get addFirstExercise => 'Add your first exercise';
+  String get addFirstExercise => 'Adicione seu primeiro exercício';
 
   @override
-  String get tapButtonToStart => 'Tap the button below to get started';
+  String get tapButtonToStart => 'Toque no botão abaixo para começar';
 
   @override
-  String get addExercise => 'Add Exercise';
+  String get addExercise => 'Adicionar Exercício';
 
   @override
-  String get addSet => 'Add Set';
+  String get addSet => 'Adicionar Série';
 
   @override
-  String get fillRemaining => 'Fill remaining';
+  String get fillRemaining => 'Preencher restantes';
 
   @override
-  String get filledRemainingSets => 'Filled remaining sets';
+  String get filledRemainingSets => 'Séries restantes preenchidas';
 
   @override
-  String get removeExerciseTitle => 'Remove Exercise?';
+  String get removeExerciseTitle => 'Remover Exercício?';
 
   @override
   String removeExerciseContent(String name) {
-    return 'Remove $name and all its sets?';
+    return 'Remover $name e todas as suas séries?';
   }
 
   @override
   String get failedToDiscardWorkout =>
-      'Failed to discard workout. Please retry.';
+      'Falha ao descartar treino. Tente novamente.';
 
   @override
-  String get failedToSaveWorkout => 'Failed to save workout. Please retry.';
+  String get failedToSaveWorkout => 'Falha ao salvar treino. Tente novamente.';
 
   @override
   String get workoutSavedOffline =>
-      'Workout saved. Will sync when back online.';
+      'Treino salvo. Será sincronizado quando voltar a ficar online.';
 
   @override
-  String get setColumnSet => 'SET';
+  String get setColumnSet => 'SÉRIE';
 
   @override
-  String get setColumnWeight => 'WEIGHT';
+  String get setColumnWeight => 'PESO';
 
   @override
   String get setColumnReps => 'REPS';
 
   @override
-  String get setColumnType => 'TYPE';
+  String get setColumnType => 'TIPO';
 
   @override
   String setDeleted(int number) {
-    return 'Set $number deleted';
+    return 'Série $number excluída';
   }
 
   @override
   String previousSet(String weight, String unit, int reps) {
-    return 'Previous: $weight$unit × $reps';
+    return 'Anterior: $weight$unit × $reps';
   }
 
   @override
-  String get discardWorkoutTitle => 'Discard Workout?';
+  String get discardWorkoutTitle => 'Descartar Treino?';
 
   @override
   String discardWorkoutContent(String duration) {
-    return 'You\'ve been working out for $duration. This cannot be undone.';
+    return 'Você está treinando há $duration. Esta ação não pode ser desfeita.';
   }
 
   @override
-  String get finishWorkoutTitle => 'Finish Workout?';
+  String get finishWorkoutTitle => 'Finalizar Treino?';
 
   @override
   String incompleteSetsWarning(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'You have $count incomplete sets',
-      one: 'You have 1 incomplete set',
+      other: 'Você tem $count séries incompletas',
+      one: 'Você tem 1 série incompleta',
     );
     return '$_temp0';
   }
 
   @override
-  String get addNotesHint => 'Add notes (optional)';
+  String get addNotesHint => 'Adicionar notas (opcional)';
 
   @override
-  String get keepGoing => 'Keep Going';
+  String get keepGoing => 'Continuar Treinando';
 
   @override
-  String get saveAndFinish => 'Save & Finish';
+  String get saveAndFinish => 'Salvar e Finalizar';
 
   @override
-  String get resumeWorkoutTitle => 'Resume workout?';
+  String get resumeWorkoutTitle => 'Retomar treino?';
 
   @override
-  String get resumeWorkoutStaleTitle => 'Pick up where you left off?';
+  String get resumeWorkoutStaleTitle => 'Continuar de onde parou?';
 
   @override
   String workoutInProgress(String name) {
-    return '\"$name\" is still in progress.';
+    return '\"$name\" ainda está em andamento.';
   }
 
   @override
   String workoutInterrupted(String age) {
-    return 'was interrupted $age.';
+    return 'foi interrompido $age.';
   }
 
   @override
-  String get resumeAnyway => 'Resume anyway';
+  String get resumeAnyway => 'Retomar mesmo assim';
 
   @override
-  String get restTimerLabel => 'Rest';
+  String get restTimerLabel => 'Descanso';
 
   @override
   String restTimerRemaining(String time) {
-    return 'Rest timer: $time remaining';
+    return 'Descanso: $time restante';
   }
 
   @override
-  String get subtract30Semantics => 'Subtract 30 seconds';
+  String get subtract30Semantics => 'Subtrair 30 segundos';
 
   @override
-  String get add30Semantics => 'Add 30 seconds';
+  String get add30Semantics => 'Adicionar 30 segundos';
 
   @override
-  String get skipRestSemantics => 'Skip rest timer';
+  String get skipRestSemantics => 'Pular descanso';
 
   @override
-  String get tapToDismiss => 'Tap anywhere to dismiss';
+  String get tapToDismiss => 'Toque em qualquer lugar para fechar';
 
   @override
-  String get lessThanAnHourAgo => 'less than an hour ago';
+  String get lessThanAnHourAgo => 'há menos de uma hora';
 
   @override
   String hoursAgo(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count hours ago',
-      one: '1 hour ago',
+      other: 'há $count horas',
+      one: 'há 1 hora',
     );
     return '$_temp0';
   }
 
   @override
   String yesterdayAt(String time) {
-    return 'yesterday at $time';
+    return 'ontem às $time';
   }
 
   @override
   String weekdayAt(String weekday, String time) {
-    return '$weekday at $time';
+    return '$weekday às $time';
   }
 
   @override
-  String get history => 'History';
+  String get history => 'Histórico';
 
   @override
-  String get failedToLoadHistory => 'Failed to load history';
+  String get failedToLoadHistory => 'Falha ao carregar histórico';
 
   @override
-  String get noWorkoutsYet => 'No workouts yet';
+  String get noWorkoutsYet => 'Nenhum treino ainda';
 
   @override
   String get completedWorkoutsAppear =>
-      'Your completed workouts will appear here';
+      'Seus treinos concluídos aparecerão aqui';
 
   @override
-  String get startFirstWorkout => 'Start your first workout';
+  String get startFirstWorkout => 'Comece seu primeiro treino';
 
   @override
-  String get failedToLoadWorkout => 'Failed to load workout';
+  String get failedToLoadWorkout => 'Falha ao carregar treino';
 
   @override
-  String get workout => 'Workout';
+  String get workout => 'Treino';
 
   @override
-  String get exerciseGeneric => 'Exercise';
+  String get exerciseGeneric => 'Exercício';
 
   @override
-  String get notes => 'Notes';
+  String get notes => 'Notas';
 
   @override
   String totalVolume(String volume) {
-    return 'Total Volume: $volume';
+    return 'Volume Total: $volume';
   }
 
   @override
-  String get routines => 'Routines';
+  String get routines => 'Rotinas';
 
   @override
-  String get failedToLoadRoutines => 'Failed to load routines';
+  String get failedToLoadRoutines => 'Falha ao carregar rotinas';
 
   @override
-  String get myRoutinesSection => 'MY ROUTINES';
+  String get myRoutinesSection => 'MINHAS ROTINAS';
 
   @override
-  String get starterRoutinesSection => 'STARTER ROUTINES';
+  String get starterRoutinesSection => 'ROTINAS INICIAIS';
 
   @override
-  String get noCustomRoutines => 'No custom routines yet. Tap + to create one.';
+  String get noCustomRoutines =>
+      'Nenhuma rotina personalizada ainda. Toque em + para criar.';
 
   @override
-  String get createRoutine => 'Create Routine';
+  String get createRoutine => 'Criar Rotina';
 
   @override
-  String get editRoutine => 'Edit Routine';
+  String get editRoutine => 'Editar Rotina';
 
   @override
-  String get routineName => 'Routine name';
+  String get routineName => 'Nome da rotina';
 
   @override
-  String get failedToSaveRoutine => 'Failed to save routine. Please retry.';
+  String get failedToSaveRoutine => 'Falha ao salvar rotina. Tente novamente.';
 
   @override
-  String get setsLabel => 'Sets';
+  String get setsLabel => 'Séries';
 
   @override
-  String get restLabel => 'Rest';
+  String get restLabel => 'Descanso';
 
   @override
-  String get duplicateAndEdit => 'Duplicate and Edit';
+  String get duplicateAndEdit => 'Duplicar e Editar';
 
   @override
-  String get deleteRoutine => 'Delete Routine';
+  String get deleteRoutine => 'Excluir Rotina';
 
   @override
   String deleteRoutineConfirm(String name) {
-    return 'Delete \"$name\"? This cannot be undone.';
+    return 'Excluir \"$name\"? Esta ação não pode ser desfeita.';
   }
 
   @override
@@ -803,278 +807,277 @@ class AppLocalizationsPt extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count exercises',
-      one: '1 exercise',
+      other: '$count exercícios',
+      one: '1 exercício',
     );
     return '$_temp0';
   }
 
   @override
-  String get profile => 'Profile';
+  String get profile => 'Perfil';
 
   @override
-  String get gymUser => 'Gym User';
+  String get gymUser => 'Usuário';
 
   @override
-  String get editDisplayName => 'Edit Display Name';
+  String get editDisplayName => 'Editar Nome';
 
   @override
-  String get enterYourName => 'Enter your name';
+  String get enterYourName => 'Digite seu nome';
 
   @override
-  String get workouts => 'Workouts';
+  String get workouts => 'Treinos';
 
   @override
-  String get memberSince => 'Member since';
+  String get memberSince => 'Membro desde';
 
   @override
-  String get weightUnit => 'Weight Unit';
+  String get weightUnit => 'Unidade de Peso';
 
   @override
-  String get weeklyGoal => 'Weekly Goal';
+  String get weeklyGoal => 'Meta Semanal';
 
   @override
-  String get dataManagement => 'DATA MANAGEMENT';
+  String get dataManagement => 'GERENCIAMENTO DE DADOS';
 
   @override
-  String get manageData => 'Manage Data';
+  String get manageData => 'Gerenciar Dados';
 
   @override
-  String get legal => 'LEGAL';
+  String get legal => 'JURÍDICO';
 
   @override
-  String get sendCrashReports => 'Send crash reports';
+  String get sendCrashReports => 'Enviar relatórios de erro';
 
   @override
   String get crashReportsSubtitle =>
-      'Help improve GymBuddy by sending anonymous crash data.';
+      'Ajude a melhorar o GymBuddy enviando dados anônimos de falhas.';
 
   @override
-  String get logOutConfirm => 'Are you sure you want to log out?';
+  String get logOutConfirm => 'Tem certeza que deseja sair?';
 
   @override
-  String get manageDataTitle => 'Manage Data';
+  String get manageDataTitle => 'Gerenciar Dados';
 
   @override
-  String get deleteWorkoutHistory => 'Delete Workout History';
+  String get deleteWorkoutHistory => 'Excluir Histórico de Treinos';
 
   @override
   String workoutsWillBeRemoved(String count) {
-    return '$count workouts will be removed';
+    return '$count treinos serão removidos';
   }
 
   @override
-  String get resetAllAccountData => 'Reset All Account Data';
+  String get resetAllAccountData => 'Redefinir Todos os Dados';
 
   @override
-  String get resetAllSubtitle => 'Removes everything. Permanent.';
+  String get resetAllSubtitle => 'Remove tudo. Permanente.';
 
   @override
-  String get deleteAccount => 'Delete Account';
+  String get deleteAccount => 'Excluir Conta';
 
   @override
   String get deleteAccountSubtitle =>
-      'Permanently delete your account and all data';
+      'Excluir permanentemente sua conta e todos os dados';
 
   @override
-  String get deleteAllHistoryTitle => 'Delete all workout history?';
+  String get deleteAllHistoryTitle => 'Excluir todo o histórico de treinos?';
 
   @override
   String deleteAllHistoryContent(int count) {
-    return 'This will permanently delete all $count workouts and cannot be undone.';
+    return 'Isso excluirá permanentemente todos os $count treinos e não pode ser desfeito.';
   }
 
   @override
-  String get deleteHistoryButton => 'Delete History';
+  String get deleteHistoryButton => 'Excluir Histórico';
 
   @override
-  String get areYouSure => 'Are you sure?';
+  String get areYouSure => 'Tem certeza?';
 
   @override
-  String get yesDelete => 'Yes, Delete';
+  String get yesDelete => 'Sim, Excluir';
 
   @override
-  String get historyCleared => 'Workout history cleared';
+  String get historyCleared => 'Histórico de treinos limpo';
 
   @override
   String failedToClearHistory(String message) {
-    return 'Failed to clear history: $message';
+    return 'Falha ao limpar histórico: $message';
   }
 
   @override
-  String get resetAccountData => 'Reset Account Data';
+  String get resetAccountData => 'Redefinir Dados da Conta';
 
   @override
   String get resetAccountWarning =>
-      'This will permanently delete all workouts and personal records. Your routines and custom exercises will be kept. There is no undo.';
+      'Isso excluirá permanentemente todos os treinos e recordes pessoais. Suas rotinas e exercícios personalizados serão mantidos. Não há como desfazer.';
 
   @override
-  String get typeResetToConfirm => 'Type RESET to confirm';
+  String get typeResetToConfirm => 'Digite RESET para confirmar';
 
   @override
-  String get resetAccountButton => 'Reset Account';
+  String get resetAccountButton => 'Redefinir Conta';
 
   @override
-  String get accountDataReset => 'Account data reset';
+  String get accountDataReset => 'Dados da conta redefinidos';
 
   @override
   String failedToResetData(String message) {
-    return 'Failed to reset data: $message';
+    return 'Falha ao redefinir dados: $message';
   }
 
   @override
   String get deleteAccountWarning =>
-      'This will permanently delete your account, all your workouts, personal records, routines, and custom exercises. This cannot be undone.';
+      'Isso excluirá permanentemente sua conta, todos os seus treinos, recordes pessoais, rotinas e exercícios personalizados. Esta ação não pode ser desfeita.';
 
   @override
-  String get typeDeleteToConfirm => 'Type DELETE to confirm';
+  String get typeDeleteToConfirm => 'Digite DELETE para confirmar';
 
   @override
-  String get deleteAccountButton => 'Delete Account';
+  String get deleteAccountButton => 'Excluir Conta';
 
   @override
   String failedToDeleteAccount(String message) {
-    return 'Failed to delete account: $message';
+    return 'Falha ao excluir conta: $message';
   }
 
   @override
   String get prsRoutinesKept =>
-      'Your personal records and routines will be kept.';
+      'Seus recordes pessoais e rotinas serão mantidos.';
 
   @override
-  String get workoutHistorySection => 'WORKOUT HISTORY';
+  String get workoutHistorySection => 'HISTÓRICO DE TREINOS';
 
   @override
-  String get dangerSection => 'DANGER';
+  String get dangerSection => 'PERIGO';
 
   @override
-  String get privacySection => 'PRIVACY';
+  String get privacySection => 'PRIVACIDADE';
 
   @override
   String get prsLabel => 'PRs';
 
   @override
   String perWeekLabel(int count) {
-    return '${count}x per week';
+    return '${count}x por semana';
   }
 
   @override
-  String get frequencyQuestion =>
-      'How many times per week do you want to train?';
+  String get frequencyQuestion => 'Quantas vezes por semana você quer treinar?';
 
   @override
-  String get pleaseTryAgain => 'Please try again.';
+  String get pleaseTryAgain => 'Tente novamente.';
 
   @override
-  String get personalRecordsTitle => 'Personal Records';
+  String get personalRecordsTitle => 'Recordes Pessoais';
 
   @override
-  String get failedToLoadRecords => 'Failed to load records';
+  String get failedToLoadRecords => 'Falha ao carregar recordes';
 
   @override
-  String get noRecordsYetTitle => 'No Records Yet';
+  String get noRecordsYetTitle => 'Nenhum Recorde Ainda';
 
   @override
   String get completeWorkoutToTrack =>
-      'Complete a workout to start tracking records';
+      'Complete um treino para começar a registrar recordes';
 
   @override
-  String get startWorkout => 'Start Workout';
+  String get startWorkout => 'Iniciar Treino';
 
   @override
-  String get newPrHeading => 'NEW PR';
+  String get newPrHeading => 'NOVO PR';
 
   @override
-  String get firstWorkoutComplete => 'First Workout Complete!';
+  String get firstWorkoutComplete => 'Primeiro Treino Concluído!';
 
   @override
-  String get startingBenchmarks => 'These are your starting benchmarks';
+  String get startingBenchmarks => 'Estes são seus primeiros registros';
 
   @override
-  String get unknownExercise => 'Unknown Exercise';
+  String get unknownExercise => 'Exercício Desconhecido';
 
   @override
-  String get thisWeeksPlan => 'This Week\'s Plan';
+  String get thisWeeksPlan => 'Plano da Semana';
 
   @override
-  String get moreOptions => 'More options';
+  String get moreOptions => 'Mais opções';
 
   @override
-  String get autoFill => 'Auto-fill';
+  String get autoFill => 'Preencher automático';
 
   @override
-  String get clearWeek => 'Clear Week';
+  String get clearWeek => 'Limpar Semana';
 
   @override
-  String get addRoutine => 'Add Routine';
+  String get addRoutine => 'Adicionar Rotina';
 
   @override
   String plannedReadyToGo(int count, int total) {
-    return '$count/$total planned — ready to go';
+    return '$count/$total planejados — pronto para treinar';
   }
 
   @override
   String plannedThisWeek(int count, int total) {
-    return '$count/$total planned this week';
+    return '$count/$total planejados esta semana';
   }
 
   @override
-  String get noRoutinesPlanned => 'No routines planned this week';
+  String get noRoutinesPlanned => 'Nenhuma rotina planejada esta semana';
 
   @override
-  String get addRoutines => 'Add Routines';
+  String get addRoutines => 'Adicionar Rotinas';
 
   @override
-  String get replacePlanTitle => 'Replace current plan?';
+  String get replacePlanTitle => 'Substituir plano atual?';
 
   @override
   String get replacePlanContent =>
-      'Auto-fill will replace your current plan with your most-used routines.';
+      'O preenchimento automático substituirá seu plano atual pelas rotinas mais usadas.';
 
   @override
-  String get clearWeekTitle => 'Clear Week';
+  String get clearWeekTitle => 'Limpar Semana';
 
   @override
-  String get clearWeekContent => 'Start fresh this week?';
+  String get clearWeekContent => 'Começar do zero esta semana?';
 
   @override
-  String get routineRemoved => 'Routine removed';
+  String get routineRemoved => 'Rotina removida';
 
   @override
-  String get unknownRoutine => 'Unknown Routine';
+  String get unknownRoutine => 'Rotina Desconhecida';
 
   @override
-  String get addRoutinesSheet => 'Add Routines';
+  String get addRoutinesSheet => 'Adicionar Rotinas';
 
   @override
-  String get allRoutinesInPlan => 'All routines in plan';
+  String get allRoutinesInPlan => 'Todas as rotinas estão no plano';
 
   @override
-  String get createMoreRoutines => 'Create more routines to add them here.';
+  String get createMoreRoutines => 'Crie mais rotinas para adicioná-las aqui.';
 
   @override
   String addCountRoutines(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'ADD $count ROUTINES',
-      one: 'ADD 1 ROUTINE',
+      other: 'ADICIONAR $count ROTINAS',
+      one: 'ADICIONAR 1 ROTINA',
     );
     return '$_temp0';
   }
 
   @override
-  String get weekComplete => 'WEEK COMPLETE';
+  String get weekComplete => 'SEMANA COMPLETA';
 
   @override
-  String get thisWeek => 'THIS WEEK';
+  String get thisWeek => 'ESTA SEMANA';
 
   @override
-  String get newWeekLink => 'NEW WEEK';
+  String get newWeekLink => 'NOVA SEMANA';
 
   @override
   String sessionsCount(int count) {
-    return '$count sessions';
+    return '$count sessões';
   }
 
   @override
@@ -1084,113 +1087,115 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String addToPlanPrompt(String name) {
-    return '$name isn\'t in your plan yet. Add it?';
+    return '$name não está no seu plano ainda. Adicionar?';
   }
 
   @override
-  String get syncFailureSingular => 'Workout couldn\'t sync';
+  String get syncFailureSingular => 'O treino não sincronizou';
 
   @override
   String syncFailurePlural(int count) {
-    return '$count workouts couldn\'t sync';
+    return '$count treinos não sincronizaram';
   }
 
   @override
-  String get savedLocallyRetry => 'Saved locally. Retry or dismiss.';
+  String get savedLocallyRetry =>
+      'Salvo localmente. Tente novamente ou dispense.';
 
   @override
-  String get offlineRetryHint => 'You\'re offline — retry when back online';
+  String get offlineRetryHint =>
+      'Você está offline — tente novamente quando voltar a ficar online';
 
   @override
-  String get pendingSyncTitle => 'Pending Sync';
+  String get pendingSyncTitle => 'Sincronização Pendente';
 
   @override
   String itemCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count items',
+      other: '$count itens',
       one: '1 item',
     );
     return '$_temp0';
   }
 
   @override
-  String get allSynced => 'All synced!';
+  String get allSynced => 'Tudo sincronizado!';
 
   @override
-  String get syncedSuccessfully => 'Synced successfully.';
+  String get syncedSuccessfully => 'Sincronizado com sucesso.';
 
   @override
-  String get pendingActionSaveWorkout => 'Save workout';
+  String get pendingActionSaveWorkout => 'Salvar treino';
 
   @override
-  String get pendingActionUpdateRecords => 'Update records';
+  String get pendingActionUpdateRecords => 'Atualizar recordes';
 
   @override
-  String get pendingActionMarkComplete => 'Mark routine complete';
+  String get pendingActionMarkComplete => 'Marcar rotina como concluída';
 
   @override
   String queuedAt(String time) {
-    return 'Queued at $time';
+    return 'Na fila às $time';
   }
 
   @override
   String retryCount(int count) {
-    return '$count retries';
+    return '$count tentativas';
   }
 
   @override
-  String get pendingSyncBadgeSingular => '1 workout pending sync';
+  String get pendingSyncBadgeSingular => '1 treino pendente de sincronização';
 
   @override
   String pendingSyncBadgePlural(int count) {
-    return '$count workouts pending sync';
+    return '$count treinos pendentes de sincronização';
   }
 
   @override
-  String get noExercisesFound => 'No exercises found';
+  String get noExercisesFound => 'Nenhum exercício encontrado';
 
   @override
-  String get failedToLoadExercises => 'Failed to load exercises';
+  String get failedToLoadExercises => 'Falha ao carregar exercícios';
 
   @override
   String createWithName(String name) {
-    return 'Create \"$name\"';
+    return 'Criar \"$name\"';
   }
 
   @override
   String get durationLessThanOneMin => '< 1m';
 
   @override
-  String get enterWeight => 'Enter weight';
+  String get enterWeight => 'Insira o peso';
 
   @override
   String get ok => 'OK';
 
   @override
-  String get enterReps => 'Enter reps';
+  String get enterReps => 'Insira as reps';
 
   @override
-  String get failedToLoadDocument => 'Failed to load document';
+  String get failedToLoadDocument => 'Falha ao carregar documento';
 
   @override
-  String get discardWorkout => 'Discard workout';
+  String get discardWorkout => 'Descartar treino';
 
   @override
-  String get moveUp => 'Move up';
+  String get moveUp => 'Mover para cima';
 
   @override
-  String get moveDown => 'Move down';
+  String get moveDown => 'Mover para baixo';
 
   @override
-  String get swapExercise => 'Swap exercise';
+  String get swapExercise => 'Trocar exercício';
 
   @override
-  String get removeExercise => 'Remove exercise';
+  String get removeExercise => 'Remover exercício';
 
   @override
-  String get rpeTooltip => 'Rate of perceived exertion';
+  String get rpeTooltip => 'Percepção subjetiva de esforço';
 
   @override
   String get last30Days => '30d';
@@ -1199,92 +1204,94 @@ class AppLocalizationsPt extends AppLocalizations {
   String get last90Days => '90d';
 
   @override
-  String get allTime => 'All time';
+  String get allTime => 'Tudo';
 
   @override
   String switchMetricTo(String metric) {
-    return 'Switch metric to $metric';
+    return 'Mudar métrica para $metric';
   }
 
   @override
-  String get couldNotLoadProgress => 'Could not load progress';
+  String get couldNotLoadProgress => 'Não foi possível carregar progresso';
 
   @override
-  String get logFirstSetToTrack => 'Log your first set to start tracking';
+  String get logFirstSetToTrack =>
+      'Registre sua primeira série para começar a acompanhar';
 
   @override
   String get chartMetricE1rm => 'e1RM';
 
   @override
-  String get chartMetricWeight => 'Weight';
+  String get chartMetricWeight => 'Peso';
 
   @override
-  String get chartWindowDays30 => '30 days';
+  String get chartWindowDays30 => '30 dias';
 
   @override
-  String get chartWindowDays90 => '90 days';
+  String get chartWindowDays90 => '90 dias';
 
   @override
-  String get chartWindowAllTime => 'all time';
+  String get chartWindowAllTime => 'todo o período';
 
   @override
   String workoutsLoggedKeepGoing(int count) {
-    return '$count workouts logged — keep going';
+    return '$count treinos registrados — continue assim';
   }
 
   @override
-  String get oneWorkoutLoggedKeepGoing => '1 workout logged — keep going';
+  String get oneWorkoutLoggedKeepGoing =>
+      '1 treino registrado — continue assim';
 
   @override
   String holdingSteadyAt(String weight, String unit) {
-    return 'Holding steady at $weight $unit';
+    return 'Estável em $weight $unit';
   }
 
   @override
   String trendUp(String weight, String unit, String window) {
-    return 'Up $weight $unit in $window';
+    return 'Subiu $weight $unit em $window';
   }
 
   @override
   String trendDown(String weight, String unit, String window) {
-    return 'Down $weight $unit in $window';
+    return 'Desceu $weight $unit em $window';
   }
 
   @override
   String prMarkerAt(String weight, String unit) {
-    return 'PR marker at $weight $unit';
+    return 'Marcador de PR em $weight $unit';
   }
 
   @override
   String setNumberSemantics(int number, String type) {
-    return 'Set $number. Long press to change type: $type';
+    return 'Série $number. Toque e segure para mudar o tipo: $type';
   }
 
   @override
   String setNumberCopySemantics(int number, String type) {
-    return 'Set $number. Tap to copy previous set. Long press to change type: $type';
+    return 'Série $number. Toque para copiar série anterior. Toque e segure para mudar o tipo: $type';
   }
 
   @override
   String get tooltipCopyLastSetAndChangeType =>
-      'Tap: copy last set\nHold: change type';
+      'Toque: copiar última série\nSegure: mudar tipo';
 
   @override
-  String get tooltipChangeType => 'Hold: change type';
+  String get tooltipChangeType => 'Segure: mudar tipo';
 
   @override
-  String get setCompleted => 'Set completed';
+  String get setCompleted => 'Série concluída';
 
   @override
-  String get markSetAsDone => 'Mark set as done';
+  String get markSetAsDone => 'Marcar série como concluída';
 
   @override
   String rpeValue(int value) {
-    return 'RPE $value. Tap to change.';
+    return 'RPE $value. Toque para alterar.';
   }
 
   @override
-  String get setRpe => 'Set RPE';
+  String get setRpe => 'Definir RPE';
 
   @override
   String get rpeLabel => 'RPE';
@@ -1295,36 +1302,37 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get reorderExercisesTooltip => 'Reorder exercises';
+  String get reorderExercisesTooltip => 'Reordenar exercícios';
 
   @override
-  String get exitReorderModeTooltip => 'Exit reorder mode';
+  String get exitReorderModeTooltip => 'Sair do modo de reordenação';
 
   @override
   String exerciseSemanticsLabel(String name) {
-    return 'Exercise: $name. Tap for details. Long press to swap.';
+    return 'Exercício: $name. Toque para detalhes. Toque e segure para trocar.';
   }
 
   @override
   String get fillRemainingSetsSemantics =>
-      'Fill remaining sets with last completed values';
+      'Preencher séries restantes com os últimos valores';
 
   @override
-  String get addExerciseToWorkoutSemantics => 'Add exercise to workout';
+  String get addExerciseToWorkoutSemantics => 'Adicionar exercício ao treino';
 
   @override
-  String get searchExercisesToAddSemantics => 'Search exercises to add';
+  String get searchExercisesToAddSemantics =>
+      'Buscar exercícios para adicionar';
 
   @override
   String addExerciseSemantics(String name) {
-    return 'Add $name';
+    return 'Adicionar $name';
   }
 
   @override
-  String get setTypeAbbrWorking => 'W';
+  String get setTypeAbbrWorking => 'N';
 
   @override
-  String get setTypeAbbrWarmup => 'WU';
+  String get setTypeAbbrWarmup => 'AQ';
 
   @override
   String get setTypeAbbrDropset => 'D';
@@ -1333,49 +1341,540 @@ class AppLocalizationsPt extends AppLocalizations {
   String get setTypeAbbrFailure => 'F';
 
   @override
-  String get setTypeAbbrWarmupShort => 'Wu';
+  String get setTypeAbbrWarmupShort => 'Aq';
 
   @override
   String lastSessionSemantics(String name, String date) {
-    return 'Last session: $name, $date';
+    return 'Última sessão: $name, $date';
   }
 
   @override
-  String get searchExercisesSemantics => 'Search exercises';
+  String get searchExercisesSemantics => 'Buscar exercícios';
 
   @override
   String exerciseItemSemantics(String name) {
-    return 'Exercise: $name';
+    return 'Exercício: $name';
   }
 
   @override
-  String get createNewExerciseSemantics => 'Create new exercise';
+  String get createNewExerciseSemantics => 'Criar novo exercício';
 
   @override
-  String get muscleGroupSemanticsPrefix => 'Muscle group';
+  String get muscleGroupSemanticsPrefix => 'Grupo muscular';
 
   @override
-  String get equipmentTypeSemanticsPrefix => 'Equipment type';
+  String get equipmentTypeSemanticsPrefix => 'Tipo de equipamento';
 
   @override
-  String get deleteExerciseSemantics => 'Delete exercise';
+  String get deleteExerciseSemantics => 'Excluir exercício';
 
   @override
-  String get exerciseNameDuplicate =>
-      'An exercise with this name already exists';
+  String get exerciseNameDuplicate => 'Um exercício com este nome já existe';
 
   @override
   String daysAgoShort(int count) {
-    return '${count}d ago';
+    return '${count}d atrás';
   }
 
   @override
   String weeksAgoShort(int count) {
-    return '${count}w ago';
+    return '${count}sem atrás';
   }
 
   @override
   String monthsAgoShort(int count) {
-    return '${count}mo ago';
+    return '${count}m atrás';
   }
+
+  @override
+  String get routineNamePushDay => 'Dia de Empurrar';
+
+  @override
+  String get routineNamePullDay => 'Dia de Puxar';
+
+  @override
+  String get routineNameLegDay => 'Dia de Pernas';
+
+  @override
+  String get routineNameFullBody => 'Corpo Inteiro';
+
+  @override
+  String get routineNameUpperLowerUpper => 'Superior/Inferior — Superior';
+
+  @override
+  String get routineNameUpperLowerLower => 'Superior/Inferior — Inferior';
+
+  @override
+  String get routineNameFiveByFiveStrength => '5x5 Força';
+
+  @override
+  String get routineNameFullBodyBeginner => 'Corpo Inteiro Iniciante';
+
+  @override
+  String get routineNameArmsAndAbs => 'Braços e Abdômen';
+
+  @override
+  String get exerciseName_barbell_bench_press => 'Supino Reto com Barra';
+
+  @override
+  String get exerciseName_incline_barbell_bench_press =>
+      'Supino Inclinado com Barra';
+
+  @override
+  String get exerciseName_decline_barbell_bench_press =>
+      'Supino Declinado com Barra';
+
+  @override
+  String get exerciseName_dumbbell_bench_press => 'Supino Reto com Halteres';
+
+  @override
+  String get exerciseName_incline_dumbbell_press =>
+      'Supino Inclinado com Halteres';
+
+  @override
+  String get exerciseName_dumbbell_fly => 'Crucifixo com Halteres';
+
+  @override
+  String get exerciseName_cable_crossover => 'Crossover no Cabo';
+
+  @override
+  String get exerciseName_machine_chest_press => 'Supino na Máquina';
+
+  @override
+  String get exerciseName_push_up => 'Flexão de Braços';
+
+  @override
+  String get exerciseName_barbell_bent_over_row => 'Remada Curvada com Barra';
+
+  @override
+  String get exerciseName_deadlift => 'Levantamento Terra';
+
+  @override
+  String get exerciseName_t_bar_row => 'Remada Cavalinho';
+
+  @override
+  String get exerciseName_dumbbell_row => 'Remada Unilateral com Halter';
+
+  @override
+  String get exerciseName_dumbbell_pullover => 'Pullover com Halter';
+
+  @override
+  String get exerciseName_cable_row => 'Remada no Cabo';
+
+  @override
+  String get exerciseName_lat_pulldown => 'Puxada na Polia Alta';
+
+  @override
+  String get exerciseName_pull_up => 'Barra Fixa';
+
+  @override
+  String get exerciseName_chin_up => 'Barra Fixa Supinada';
+
+  @override
+  String get exerciseName_machine_row => 'Remada na Máquina';
+
+  @override
+  String get exerciseName_barbell_squat => 'Agachamento com Barra';
+
+  @override
+  String get exerciseName_front_squat => 'Agachamento Frontal';
+
+  @override
+  String get exerciseName_romanian_deadlift => 'Levantamento Terra Romeno';
+
+  @override
+  String get exerciseName_hip_thrust => 'Elevação de Quadril com Barra';
+
+  @override
+  String get exerciseName_dumbbell_lunges => 'Afundo com Halteres';
+
+  @override
+  String get exerciseName_bulgarian_split_squat => 'Agachamento Búlgaro';
+
+  @override
+  String get exerciseName_goblet_squat => 'Agachamento Goblet';
+
+  @override
+  String get exerciseName_leg_press => 'Leg Press';
+
+  @override
+  String get exerciseName_leg_extension => 'Cadeira Extensora';
+
+  @override
+  String get exerciseName_leg_curl => 'Mesa Flexora';
+
+  @override
+  String get exerciseName_calf_raise => 'Elevação de Panturrilha';
+
+  @override
+  String get exerciseName_overhead_press => 'Desenvolvimento com Barra';
+
+  @override
+  String get exerciseName_push_press => 'Push Press';
+
+  @override
+  String get exerciseName_dumbbell_shoulder_press =>
+      'Desenvolvimento com Halteres';
+
+  @override
+  String get exerciseName_arnold_press => 'Arnold Press';
+
+  @override
+  String get exerciseName_lateral_raise => 'Elevação Lateral';
+
+  @override
+  String get exerciseName_front_raise => 'Elevação Frontal';
+
+  @override
+  String get exerciseName_rear_delt_fly => 'Crucifixo Invertido';
+
+  @override
+  String get exerciseName_cable_face_pull => 'Face Pull no Cabo';
+
+  @override
+  String get exerciseName_barbell_curl => 'Rosca Direta com Barra';
+
+  @override
+  String get exerciseName_ez_bar_curl => 'Rosca com Barra W';
+
+  @override
+  String get exerciseName_skull_crusher => 'Tríceps Testa';
+
+  @override
+  String get exerciseName_dumbbell_curl => 'Rosca com Halteres';
+
+  @override
+  String get exerciseName_hammer_curl => 'Rosca Martelo';
+
+  @override
+  String get exerciseName_concentration_curl => 'Rosca Concentrada';
+
+  @override
+  String get exerciseName_dumbbell_tricep_extension =>
+      'Extensão de Tríceps com Halter';
+
+  @override
+  String get exerciseName_tricep_pushdown => 'Tríceps na Polia';
+
+  @override
+  String get exerciseName_cable_curl => 'Rosca no Cabo';
+
+  @override
+  String get exerciseName_dips => 'Paralelas';
+
+  @override
+  String get exerciseName_plank => 'Prancha';
+
+  @override
+  String get exerciseName_hanging_leg_raise => 'Elevação de Pernas Suspenso';
+
+  @override
+  String get exerciseName_crunches => 'Abdominal';
+
+  @override
+  String get exerciseName_ab_rollout => 'Roda Abdominal';
+
+  @override
+  String get exerciseName_russian_twist => 'Giro Russo';
+
+  @override
+  String get exerciseName_dead_bug => 'Dead Bug';
+
+  @override
+  String get exerciseName_cable_woodchop => 'Woodchop no Cabo';
+
+  @override
+  String get exerciseName_band_pull_apart => 'Band Pull-Apart';
+
+  @override
+  String get exerciseName_band_face_pull => 'Face Pull com Faixa';
+
+  @override
+  String get exerciseName_band_squat => 'Agachamento com Faixa';
+
+  @override
+  String get exerciseName_kettlebell_swing => 'Kettlebell Swing';
+
+  @override
+  String get exerciseName_kettlebell_goblet_squat =>
+      'Agachamento Goblet com Kettlebell';
+
+  @override
+  String get exerciseName_kettlebell_turkish_get_up =>
+      'Levantamento Turco com Kettlebell';
+
+  @override
+  String get exerciseName_pec_deck => 'Pec Deck';
+
+  @override
+  String get exerciseName_cable_chest_press => 'Supino no Cabo';
+
+  @override
+  String get exerciseName_wide_push_up => 'Flexão Aberta';
+
+  @override
+  String get exerciseName_face_pull => 'Face Pull';
+
+  @override
+  String get exerciseName_rack_pull => 'Rack Pull';
+
+  @override
+  String get exerciseName_good_morning => 'Good Morning';
+
+  @override
+  String get exerciseName_pendlay_row => 'Remada Pendlay';
+
+  @override
+  String get exerciseName_hack_squat => 'Hack Squat';
+
+  @override
+  String get exerciseName_sumo_deadlift => 'Levantamento Terra Sumo';
+
+  @override
+  String get exerciseName_walking_lunges => 'Afundo Caminhando';
+
+  @override
+  String get exerciseName_step_up => 'Step-Up';
+
+  @override
+  String get exerciseName_seated_calf_raise => 'Panturrilha Sentado';
+
+  @override
+  String get exerciseName_leg_abductor => 'Abdutora';
+
+  @override
+  String get exerciseName_leg_adductor => 'Adutora';
+
+  @override
+  String get exerciseName_upright_row => 'Remada Alta';
+
+  @override
+  String get exerciseName_machine_shoulder_press =>
+      'Desenvolvimento na Máquina';
+
+  @override
+  String get exerciseName_cable_lateral_raise => 'Elevação Lateral no Cabo';
+
+  @override
+  String get exerciseName_preacher_curl => 'Rosca Scott';
+
+  @override
+  String get exerciseName_incline_dumbbell_curl =>
+      'Rosca Inclinada com Halteres';
+
+  @override
+  String get exerciseName_close_grip_bench_press => 'Supino Pegada Fechada';
+
+  @override
+  String get exerciseName_overhead_tricep_extension =>
+      'Extensão de Tríceps Overhead no Cabo';
+
+  @override
+  String get exerciseName_rope_pushdown => 'Tríceps na Corda';
+
+  @override
+  String get exerciseName_bicycle_crunch => 'Abdominal Bicicleta';
+
+  @override
+  String get exerciseName_cable_crunch => 'Abdominal no Cabo';
+
+  @override
+  String get exerciseName_pallof_press => 'Pallof Press';
+
+  @override
+  String get exerciseName_side_plank => 'Prancha Lateral';
+
+  @override
+  String get exerciseName_treadmill => 'Esteira';
+
+  @override
+  String get exerciseName_rowing_machine => 'Remo Ergométrico';
+
+  @override
+  String get exerciseName_stationary_bike => 'Bicicleta Ergométrica';
+
+  @override
+  String get exerciseName_jump_rope => 'Pular Corda';
+
+  @override
+  String get exerciseName_elliptical => 'Elíptico';
+
+  @override
+  String get exerciseName_incline_dumbbell_fly =>
+      'Crucifixo Inclinado com Halteres';
+
+  @override
+  String get exerciseName_decline_dumbbell_press =>
+      'Supino Declinado com Halteres';
+
+  @override
+  String get exerciseName_landmine_press => 'Landmine Press';
+
+  @override
+  String get exerciseName_diamond_push_up => 'Flexão Diamante';
+
+  @override
+  String get exerciseName_incline_push_up => 'Flexão Inclinada';
+
+  @override
+  String get exerciseName_decline_push_up => 'Flexão Declinada';
+
+  @override
+  String get exerciseName_hyperextension => 'Hiperextensão';
+
+  @override
+  String get exerciseName_back_extension => 'Extensão de Costas';
+
+  @override
+  String get exerciseName_inverted_row => 'Remada Invertida';
+
+  @override
+  String get exerciseName_chest_supported_row => 'Remada com Apoio no Peito';
+
+  @override
+  String get exerciseName_seal_row => 'Seal Row';
+
+  @override
+  String get exerciseName_straight_arm_pulldown =>
+      'Puxada com Braços Estendidos';
+
+  @override
+  String get exerciseName_close_grip_lat_pulldown => 'Puxada Pegada Fechada';
+
+  @override
+  String get exerciseName_wide_grip_pull_up => 'Barra Fixa Pegada Aberta';
+
+  @override
+  String get exerciseName_kettlebell_row => 'Remada com Kettlebell';
+
+  @override
+  String get exerciseName_glute_bridge => 'Elevação de Quadril';
+
+  @override
+  String get exerciseName_single_leg_glute_bridge =>
+      'Elevação de Quadril Unilateral';
+
+  @override
+  String get exerciseName_box_jump => 'Salto na Caixa';
+
+  @override
+  String get exerciseName_nordic_curl => 'Nordic Curl';
+
+  @override
+  String get exerciseName_wall_sit => 'Agachamento na Parede';
+
+  @override
+  String get exerciseName_donkey_kick => 'Coice de Burro';
+
+  @override
+  String get exerciseName_bodyweight_squat => 'Agachamento Livre';
+
+  @override
+  String get exerciseName_reverse_lunges => 'Afundo Reverso';
+
+  @override
+  String get exerciseName_dumbbell_calf_raise => 'Panturrilha com Halteres';
+
+  @override
+  String get exerciseName_single_leg_leg_press => 'Leg Press Unilateral';
+
+  @override
+  String get exerciseName_reverse_hyperextension => 'Hiperextensão Reversa';
+
+  @override
+  String get exerciseName_cable_glute_kickback => 'Glúteo no Cabo';
+
+  @override
+  String get exerciseName_cable_pull_through => 'Pull-Through no Cabo';
+
+  @override
+  String get exerciseName_kettlebell_deadlift =>
+      'Levantamento Terra com Kettlebell';
+
+  @override
+  String get exerciseName_barbell_shrug => 'Encolhimento com Barra';
+
+  @override
+  String get exerciseName_dumbbell_shrug => 'Encolhimento com Halteres';
+
+  @override
+  String get exerciseName_cable_rear_delt_fly => 'Crucifixo Invertido no Cabo';
+
+  @override
+  String get exerciseName_cable_front_raise => 'Elevação Frontal no Cabo';
+
+  @override
+  String get exerciseName_reverse_pec_deck => 'Pec Deck Invertido';
+
+  @override
+  String get exerciseName_landmine_shoulder_press => 'Desenvolvimento Landmine';
+
+  @override
+  String get exerciseName_kettlebell_press => 'Desenvolvimento com Kettlebell';
+
+  @override
+  String get exerciseName_spider_curl => 'Rosca Aranha';
+
+  @override
+  String get exerciseName_zottman_curl => 'Rosca Zottman';
+
+  @override
+  String get exerciseName_reverse_curl => 'Rosca Inversa';
+
+  @override
+  String get exerciseName_wrist_curl => 'Rosca de Punho';
+
+  @override
+  String get exerciseName_reverse_wrist_curl => 'Rosca de Punho Inversa';
+
+  @override
+  String get exerciseName_farmer_s_walk => 'Caminhada do Fazendeiro';
+
+  @override
+  String get exerciseName_cable_hammer_curl => 'Rosca Martelo no Cabo';
+
+  @override
+  String get exerciseName_bench_dip => 'Mergulho no Banco';
+
+  @override
+  String get exerciseName_close_grip_push_up => 'Flexão Pegada Fechada';
+
+  @override
+  String get exerciseName_jm_press => 'JM Press';
+
+  @override
+  String get exerciseName_sit_up => 'Abdominal Completo';
+
+  @override
+  String get exerciseName_mountain_climber => 'Escalador';
+
+  @override
+  String get exerciseName_toe_touch => 'Toque nos Pés';
+
+  @override
+  String get exerciseName_hollow_body_hold => 'Hollow Body Hold';
+
+  @override
+  String get exerciseName_v_up => 'V-Up';
+
+  @override
+  String get exerciseName_flutter_kick => 'Flutter Kick';
+
+  @override
+  String get exerciseName_reverse_crunch => 'Abdominal Reverso';
+
+  @override
+  String get exerciseName_leg_raise => 'Elevação de Pernas';
+
+  @override
+  String get exerciseName_windshield_wiper => 'Limpador de Para-brisa';
+
+  @override
+  String get exerciseName_plank_up_down => 'Prancha Sobe e Desce';
+
+  @override
+  String get exerciseName_heel_touch => 'Toque no Calcanhar';
+
+  @override
+  String get exerciseName_kettlebell_windmill => 'Moinho com Kettlebell';
 }

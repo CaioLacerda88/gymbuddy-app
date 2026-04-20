@@ -1378,4 +1378,486 @@ class AppLocalizationsEn extends AppLocalizations {
   String monthsAgoShort(int count) {
     return '${count}mo ago';
   }
+
+  @override
+  String get routineNamePushDay => 'Push Day';
+
+  @override
+  String get routineNamePullDay => 'Pull Day';
+
+  @override
+  String get routineNameLegDay => 'Leg Day';
+
+  @override
+  String get routineNameFullBody => 'Full Body';
+
+  @override
+  String get routineNameUpperLowerUpper => 'Upper/Lower — Upper';
+
+  @override
+  String get routineNameUpperLowerLower => 'Upper/Lower — Lower';
+
+  @override
+  String get routineNameFiveByFiveStrength => '5x5 Strength';
+
+  @override
+  String get routineNameFullBodyBeginner => 'Full Body Beginner';
+
+  @override
+  String get routineNameArmsAndAbs => 'Arms & Abs';
+
+  @override
+  String get exerciseName_barbell_bench_press => 'Barbell Bench Press';
+
+  @override
+  String get exerciseName_incline_barbell_bench_press =>
+      'Incline Barbell Bench Press';
+
+  @override
+  String get exerciseName_decline_barbell_bench_press =>
+      'Decline Barbell Bench Press';
+
+  @override
+  String get exerciseName_dumbbell_bench_press => 'Dumbbell Bench Press';
+
+  @override
+  String get exerciseName_incline_dumbbell_press => 'Incline Dumbbell Press';
+
+  @override
+  String get exerciseName_dumbbell_fly => 'Dumbbell Fly';
+
+  @override
+  String get exerciseName_cable_crossover => 'Cable Crossover';
+
+  @override
+  String get exerciseName_machine_chest_press => 'Machine Chest Press';
+
+  @override
+  String get exerciseName_push_up => 'Push-Up';
+
+  @override
+  String get exerciseName_barbell_bent_over_row => 'Barbell Bent-Over Row';
+
+  @override
+  String get exerciseName_deadlift => 'Deadlift';
+
+  @override
+  String get exerciseName_t_bar_row => 'T-Bar Row';
+
+  @override
+  String get exerciseName_dumbbell_row => 'Dumbbell Row';
+
+  @override
+  String get exerciseName_dumbbell_pullover => 'Dumbbell Pullover';
+
+  @override
+  String get exerciseName_cable_row => 'Cable Row';
+
+  @override
+  String get exerciseName_lat_pulldown => 'Lat Pulldown';
+
+  @override
+  String get exerciseName_pull_up => 'Pull-Up';
+
+  @override
+  String get exerciseName_chin_up => 'Chin-Up';
+
+  @override
+  String get exerciseName_machine_row => 'Machine Row';
+
+  @override
+  String get exerciseName_barbell_squat => 'Barbell Squat';
+
+  @override
+  String get exerciseName_front_squat => 'Front Squat';
+
+  @override
+  String get exerciseName_romanian_deadlift => 'Romanian Deadlift';
+
+  @override
+  String get exerciseName_hip_thrust => 'Hip Thrust';
+
+  @override
+  String get exerciseName_dumbbell_lunges => 'Dumbbell Lunges';
+
+  @override
+  String get exerciseName_bulgarian_split_squat => 'Bulgarian Split Squat';
+
+  @override
+  String get exerciseName_goblet_squat => 'Goblet Squat';
+
+  @override
+  String get exerciseName_leg_press => 'Leg Press';
+
+  @override
+  String get exerciseName_leg_extension => 'Leg Extension';
+
+  @override
+  String get exerciseName_leg_curl => 'Leg Curl';
+
+  @override
+  String get exerciseName_calf_raise => 'Calf Raise';
+
+  @override
+  String get exerciseName_overhead_press => 'Overhead Press';
+
+  @override
+  String get exerciseName_push_press => 'Push Press';
+
+  @override
+  String get exerciseName_dumbbell_shoulder_press => 'Dumbbell Shoulder Press';
+
+  @override
+  String get exerciseName_arnold_press => 'Arnold Press';
+
+  @override
+  String get exerciseName_lateral_raise => 'Lateral Raise';
+
+  @override
+  String get exerciseName_front_raise => 'Front Raise';
+
+  @override
+  String get exerciseName_rear_delt_fly => 'Rear Delt Fly';
+
+  @override
+  String get exerciseName_cable_face_pull => 'Cable Face Pull';
+
+  @override
+  String get exerciseName_barbell_curl => 'Barbell Curl';
+
+  @override
+  String get exerciseName_ez_bar_curl => 'EZ Bar Curl';
+
+  @override
+  String get exerciseName_skull_crusher => 'Skull Crusher';
+
+  @override
+  String get exerciseName_dumbbell_curl => 'Dumbbell Curl';
+
+  @override
+  String get exerciseName_hammer_curl => 'Hammer Curl';
+
+  @override
+  String get exerciseName_concentration_curl => 'Concentration Curl';
+
+  @override
+  String get exerciseName_dumbbell_tricep_extension =>
+      'Dumbbell Tricep Extension';
+
+  @override
+  String get exerciseName_tricep_pushdown => 'Tricep Pushdown';
+
+  @override
+  String get exerciseName_cable_curl => 'Cable Curl';
+
+  @override
+  String get exerciseName_dips => 'Dips';
+
+  @override
+  String get exerciseName_plank => 'Plank';
+
+  @override
+  String get exerciseName_hanging_leg_raise => 'Hanging Leg Raise';
+
+  @override
+  String get exerciseName_crunches => 'Crunches';
+
+  @override
+  String get exerciseName_ab_rollout => 'Ab Rollout';
+
+  @override
+  String get exerciseName_russian_twist => 'Russian Twist';
+
+  @override
+  String get exerciseName_dead_bug => 'Dead Bug';
+
+  @override
+  String get exerciseName_cable_woodchop => 'Cable Woodchop';
+
+  @override
+  String get exerciseName_band_pull_apart => 'Band Pull-Apart';
+
+  @override
+  String get exerciseName_band_face_pull => 'Band Face Pull';
+
+  @override
+  String get exerciseName_band_squat => 'Band Squat';
+
+  @override
+  String get exerciseName_kettlebell_swing => 'Kettlebell Swing';
+
+  @override
+  String get exerciseName_kettlebell_goblet_squat => 'Kettlebell Goblet Squat';
+
+  @override
+  String get exerciseName_kettlebell_turkish_get_up =>
+      'Kettlebell Turkish Get-Up';
+
+  @override
+  String get exerciseName_pec_deck => 'Pec Deck';
+
+  @override
+  String get exerciseName_cable_chest_press => 'Cable Chest Press';
+
+  @override
+  String get exerciseName_wide_push_up => 'Wide Push-Up';
+
+  @override
+  String get exerciseName_face_pull => 'Face Pull';
+
+  @override
+  String get exerciseName_rack_pull => 'Rack Pull';
+
+  @override
+  String get exerciseName_good_morning => 'Good Morning';
+
+  @override
+  String get exerciseName_pendlay_row => 'Pendlay Row';
+
+  @override
+  String get exerciseName_hack_squat => 'Hack Squat';
+
+  @override
+  String get exerciseName_sumo_deadlift => 'Sumo Deadlift';
+
+  @override
+  String get exerciseName_walking_lunges => 'Walking Lunges';
+
+  @override
+  String get exerciseName_step_up => 'Step-Up';
+
+  @override
+  String get exerciseName_seated_calf_raise => 'Seated Calf Raise';
+
+  @override
+  String get exerciseName_leg_abductor => 'Leg Abductor';
+
+  @override
+  String get exerciseName_leg_adductor => 'Leg Adductor';
+
+  @override
+  String get exerciseName_upright_row => 'Upright Row';
+
+  @override
+  String get exerciseName_machine_shoulder_press => 'Machine Shoulder Press';
+
+  @override
+  String get exerciseName_cable_lateral_raise => 'Cable Lateral Raise';
+
+  @override
+  String get exerciseName_preacher_curl => 'Preacher Curl';
+
+  @override
+  String get exerciseName_incline_dumbbell_curl => 'Incline Dumbbell Curl';
+
+  @override
+  String get exerciseName_close_grip_bench_press => 'Close-Grip Bench Press';
+
+  @override
+  String get exerciseName_overhead_tricep_extension =>
+      'Overhead Tricep Extension';
+
+  @override
+  String get exerciseName_rope_pushdown => 'Rope Pushdown';
+
+  @override
+  String get exerciseName_bicycle_crunch => 'Bicycle Crunch';
+
+  @override
+  String get exerciseName_cable_crunch => 'Cable Crunch';
+
+  @override
+  String get exerciseName_pallof_press => 'Pallof Press';
+
+  @override
+  String get exerciseName_side_plank => 'Side Plank';
+
+  @override
+  String get exerciseName_treadmill => 'Treadmill';
+
+  @override
+  String get exerciseName_rowing_machine => 'Rowing Machine';
+
+  @override
+  String get exerciseName_stationary_bike => 'Stationary Bike';
+
+  @override
+  String get exerciseName_jump_rope => 'Jump Rope';
+
+  @override
+  String get exerciseName_elliptical => 'Elliptical';
+
+  @override
+  String get exerciseName_incline_dumbbell_fly => 'Incline Dumbbell Fly';
+
+  @override
+  String get exerciseName_decline_dumbbell_press => 'Decline Dumbbell Press';
+
+  @override
+  String get exerciseName_landmine_press => 'Landmine Press';
+
+  @override
+  String get exerciseName_diamond_push_up => 'Diamond Push-Up';
+
+  @override
+  String get exerciseName_incline_push_up => 'Incline Push-Up';
+
+  @override
+  String get exerciseName_decline_push_up => 'Decline Push-Up';
+
+  @override
+  String get exerciseName_hyperextension => 'Hyperextension';
+
+  @override
+  String get exerciseName_back_extension => 'Back Extension';
+
+  @override
+  String get exerciseName_inverted_row => 'Inverted Row';
+
+  @override
+  String get exerciseName_chest_supported_row => 'Chest-Supported Row';
+
+  @override
+  String get exerciseName_seal_row => 'Seal Row';
+
+  @override
+  String get exerciseName_straight_arm_pulldown => 'Straight-Arm Pulldown';
+
+  @override
+  String get exerciseName_close_grip_lat_pulldown => 'Close-Grip Lat Pulldown';
+
+  @override
+  String get exerciseName_wide_grip_pull_up => 'Wide-Grip Pull-Up';
+
+  @override
+  String get exerciseName_kettlebell_row => 'Kettlebell Row';
+
+  @override
+  String get exerciseName_glute_bridge => 'Glute Bridge';
+
+  @override
+  String get exerciseName_single_leg_glute_bridge => 'Single-Leg Glute Bridge';
+
+  @override
+  String get exerciseName_box_jump => 'Box Jump';
+
+  @override
+  String get exerciseName_nordic_curl => 'Nordic Curl';
+
+  @override
+  String get exerciseName_wall_sit => 'Wall Sit';
+
+  @override
+  String get exerciseName_donkey_kick => 'Donkey Kick';
+
+  @override
+  String get exerciseName_bodyweight_squat => 'Bodyweight Squat';
+
+  @override
+  String get exerciseName_reverse_lunges => 'Reverse Lunges';
+
+  @override
+  String get exerciseName_dumbbell_calf_raise => 'Dumbbell Calf Raise';
+
+  @override
+  String get exerciseName_single_leg_leg_press => 'Single-Leg Leg Press';
+
+  @override
+  String get exerciseName_reverse_hyperextension => 'Reverse Hyperextension';
+
+  @override
+  String get exerciseName_cable_glute_kickback => 'Cable Glute Kickback';
+
+  @override
+  String get exerciseName_cable_pull_through => 'Cable Pull-Through';
+
+  @override
+  String get exerciseName_kettlebell_deadlift => 'Kettlebell Deadlift';
+
+  @override
+  String get exerciseName_barbell_shrug => 'Barbell Shrug';
+
+  @override
+  String get exerciseName_dumbbell_shrug => 'Dumbbell Shrug';
+
+  @override
+  String get exerciseName_cable_rear_delt_fly => 'Cable Rear Delt Fly';
+
+  @override
+  String get exerciseName_cable_front_raise => 'Cable Front Raise';
+
+  @override
+  String get exerciseName_reverse_pec_deck => 'Reverse Pec Deck';
+
+  @override
+  String get exerciseName_landmine_shoulder_press => 'Landmine Shoulder Press';
+
+  @override
+  String get exerciseName_kettlebell_press => 'Kettlebell Press';
+
+  @override
+  String get exerciseName_spider_curl => 'Spider Curl';
+
+  @override
+  String get exerciseName_zottman_curl => 'Zottman Curl';
+
+  @override
+  String get exerciseName_reverse_curl => 'Reverse Curl';
+
+  @override
+  String get exerciseName_wrist_curl => 'Wrist Curl';
+
+  @override
+  String get exerciseName_reverse_wrist_curl => 'Reverse Wrist Curl';
+
+  @override
+  String get exerciseName_farmer_s_walk => 'Farmer\'s Walk';
+
+  @override
+  String get exerciseName_cable_hammer_curl => 'Cable Hammer Curl';
+
+  @override
+  String get exerciseName_bench_dip => 'Bench Dip';
+
+  @override
+  String get exerciseName_close_grip_push_up => 'Close-Grip Push-Up';
+
+  @override
+  String get exerciseName_jm_press => 'JM Press';
+
+  @override
+  String get exerciseName_sit_up => 'Sit-Up';
+
+  @override
+  String get exerciseName_mountain_climber => 'Mountain Climber';
+
+  @override
+  String get exerciseName_toe_touch => 'Toe Touch';
+
+  @override
+  String get exerciseName_hollow_body_hold => 'Hollow Body Hold';
+
+  @override
+  String get exerciseName_v_up => 'V-Up';
+
+  @override
+  String get exerciseName_flutter_kick => 'Flutter Kick';
+
+  @override
+  String get exerciseName_reverse_crunch => 'Reverse Crunch';
+
+  @override
+  String get exerciseName_leg_raise => 'Leg Raise';
+
+  @override
+  String get exerciseName_windshield_wiper => 'Windshield Wiper';
+
+  @override
+  String get exerciseName_plank_up_down => 'Plank Up-Down';
+
+  @override
+  String get exerciseName_heel_touch => 'Heel Touch';
+
+  @override
+  String get exerciseName_kettlebell_windmill => 'Kettlebell Windmill';
 }
