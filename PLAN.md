@@ -51,7 +51,7 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 14 | Offline Support | DONE | #78-#85 |
 | 15a | i18n Infrastructure + E2E Selector Migration | DONE | #86 |
 | 15b | Full String Extraction | DONE | #87 |
-| 15c | Portuguese Translations + Exercise Content | TODO | - |
+| 15c | Portuguese Translations + Exercise Content | DONE | #88 |
 | 15d | Language Picker UI + Persistence | TODO | - |
 | 15e | QA + E2E + Overflow Polish | TODO | - |
 | 15 | Portuguese (Brazil) Localization | TODO | - |
@@ -778,24 +778,13 @@ Full pt-BR localization with language switcher in profile settings. Official `fl
 - Created `TestMaterialApp` harness, updated 52 widget test files
 - 15 dead ARB keys removed per review; 1381 tests + 155 E2E pass
 
-### 15c: Portuguese Translations + Exercise Content
+### 15c: Portuguese Translations + Exercise Content (DONE — PR #88)
 
-**Goal:** Complete all pt-BR translations. App has full Portuguese content, no UI to switch yet.
-
-**Acceptance Criteria:**
-- [ ] `app_pt.arb` complete with all ~350-400 Portuguese translations
-- [ ] Exercise names/descriptions/form_tips translated in ARB keyed by slug (~150 entries)
-- [ ] Default routine names translated
-- [ ] "PR" kept untranslated (Brazilian gym culture uses it)
-- [ ] PT-BR strings intentionally shorter where overflow risk exists
-- [ ] ARB completeness unit test (every en key exists in pt_BR)
-- [ ] All tests pass
-
-**Exercise lookup:** `localizedExerciseName(exercise, l10n)` — if `isDefault`, derive slug from English name, look up ARB; else return `exercise.name`.
-
-**Key files to create:** `lib/core/l10n/exercise_l10n.dart`, `test/unit/core/l10n/arb_completeness_test.dart`
-
-**Brazilian gym terminology:** Supino Reto (Bench Press), Agachamento (Squat), Levantamento Terra (Deadlift), Serie (Set), Repeticao (Rep), Treino (Workout), Peito (Chest), Costas (Back), Pernas (Legs), Ombros (Shoulders), Bracos (Arms).
+- All 556 ARB keys translated to Brazilian Portuguese with proper diacritics
+- `exercise_l10n.dart`: slug-keyed lookup for 150 default exercise names + 9 routine names
+- ARB completeness test (key parity + untranslated value detection)
+- ~120 diacritic corrections; "PR" and "Drop Set" kept in English per Brazilian gym convention
+- 1400 tests pass
 
 ### 15d: Language Picker UI + Persistence
 
