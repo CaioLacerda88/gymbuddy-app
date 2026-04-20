@@ -52,7 +52,7 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 15a | i18n Infrastructure + E2E Selector Migration | DONE | #86 |
 | 15b | Full String Extraction | DONE | #87 |
 | 15c | Portuguese Translations + Exercise Content | DONE | #88 |
-| 15d | Language Picker UI + Persistence | TODO | - |
+| 15d | Language Picker UI + Persistence | DONE | #89 |
 | 15e | QA + E2E + Overflow Polish | TODO | - |
 | 15 | Portuguese (Brazil) Localization | TODO | - |
 | 16 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
@@ -786,20 +786,13 @@ Full pt-BR localization with language switcher in profile settings. Official `fl
 - ~120 diacritic corrections; "PR" and "Drop Set" kept in English per Brazilian gym convention
 - 1400 tests pass
 
-### 15d: Language Picker UI + Persistence
+### 15d: Language Picker UI + Persistence — DONE (PR #89)
 
-**Goal:** Users switch language from profile. Immediate change, persisted locally and to Supabase.
-
-**Acceptance Criteria:**
-- [ ] PREFERENCES section in `ProfileScreen` between Weekly Goal and DATA MANAGEMENT
-- [ ] "Language" row showing current language in that language ("English" / "Portugues (Brasil)")
-- [ ] Bottom sheet modal on tap (same pattern as `_showFrequencySheet`)
-- [ ] Immediate locale switch via `LocaleNotifier.setLocale()`, no restart
-- [ ] Hive persistence (offline-safe) + Supabase sync (best-effort)
-- [ ] On startup: Hive first, reconcile with Supabase on login
-- [ ] Language switcher widget tests + locale persistence unit tests
-
-**Key files to create:** `lib/features/profile/ui/widgets/language_picker_sheet.dart`
+- PREFERENCES section on ProfileScreen with Language row (own-language display names)
+- `LanguagePickerSheet` modal wired to `LocaleNotifier.setLocale()` — instant switch, no restart
+- Hive-first + Supabase best-effort sync; `reconcileWithRemote(String)` from app bootstrap
+- App.build() listens to `authStateProvider` (not profileProvider) for post-login reconcile — prevents caching AsyncData(null) on a non-reactive currentUserId dependency
+- Tests: locale_provider unit (incl. reconcile + remote sync paths), language_picker_sheet widget, profile_screen integration
 
 ### 15e: QA + E2E + Overflow Polish
 
