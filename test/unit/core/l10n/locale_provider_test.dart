@@ -7,7 +7,6 @@ import 'package:gymbuddy_app/core/l10n/locale_provider.dart';
 import 'package:gymbuddy_app/core/local_storage/hive_service.dart';
 import 'package:gymbuddy_app/features/auth/providers/auth_providers.dart';
 import 'package:gymbuddy_app/features/profile/data/profile_repository.dart';
-import 'package:gymbuddy_app/features/profile/models/profile.dart';
 import 'package:gymbuddy_app/features/profile/providers/profile_providers.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:mocktail/mocktail.dart';
@@ -81,8 +80,6 @@ void main() {
     test('setLocale stores only languageCode in Hive', () async {
       final notifier = container.read(localeProvider.notifier);
 
-      // Even if a Locale with a country code is passed, only languageCode
-      // is persisted.
       await notifier.setLocale(const Locale('pt', 'BR'));
 
       final box = Hive.box<dynamic>(HiveService.userPrefs);
@@ -92,86 +89,52 @@ void main() {
 
   group('LocaleNotifier.reconcileWithRemote', () {
     late Directory tempDir;
-    late _MockProfileRepository mockRepo;
+    late ProviderContainer container;
 
     setUp(() async {
       tempDir = await Directory.systemTemp.createTemp('locale_reconcile_');
       Hive.init(tempDir.path);
       await Hive.openBox<dynamic>(HiveService.userPrefs);
-      mockRepo = _MockProfileRepository();
+      container = ProviderContainer();
     });
 
     tearDown(() async {
+      container.dispose();
       await Hive.close();
       await tempDir.delete(recursive: true);
     });
 
-    ProviderContainer createContainer({String? userId}) {
-      final c = ProviderContainer(
-        overrides: [
-          currentUserIdProvider.overrideWithValue(userId),
-          profileRepositoryProvider.overrideWithValue(mockRepo),
-        ],
-      );
-      addTearDown(c.dispose);
-      return c;
-    }
+    test('remote locale differs from local — updates to remote', () async {
+      expect(container.read(localeProvider), const Locale('en'));
 
-    test('remote locale differs from local — Supabase wins', () async {
-      // Local Hive has 'en', remote profile has 'pt'.
-      final c = createContainer(userId: 'user-1');
-      when(
-        () => mockRepo.getProfile('user-1'),
-      ).thenAnswer((_) async => const Profile(id: 'user-1', locale: 'pt'));
+      await container.read(localeProvider.notifier).reconcileWithRemote('pt');
 
-      expect(c.read(localeProvider), const Locale('en'));
-
-      await c.read(localeProvider.notifier).reconcileWithRemote();
-
-      expect(c.read(localeProvider), const Locale('pt'));
+      expect(container.read(localeProvider), const Locale('pt'));
       final box = Hive.box<dynamic>(HiveService.userPrefs);
       expect(box.get('locale'), 'pt');
     });
 
-    test('Supabase unreachable — silently keeps local value', () async {
-      final c = createContainer(userId: 'user-1');
-      when(
-        () => mockRepo.getProfile('user-1'),
-      ).thenThrow(Exception('network error'));
+    test(
+      'remote locale same as local — no state change and no Hive write',
+      () async {
+        expect(container.read(localeProvider), const Locale('en'));
 
-      await c.read(localeProvider.notifier).reconcileWithRemote();
+        await container.read(localeProvider.notifier).reconcileWithRemote('en');
 
-      // Should still be 'en' (the default).
-      expect(c.read(localeProvider), const Locale('en'));
-    });
+        expect(container.read(localeProvider), const Locale('en'));
+        final box = Hive.box<dynamic>(HiveService.userPrefs);
+        expect(box.get('locale'), isNull);
+      },
+    );
 
-    test('user not logged in — returns early without calling repo', () async {
-      final c = createContainer(userId: null);
+    test('updates Hive so next launch uses remote locale', () async {
+      await container.read(localeProvider.notifier).reconcileWithRemote('pt');
 
-      await c.read(localeProvider.notifier).reconcileWithRemote();
+      // Fresh container re-reads from Hive.
+      container.dispose();
+      container = ProviderContainer();
 
-      expect(c.read(localeProvider), const Locale('en'));
-      verifyNever(() => mockRepo.getProfile(any()));
-    });
-
-    test('remote locale same as local — no state change', () async {
-      final c = createContainer(userId: 'user-1');
-      when(
-        () => mockRepo.getProfile('user-1'),
-      ).thenAnswer((_) async => const Profile(id: 'user-1', locale: 'en'));
-
-      await c.read(localeProvider.notifier).reconcileWithRemote();
-
-      expect(c.read(localeProvider), const Locale('en'));
-    });
-
-    test('remote profile is null — keeps local value', () async {
-      final c = createContainer(userId: 'user-1');
-      when(() => mockRepo.getProfile('user-1')).thenAnswer((_) async => null);
-
-      await c.read(localeProvider.notifier).reconcileWithRemote();
-
-      expect(c.read(localeProvider), const Locale('en'));
+      expect(container.read(localeProvider), const Locale('pt'));
     });
   });
 
