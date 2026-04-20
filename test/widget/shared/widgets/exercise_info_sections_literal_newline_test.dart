@@ -16,9 +16,10 @@ import 'package:gymbuddy_app/core/theme/app_theme.dart';
 import 'package:gymbuddy_app/shared/widgets/exercise_info_sections.dart';
 
 import '../../../fixtures/test_finders.dart';
+import '../../../helpers/test_material_app.dart';
 
 Widget _build(Widget child) {
-  return MaterialApp(
+  return TestMaterialApp(
     theme: AppTheme.dark,
     home: Scaffold(
       body: SingleChildScrollView(

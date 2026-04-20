@@ -24,6 +24,7 @@ import 'package:gymbuddy_app/core/offline/pending_sync_provider.dart';
 import 'package:gymbuddy_app/features/workouts/ui/home_screen.dart';
 
 import '../../../../fixtures/test_factories.dart';
+import '../../../../helpers/test_material_app.dart';
 
 // ---------------------------------------------------------------------------
 // Stubs
@@ -148,7 +149,7 @@ Widget _build({
       profileProvider.overrideWith(() => _ProfileStub()),
       pendingSyncProvider.overrideWith(() => _ZeroPendingSyncNotifier()),
     ],
-    child: MaterialApp(
+    child: TestMaterialApp(
       theme: AppTheme.dark,
       home: const Scaffold(body: HomeScreen()),
     ),

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/exceptions/app_exception.dart';
+import '../../../core/utils/enum_l10n.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/exercise_image.dart';
 import '../../../shared/widgets/exercise_info_sections.dart';
 import '../../personal_records/models/record_type.dart';
@@ -36,6 +38,7 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
     // makes the BuildContext stale.
     final router = GoRouter.of(context);
 
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) {
@@ -45,11 +48,11 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Text('Delete Exercise'),
+          title: Text(l10n.deleteExercise),
           content: Semantics(
             container: true,
             identifier: 'exercise-detail-delete-dialog',
-            child: Text('Are you sure you want to delete "${exercise.name}"?'),
+            child: Text(l10n.deleteExerciseConfirm(exercise.name)),
           ),
           actions: [
             Semantics(
@@ -57,7 +60,7 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
               identifier: 'exercise-detail-delete-cancel',
               child: TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Cancel'),
+                child: Text(l10n.cancel),
               ),
             ),
             Semantics(
@@ -68,7 +71,7 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
                 style: TextButton.styleFrom(
                   foregroundColor: dialogTheme.colorScheme.error,
                 ),
-                child: const Text('Delete'),
+                child: Text(l10n.delete),
               ),
             ),
           ],
@@ -109,12 +112,13 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
     final theme = Theme.of(context);
     final asyncExercise = ref.watch(exerciseByIdProvider(widget.exerciseId));
 
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
         title: Semantics(
           container: true,
           identifier: 'exercise-detail-title',
-          child: const Text('Exercise Details'),
+          child: Text(l10n.exerciseDetails),
         ),
       ),
       body: asyncExercise.when(
@@ -123,12 +127,12 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Failed to load exercise', style: theme.textTheme.bodyLarge),
+              Text(l10n.failedToLoadExercise, style: theme.textTheme.bodyLarge),
               const SizedBox(height: 12),
               FilledButton(
                 onPressed: () =>
                     ref.invalidate(exerciseByIdProvider(widget.exerciseId)),
-                child: const Text('Retry'),
+                child: Text(l10n.retry),
               ),
             ],
           ),
@@ -171,6 +175,7 @@ class _ExerciseDetailBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
+    final l10n = AppLocalizations.of(context);
 
     // P9 hierarchy: name -> [custom label] -> description -> chips -> images
     // -> form tips -> PRs -> delete. "Created <date>" was dropped — it was a
@@ -189,7 +194,7 @@ class _ExerciseDetailBody extends ConsumerWidget {
               container: true,
               identifier: 'exercise-detail-custom-badge',
               child: Text(
-                'Custom exercise',
+                l10n.customExercise,
                 style: theme.textTheme.labelLarge?.copyWith(
                   color: primary.withValues(alpha: 0.8),
                   fontWeight: FontWeight.w600,
@@ -214,11 +219,11 @@ class _ExerciseDetailBody extends ConsumerWidget {
             children: [
               _DetailChip(
                 icon: exercise.muscleGroup.icon,
-                label: exercise.muscleGroup.displayName,
+                label: exercise.muscleGroup.localizedName(l10n),
               ),
               _DetailChip(
                 icon: exercise.equipmentType.icon,
-                label: exercise.equipmentType.displayName,
+                label: exercise.equipmentType.localizedName(l10n),
               ),
             ],
           ),
@@ -251,7 +256,7 @@ class _ExerciseDetailBody extends ConsumerWidget {
               child: Semantics(
                 container: true,
                 identifier: 'exercise-detail-delete-btn',
-                label: 'Delete exercise',
+                label: l10n.deleteExerciseSemantics,
                 child: OutlinedButton.icon(
                   onPressed: isDeleting ? null : onDelete,
                   icon: isDeleting
@@ -261,7 +266,7 @@ class _ExerciseDetailBody extends ConsumerWidget {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.delete_outline_rounded),
-                  label: Text(isDeleting ? 'Deleting...' : 'Delete Exercise'),
+                  label: Text(isDeleting ? l10n.deleting : l10n.deleteExercise),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: theme.colorScheme.error,
                     side: BorderSide(color: theme.colorScheme.error),
@@ -321,6 +326,7 @@ class _ExerciseImageRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final labelStyle = theme.textTheme.bodySmall?.copyWith(
       color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
     );
@@ -341,7 +347,7 @@ class _ExerciseImageRow extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text('Start', style: labelStyle),
+                  Text(l10n.imageStart, style: labelStyle),
                 ],
               ),
             ),
@@ -359,7 +365,7 @@ class _ExerciseImageRow extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text('End', style: labelStyle),
+                  Text(l10n.imageEnd, style: labelStyle),
                 ],
               ),
             ),
@@ -375,10 +381,15 @@ class _PRSection extends ConsumerWidget {
   final String exerciseId;
   final EquipmentType equipmentType;
 
-  String _formatValue(RecordType type, double value, String weightUnit) {
+  String _formatValue(
+    RecordType type,
+    double value,
+    String weightUnit,
+    AppLocalizations l10n,
+  ) {
     return switch (type) {
       RecordType.maxWeight => '$value $weightUnit',
-      RecordType.maxReps => '${value.toInt()} reps',
+      RecordType.maxReps => l10n.repsUnit(value.toInt()),
       RecordType.maxVolume => '$value $weightUnit',
     };
   }
@@ -394,6 +405,7 @@ class _PRSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final asyncRecords = ref.watch(exercisePRsProvider(exerciseId));
     final weightUnit = ref.watch(profileProvider).value?.weightUnit ?? 'kg';
 
@@ -408,21 +420,21 @@ class _PRSection extends ConsumerWidget {
           ),
         ),
       ),
-      error: (_, _) => _emptyPRRow(theme),
+      error: (_, _) => _emptyPRRow(theme, l10n),
       data: (records) {
-        if (records.isEmpty) return _emptyPRRow(theme);
+        if (records.isEmpty) return _emptyPRRow(theme, l10n);
 
         // For bodyweight exercises, skip maxWeight and maxVolume if absent.
         final filtered = equipmentType == EquipmentType.bodyweight
             ? records.where((r) => r.recordType == RecordType.maxReps).toList()
             : records;
 
-        if (filtered.isEmpty) return _emptyPRRow(theme);
+        if (filtered.isEmpty) return _emptyPRRow(theme, l10n);
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Personal Records', style: theme.textTheme.titleMedium),
+            Text(l10n.personalRecords, style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
             ...filtered.map(
               (r) => Padding(
@@ -436,12 +448,12 @@ class _PRSection extends ConsumerWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      r.recordType.displayName,
+                      r.recordType.localizedName(l10n),
                       style: theme.textTheme.bodyMedium,
                     ),
                     const Spacer(),
                     Text(
-                      _formatValue(r.recordType, r.value, weightUnit),
+                      _formatValue(r.recordType, r.value, weightUnit, l10n),
                       style: theme.textTheme.bodyLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -456,7 +468,7 @@ class _PRSection extends ConsumerWidget {
     );
   }
 
-  Widget _emptyPRRow(ThemeData theme) {
+  Widget _emptyPRRow(ThemeData theme, AppLocalizations l10n) {
     return Row(
       children: [
         Icon(
@@ -466,7 +478,7 @@ class _PRSection extends ConsumerWidget {
         ),
         const SizedBox(width: 4),
         Text(
-          'No records yet',
+          l10n.noRecordsYet,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
           ),
@@ -516,6 +528,7 @@ class _TappableImage extends StatelessWidget {
       context: context,
       builder: (ctx) {
         final theme = Theme.of(ctx);
+        final l10n = AppLocalizations.of(ctx);
         return Scaffold(
           backgroundColor: theme.colorScheme.scrim,
           appBar: AppBar(
@@ -526,7 +539,7 @@ class _TappableImage extends StatelessWidget {
                 color: theme.colorScheme.onSurface,
               ),
               onPressed: () => Navigator.of(ctx).pop(),
-              tooltip: 'Close',
+              tooltip: l10n.close,
             ),
           ),
           body: GestureDetector(

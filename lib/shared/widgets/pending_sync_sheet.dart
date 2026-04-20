@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/offline/pending_action.dart';
 import '../../core/offline/pending_sync_provider.dart';
 import '../../core/theme/radii.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Modal bottom sheet listing all pending offline actions with retry controls.
 ///
@@ -26,6 +27,7 @@ class _PendingSyncSheetState extends ConsumerState<PendingSyncSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     // Watch the count so the sheet rebuilds when items are dequeued.
     final count = ref.watch(pendingSyncProvider);
     final actions = count > 0
@@ -56,14 +58,14 @@ class _PendingSyncSheetState extends ConsumerState<PendingSyncSheet> {
             child: Row(
               children: [
                 Text(
-                  'Pending Sync',
+                  l10n.pendingSyncTitle,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const Spacer(),
                 Text(
-                  '${actions.length} item${actions.length == 1 ? '' : 's'}',
+                  l10n.itemCount(actions.length),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
@@ -77,7 +79,7 @@ class _PendingSyncSheetState extends ConsumerState<PendingSyncSheet> {
             child: actions.isEmpty
                 ? Center(
                     child: Text(
-                      'All synced!',
+                      l10n.allSynced,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurface.withValues(
                           alpha: 0.5,
@@ -115,9 +117,10 @@ class _PendingSyncSheetState extends ConsumerState<PendingSyncSheet> {
     try {
       await ref.read(pendingSyncProvider.notifier).retryItem(id);
       if (mounted) {
+        final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Synced successfully.')));
+        ).showSnackBar(SnackBar(content: Text(l10n.syncedSuccessfully)));
       }
     } catch (e) {
       if (mounted) {
@@ -154,10 +157,10 @@ class _ActionRow extends StatelessWidget {
     PendingMarkRoutineComplete() => Icons.check_circle_outline,
   };
 
-  String get _label => switch (action) {
-    PendingSaveWorkout() => 'Save workout',
-    PendingUpsertRecords() => 'Update records',
-    PendingMarkRoutineComplete() => 'Mark routine complete',
+  String _label(AppLocalizations l10n) => switch (action) {
+    PendingSaveWorkout() => l10n.pendingActionSaveWorkout,
+    PendingUpsertRecords() => l10n.pendingActionUpdateRecords,
+    PendingMarkRoutineComplete() => l10n.pendingActionMarkComplete,
   };
 
   String _formatTime(DateTime dt) {
@@ -170,6 +173,7 @@ class _ActionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Container(
       constraints: const BoxConstraints(minHeight: 48),
@@ -190,14 +194,14 @@ class _ActionRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _label,
+                      _label(l10n),
                       style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                     Text(
-                      'Queued at ${_formatTime(action.queuedAt)}'
-                      '${action.retryCount > 0 ? ' \u00b7 ${action.retryCount} retries' : ''}',
+                      '${l10n.queuedAt(_formatTime(action.queuedAt))}'
+                      '${action.retryCount > 0 ? ' \u00b7 ${l10n.retryCount(action.retryCount)}' : ''}',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurface.withValues(
                           alpha: 0.5,
@@ -221,7 +225,7 @@ class _ActionRow extends StatelessWidget {
                     minimumSize: const Size(0, 32),
                     textStyle: const TextStyle(fontSize: 13),
                   ),
-                  child: const Text('Retry'),
+                  child: Text(l10n.retry),
                 ),
             ],
           ),

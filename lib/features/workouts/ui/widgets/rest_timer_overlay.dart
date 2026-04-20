@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../l10n/app_localizations.dart';
 import '../../providers/notifiers/rest_timer_notifier.dart';
 
 /// Full-screen overlay displayed when the rest timer is active.
@@ -35,6 +36,7 @@ class _RestTimerOverlayState extends ConsumerState<RestTimerOverlay> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final timerState = ref.watch(restTimerProvider);
 
     if (timerState == null) return const SizedBox.shrink();
@@ -54,7 +56,7 @@ class _RestTimerOverlayState extends ConsumerState<RestTimerOverlay> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Semantics(
-                  label: 'Rest timer: $timeText remaining',
+                  label: l10n.restTimerRemaining(timeText),
                   child: SizedBox(
                     width: 220,
                     height: 220,
@@ -90,7 +92,7 @@ class _RestTimerOverlayState extends ConsumerState<RestTimerOverlay> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  timerState.exerciseName ?? 'Rest',
+                  timerState.exerciseName ?? l10n.restTimerLabel,
                   style: theme.textTheme.titleLarge?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
@@ -107,7 +109,7 @@ class _RestTimerOverlayState extends ConsumerState<RestTimerOverlay> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Semantics(
-                        label: 'Subtract 30 seconds',
+                        label: l10n.subtract30Semantics,
                         button: true,
                         child: SizedBox(
                           width: 64,
@@ -132,7 +134,7 @@ class _RestTimerOverlayState extends ConsumerState<RestTimerOverlay> {
                       ),
                       const SizedBox(width: 12),
                       Semantics(
-                        label: 'Skip rest timer',
+                        label: l10n.skipRestSemantics,
                         button: true,
                         child: SizedBox(
                           width: 120,
@@ -154,13 +156,13 @@ class _RestTimerOverlayState extends ConsumerState<RestTimerOverlay> {
                                 ),
                               ),
                             ),
-                            child: const Text('Skip'),
+                            child: Text(l10n.skip),
                           ),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Semantics(
-                        label: 'Add 30 seconds',
+                        label: l10n.add30Semantics,
                         button: true,
                         child: SizedBox(
                           width: 64,
@@ -188,7 +190,7 @@ class _RestTimerOverlayState extends ConsumerState<RestTimerOverlay> {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'Tap anywhere to dismiss',
+                  l10n.tapToDismiss,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
                   ),

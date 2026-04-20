@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/enum_l10n.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/async_value_builder.dart';
 import '../models/exercise.dart';
 import '../providers/exercise_providers.dart';
@@ -44,6 +46,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final exercises = ref.watch(filteredExerciseListProvider);
 
     return Scaffold(
@@ -55,7 +58,10 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
               child: Semantics(
                 container: true,
                 identifier: 'exercise-list-heading',
-                child: Text('Exercises', style: theme.textTheme.headlineLarge),
+                child: Text(
+                  l10n.exercises,
+                  style: theme.textTheme.headlineLarge,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -120,6 +126,7 @@ class _MuscleGroupSelector extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selected = ref.watch(selectedMuscleGroupProvider);
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return SizedBox(
       height: 72,
@@ -129,7 +136,7 @@ class _MuscleGroupSelector extends ConsumerWidget {
         child: Row(
           children: [
             _MuscleGroupButton(
-              label: 'All',
+              label: l10n.all,
               icon: Icons.grid_view_rounded,
               isSelected: selected == null,
               onTap: () {
@@ -139,7 +146,7 @@ class _MuscleGroupSelector extends ConsumerWidget {
             ),
             ...MuscleGroup.values.map(
               (group) => _MuscleGroupButton(
-                label: group.displayName,
+                label: group.localizedName(l10n),
                 icon: group.icon,
                 isSelected: selected == group,
                 onTap: () {
@@ -236,16 +243,17 @@ class _SearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Semantics(
       container: true,
       identifier: 'exercise-list-search',
-      label: 'Search exercises',
+      label: l10n.searchExercisesSemantics,
       child: TextField(
         controller: controller,
         onChanged: onChanged,
-        decoration: const InputDecoration(
-          hintText: 'Search exercises...',
-          prefixIcon: Icon(Icons.search_rounded, weight: 600),
+        decoration: InputDecoration(
+          hintText: l10n.searchExercises,
+          prefixIcon: const Icon(Icons.search_rounded, weight: 600),
         ),
       ),
     );
@@ -272,15 +280,17 @@ class _EquipmentFilter extends ConsumerWidget {
         child: Row(
           children: EquipmentType.values.map((type) {
             final isSelected = selected == type;
+            final l10n = AppLocalizations.of(context);
+            final typeName = type.localizedName(l10n);
             return Padding(
               padding: const EdgeInsets.only(right: 8),
               child: Semantics(
                 container: true,
                 identifier: 'exercise-equip-${type.name}',
-                label: '${type.displayName} equipment filter',
+                label: '$typeName equipment filter',
                 selected: isSelected,
                 child: FilterChip(
-                  label: Text(type.displayName),
+                  label: Text(typeName),
                   selected: isSelected,
                   onSelected: (val) {
                     ref.read(selectedEquipmentTypeProvider.notifier).state = val
@@ -341,7 +351,7 @@ class _ExerciseCard extends StatelessWidget {
     final isCustom = !exercise.isDefault;
 
     return Semantics(
-      label: 'Exercise: ${exercise.name}',
+      label: AppLocalizations.of(context).exerciseItemSemantics(exercise.name),
       button: true,
       child: Padding(
         padding: const EdgeInsets.only(bottom: 12),
@@ -379,18 +389,27 @@ class _ExerciseCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          children: [
-                            _InfoChip(
-                              label: exercise.muscleGroup.displayName,
-                              icon: exercise.muscleGroup.icon,
-                            ),
-                            _InfoChip(
-                              label: exercise.equipmentType.displayName,
-                              icon: exercise.equipmentType.icon,
-                            ),
-                          ],
+                        Builder(
+                          builder: (context) {
+                            final l10n = AppLocalizations.of(context);
+                            return Wrap(
+                              spacing: 8,
+                              children: [
+                                _InfoChip(
+                                  label: exercise.muscleGroup.localizedName(
+                                    l10n,
+                                  ),
+                                  icon: exercise.muscleGroup.icon,
+                                ),
+                                _InfoChip(
+                                  label: exercise.equipmentType.localizedName(
+                                    l10n,
+                                  ),
+                                  icon: exercise.equipmentType.icon,
+                                ),
+                              ],
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -458,6 +477,7 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Center(
       child: Padding(
@@ -478,8 +498,8 @@ class _EmptyState extends StatelessWidget {
                   : 'exercise-list-empty-no-filter',
               child: Text(
                 hasFilters
-                    ? 'No exercises match your filters'
-                    : 'Your exercises will appear here',
+                    ? l10n.noExercisesMatchFilters
+                    : l10n.yourExercisesWillAppear,
                 style: theme.textTheme.bodyLarge?.copyWith(
                   fontWeight: FontWeight.w500,
                 ),
@@ -494,7 +514,7 @@ class _EmptyState extends StatelessWidget {
                 child: TextButton(
                   onPressed: onClearFilters,
                   child: Text(
-                    'Clear Filters',
+                    l10n.clearFilters,
                     style: TextStyle(color: theme.colorScheme.primary),
                   ),
                 ),
@@ -503,7 +523,7 @@ class _EmptyState extends StatelessWidget {
               TextButton(
                 onPressed: onCreateExercise,
                 child: Text(
-                  'Create Exercise',
+                  l10n.createExercise,
                   style: TextStyle(color: theme.colorScheme.primary),
                 ),
               ),
@@ -526,7 +546,7 @@ class _CreateExerciseFab extends StatelessWidget {
     return Semantics(
       container: true,
       identifier: 'exercise-list-create-fab',
-      label: 'Create new exercise',
+      label: AppLocalizations.of(context).createNewExerciseSemantics,
       button: true,
       child: Container(
         decoration: BoxDecoration(

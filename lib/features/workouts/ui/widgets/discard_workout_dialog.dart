@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../l10n/app_localizations.dart';
+
 /// Confirmation dialog shown when the user wants to discard an active workout.
 ///
 /// Returns `true` if the user confirmed the discard, `false` or `null` otherwise.
@@ -31,17 +33,17 @@ class DiscardWorkoutDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return AlertDialog(
-      title: const Text('Discard Workout?'),
+      title: Text(l10n.discardWorkoutTitle),
       content: Text(
-        'You\'ve been working out for ${_formatDuration(elapsedDuration)}. '
-        'This cannot be undone.',
+        l10n.discardWorkoutContent(_formatDuration(elapsedDuration)),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
+          child: Text(l10n.cancel),
         ),
         Semantics(
           container: true,
@@ -51,7 +53,7 @@ class DiscardWorkoutDialog extends StatelessWidget {
             style: TextButton.styleFrom(
               foregroundColor: theme.colorScheme.error,
             ),
-            child: const Text('Discard'),
+            child: Text(l10n.discard),
           ),
         ),
       ],

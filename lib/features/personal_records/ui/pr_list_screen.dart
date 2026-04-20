@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/radii.dart';
+import '../../../core/utils/enum_l10n.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../models/record_type.dart';
 import '../providers/pr_providers.dart';
@@ -15,19 +17,20 @@ class PRListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncPRs = ref.watch(prListWithExercisesProvider);
 
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
         title: Semantics(
           container: true,
           identifier: 'pr-display-title',
-          child: const Text('Personal Records'),
+          child: Text(l10n.personalRecordsTitle),
         ),
       ),
       body: asyncPRs.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(
           child: Text(
-            'Failed to load records',
+            l10n.failedToLoadRecords,
             style: Theme.of(context).textTheme.bodyLarge,
           ),
         ),
@@ -44,6 +47,7 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Center(
       child: Padding(
@@ -61,7 +65,7 @@ class _EmptyState extends StatelessWidget {
               container: true,
               identifier: 'pr-display-empty-title',
               child: Text(
-                'No Records Yet',
+                l10n.noRecordsYetTitle,
                 style: theme.textTheme.headlineMedium,
               ),
             ),
@@ -70,7 +74,7 @@ class _EmptyState extends StatelessWidget {
               container: true,
               identifier: 'pr-display-empty',
               child: Text(
-                'Complete a workout to start tracking records',
+                l10n.completeWorkoutToTrack,
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
@@ -80,7 +84,7 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () => context.go('/home'),
-              child: const Text('Start Workout'),
+              child: Text(l10n.startWorkout),
             ),
           ],
         ),
@@ -162,6 +166,7 @@ class _ExerciseRecordCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final first = records.first;
 
     return Semantics(
@@ -184,7 +189,7 @@ class _ExerciseRecordCard extends StatelessWidget {
                   children: records.map((pr) {
                     return _RecordTile(
                       icon: _iconForType(pr.record.recordType),
-                      label: pr.record.recordType.displayName,
+                      label: pr.record.recordType.localizedName(l10n),
                       value: _formatValue(
                         pr.record.recordType,
                         pr.record.value,

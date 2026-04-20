@@ -11,11 +11,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
 import 'package:gymbuddy_app/features/workouts/ui/widgets/add_to_plan_prompt.dart';
+import '../../../../helpers/test_material_app.dart';
 
 void main() {
   /// Helper that renders a scaffold with a button that opens the prompt.
   Widget buildTestWidget({required String routineName}) {
-    return MaterialApp(
+    return TestMaterialApp(
       theme: AppTheme.dark,
       home: Builder(
         builder: (context) => Scaffold(

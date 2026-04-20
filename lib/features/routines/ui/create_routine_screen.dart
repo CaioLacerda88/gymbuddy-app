@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/utils/enum_l10n.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../exercises/models/exercise.dart';
 import '../../workouts/ui/widgets/exercise_picker_sheet.dart';
 import '../models/routine.dart';
@@ -94,9 +96,10 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
       context.pop();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to save routine. Please retry.')),
-      );
+      final l10n = AppLocalizations.of(context);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.failedToSaveRoutine)));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -121,6 +124,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -129,7 +133,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
           identifier: _isEditing
               ? 'routine-mgmt-edit-title'
               : 'routine-mgmt-create-title',
-          child: Text(_isEditing ? 'Edit Routine' : 'Create Routine'),
+          child: Text(_isEditing ? l10n.editRoutine : l10n.createRoutine),
         ),
         actions: [
           Semantics(
@@ -143,7 +147,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Save'),
+                  : Text(l10n.save),
             ),
           ),
         ],
@@ -157,7 +161,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
               controller: _nameController,
               autofocus: !_isEditing,
               maxLength: 80,
-              decoration: const InputDecoration(hintText: 'Routine name'),
+              decoration: InputDecoration(hintText: l10n.routineName),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 24),
@@ -184,7 +188,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
               child: OutlinedButton.icon(
                 onPressed: _addExercise,
                 icon: const Icon(Icons.add),
-                label: const Text('Add Exercise'),
+                label: Text(l10n.addExercise),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
@@ -235,8 +239,9 @@ class _ExerciseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final exerciseName = entry.exercise?.name ?? 'Unknown Exercise';
-    final muscleGroup = entry.exercise?.muscleGroup.displayName;
+    final l10n = AppLocalizations.of(context);
+    final exerciseName = entry.exercise?.name ?? l10n.unknownExercise;
+    final muscleGroup = entry.exercise?.muscleGroup.localizedName(l10n);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -299,7 +304,10 @@ class _ExerciseCard extends StatelessWidget {
                   Semantics(
                     container: true,
                     identifier: 'create-routine-sets',
-                    child: Text('Sets', style: theme.textTheme.bodyMedium),
+                    child: Text(
+                      l10n.setsLabel,
+                      style: theme.textTheme.bodyMedium,
+                    ),
                   ),
                   const Spacer(),
                   IconButton(
@@ -332,7 +340,7 @@ class _ExerciseCard extends StatelessWidget {
               Semantics(
                 container: true,
                 identifier: 'create-routine-rest',
-                child: Text('Rest', style: theme.textTheme.bodyMedium),
+                child: Text(l10n.restLabel, style: theme.textTheme.bodyMedium),
               ),
               const SizedBox(height: 8),
               Wrap(

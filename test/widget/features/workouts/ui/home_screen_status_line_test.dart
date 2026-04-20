@@ -20,6 +20,7 @@ import 'package:gymbuddy_app/features/workouts/providers/workout_history_provide
 import 'package:gymbuddy_app/features/workouts/ui/widgets/home_status_line.dart';
 
 import '../../../../fixtures/test_factories.dart';
+import '../../../../helpers/test_material_app.dart';
 
 // ---------------------------------------------------------------------------
 // Notifier stubs
@@ -116,7 +117,7 @@ Widget _build({
       workoutCountProvider.overrideWith((ref) => Future.value(workouts.length)),
       profileProvider.overrideWith(() => _ProfileStub(profile)),
     ],
-    child: MaterialApp(
+    child: TestMaterialApp(
       theme: AppTheme.dark,
       home: const Scaffold(body: HomeStatusLine()),
     ),

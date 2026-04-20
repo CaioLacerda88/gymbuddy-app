@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/radii.dart';
+import '../../../../l10n/app_localizations.dart';
 
 /// Visual states for a routine chip in the weekly bucket.
 enum RoutineChipState {
@@ -117,7 +118,9 @@ class RoutineChip extends StatelessWidget {
                     ),
                     if (hasExerciseCount)
                       Text(
-                        '$exerciseCount exercises',
+                        AppLocalizations.of(
+                          context,
+                        ).exercisesCount(exerciseCount!),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: Colors.black54,
                           fontSize: 11,

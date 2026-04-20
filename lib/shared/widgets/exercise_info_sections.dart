@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
+
 /// Renders an "ABOUT" section header with the exercise description text.
 ///
 /// Collapses to nothing when [description] is null or empty.
@@ -22,7 +24,7 @@ class ExerciseDescriptionSection extends StatelessWidget {
       children: [
         const SizedBox(height: 24),
         Text(
-          'ABOUT',
+          AppLocalizations.of(context).aboutSection,
           style: theme.textTheme.bodySmall?.copyWith(
             color: onSurface.withValues(alpha: 0.55),
           ),
@@ -71,7 +73,7 @@ class ExerciseFormTipsSection extends StatelessWidget {
       children: [
         const SizedBox(height: 24),
         Text(
-          'FORM TIPS',
+          AppLocalizations.of(context).formTipsSection,
           style: theme.textTheme.bodySmall?.copyWith(
             color: onSurface.withValues(alpha: 0.55),
           ),

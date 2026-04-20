@@ -3,13 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/connectivity/connectivity_provider.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../workouts/models/routine_start_config.dart';
 import '../../workouts/providers/workout_providers.dart';
 import '../../workouts/ui/widgets/resume_workout_dialog.dart';
 import '../models/routine.dart';
-
-const kOfflineStartWorkoutMessage =
-    'Starting a workout requires an internet connection';
 
 /// Builds a [RoutineStartConfig] from a routine and starts an active workout.
 ///
@@ -25,9 +23,10 @@ Future<void> startRoutineWorkout(
   final isOnline = ref.read(isOnlineProvider);
   if (!isOnline) {
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(kOfflineStartWorkoutMessage)),
-      );
+      final l10n = AppLocalizations.of(context);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.offlineStartWorkout)));
     }
     return;
   }
@@ -75,11 +74,10 @@ Future<void> startRoutineWorkout(
 
   if (exercises.isEmpty) {
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not load exercises. Please try again.'),
-        ),
-      );
+      final l10n = AppLocalizations.of(context);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.couldNotLoadExercises)));
     }
     return;
   }

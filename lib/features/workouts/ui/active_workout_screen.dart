@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/enum_l10n.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/exercise_image.dart';
 import '../../../shared/widgets/exercise_info_sections.dart';
 import '../models/active_workout_state.dart';
@@ -116,8 +118,10 @@ class ActiveWorkoutScreen extends ConsumerWidget {
         final result = ref.read(activeWorkoutProvider);
         if (result.hasError) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Failed to discard workout. Please retry.'),
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(context).failedToDiscardWorkout,
+              ),
             ),
           );
           return;
@@ -209,8 +213,10 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
         final result = ref.read(activeWorkoutProvider);
         if (result.hasError) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Failed to discard workout. Please retry.'),
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(context).failedToDiscardWorkout,
+              ),
             ),
           );
           return;
@@ -266,8 +272,8 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
       final state = ref.read(activeWorkoutProvider);
       if (state.hasError) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to save workout. Please retry.'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).failedToSaveWorkout),
           ),
         );
         return;
@@ -295,7 +301,7 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Workout saved. Will sync when back online.',
+              AppLocalizations.of(context).workoutSavedOffline,
               style: TextStyle(color: colorScheme.onTertiaryContainer),
             ),
             backgroundColor: colorScheme.tertiaryContainer,
@@ -370,17 +376,18 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(
         leading: Semantics(
           container: true,
           identifier: 'workout-discard-btn',
-          label: 'Discard workout',
+          label: l10n.discardWorkout,
           child: IconButton(
             onPressed: _onBackPressed,
             icon: const Icon(Icons.close),
-            tooltip: 'Discard workout',
+            tooltip: l10n.discardWorkout,
           ),
         ),
         title: Column(
@@ -442,7 +449,9 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
             IconButton(
               onPressed: _toggleReorderMode,
               icon: Icon(_reorderMode ? Icons.done : Icons.swap_vert),
-              tooltip: _reorderMode ? 'Exit reorder mode' : 'Reorder exercises',
+              tooltip: _reorderMode
+                  ? AppLocalizations.of(context).exitReorderModeTooltip
+                  : AppLocalizations.of(context).reorderExercisesTooltip,
             ),
         ],
       ),
@@ -456,7 +465,7 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Text(
-                    'Complete at least one set to finish',
+                    AppLocalizations.of(context).completeOneSet,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(
                         context,
@@ -470,7 +479,7 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
                 child: FilledButton.icon(
                   onPressed: _hasCompletedSet ? _onFinish : null,
                   icon: const Icon(Icons.check_circle),
-                  label: const Text('Finish Workout'),
+                  label: Text(AppLocalizations.of(context).finishWorkout),
                   style: FilledButton.styleFrom(
                     minimumSize: const Size(double.infinity, 56),
                     textStyle: const TextStyle(
@@ -553,7 +562,7 @@ class _LoadingOverlayState extends ConsumerState<_LoadingOverlay> {
                     ref.read(activeWorkoutProvider.notifier).cancelLoading();
                   },
                   child: Text(
-                    'Cancel',
+                    AppLocalizations.of(context).cancel,
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onSurface,
                     ),
@@ -624,14 +633,14 @@ class _EmptyWorkoutBody extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Add your first exercise',
+              AppLocalizations.of(context).addFirstExercise,
               style: theme.textTheme.titleLarge?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Tap the button below to get started',
+              AppLocalizations.of(context).tapButtonToStart,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
               ),
@@ -643,7 +652,7 @@ class _EmptyWorkoutBody extends StatelessWidget {
               child: FilledButton.icon(
                 onPressed: onAddExercise,
                 icon: const Icon(Icons.add),
-                label: const Text('Add Exercise'),
+                label: Text(AppLocalizations.of(context).addExercise),
               ),
             ),
           ],
@@ -703,26 +712,30 @@ class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
   Future<void> _confirmRemove(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Remove Exercise?'),
-        content: Text(
-          'Remove ${widget.activeExercise.workoutExercise.exercise?.name ?? 'this exercise'} '
-          'and all its sets?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.error,
+      builder: (_) {
+        final l10n = AppLocalizations.of(context);
+        return AlertDialog(
+          title: Text(l10n.removeExerciseTitle),
+          content: Text(
+            l10n.removeExerciseContent(
+              widget.activeExercise.workoutExercise.exercise?.name ?? '',
             ),
-            child: const Text('Remove'),
           ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(l10n.cancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+              ),
+              child: Text(l10n.remove),
+            ),
+          ],
+        );
+      },
     );
     if (confirmed == true) {
       ref
@@ -753,9 +766,9 @@ class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
         .read(activeWorkoutProvider.notifier)
         .fillRemainingSets(widget.activeExercise.workoutExercise.id);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Filled remaining sets'),
-        duration: Duration(seconds: 2),
+      SnackBar(
+        content: Text(AppLocalizations.of(context).filledRemainingSets),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -784,6 +797,7 @@ class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final activeExercise = widget.activeExercise;
     final exercise = activeExercise.workoutExercise.exercise;
     final weId = activeExercise.workoutExercise.id;
@@ -810,9 +824,9 @@ class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
               children: [
                 Expanded(
                   child: Semantics(
-                    label:
-                        'Exercise: ${exercise?.name ?? 'Exercise'}. '
-                        'Tap for details. Long press to swap.',
+                    label: l10n.exerciseSemanticsLabel(
+                      exercise?.name ?? l10n.exerciseGeneric,
+                    ),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(8),
                       onTap: exercise != null
@@ -828,7 +842,7 @@ class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
                             children: [
                               Flexible(
                                 child: Text(
-                                  exercise?.name ?? 'Exercise',
+                                  exercise?.name ?? l10n.exerciseGeneric,
                                   style: theme.textTheme.titleMedium,
                                 ),
                               ),
@@ -849,7 +863,7 @@ class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
                 ),
                 if (widget.reorderMode) ...[
                   Semantics(
-                    label: 'Move exercise up',
+                    label: l10n.moveUp,
                     child: IconButton(
                       onPressed: widget.isFirst
                           ? null
@@ -861,11 +875,11 @@ class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
                         minWidth: 48,
                         minHeight: 48,
                       ),
-                      tooltip: 'Move up',
+                      tooltip: l10n.moveUp,
                     ),
                   ),
                   Semantics(
-                    label: 'Move exercise down',
+                    label: l10n.moveDown,
                     child: IconButton(
                       onPressed: widget.isLast
                           ? null
@@ -877,12 +891,12 @@ class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
                         minWidth: 48,
                         minHeight: 48,
                       ),
-                      tooltip: 'Move down',
+                      tooltip: l10n.moveDown,
                     ),
                   ),
                 ] else ...[
                   Semantics(
-                    label: 'Swap exercise',
+                    label: l10n.swapExercise,
                     child: IconButton(
                       onPressed: () => _swapExercise(context),
                       icon: Icon(
@@ -891,18 +905,18 @@ class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
                           alpha: 0.5,
                         ),
                       ),
-                      tooltip: 'Swap exercise',
+                      tooltip: l10n.swapExercise,
                     ),
                   ),
                   Semantics(
-                    label: 'Remove exercise',
+                    label: l10n.removeExercise,
                     child: IconButton(
                       onPressed: () => _confirmRemove(context),
                       icon: Icon(
                         Icons.delete_outline,
                         color: theme.colorScheme.error.withValues(alpha: 0.7),
                       ),
-                      tooltip: 'Remove exercise',
+                      tooltip: l10n.removeExercise,
                     ),
                   ),
                 ],
@@ -1028,7 +1042,7 @@ class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
                   },
                   onLongPress: () => _fillRemaining(context),
                   icon: const Icon(Icons.add, size: 20),
-                  label: const Text('Add Set'),
+                  label: Text(AppLocalizations.of(context).addSet),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 48),
                     side: BorderSide(
@@ -1044,11 +1058,11 @@ class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
             if (_hasFillableSets(activeExercise.sets))
               Center(
                 child: Semantics(
-                  label: 'Fill remaining sets with last completed values',
+                  label: l10n.fillRemainingSetsSemantics,
                   child: TextButton(
                     onPressed: () => _fillRemaining(context),
                     child: Text(
-                      'Fill remaining',
+                      AppLocalizations.of(context).fillRemaining,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.primary.withValues(alpha: 0.7),
                         fontWeight: FontWeight.w600,
@@ -1081,14 +1095,28 @@ class _SetColumnHeaders extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
-          SizedBox(width: 40, child: Text('SET', style: style)),
+          SizedBox(
+            width: 40,
+            child: Text(
+              AppLocalizations.of(context).setColumnSet,
+              style: style,
+            ),
+          ),
           Expanded(
             flex: 3,
-            child: Text('WEIGHT', style: style, textAlign: TextAlign.center),
+            child: Text(
+              AppLocalizations.of(context).setColumnWeight,
+              style: style,
+              textAlign: TextAlign.center,
+            ),
           ),
           Expanded(
             flex: 2,
-            child: Text('REPS', style: style, textAlign: TextAlign.center),
+            child: Text(
+              AppLocalizations.of(context).setColumnReps,
+              style: style,
+              textAlign: TextAlign.center,
+            ),
           ),
           const SizedBox(width: 48),
         ],
@@ -1109,7 +1137,7 @@ class _AddExerciseFab extends StatelessWidget {
     return Semantics(
       container: true,
       identifier: 'workout-add-exercise',
-      label: 'Add exercise to workout',
+      label: AppLocalizations.of(context).addExerciseToWorkoutSemantics,
       button: true,
       child: Container(
         decoration: BoxDecoration(
@@ -1122,7 +1150,7 @@ class _AddExerciseFab extends StatelessWidget {
           foregroundColor: theme.colorScheme.onPrimary,
           elevation: 0,
           icon: const Icon(Icons.add_rounded),
-          label: const Text('Add Exercise'),
+          label: Text(AppLocalizations.of(context).addExercise),
         ),
       ),
     );
@@ -1139,6 +1167,7 @@ class _ExerciseDetailSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final asyncRecords = ref.watch(exercisePRsProvider(exercise.id));
     final weightUnit = ref.watch(profileProvider).value?.weightUnit ?? 'kg';
 
@@ -1180,11 +1209,11 @@ class _ExerciseDetailSheet extends ConsumerWidget {
                     children: [
                       _SheetChip(
                         icon: exercise.muscleGroup.icon,
-                        label: exercise.muscleGroup.displayName,
+                        label: exercise.muscleGroup.localizedName(l10n),
                       ),
                       _SheetChip(
                         icon: exercise.equipmentType.icon,
-                        label: exercise.equipmentType.displayName,
+                        label: exercise.equipmentType.localizedName(l10n),
                       ),
                     ],
                   ),
@@ -1210,7 +1239,7 @@ class _ExerciseDetailSheet extends ConsumerWidget {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Start',
+                                    l10n.imageStart,
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: theme.colorScheme.onSurface
                                           .withValues(alpha: 0.5),
@@ -1236,7 +1265,7 @@ class _ExerciseDetailSheet extends ConsumerWidget {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'End',
+                                    l10n.imageEnd,
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: theme.colorScheme.onSurface
                                           .withValues(alpha: 0.5),
@@ -1312,10 +1341,10 @@ class _SheetPRSection extends StatelessWidget {
   final EquipmentType equipmentType;
   final String weightUnit;
 
-  String _formatValue(RecordType type, double value) {
+  String _formatValue(RecordType type, double value, AppLocalizations l10n) {
     return switch (type) {
       RecordType.maxWeight => '$value $weightUnit',
-      RecordType.maxReps => '${value.toInt()} reps',
+      RecordType.maxReps => l10n.repsUnit(value.toInt()),
       RecordType.maxVolume => '$value $weightUnit',
     };
   }
@@ -1331,6 +1360,7 @@ class _SheetPRSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return asyncRecords.when(
       loading: () => const Padding(
@@ -1343,21 +1373,21 @@ class _SheetPRSection extends StatelessWidget {
           ),
         ),
       ),
-      error: (_, _) => _emptyRow(theme),
+      error: (_, _) => _emptyRow(theme, l10n),
       data: (records) {
-        if (records.isEmpty) return _emptyRow(theme);
+        if (records.isEmpty) return _emptyRow(theme, l10n);
 
         // For bodyweight exercises, skip maxWeight and maxVolume.
         final filtered = equipmentType == EquipmentType.bodyweight
             ? records.where((r) => r.recordType == RecordType.maxReps).toList()
             : records;
 
-        if (filtered.isEmpty) return _emptyRow(theme);
+        if (filtered.isEmpty) return _emptyRow(theme, l10n);
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Personal Records', style: theme.textTheme.titleMedium),
+            Text(l10n.personalRecords, style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
             ...filtered.map(
               (r) => Padding(
@@ -1371,12 +1401,12 @@ class _SheetPRSection extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      r.recordType.displayName,
+                      r.recordType.localizedName(l10n),
                       style: theme.textTheme.bodyMedium,
                     ),
                     const Spacer(),
                     Text(
-                      _formatValue(r.recordType, r.value),
+                      _formatValue(r.recordType, r.value, l10n),
                       style: theme.textTheme.bodyLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -1391,7 +1421,7 @@ class _SheetPRSection extends StatelessWidget {
     );
   }
 
-  Widget _emptyRow(ThemeData theme) {
+  Widget _emptyRow(ThemeData theme, AppLocalizations l10n) {
     return Row(
       children: [
         Icon(
@@ -1401,7 +1431,7 @@ class _SheetPRSection extends StatelessWidget {
         ),
         const SizedBox(width: 4),
         Text(
-          'No records yet',
+          l10n.noRecordsYet,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
           ),

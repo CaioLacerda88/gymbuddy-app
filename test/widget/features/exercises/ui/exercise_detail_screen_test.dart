@@ -15,6 +15,7 @@ import 'package:gymbuddy_app/shared/widgets/exercise_info_sections.dart';
 import 'package:mocktail/mocktail.dart';
 
 import '../../../../fixtures/test_factories.dart';
+import '../../../../helpers/test_material_app.dart';
 
 class MockExerciseRepository extends Mock implements ExerciseRepository {}
 
@@ -32,7 +33,7 @@ void main() {
         // Prevent PR section from touching real Supabase.
         exercisePRsProvider.overrideWith((ref, _) => Future.value([])),
       ],
-      child: MaterialApp(
+      child: TestMaterialApp(
         theme: AppTheme.dark,
         home: ExerciseDetailScreen(exerciseId: exerciseId),
       ),

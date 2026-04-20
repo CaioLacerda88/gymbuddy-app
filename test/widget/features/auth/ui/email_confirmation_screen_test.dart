@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
 import 'package:gymbuddy_app/features/auth/providers/signup_state_provider.dart';
 import 'package:gymbuddy_app/features/auth/ui/email_confirmation_screen.dart';
+import '../../../../helpers/test_material_app.dart';
 
 void main() {
   Widget buildTestWidget({String? email}) {
@@ -12,7 +13,7 @@ void main() {
         if (email != null)
           signupPendingEmailProvider.overrideWith((ref) => email),
       ],
-      child: MaterialApp(
+      child: TestMaterialApp(
         theme: AppTheme.dark,
         home: const EmailConfirmationScreen(),
       ),

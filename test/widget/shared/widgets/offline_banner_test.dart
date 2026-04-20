@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/shared/widgets/offline_banner.dart';
+import '../../../helpers/test_material_app.dart';
 
 void main() {
   group('OfflineBanner', () {
     Widget buildSubject() {
-      return const MaterialApp(home: Scaffold(body: OfflineBanner()));
+      return const TestMaterialApp(home: Scaffold(body: OfflineBanner()));
     }
 
     testWidgets('renders "Offline" text', (tester) async {

@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/utils/enum_l10n.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../exercises/models/exercise.dart';
 import '../../../exercises/providers/exercise_providers.dart';
 import '../../../exercises/ui/create_exercise_screen.dart';
@@ -63,6 +65,7 @@ class _SheetBodyState extends ConsumerState<_SheetBody> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final exercises = ref.watch(exerciseListProvider(_filter));
 
     return Container(
@@ -88,7 +91,7 @@ class _SheetBodyState extends ConsumerState<_SheetBody> {
           // Title
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text('Add Exercise', style: theme.textTheme.titleLarge),
+            child: Text(l10n.addExercise, style: theme.textTheme.titleLarge),
           ),
           const SizedBox(height: 12),
 
@@ -98,13 +101,13 @@ class _SheetBodyState extends ConsumerState<_SheetBody> {
             child: Semantics(
               container: true,
               identifier: 'exercise-picker-search',
-              label: 'Search exercises to add',
+              label: l10n.searchExercisesToAddSemantics,
               child: TextField(
                 controller: _searchController,
                 onChanged: _onSearchChanged,
-                decoration: const InputDecoration(
-                  hintText: 'Search exercises...',
-                  prefixIcon: Icon(Icons.search_rounded),
+                decoration: InputDecoration(
+                  hintText: l10n.searchExercises,
+                  prefixIcon: const Icon(Icons.search_rounded),
                 ),
               ),
             ),
@@ -119,13 +122,13 @@ class _SheetBodyState extends ConsumerState<_SheetBody> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               children: [
                 _FilterChipItem(
-                  label: 'All',
+                  label: l10n.all,
                   isSelected: _selectedMuscle == null,
                   onSelected: () => setState(() => _selectedMuscle = null),
                 ),
                 ...MuscleGroup.values.map(
                   (group) => _FilterChipItem(
-                    label: group.displayName,
+                    label: group.localizedName(l10n),
                     isSelected: _selectedMuscle == group,
                     onSelected: () => setState(() => _selectedMuscle = group),
                   ),
@@ -143,7 +146,7 @@ class _SheetBodyState extends ConsumerState<_SheetBody> {
                 controller: widget.scrollController,
                 child: Center(
                   child: Text(
-                    'Failed to load exercises',
+                    l10n.failedToLoadExercises,
                     style: theme.textTheme.bodyLarge,
                   ),
                 ),
@@ -167,7 +170,7 @@ class _SheetBodyState extends ConsumerState<_SheetBody> {
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              'No exercises found',
+                              l10n.noExercisesFound,
                               style: theme.textTheme.bodyLarge,
                             ),
                             const SizedBox(height: 16),
@@ -193,8 +196,8 @@ class _SheetBodyState extends ConsumerState<_SheetBody> {
                               icon: const Icon(Icons.add),
                               label: Text(
                                 _query.isNotEmpty
-                                    ? 'Create "$_query"'
-                                    : 'Create Exercise',
+                                    ? l10n.createWithName(_query)
+                                    : l10n.createExercise,
                               ),
                             ),
                           ],
@@ -260,9 +263,10 @@ class _ExercisePickerTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Semantics(
-      label: 'Add ${exercise.name}',
+      label: l10n.addExerciseSemantics(exercise.name),
       button: true,
       child: ListTile(
         onTap: onTap,
@@ -270,9 +274,9 @@ class _ExercisePickerTile extends StatelessWidget {
         title: Text(exercise.name, style: theme.textTheme.titleMedium),
         subtitle: Row(
           children: [
-            _Badge(label: exercise.muscleGroup.displayName),
+            _Badge(label: exercise.muscleGroup.localizedName(l10n)),
             const SizedBox(width: 8),
-            _Badge(label: exercise.equipmentType.displayName),
+            _Badge(label: exercise.equipmentType.localizedName(l10n)),
           ],
         ),
         trailing: Icon(

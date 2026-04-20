@@ -15,6 +15,7 @@ import 'package:gymbuddy_app/features/personal_records/ui/pr_celebration_screen.
 import 'package:gymbuddy_app/features/profile/models/profile.dart';
 import 'package:gymbuddy_app/features/profile/providers/profile_providers.dart';
 import 'package:mocktail/mocktail.dart';
+import '../../../../helpers/test_material_app.dart';
 
 class _MockAuthRepository extends Mock implements AuthRepository {}
 
@@ -49,7 +50,7 @@ void main() {
           const _FakeAnalyticsRepository(),
         ),
       ],
-      child: MaterialApp(
+      child: TestMaterialApp(
         theme: AppTheme.dark,
         home: PRCelebrationScreen(result: result, exerciseNames: exerciseNames),
       ),
@@ -177,7 +178,7 @@ void main() {
 
       // Remove the PRCelebrationScreen from the tree.
       await tester.pumpWidget(
-        const MaterialApp(home: Scaffold(body: SizedBox.shrink())),
+        const TestMaterialApp(home: Scaffold(body: SizedBox.shrink())),
       );
 
       // Drain the 300ms haptic timer that was scheduled by initState's

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../l10n/app_localizations.dart';
+
 /// Result returned when the user confirms finishing a workout.
 class FinishWorkoutResult {
   const FinishWorkoutResult({this.notes});
@@ -42,9 +44,10 @@ class _FinishWorkoutDialogState extends State<FinishWorkoutDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return AlertDialog(
-      title: const Text('Finish Workout?'),
+      title: Text(l10n.finishWorkoutTitle),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -60,8 +63,7 @@ class _FinishWorkoutDialogState extends State<FinishWorkoutDialog> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'You have ${widget.incompleteCount} incomplete '
-                    'set${widget.incompleteCount == 1 ? '' : 's'}',
+                    l10n.incompleteSetsWarning(widget.incompleteCount),
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.error,
                     ),
@@ -74,13 +76,13 @@ class _FinishWorkoutDialogState extends State<FinishWorkoutDialog> {
           Semantics(
             container: true,
             identifier: 'workout-notes',
-            label: 'Workout notes',
+            label: l10n.notes,
             child: TextField(
               controller: _notesController,
               maxLength: 1000,
-              decoration: const InputDecoration(
-                hintText: 'Add notes (optional)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: l10n.addNotesHint,
+                border: const OutlineInputBorder(),
               ),
               maxLines: 3,
               minLines: 1,
@@ -95,13 +97,13 @@ class _FinishWorkoutDialogState extends State<FinishWorkoutDialog> {
           identifier: 'workout-keep-going',
           child: TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Keep Going'),
+            child: Text(l10n.keepGoing),
           ),
         ),
         Semantics(
           container: true,
           identifier: 'workout-dialog-finish',
-          label: 'Save and finish workout',
+          label: l10n.saveAndFinish,
           child: FilledButton(
             onPressed: () {
               final notes = _notesController.text.trim();
@@ -109,7 +111,7 @@ class _FinishWorkoutDialogState extends State<FinishWorkoutDialog> {
                 context,
               ).pop(FinishWorkoutResult(notes: notes.isEmpty ? null : notes));
             },
-            child: const Text('Save & Finish'),
+            child: Text(l10n.saveAndFinish),
           ),
         ),
       ],

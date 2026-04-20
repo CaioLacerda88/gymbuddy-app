@@ -6,6 +6,7 @@ import 'package:gymbuddy_app/features/routines/models/routine.dart';
 import 'package:gymbuddy_app/features/routines/ui/widgets/routine_card.dart';
 
 import '../../../../fixtures/test_factories.dart';
+import '../../../../helpers/test_material_app.dart';
 
 Exercise _makeExercise({
   String id = 'exercise-001',
@@ -35,7 +36,7 @@ Widget _buildCard({
   VoidCallback? onTap,
   VoidCallback? onLongPress,
 }) {
-  return MaterialApp(
+  return TestMaterialApp(
     theme: AppTheme.dark,
     home: Scaffold(
       body: RoutineCard(

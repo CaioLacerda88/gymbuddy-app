@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/section_header.dart';
 import 'widgets/routine_action_sheet.dart';
 import '../providers/notifiers/routine_list_notifier.dart';
@@ -14,6 +15,7 @@ class RoutineListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final routinesAsync = ref.watch(routineListProvider);
 
     return Scaffold(
@@ -21,7 +23,7 @@ class RoutineListScreen extends ConsumerWidget {
         title: Semantics(
           container: true,
           identifier: 'routine-heading',
-          child: const Text('Routines'),
+          child: Text(l10n.routines),
         ),
         actions: [
           Semantics(
@@ -29,7 +31,7 @@ class RoutineListScreen extends ConsumerWidget {
             identifier: 'routine-mgmt-create-btn',
             child: IconButton(
               icon: const Icon(Icons.add),
-              tooltip: 'Create routine',
+              tooltip: l10n.createRoutine,
               onPressed: () => context.go('/routines/create'),
             ),
           ),
@@ -42,14 +44,14 @@ class RoutineListScreen extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Failed to load routines',
+                l10n.failedToLoadRoutines,
                 style: theme.textTheme.titleMedium,
               ),
               const SizedBox(height: 8),
               FilledButton(
                 onPressed: () =>
                     ref.read(routineListProvider.notifier).refresh(),
-                child: const Text('Retry'),
+                child: Text(l10n.retry),
               ),
             ],
           ),
@@ -60,11 +62,11 @@ class RoutineListScreen extends ConsumerWidget {
 
           return CustomScrollView(
             slivers: [
-              const SliverPadding(
-                padding: EdgeInsets.only(left: 16, right: 16, top: 16),
+              SliverPadding(
+                padding: const EdgeInsets.only(left: 16, right: 16, top: 16),
                 sliver: SliverToBoxAdapter(
                   child: SectionHeader(
-                    title: 'MY ROUTINES',
+                    title: l10n.myRoutinesSection,
                     semanticsIdentifier: 'routine-my-section',
                   ),
                 ),
@@ -79,7 +81,7 @@ class RoutineListScreen extends ConsumerWidget {
                       bottom: 8,
                     ),
                     child: Text(
-                      'No custom routines yet. Tap + to create one.',
+                      l10n.noCustomRoutines,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurface.withValues(
                           alpha: 0.5,
@@ -114,11 +116,11 @@ class RoutineListScreen extends ConsumerWidget {
 
               if (defaultRoutines.isNotEmpty) ...[
                 const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                const SliverPadding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   sliver: SliverToBoxAdapter(
                     child: SectionHeader(
-                      title: 'STARTER ROUTINES',
+                      title: l10n.starterRoutinesSection,
                       semanticsIdentifier: 'routine-starter-section',
                     ),
                   ),

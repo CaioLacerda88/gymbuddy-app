@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/gradient_button.dart';
 import '../providers/notifiers/auth_notifier.dart';
@@ -79,10 +80,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _forgotPassword() async {
+    final l10n = AppLocalizations.of(context);
     final email = _emailController.text.trim();
     if (email.isEmpty) {
       setState(() {
-        _errorMessage = 'Enter your email above, then tap "Forgot password?"';
+        _errorMessage = l10n.forgotPasswordHint;
       });
       return;
     }
@@ -98,19 +100,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Text('Reset Password'),
-          content: Text('Send a password reset email to $email?'),
+          title: Text(l10n.resetPassword),
+          content: Text(l10n.sendResetEmailTo(email)),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancel'),
+              child: Text(l10n.cancel),
             ),
             Semantics(
               container: true,
               identifier: 'auth-send-reset',
               child: FilledButton(
                 onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('Send Reset Email'),
+                child: Text(l10n.sendResetEmail),
               ),
             ),
           ],
@@ -124,7 +126,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (mounted && !ref.read(authNotifierProvider).hasError) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Password reset email sent. Check your inbox.'),
+          content: Text(l10n.resetEmailSent),
           backgroundColor: Theme.of(context).colorScheme.primary,
           duration: const Duration(seconds: 8),
         ),
@@ -135,20 +137,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   static final _emailRegex = RegExp(r'^[\w\-.+]+@([\w\-]+\.)+[\w\-]{2,}$');
 
   String? _validateEmail(String? value) {
-    if (value == null || value.trim().isEmpty) return 'Email is required';
-    if (!_emailRegex.hasMatch(value.trim())) return 'Enter a valid email';
+    final l10n = AppLocalizations.of(context);
+    if (value == null || value.trim().isEmpty) return l10n.emailRequired;
+    if (!_emailRegex.hasMatch(value.trim())) return l10n.emailInvalid;
     return null;
   }
 
   String? _validatePassword(String? value) {
-    if (value == null || value.isEmpty) return 'Password is required';
-    if (value.length < 6) return 'Password must be at least 6 characters';
+    final l10n = AppLocalizations.of(context);
+    if (value == null || value.isEmpty) return l10n.passwordRequired;
+    if (value.length < 6) return l10n.passwordTooShort;
     return null;
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final authState = ref.watch(authNotifierProvider);
     final isLoading = authState.isLoading;
 
@@ -156,7 +161,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     ref.listen(authNotifierProvider, (prev, next) {
       if (next.hasError && !next.isLoading) {
         setState(() {
-          _errorMessage = AuthErrorMessages.fromError(next.error!);
+          _errorMessage = AuthErrorMessages.fromError(next.error!, l10n);
         });
       }
     });
@@ -179,7 +184,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'GymBuddy',
+                    l10n.appName,
                     style: theme.textTheme.displayMedium?.copyWith(
                       color: theme.colorScheme.primary,
                     ),
@@ -190,7 +195,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     container: true,
                     identifier: 'auth-welcome-back',
                     child: Text(
-                      _isSignUp ? 'Create your account' : 'Welcome back',
+                      _isSignUp ? l10n.createYourAccount : l10n.welcomeBack,
                       style: theme.textTheme.bodyLarge?.copyWith(
                         color: theme.colorScheme.onSurface.withValues(
                           alpha: 0.7,
@@ -240,7 +245,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const SizedBox(height: 16),
                   ],
                   AppTextField(
-                    label: 'Email',
+                    label: l10n.email,
                     controller: _emailController,
                     validator: _validateEmail,
                     keyboardType: TextInputType.emailAddress,
@@ -250,7 +255,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
                   AppTextField(
-                    label: 'Password',
+                    label: l10n.password,
                     controller: _passwordController,
                     validator: _validatePassword,
                     obscureText: true,
@@ -271,7 +276,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             padding: const EdgeInsets.symmetric(vertical: 8),
                           ),
                           child: Text(
-                            'Forgot password?',
+                            l10n.forgotPassword,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: theme.colorScheme.primary.withValues(
                                 alpha: 0.8,
@@ -284,7 +289,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ],
                   const SizedBox(height: 24),
                   GradientButton(
-                    label: _isSignUp ? 'SIGN UP' : 'LOG IN',
+                    label: _isSignUp ? l10n.signUp : l10n.logIn,
                     onPressed: isLoading ? null : _submit,
                     isLoading: isLoading,
                     semanticsIdentifier: _isSignUp
@@ -304,7 +309,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Text(
-                          'OR',
+                          l10n.or,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onSurface.withValues(
                               alpha: 0.5,
@@ -332,7 +337,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         width: 20,
                         height: 20,
                       ),
-                      label: const Text('Continue with Google'),
+                      label: Text(l10n.continueWithGoogle),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         side: BorderSide(
@@ -356,8 +361,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       onPressed: isLoading ? null : _toggleMode,
                       child: Text(
                         _isSignUp
-                            ? 'Already have an account? Log in'
-                            : "Don't have an account? Sign up",
+                            ? l10n.alreadyHaveAccount
+                            : l10n.dontHaveAccount,
                       ),
                     ),
                   ),
@@ -377,6 +382,7 @@ class _LegalFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final mutedColor = theme.colorScheme.onSurface.withValues(alpha: 0.6);
     final linkColor = theme.colorScheme.primary.withValues(alpha: 0.85);
     final baseStyle = theme.textTheme.bodySmall?.copyWith(color: mutedColor);
@@ -401,10 +407,10 @@ class _LegalFooter extends StatelessWidget {
       alignment: WrapAlignment.center,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        Text('By continuing, you agree to our ', style: baseStyle),
-        legalButton('Terms of Service', '/terms-of-service'),
-        Text(' and ', style: baseStyle),
-        legalButton('Privacy Policy', '/privacy-policy'),
+        Text(l10n.legalAgreePrefix, style: baseStyle),
+        legalButton(l10n.termsOfService, '/terms-of-service'),
+        Text(l10n.andSeparator, style: baseStyle),
+        legalButton(l10n.privacyPolicy, '/privacy-policy'),
         Text('.', style: baseStyle),
       ],
     );

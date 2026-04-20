@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
 import 'package:gymbuddy_app/features/weekly_plan/ui/widgets/routine_chip.dart';
+import '../../../helpers/test_material_app.dart';
 
 // ---------------------------------------------------------------------------
 // Helper
@@ -20,7 +21,7 @@ Widget _chip({
   String name = 'Push Day',
   VoidCallback? onTap,
 }) {
-  return MaterialApp(
+  return TestMaterialApp(
     theme: AppTheme.dark,
     home: Scaffold(
       body: Center(
@@ -143,7 +144,7 @@ void main() {
 
     testWidgets('shows exercise count as secondary line', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        TestMaterialApp(
           theme: AppTheme.dark,
           home: const Scaffold(
             body: Center(
@@ -191,7 +192,7 @@ void main() {
       var tapped = false;
 
       await tester.pumpWidget(
-        MaterialApp(
+        TestMaterialApp(
           theme: AppTheme.dark,
           home: Scaffold(
             body: Center(
@@ -237,7 +238,7 @@ void main() {
 
       for (final state in RoutineChipState.values) {
         await tester.pumpWidget(
-          MaterialApp(
+          TestMaterialApp(
             theme: AppTheme.dark,
             home: Scaffold(
               body: SizedBox(

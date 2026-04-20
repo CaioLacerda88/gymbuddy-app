@@ -17,6 +17,7 @@ import 'package:gymbuddy_app/features/workouts/providers/workout_providers.dart'
 import 'package:gymbuddy_app/features/workouts/ui/active_workout_screen.dart';
 
 import '../../../../fixtures/test_finders.dart';
+import '../../../../helpers/test_material_app.dart';
 
 // ---------------------------------------------------------------------------
 // Test exercise data
@@ -134,7 +135,10 @@ Widget buildTestWidget({List<PersonalRecord>? prs, Exercise? exercise}) {
         (ref, startedAt) => Stream.value(const Duration(minutes: 5)),
       ),
     ],
-    child: MaterialApp(theme: AppTheme.dark, home: const ActiveWorkoutScreen()),
+    child: TestMaterialApp(
+      theme: AppTheme.dark,
+      home: const ActiveWorkoutScreen(),
+    ),
   );
 }
 

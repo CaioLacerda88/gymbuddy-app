@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/gradient_button.dart';
 import '../providers/notifiers/auth_notifier.dart';
 import '../providers/signup_state_provider.dart';
@@ -41,6 +42,7 @@ class _EmailConfirmationScreenState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final email = ref.watch(signupPendingEmailProvider) ?? '';
     final authState = ref.watch(authNotifierProvider);
     final isLoading = authState.isLoading;
@@ -50,7 +52,7 @@ class _EmailConfirmationScreenState
       if (next.hasError && !next.isLoading) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(AuthErrorMessages.fromError(next.error!)),
+            content: Text(AuthErrorMessages.fromError(next.error!, l10n)),
             backgroundColor: theme.colorScheme.error,
           ),
         );
@@ -80,7 +82,7 @@ class _EmailConfirmationScreenState
                 ),
                 const SizedBox(height: 32),
                 Text(
-                  'Check your inbox',
+                  l10n.checkYourInbox,
                   style: theme.textTheme.headlineLarge?.copyWith(
                     color: theme.colorScheme.primary,
                   ),
@@ -89,8 +91,8 @@ class _EmailConfirmationScreenState
                 const SizedBox(height: 16),
                 Text(
                   email.isNotEmpty
-                      ? 'We sent a confirmation email to'
-                      : 'We sent you a confirmation email',
+                      ? l10n.confirmationSentTo
+                      : l10n.confirmationSent,
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
@@ -108,7 +110,7 @@ class _EmailConfirmationScreenState
                 ],
                 const SizedBox(height: 8),
                 Text(
-                  'Tap the link in the email to verify your account, then come back and log in.',
+                  l10n.tapLinkToVerify,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
@@ -119,7 +121,7 @@ class _EmailConfirmationScreenState
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16),
                     child: Text(
-                      'Email resent! Check your inbox.',
+                      l10n.emailResent,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.primary,
                         fontWeight: FontWeight.w600,
@@ -129,7 +131,7 @@ class _EmailConfirmationScreenState
                 SizedBox(
                   width: double.infinity,
                   child: GradientButton(
-                    label: 'BACK TO LOGIN',
+                    label: l10n.backToLogin,
                     onPressed: isLoading ? null : _backToLogin,
                   ),
                 ),
@@ -145,7 +147,7 @@ class _EmailConfirmationScreenState
                             color: theme.colorScheme.primary,
                           ),
                         )
-                      : const Text("Didn't receive it? Resend email"),
+                      : Text(l10n.didntReceiveResend),
                 ),
               ],
             ),

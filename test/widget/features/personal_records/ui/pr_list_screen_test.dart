@@ -10,12 +10,13 @@ import 'package:gymbuddy_app/features/personal_records/models/personal_record.da
 import 'package:gymbuddy_app/features/personal_records/models/record_type.dart';
 import 'package:gymbuddy_app/features/personal_records/providers/pr_providers.dart';
 import 'package:gymbuddy_app/features/personal_records/ui/pr_list_screen.dart';
+import '../../../../helpers/test_material_app.dart';
 
 void main() {
   Widget buildTestWidget({required List<Override> overrides}) {
     return ProviderScope(
       overrides: overrides,
-      child: MaterialApp(theme: AppTheme.dark, home: const PRListScreen()),
+      child: TestMaterialApp(theme: AppTheme.dark, home: const PRListScreen()),
     );
   }
 

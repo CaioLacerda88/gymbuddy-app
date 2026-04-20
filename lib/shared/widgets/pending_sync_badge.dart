@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/offline/pending_sync_provider.dart';
 import '../../core/theme/radii.dart';
+import '../../l10n/app_localizations.dart';
 import 'pending_sync_sheet.dart';
 
 /// A slim full-width tappable row that shows the number of pending sync items.
@@ -17,9 +18,10 @@ class PendingSyncBadge extends ConsumerWidget {
     final count = ref.watch(pendingSyncProvider);
 
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final label = count == 1
-        ? '1 workout pending sync'
-        : '$count workouts pending sync';
+        ? l10n.pendingSyncBadgeSingular
+        : l10n.pendingSyncBadgePlural(count);
 
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 200),

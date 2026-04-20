@@ -57,6 +57,42 @@ class AppLocalizationsPt extends AppLocalizations {
   String get add => 'Adicionar';
 
   @override
+  String get skip => 'Skip';
+
+  @override
+  String get back => 'Back';
+
+  @override
+  String get close => 'Close';
+
+  @override
+  String get start => 'Start';
+
+  @override
+  String get remove => 'Remove';
+
+  @override
+  String get discard => 'Discard';
+
+  @override
+  String get resume => 'Resume';
+
+  @override
+  String get clear => 'Clear';
+
+  @override
+  String get replace => 'Replace';
+
+  @override
+  String get undo => 'Undo';
+
+  @override
+  String get all => 'All';
+
+  @override
+  String get or => 'OR';
+
+  @override
   String get loading => 'Carregando...';
 
   @override
@@ -90,7 +126,8 @@ class AppLocalizationsPt extends AppLocalizations {
   String get sendResetEmail => 'Enviar E-mail de Recuperação';
 
   @override
-  String get offlineBanner => 'Você está offline';
+  String get offlineBanner =>
+      'Offline — alterações serão sincronizadas quando você voltar a ficar online';
 
   @override
   String pendingSyncSingular(int count) {
@@ -121,5 +158,1224 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String monthsAgo(int count) {
     return '$count meses atrás';
+  }
+
+  @override
+  String get muscleGroupChest => 'Chest';
+
+  @override
+  String get muscleGroupBack => 'Back';
+
+  @override
+  String get muscleGroupLegs => 'Legs';
+
+  @override
+  String get muscleGroupShoulders => 'Shoulders';
+
+  @override
+  String get muscleGroupArms => 'Arms';
+
+  @override
+  String get muscleGroupCore => 'Core';
+
+  @override
+  String get muscleGroupCardio => 'Cardio';
+
+  @override
+  String get equipmentBarbell => 'Barbell';
+
+  @override
+  String get equipmentDumbbell => 'Dumbbell';
+
+  @override
+  String get equipmentCable => 'Cable';
+
+  @override
+  String get equipmentMachine => 'Machine';
+
+  @override
+  String get equipmentBodyweight => 'Bodyweight';
+
+  @override
+  String get equipmentBands => 'Bands';
+
+  @override
+  String get equipmentKettlebell => 'Kettlebell';
+
+  @override
+  String get setTypeWorking => 'Working';
+
+  @override
+  String get setTypeWarmup => 'Warm-up';
+
+  @override
+  String get setTypeDropset => 'Drop Set';
+
+  @override
+  String get setTypeFailure => 'To Failure';
+
+  @override
+  String get recordTypeMaxWeight => 'Max Weight';
+
+  @override
+  String get recordTypeMaxReps => 'Max Reps';
+
+  @override
+  String get recordTypeMaxVolume => 'Max Volume';
+
+  @override
+  String get weightUnitKg => 'KG';
+
+  @override
+  String get weightUnitLbs => 'LBS';
+
+  @override
+  String get appName => 'GymBuddy';
+
+  @override
+  String get welcomeBack => 'Welcome back';
+
+  @override
+  String get createYourAccount => 'Create your account';
+
+  @override
+  String get emailRequired => 'Email is required';
+
+  @override
+  String get emailInvalid => 'Enter a valid email';
+
+  @override
+  String get passwordRequired => 'Password is required';
+
+  @override
+  String get passwordTooShort => 'Password must be at least 6 characters';
+
+  @override
+  String get forgotPasswordHint =>
+      'Enter your email above, then tap \"Forgot password?\"';
+
+  @override
+  String get resetPassword => 'Reset Password';
+
+  @override
+  String sendResetEmailTo(String email) {
+    return 'Send a password reset email to $email?';
+  }
+
+  @override
+  String get resetEmailSent => 'Password reset email sent. Check your inbox.';
+
+  @override
+  String get continueWithGoogle => 'Continue with Google';
+
+  @override
+  String get alreadyHaveAccount => 'Already have an account? Log in';
+
+  @override
+  String get dontHaveAccount => 'Don\'t have an account? Sign up';
+
+  @override
+  String get legalAgreePrefix => 'By continuing, you agree to our ';
+
+  @override
+  String get termsOfService => 'Terms of Service';
+
+  @override
+  String get andSeparator => ' and ';
+
+  @override
+  String get privacyPolicy => 'Privacy Policy';
+
+  @override
+  String get authErrorInvalidCredentials =>
+      'Wrong email or password. Please try again.';
+
+  @override
+  String get authErrorEmailNotConfirmed =>
+      'Please check your inbox and confirm your email first.';
+
+  @override
+  String get authErrorAlreadyRegistered =>
+      'An account with this email already exists. Try logging in instead.';
+
+  @override
+  String get authErrorRateLimit =>
+      'Too many attempts. Please wait a moment and try again.';
+
+  @override
+  String get authErrorWeakPassword =>
+      'Password is too weak. Use at least 6 characters.';
+
+  @override
+  String get authErrorNetwork =>
+      'No internet connection. Check your network and try again.';
+
+  @override
+  String get authErrorTimeout => 'Request timed out. Please try again.';
+
+  @override
+  String get authErrorTokenExpired =>
+      'The confirmation link has expired. Please request a new one.';
+
+  @override
+  String get authErrorGeneric => 'Something went wrong. Please try again.';
+
+  @override
+  String get checkYourInbox => 'Check your inbox';
+
+  @override
+  String get confirmationSentTo => 'We sent a confirmation email to';
+
+  @override
+  String get confirmationSent => 'We sent you a confirmation email';
+
+  @override
+  String get tapLinkToVerify =>
+      'Tap the link in the email to verify your account, then come back and log in.';
+
+  @override
+  String get emailResent => 'Email resent! Check your inbox.';
+
+  @override
+  String get backToLogin => 'BACK TO LOGIN';
+
+  @override
+  String get didntReceiveResend => 'Didn\'t receive it? Resend email';
+
+  @override
+  String get onboardingHeadline => 'Track every rep,\nevery time';
+
+  @override
+  String get onboardingSubtitle =>
+      'Log workouts, crush personal records, and build the physique you want.';
+
+  @override
+  String get getStarted => 'GET STARTED';
+
+  @override
+  String get setupProfile => 'Set up your profile';
+
+  @override
+  String get tellUsAboutYourself => 'Tell us a bit about yourself';
+
+  @override
+  String get displayName => 'Display name';
+
+  @override
+  String get fitnessLevel => 'Fitness level';
+
+  @override
+  String get howOftenTrain => 'How often do you plan to train?';
+
+  @override
+  String get weeklyGoalHint => 'Your weekly goal — you can change this anytime';
+
+  @override
+  String get letsGo => 'LET\'S GO';
+
+  @override
+  String get pleaseEnterName => 'Please enter your name.';
+
+  @override
+  String get failedToSaveProfile => 'Failed to save profile. Please try again.';
+
+  @override
+  String get fitnessLevelBeginner => 'Beginner';
+
+  @override
+  String get fitnessLevelIntermediate => 'Intermediate';
+
+  @override
+  String get fitnessLevelAdvanced => 'Advanced';
+
+  @override
+  String homeStatusWeekComplete(int count) {
+    return 'Week complete — $count of $count done';
+  }
+
+  @override
+  String homeStatusProgress(int total) {
+    return ' of $total this week';
+  }
+
+  @override
+  String get noPlanThisWeek => 'No plan this week';
+
+  @override
+  String get samePlanThisWeek => 'Same plan this week?';
+
+  @override
+  String get myRoutines => 'MY ROUTINES';
+
+  @override
+  String get seeAll => 'See all';
+
+  @override
+  String get createYourFirstRoutine => 'Create Your First Routine';
+
+  @override
+  String get heroUpNext => 'UP NEXT';
+
+  @override
+  String get heroYourFirstWorkout => 'YOUR FIRST WORKOUT';
+
+  @override
+  String get heroNoPlan => 'NO PLAN';
+
+  @override
+  String get heroNewWeek => 'NEW WEEK';
+
+  @override
+  String get planYourWeek => 'Plan your week';
+
+  @override
+  String get pickRoutinesForWeek => 'Pick routines for the week';
+
+  @override
+  String get quickWorkout => 'Quick workout';
+
+  @override
+  String get startNewWeek => 'Start new week';
+
+  @override
+  String nOfNDone(int completed, int total) {
+    return '$completed of $total done';
+  }
+
+  @override
+  String exerciseCountDuration(int count, int minutes) {
+    return '$count exercises · ~$minutes min';
+  }
+
+  @override
+  String get offlineStartWorkout =>
+      'Starting a workout requires an internet connection';
+
+  @override
+  String get couldNotLoadExercises =>
+      'Could not load exercises. Please try again.';
+
+  @override
+  String get lastSessionPrefix => 'Last: ';
+
+  @override
+  String get exercises => 'Exercises';
+
+  @override
+  String get searchExercises => 'Search exercises...';
+
+  @override
+  String get noExercisesMatchFilters => 'No exercises match your filters';
+
+  @override
+  String get yourExercisesWillAppear => 'Your exercises will appear here';
+
+  @override
+  String get clearFilters => 'Clear Filters';
+
+  @override
+  String get createExercise => 'Create Exercise';
+
+  @override
+  String get exerciseDetails => 'Exercise Details';
+
+  @override
+  String get failedToLoadExercise => 'Failed to load exercise';
+
+  @override
+  String get customExercise => 'Custom exercise';
+
+  @override
+  String get personalRecords => 'Personal Records';
+
+  @override
+  String get noRecordsYet => 'No records yet';
+
+  @override
+  String get deleteExercise => 'Delete Exercise';
+
+  @override
+  String deleteExerciseConfirm(String name) {
+    return 'Are you sure you want to delete \"$name\"?';
+  }
+
+  @override
+  String get deleting => 'Deleting...';
+
+  @override
+  String get imageStart => 'Start';
+
+  @override
+  String get imageEnd => 'End';
+
+  @override
+  String repsUnit(int count) {
+    return '$count reps';
+  }
+
+  @override
+  String get exerciseName => 'Exercise Name';
+
+  @override
+  String get nameRequired => 'Name is required';
+
+  @override
+  String get nameTooShort => 'Name must be at least 2 characters';
+
+  @override
+  String get muscleGroup => 'Muscle Group';
+
+  @override
+  String get equipmentType => 'Equipment Type';
+
+  @override
+  String get selectMuscleAndEquipment =>
+      'Please select a muscle group and equipment type';
+
+  @override
+  String get sessionExpired => 'Session expired. Please log in again.';
+
+  @override
+  String get exerciseCreated => 'Exercise created successfully';
+
+  @override
+  String get createExerciseButton => 'CREATE EXERCISE';
+
+  @override
+  String get description => 'Description';
+
+  @override
+  String get descriptionHint => 'Brief description of the exercise (optional)';
+
+  @override
+  String get formTips => 'Form Tips';
+
+  @override
+  String get formTipsHint => 'Form cues, one per line (optional)';
+
+  @override
+  String get formTipsHelper => 'Enter each tip on a new line';
+
+  @override
+  String get aboutSection => 'ABOUT';
+
+  @override
+  String get formTipsSection => 'FORM TIPS';
+
+  @override
+  String get finishWorkout => 'Finish Workout';
+
+  @override
+  String get completeOneSet => 'Complete at least one set to finish';
+
+  @override
+  String get addFirstExercise => 'Add your first exercise';
+
+  @override
+  String get tapButtonToStart => 'Tap the button below to get started';
+
+  @override
+  String get addExercise => 'Add Exercise';
+
+  @override
+  String get addSet => 'Add Set';
+
+  @override
+  String get fillRemaining => 'Fill remaining';
+
+  @override
+  String get filledRemainingSets => 'Filled remaining sets';
+
+  @override
+  String get removeExerciseTitle => 'Remove Exercise?';
+
+  @override
+  String removeExerciseContent(String name) {
+    return 'Remove $name and all its sets?';
+  }
+
+  @override
+  String get failedToDiscardWorkout =>
+      'Failed to discard workout. Please retry.';
+
+  @override
+  String get failedToSaveWorkout => 'Failed to save workout. Please retry.';
+
+  @override
+  String get workoutSavedOffline =>
+      'Workout saved. Will sync when back online.';
+
+  @override
+  String get setColumnSet => 'SET';
+
+  @override
+  String get setColumnWeight => 'WEIGHT';
+
+  @override
+  String get setColumnReps => 'REPS';
+
+  @override
+  String get setColumnType => 'TYPE';
+
+  @override
+  String setDeleted(int number) {
+    return 'Set $number deleted';
+  }
+
+  @override
+  String previousSet(String weight, String unit, int reps) {
+    return 'Previous: $weight$unit × $reps';
+  }
+
+  @override
+  String get discardWorkoutTitle => 'Discard Workout?';
+
+  @override
+  String discardWorkoutContent(String duration) {
+    return 'You\'ve been working out for $duration. This cannot be undone.';
+  }
+
+  @override
+  String get finishWorkoutTitle => 'Finish Workout?';
+
+  @override
+  String incompleteSetsWarning(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'You have $count incomplete sets',
+      one: 'You have 1 incomplete set',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get addNotesHint => 'Add notes (optional)';
+
+  @override
+  String get keepGoing => 'Keep Going';
+
+  @override
+  String get saveAndFinish => 'Save & Finish';
+
+  @override
+  String get resumeWorkoutTitle => 'Resume workout?';
+
+  @override
+  String get resumeWorkoutStaleTitle => 'Pick up where you left off?';
+
+  @override
+  String workoutInProgress(String name) {
+    return '\"$name\" is still in progress.';
+  }
+
+  @override
+  String workoutInterrupted(String age) {
+    return 'was interrupted $age.';
+  }
+
+  @override
+  String get resumeAnyway => 'Resume anyway';
+
+  @override
+  String get restTimerLabel => 'Rest';
+
+  @override
+  String restTimerRemaining(String time) {
+    return 'Rest timer: $time remaining';
+  }
+
+  @override
+  String get subtract30Semantics => 'Subtract 30 seconds';
+
+  @override
+  String get add30Semantics => 'Add 30 seconds';
+
+  @override
+  String get skipRestSemantics => 'Skip rest timer';
+
+  @override
+  String get tapToDismiss => 'Tap anywhere to dismiss';
+
+  @override
+  String get lessThanAnHourAgo => 'less than an hour ago';
+
+  @override
+  String hoursAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count hours ago',
+      one: '1 hour ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String yesterdayAt(String time) {
+    return 'yesterday at $time';
+  }
+
+  @override
+  String weekdayAt(String weekday, String time) {
+    return '$weekday at $time';
+  }
+
+  @override
+  String get history => 'History';
+
+  @override
+  String get failedToLoadHistory => 'Failed to load history';
+
+  @override
+  String get noWorkoutsYet => 'No workouts yet';
+
+  @override
+  String get completedWorkoutsAppear =>
+      'Your completed workouts will appear here';
+
+  @override
+  String get startFirstWorkout => 'Start your first workout';
+
+  @override
+  String get failedToLoadWorkout => 'Failed to load workout';
+
+  @override
+  String get workout => 'Workout';
+
+  @override
+  String get exerciseGeneric => 'Exercise';
+
+  @override
+  String get notes => 'Notes';
+
+  @override
+  String totalVolume(String volume) {
+    return 'Total Volume: $volume';
+  }
+
+  @override
+  String get routines => 'Routines';
+
+  @override
+  String get failedToLoadRoutines => 'Failed to load routines';
+
+  @override
+  String get myRoutinesSection => 'MY ROUTINES';
+
+  @override
+  String get starterRoutinesSection => 'STARTER ROUTINES';
+
+  @override
+  String get noCustomRoutines => 'No custom routines yet. Tap + to create one.';
+
+  @override
+  String get createRoutine => 'Create Routine';
+
+  @override
+  String get editRoutine => 'Edit Routine';
+
+  @override
+  String get routineName => 'Routine name';
+
+  @override
+  String get failedToSaveRoutine => 'Failed to save routine. Please retry.';
+
+  @override
+  String get setsLabel => 'Sets';
+
+  @override
+  String get restLabel => 'Rest';
+
+  @override
+  String get duplicateAndEdit => 'Duplicate and Edit';
+
+  @override
+  String get deleteRoutine => 'Delete Routine';
+
+  @override
+  String deleteRoutineConfirm(String name) {
+    return 'Delete \"$name\"? This cannot be undone.';
+  }
+
+  @override
+  String exercisesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count exercises',
+      one: '1 exercise',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get profile => 'Profile';
+
+  @override
+  String get gymUser => 'Gym User';
+
+  @override
+  String get editDisplayName => 'Edit Display Name';
+
+  @override
+  String get enterYourName => 'Enter your name';
+
+  @override
+  String get workouts => 'Workouts';
+
+  @override
+  String get memberSince => 'Member since';
+
+  @override
+  String get weightUnit => 'Weight Unit';
+
+  @override
+  String get weeklyGoal => 'Weekly Goal';
+
+  @override
+  String get dataManagement => 'DATA MANAGEMENT';
+
+  @override
+  String get manageData => 'Manage Data';
+
+  @override
+  String get legal => 'LEGAL';
+
+  @override
+  String get sendCrashReports => 'Send crash reports';
+
+  @override
+  String get crashReportsSubtitle =>
+      'Help improve GymBuddy by sending anonymous crash data.';
+
+  @override
+  String get logOutConfirm => 'Are you sure you want to log out?';
+
+  @override
+  String get manageDataTitle => 'Manage Data';
+
+  @override
+  String get deleteWorkoutHistory => 'Delete Workout History';
+
+  @override
+  String workoutsWillBeRemoved(String count) {
+    return '$count workouts will be removed';
+  }
+
+  @override
+  String get resetAllAccountData => 'Reset All Account Data';
+
+  @override
+  String get resetAllSubtitle => 'Removes everything. Permanent.';
+
+  @override
+  String get deleteAccount => 'Delete Account';
+
+  @override
+  String get deleteAccountSubtitle =>
+      'Permanently delete your account and all data';
+
+  @override
+  String get deleteAllHistoryTitle => 'Delete all workout history?';
+
+  @override
+  String deleteAllHistoryContent(int count) {
+    return 'This will permanently delete all $count workouts and cannot be undone.';
+  }
+
+  @override
+  String get deleteHistoryButton => 'Delete History';
+
+  @override
+  String get areYouSure => 'Are you sure?';
+
+  @override
+  String get yesDelete => 'Yes, Delete';
+
+  @override
+  String get historyCleared => 'Workout history cleared';
+
+  @override
+  String failedToClearHistory(String message) {
+    return 'Failed to clear history: $message';
+  }
+
+  @override
+  String get resetAccountData => 'Reset Account Data';
+
+  @override
+  String get resetAccountWarning =>
+      'This will permanently delete all workouts and personal records. Your routines and custom exercises will be kept. There is no undo.';
+
+  @override
+  String get typeResetToConfirm => 'Type RESET to confirm';
+
+  @override
+  String get resetAccountButton => 'Reset Account';
+
+  @override
+  String get accountDataReset => 'Account data reset';
+
+  @override
+  String failedToResetData(String message) {
+    return 'Failed to reset data: $message';
+  }
+
+  @override
+  String get deleteAccountWarning =>
+      'This will permanently delete your account, all your workouts, personal records, routines, and custom exercises. This cannot be undone.';
+
+  @override
+  String get typeDeleteToConfirm => 'Type DELETE to confirm';
+
+  @override
+  String get deleteAccountButton => 'Delete Account';
+
+  @override
+  String failedToDeleteAccount(String message) {
+    return 'Failed to delete account: $message';
+  }
+
+  @override
+  String get prsRoutinesKept =>
+      'Your personal records and routines will be kept.';
+
+  @override
+  String get workoutHistorySection => 'WORKOUT HISTORY';
+
+  @override
+  String get dangerSection => 'DANGER';
+
+  @override
+  String get privacySection => 'PRIVACY';
+
+  @override
+  String get prsLabel => 'PRs';
+
+  @override
+  String perWeekLabel(int count) {
+    return '${count}x per week';
+  }
+
+  @override
+  String get frequencyQuestion =>
+      'How many times per week do you want to train?';
+
+  @override
+  String get pleaseTryAgain => 'Please try again.';
+
+  @override
+  String get personalRecordsTitle => 'Personal Records';
+
+  @override
+  String get failedToLoadRecords => 'Failed to load records';
+
+  @override
+  String get noRecordsYetTitle => 'No Records Yet';
+
+  @override
+  String get completeWorkoutToTrack =>
+      'Complete a workout to start tracking records';
+
+  @override
+  String get startWorkout => 'Start Workout';
+
+  @override
+  String get newPrHeading => 'NEW PR';
+
+  @override
+  String get firstWorkoutComplete => 'First Workout Complete!';
+
+  @override
+  String get startingBenchmarks => 'These are your starting benchmarks';
+
+  @override
+  String get unknownExercise => 'Unknown Exercise';
+
+  @override
+  String get thisWeeksPlan => 'This Week\'s Plan';
+
+  @override
+  String get moreOptions => 'More options';
+
+  @override
+  String get autoFill => 'Auto-fill';
+
+  @override
+  String get clearWeek => 'Clear Week';
+
+  @override
+  String get addRoutine => 'Add Routine';
+
+  @override
+  String plannedReadyToGo(int count, int total) {
+    return '$count/$total planned — ready to go';
+  }
+
+  @override
+  String plannedThisWeek(int count, int total) {
+    return '$count/$total planned this week';
+  }
+
+  @override
+  String get noRoutinesPlanned => 'No routines planned this week';
+
+  @override
+  String get addRoutines => 'Add Routines';
+
+  @override
+  String get replacePlanTitle => 'Replace current plan?';
+
+  @override
+  String get replacePlanContent =>
+      'Auto-fill will replace your current plan with your most-used routines.';
+
+  @override
+  String get clearWeekTitle => 'Clear Week';
+
+  @override
+  String get clearWeekContent => 'Start fresh this week?';
+
+  @override
+  String get routineRemoved => 'Routine removed';
+
+  @override
+  String get unknownRoutine => 'Unknown Routine';
+
+  @override
+  String get addRoutinesSheet => 'Add Routines';
+
+  @override
+  String get allRoutinesInPlan => 'All routines in plan';
+
+  @override
+  String get createMoreRoutines => 'Create more routines to add them here.';
+
+  @override
+  String addCountRoutines(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'ADD $count ROUTINES',
+      one: 'ADD 1 ROUTINE',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get weekComplete => 'WEEK COMPLETE';
+
+  @override
+  String get thisWeek => 'THIS WEEK';
+
+  @override
+  String get newWeekLink => 'NEW WEEK';
+
+  @override
+  String sessionsCount(int count) {
+    return '$count sessions';
+  }
+
+  @override
+  String prsCount(int count) {
+    return '$count PRs';
+  }
+
+  @override
+  String addToPlanPrompt(String name) {
+    return '$name isn\'t in your plan yet. Add it?';
+  }
+
+  @override
+  String get syncFailureSingular => 'Workout couldn\'t sync';
+
+  @override
+  String syncFailurePlural(int count) {
+    return '$count workouts couldn\'t sync';
+  }
+
+  @override
+  String get savedLocallyRetry => 'Saved locally. Retry or dismiss.';
+
+  @override
+  String get offlineRetryHint => 'You\'re offline — retry when back online';
+
+  @override
+  String get pendingSyncTitle => 'Pending Sync';
+
+  @override
+  String itemCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count items',
+      one: '1 item',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get allSynced => 'All synced!';
+
+  @override
+  String get syncedSuccessfully => 'Synced successfully.';
+
+  @override
+  String get pendingActionSaveWorkout => 'Save workout';
+
+  @override
+  String get pendingActionUpdateRecords => 'Update records';
+
+  @override
+  String get pendingActionMarkComplete => 'Mark routine complete';
+
+  @override
+  String queuedAt(String time) {
+    return 'Queued at $time';
+  }
+
+  @override
+  String retryCount(int count) {
+    return '$count retries';
+  }
+
+  @override
+  String get pendingSyncBadgeSingular => '1 workout pending sync';
+
+  @override
+  String pendingSyncBadgePlural(int count) {
+    return '$count workouts pending sync';
+  }
+
+  @override
+  String get noExercisesFound => 'No exercises found';
+
+  @override
+  String get failedToLoadExercises => 'Failed to load exercises';
+
+  @override
+  String createWithName(String name) {
+    return 'Create \"$name\"';
+  }
+
+  @override
+  String get durationLessThanOneMin => '< 1m';
+
+  @override
+  String get enterWeight => 'Enter weight';
+
+  @override
+  String get ok => 'OK';
+
+  @override
+  String get enterReps => 'Enter reps';
+
+  @override
+  String get failedToLoadDocument => 'Failed to load document';
+
+  @override
+  String get discardWorkout => 'Discard workout';
+
+  @override
+  String get moveUp => 'Move up';
+
+  @override
+  String get moveDown => 'Move down';
+
+  @override
+  String get swapExercise => 'Swap exercise';
+
+  @override
+  String get removeExercise => 'Remove exercise';
+
+  @override
+  String get rpeTooltip => 'Rate of perceived exertion';
+
+  @override
+  String get last30Days => '30d';
+
+  @override
+  String get last90Days => '90d';
+
+  @override
+  String get allTime => 'All time';
+
+  @override
+  String switchMetricTo(String metric) {
+    return 'Switch metric to $metric';
+  }
+
+  @override
+  String get couldNotLoadProgress => 'Could not load progress';
+
+  @override
+  String get logFirstSetToTrack => 'Log your first set to start tracking';
+
+  @override
+  String get chartMetricE1rm => 'e1RM';
+
+  @override
+  String get chartMetricWeight => 'Weight';
+
+  @override
+  String get chartWindowDays30 => '30 days';
+
+  @override
+  String get chartWindowDays90 => '90 days';
+
+  @override
+  String get chartWindowAllTime => 'all time';
+
+  @override
+  String workoutsLoggedKeepGoing(int count) {
+    return '$count workouts logged — keep going';
+  }
+
+  @override
+  String get oneWorkoutLoggedKeepGoing => '1 workout logged — keep going';
+
+  @override
+  String holdingSteadyAt(String weight, String unit) {
+    return 'Holding steady at $weight $unit';
+  }
+
+  @override
+  String trendUp(String weight, String unit, String window) {
+    return 'Up $weight $unit in $window';
+  }
+
+  @override
+  String trendDown(String weight, String unit, String window) {
+    return 'Down $weight $unit in $window';
+  }
+
+  @override
+  String prMarkerAt(String weight, String unit) {
+    return 'PR marker at $weight $unit';
+  }
+
+  @override
+  String setNumberSemantics(int number, String type) {
+    return 'Set $number. Long press to change type: $type';
+  }
+
+  @override
+  String setNumberCopySemantics(int number, String type) {
+    return 'Set $number. Tap to copy previous set. Long press to change type: $type';
+  }
+
+  @override
+  String get tooltipCopyLastSetAndChangeType =>
+      'Tap: copy last set\nHold: change type';
+
+  @override
+  String get tooltipChangeType => 'Hold: change type';
+
+  @override
+  String get setCompleted => 'Set completed';
+
+  @override
+  String get markSetAsDone => 'Mark set as done';
+
+  @override
+  String rpeValue(int value) {
+    return 'RPE $value. Tap to change.';
+  }
+
+  @override
+  String get setRpe => 'Set RPE';
+
+  @override
+  String get rpeLabel => 'RPE';
+
+  @override
+  String rpeMenuItem(int value) {
+    return 'RPE $value';
+  }
+
+  @override
+  String get reorderExercisesTooltip => 'Reorder exercises';
+
+  @override
+  String get exitReorderModeTooltip => 'Exit reorder mode';
+
+  @override
+  String exerciseSemanticsLabel(String name) {
+    return 'Exercise: $name. Tap for details. Long press to swap.';
+  }
+
+  @override
+  String get fillRemainingSetsSemantics =>
+      'Fill remaining sets with last completed values';
+
+  @override
+  String get addExerciseToWorkoutSemantics => 'Add exercise to workout';
+
+  @override
+  String get searchExercisesToAddSemantics => 'Search exercises to add';
+
+  @override
+  String addExerciseSemantics(String name) {
+    return 'Add $name';
+  }
+
+  @override
+  String get setTypeAbbrWorking => 'W';
+
+  @override
+  String get setTypeAbbrWarmup => 'WU';
+
+  @override
+  String get setTypeAbbrDropset => 'D';
+
+  @override
+  String get setTypeAbbrFailure => 'F';
+
+  @override
+  String get setTypeAbbrWarmupShort => 'Wu';
+
+  @override
+  String lastSessionSemantics(String name, String date) {
+    return 'Last session: $name, $date';
+  }
+
+  @override
+  String get searchExercisesSemantics => 'Search exercises';
+
+  @override
+  String exerciseItemSemantics(String name) {
+    return 'Exercise: $name';
+  }
+
+  @override
+  String get createNewExerciseSemantics => 'Create new exercise';
+
+  @override
+  String get muscleGroupSemanticsPrefix => 'Muscle group';
+
+  @override
+  String get equipmentTypeSemanticsPrefix => 'Equipment type';
+
+  @override
+  String get deleteExerciseSemantics => 'Delete exercise';
+
+  @override
+  String get exerciseNameDuplicate =>
+      'An exercise with this name already exists';
+
+  @override
+  String daysAgoShort(int count) {
+    return '${count}d ago';
+  }
+
+  @override
+  String weeksAgoShort(int count) {
+    return '${count}w ago';
+  }
+
+  @override
+  String monthsAgoShort(int count) {
+    return '${count}mo ago';
   }
 }

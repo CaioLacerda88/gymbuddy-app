@@ -22,6 +22,8 @@ import 'package:gymbuddy_app/features/workouts/providers/workout_providers.dart'
 import 'package:mocktail/mocktail.dart';
 
 import '../../../../fixtures/test_factories.dart';
+import '../../../../helpers/test_material_app.dart';
+import 'package:gymbuddy_app/l10n/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks & fakes
@@ -108,7 +110,7 @@ Future<void> _pumpRoutineStarter(
         workoutRepositoryProvider.overrideWithValue(mockRepo),
         workoutLocalStorageProvider.overrideWithValue(mockStorage),
       ],
-      child: MaterialApp(
+      child: TestMaterialApp(
         theme: AppTheme.dark,
         home: Consumer(
           builder: (context, ref, _) {
@@ -305,6 +307,8 @@ void main() {
               workoutLocalStorageProvider.overrideWithValue(mockStorage),
             ],
             child: MaterialApp.router(
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
               theme: AppTheme.dark,
               routerConfig: router,
             ),

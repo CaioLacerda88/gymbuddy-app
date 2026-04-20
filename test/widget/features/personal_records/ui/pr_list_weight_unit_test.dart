@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
@@ -9,6 +8,7 @@ import 'package:gymbuddy_app/features/personal_records/providers/pr_providers.da
 import 'package:gymbuddy_app/features/personal_records/ui/pr_list_screen.dart';
 import 'package:gymbuddy_app/features/profile/models/profile.dart';
 import 'package:gymbuddy_app/features/profile/providers/profile_providers.dart';
+import '../../../../helpers/test_material_app.dart';
 
 void main() {
   group('PRListScreen weight unit display (PO-030)', () {
@@ -48,7 +48,10 @@ void main() {
             ),
             profileProvider.overrideWith(() => _FakeProfileNotifier('lbs')),
           ],
-          child: MaterialApp(theme: AppTheme.dark, home: const PRListScreen()),
+          child: TestMaterialApp(
+            theme: AppTheme.dark,
+            home: const PRListScreen(),
+          ),
         ),
       );
 
@@ -84,7 +87,10 @@ void main() {
             ),
             profileProvider.overrideWith(() => _FakeProfileNotifier('kg')),
           ],
-          child: MaterialApp(theme: AppTheme.dark, home: const PRListScreen()),
+          child: TestMaterialApp(
+            theme: AppTheme.dark,
+            home: const PRListScreen(),
+          ),
         ),
       );
 

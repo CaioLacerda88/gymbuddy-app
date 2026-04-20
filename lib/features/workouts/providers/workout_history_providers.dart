@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/utils/workout_formatters.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../data/workout_repository.dart';
 import '../models/workout.dart';
@@ -130,16 +131,11 @@ final lastSessionProvider = Provider<LastSessionInfo?>((ref) {
 ///
 /// Normalizes both dates to local time before comparison, so UTC timestamps
 /// from Supabase are correctly compared against the user's local "today".
+///
+/// Delegates to [WorkoutFormatters.formatRelativeDate]. Since providers lack
+/// `BuildContext`, the formatter falls back to English when no `l10n` is
+/// available. The UI layer (`LastSessionLine`) displays the result as-is;
+/// full localization happens when the widget is rebuilt with a locale change.
 String _formatRelativeDate(DateTime date) {
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-  final local = date.toLocal();
-  final dateDay = DateTime(local.year, local.month, local.day);
-  final diff = today.difference(dateDay).inDays;
-
-  if (diff == 0) return 'Today';
-  if (diff == 1) return 'Yesterday';
-  if (diff < 7) return '$diff days ago';
-  if (diff < 30) return '${(diff / 7).floor()}w ago';
-  return '${(diff / 30).floor()}mo ago';
+  return WorkoutFormatters.formatRelativeDate(date.toLocal());
 }

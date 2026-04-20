@@ -28,6 +28,8 @@ import 'package:gymbuddy_app/features/weekly_plan/data/models/weekly_plan.dart';
 import 'package:mocktail/mocktail.dart';
 
 import '../../../../fixtures/test_factories.dart';
+import '../../../../helpers/test_material_app.dart';
+import 'package:gymbuddy_app/l10n/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -156,14 +158,19 @@ Future<void> _pumpRoutineStarter(
     await tester.pumpWidget(
       ProviderScope(
         overrides: overrides,
-        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+        child: MaterialApp.router(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: AppTheme.dark,
+          routerConfig: router,
+        ),
       ),
     );
   } else {
     await tester.pumpWidget(
       ProviderScope(
         overrides: overrides,
-        child: MaterialApp(
+        child: TestMaterialApp(
           theme: AppTheme.dark,
           home: Consumer(
             builder: (context, ref, _) {
@@ -220,7 +227,10 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text(kOfflineStartWorkoutMessage), findsOneWidget);
+      expect(
+        find.text('Starting a workout requires an internet connection'),
+        findsOneWidget,
+      );
 
       // No network call was made.
       verifyNever(
@@ -270,7 +280,10 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text(kOfflineStartWorkoutMessage), findsNothing);
+      expect(
+        find.text('Starting a workout requires an internet connection'),
+        findsNothing,
+      );
     });
   });
 
@@ -328,7 +341,12 @@ void main() {
             workoutCountProvider.overrideWith((_) => Future.value(3)),
             activeWorkoutProvider.overrideWith(() => trackingNotifier),
           ],
-          child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+          child: MaterialApp.router(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            theme: AppTheme.dark,
+            routerConfig: router,
+          ),
         ),
       );
     }
@@ -347,7 +365,10 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text(kOfflineStartWorkoutMessage), findsOneWidget);
+      expect(
+        find.text('Starting a workout requires an internet connection'),
+        findsOneWidget,
+      );
 
       // The tracking notifier must not have been asked to start a workout.
       expect(trackingNotifier.startWorkoutCallCount, 0);

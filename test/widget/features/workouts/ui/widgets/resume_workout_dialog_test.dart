@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
 import 'package:gymbuddy_app/features/workouts/ui/widgets/resume_workout_dialog.dart';
+import '../../../../../helpers/test_material_app.dart';
 
 /// Pumps the dialog via a builder so [Navigator.pop] works correctly and the
 /// returned result is captured.
@@ -14,7 +15,7 @@ Future<ResumeWorkoutResult?> _showDialog(
   ResumeWorkoutResult? captured;
 
   await tester.pumpWidget(
-    MaterialApp(
+    TestMaterialApp(
       theme: AppTheme.dark,
       home: Builder(
         builder: (context) => Scaffold(
@@ -142,7 +143,7 @@ void main() {
       ResumeWorkoutResult? captured;
 
       await tester.pumpWidget(
-        MaterialApp(
+        TestMaterialApp(
           theme: AppTheme.dark,
           home: Builder(
             builder: (context) => Scaffold(
@@ -178,7 +179,7 @@ void main() {
       ResumeWorkoutResult? captured;
 
       await tester.pumpWidget(
-        MaterialApp(
+        TestMaterialApp(
           theme: AppTheme.dark,
           home: Builder(
             builder: (context) => Scaffold(
@@ -213,7 +214,7 @@ void main() {
       ResumeWorkoutResult? captured;
 
       await tester.pumpWidget(
-        MaterialApp(
+        TestMaterialApp(
           theme: AppTheme.dark,
           home: Builder(
             builder: (context) => Scaffold(

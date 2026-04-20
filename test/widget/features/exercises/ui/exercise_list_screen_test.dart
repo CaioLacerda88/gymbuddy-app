@@ -7,6 +7,7 @@ import 'package:gymbuddy_app/features/exercises/providers/exercise_providers.dar
 import 'package:gymbuddy_app/features/exercises/ui/exercise_list_screen.dart';
 
 import '../../../../fixtures/test_factories.dart';
+import '../../../../helpers/test_material_app.dart';
 
 void main() {
   final testExercises = [
@@ -36,7 +37,7 @@ void main() {
       overrides: [
         filteredExerciseListProvider.overrideWith((ref) => exerciseValue),
       ],
-      child: MaterialApp(
+      child: TestMaterialApp(
         theme: AppTheme.dark,
         home: const ExerciseListScreen(),
       ),
@@ -124,7 +125,7 @@ void main() {
               (ref) => MuscleGroup.chest,
             ),
           ],
-          child: MaterialApp(
+          child: TestMaterialApp(
             theme: AppTheme.dark,
             home: const ExerciseListScreen(),
           ),

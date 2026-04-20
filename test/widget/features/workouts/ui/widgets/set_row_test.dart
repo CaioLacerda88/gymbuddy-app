@@ -12,6 +12,7 @@ import 'package:gymbuddy_app/features/workouts/ui/widgets/set_row.dart';
 import 'package:mocktail/mocktail.dart';
 
 import '../../../../../fixtures/test_factories.dart';
+import '../../../../../helpers/test_material_app.dart';
 
 class MockWorkoutRepository extends Mock implements WorkoutRepository {}
 
@@ -60,7 +61,7 @@ ProviderContainer makeContainer(ActiveWorkoutState? initialState) {
 Widget buildTestWidget(Widget child, {ProviderContainer? container}) {
   return UncontrolledProviderScope(
     container: container ?? makeContainer(null),
-    child: MaterialApp(
+    child: TestMaterialApp(
       theme: AppTheme.dark,
       home: Scaffold(
         body: SizedBox(

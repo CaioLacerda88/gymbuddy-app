@@ -24,6 +24,7 @@ import 'package:gymbuddy_app/features/workouts/models/workout.dart';
 import 'package:gymbuddy_app/features/workouts/models/workout_exercise.dart';
 import 'package:gymbuddy_app/features/workouts/providers/workout_providers.dart';
 import 'package:gymbuddy_app/features/workouts/ui/active_workout_screen.dart';
+import '../../../../helpers/test_material_app.dart';
 
 // ---------------------------------------------------------------------------
 // Shared fixtures
@@ -135,7 +136,10 @@ Widget _buildWithSets(List<ExerciseSet> sets) {
         (ref, startedAt) => Stream.value(const Duration(minutes: 5)),
       ),
     ],
-    child: MaterialApp(theme: AppTheme.dark, home: const ActiveWorkoutScreen()),
+    child: TestMaterialApp(
+      theme: AppTheme.dark,
+      home: const ActiveWorkoutScreen(),
+    ),
   );
 }
 

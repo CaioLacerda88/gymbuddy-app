@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
+
 /// A banner shown at the top of the app when the device is offline.
 ///
 /// Uses [ColorScheme.errorContainer] background with [ColorScheme.onErrorContainer]
@@ -10,6 +12,7 @@ class OfflineBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
     return Semantics(
       container: true,
       identifier: 'offline-banner',
@@ -26,10 +29,14 @@ class OfflineBanner extends StatelessWidget {
               color: colorScheme.onErrorContainer,
             ),
             const SizedBox(width: 8),
-            Text(
-              "Offline \u2014 changes will sync when you're back online",
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: colorScheme.onErrorContainer,
+            Flexible(
+              child: Text(
+                l10n.offlineBanner,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onErrorContainer,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],

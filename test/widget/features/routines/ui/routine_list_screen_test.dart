@@ -13,6 +13,7 @@ import 'package:gymbuddy_app/core/theme/app_theme.dart';
 import 'package:gymbuddy_app/features/routines/models/routine.dart';
 import 'package:gymbuddy_app/features/routines/providers/notifiers/routine_list_notifier.dart';
 import 'package:gymbuddy_app/features/routines/ui/routine_list_screen.dart';
+import '../../../../helpers/test_material_app.dart';
 
 class _RoutineListStub extends AsyncNotifier<List<Routine>>
     implements RoutineListNotifier {
@@ -45,7 +46,10 @@ Widget _build({required List<Routine> routines}) {
     overrides: [
       routineListProvider.overrideWith(() => _RoutineListStub(routines)),
     ],
-    child: MaterialApp(theme: AppTheme.dark, home: const RoutineListScreen()),
+    child: TestMaterialApp(
+      theme: AppTheme.dark,
+      home: const RoutineListScreen(),
+    ),
   );
 }
 

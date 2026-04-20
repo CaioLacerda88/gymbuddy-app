@@ -6,6 +6,7 @@ import 'package:gymbuddy_app/core/theme/app_theme.dart';
 import 'package:gymbuddy_app/features/auth/ui/onboarding_screen.dart';
 import 'package:gymbuddy_app/features/profile/models/profile.dart';
 import 'package:gymbuddy_app/features/profile/providers/profile_providers.dart';
+import '../../../../helpers/test_material_app.dart';
 
 // Minimal stub to avoid hitting Supabase during widget tests.
 class _FakeProfileNotifier extends ProfileNotifier {
@@ -32,7 +33,10 @@ void main() {
         profileProvider.overrideWith(_FakeProfileNotifier.new),
         ...overrides,
       ],
-      child: MaterialApp(theme: AppTheme.dark, home: const OnboardingScreen()),
+      child: TestMaterialApp(
+        theme: AppTheme.dark,
+        home: const OnboardingScreen(),
+      ),
     );
   }
 

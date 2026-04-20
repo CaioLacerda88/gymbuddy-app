@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/utils/workout_formatters.dart';
+import '../../../l10n/app_localizations.dart';
 import '../models/workout.dart';
 import '../providers/workout_history_providers.dart';
 
@@ -48,12 +49,13 @@ class _WorkoutHistoryScreenState extends ConsumerState<WorkoutHistoryScreen> {
   Widget build(BuildContext context) {
     final asyncWorkouts = ref.watch(workoutHistoryProvider);
 
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
         title: Semantics(
           container: true,
           identifier: 'history-heading',
-          child: const Text('History'),
+          child: Text(l10n.history),
         ),
       ),
       body: asyncWorkouts.when(
@@ -63,7 +65,7 @@ class _WorkoutHistoryScreenState extends ConsumerState<WorkoutHistoryScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Failed to load history',
+                l10n.failedToLoadHistory,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 8),
@@ -73,7 +75,7 @@ class _WorkoutHistoryScreenState extends ConsumerState<WorkoutHistoryScreen> {
                 child: FilledButton(
                   onPressed: () =>
                       ref.read(workoutHistoryProvider.notifier).refresh(),
-                  child: const Text('Retry'),
+                  child: Text(l10n.retry),
                 ),
               ),
             ],
@@ -123,6 +125,7 @@ class _EmptyHistoryBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Center(
       child: Padding(
@@ -140,7 +143,7 @@ class _EmptyHistoryBody extends StatelessWidget {
               container: true,
               identifier: 'history-empty',
               child: Text(
-                'No workouts yet',
+                l10n.noWorkoutsYet,
                 style: theme.textTheme.titleLarge?.copyWith(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
@@ -148,7 +151,7 @@ class _EmptyHistoryBody extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Your completed workouts will appear here',
+              l10n.completedWorkoutsAppear,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
               ),
@@ -160,7 +163,7 @@ class _EmptyHistoryBody extends StatelessWidget {
               child: FilledButton.icon(
                 onPressed: onStartWorkout,
                 icon: const Icon(Icons.play_arrow),
-                label: const Text('Start your first workout'),
+                label: Text(l10n.startFirstWorkout),
               ),
             ),
           ],
@@ -179,11 +182,16 @@ class _WorkoutHistoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final locale = Localizations.localeOf(context).toString();
     final dateText = WorkoutFormatters.formatWorkoutDate(
       workout.finishedAt ?? workout.startedAt,
+      l10n: l10n,
+      locale: locale,
     );
     final durationText = WorkoutFormatters.formatDuration(
       workout.durationSeconds,
+      l10n: l10n,
     );
 
     return Semantics(

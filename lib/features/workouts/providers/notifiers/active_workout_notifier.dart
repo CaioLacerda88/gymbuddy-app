@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/device/platform_info.dart';
@@ -225,32 +226,16 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
     await _saveToHive(state.value!);
   }
 
+  /// Generates a default workout name using a fixed English date format.
+  ///
+  /// Locale is intentionally not threaded here because this runs in a
+  /// provider (no BuildContext). The name is stored data, not a display-only
+  /// string, so it must remain stable regardless of the user's locale
+  /// setting at read time.
   String _generateWorkoutName() {
     final now = DateTime.now();
-    final weekday = [
-      'Mon',
-      'Tue',
-      'Wed',
-      'Thu',
-      'Fri',
-      'Sat',
-      'Sun',
-    ][now.weekday - 1];
-    final month = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ][now.month - 1];
-    return 'Workout \u2014 $weekday $month ${now.day}';
+    final formatted = DateFormat('EEE MMM d').format(now);
+    return 'Workout \u2014 $formatted';
   }
 
   /// Add an exercise to the active workout.

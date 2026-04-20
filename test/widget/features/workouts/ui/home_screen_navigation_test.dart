@@ -25,6 +25,7 @@ import 'package:gymbuddy_app/features/workouts/ui/home_screen.dart';
 import 'package:gymbuddy_app/features/workouts/ui/widgets/last_session_line.dart';
 
 import '../../../../fixtures/test_factories.dart';
+import 'package:gymbuddy_app/l10n/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
 // Stubs
@@ -158,7 +159,12 @@ Widget _buildTestApp({required List<Workout> workouts}) {
       ),
       pendingSyncProvider.overrideWith(() => _ZeroPendingSyncNotifier()),
     ],
-    child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+    child: MaterialApp.router(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      theme: AppTheme.dark,
+      routerConfig: router,
+    ),
   );
 }
 

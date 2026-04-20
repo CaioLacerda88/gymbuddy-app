@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/device/platform_info.dart';
+import '../../../core/utils/enum_l10n.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../analytics/data/models/analytics_event.dart';
 import '../../analytics/providers/analytics_providers.dart';
 import '../../auth/providers/auth_providers.dart';
@@ -209,7 +211,7 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen>
                       identifier: 'pr-continue-btn',
                       child: ElevatedButton(
                         onPressed: _onContinue,
-                        child: const Text('Continue'),
+                        child: Text(AppLocalizations.of(context).continueLabel),
                       ),
                     ),
                   ),
@@ -231,11 +233,12 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen>
   }
 
   Widget _buildFirstWorkoutContent(ThemeData theme, String weightUnit) {
+    final l10n = AppLocalizations.of(context);
     // Group records by exercise.
     final grouped = <String, List<PersonalRecord>>{};
     for (final record in widget.result.newRecords) {
       final name =
-          widget.exerciseNames[record.exerciseId] ?? 'Unknown Exercise';
+          widget.exerciseNames[record.exerciseId] ?? l10n.unknownExercise;
       (grouped[name] ??= []).add(record);
     }
 
@@ -260,14 +263,14 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen>
           container: true,
           identifier: 'pr-first-workout',
           child: Text(
-            'First Workout Complete!',
+            l10n.firstWorkoutComplete,
             style: theme.textTheme.headlineLarge,
             textAlign: TextAlign.center,
           ),
         ),
         const SizedBox(height: 8),
         Text(
-          'These are your starting benchmarks',
+          l10n.startingBenchmarks,
           style: theme.textTheme.bodyLarge?.copyWith(
             color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
           ),
@@ -287,6 +290,7 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen>
   }
 
   Widget _buildPRContent(ThemeData theme, String weightUnit) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       children: [
         ScaleTransition(
@@ -295,7 +299,7 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen>
             container: true,
             identifier: 'pr-new-heading',
             child: Text(
-              'NEW PR',
+              l10n.newPrHeading,
               style: theme.textTheme.displayMedium?.copyWith(
                 color: theme.colorScheme.primary,
                 fontWeight: FontWeight.w900,
@@ -312,7 +316,7 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen>
         const SizedBox(height: 24),
         ...widget.result.newRecords.map((record) {
           final name =
-              widget.exerciseNames[record.exerciseId] ?? 'Unknown Exercise';
+              widget.exerciseNames[record.exerciseId] ?? l10n.unknownExercise;
           return _AnimatedRecordCard(
             exerciseName: name,
             record: record,
@@ -363,7 +367,7 @@ class _ExerciseRecordGroup extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      r.recordType.displayName,
+                      r.recordType.localizedName(AppLocalizations.of(context)),
                       style: theme.textTheme.bodyMedium,
                     ),
                     const Spacer(),
@@ -415,7 +419,9 @@ class _AnimatedRecordCard extends StatelessWidget {
                 children: [
                   Text(exerciseName, style: theme.textTheme.titleMedium),
                   Text(
-                    record.recordType.displayName,
+                    record.recordType.localizedName(
+                      AppLocalizations.of(context),
+                    ),
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     ),

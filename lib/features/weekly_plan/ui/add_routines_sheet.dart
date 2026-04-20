@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/radii.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../routines/models/routine.dart';
 
 /// Bottom sheet for selecting routines to add to the weekly bucket.
@@ -30,6 +31,7 @@ class _AddRoutinesSheetState extends State<AddRoutinesSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return DraggableScrollableSheet(
       initialChildSize: 0.5,
@@ -59,14 +61,14 @@ class _AddRoutinesSheetState extends State<AddRoutinesSheet> {
                     container: true,
                     identifier: 'weekly-plan-add-sheet-title',
                     child: Text(
-                      'Add Routines',
+                      l10n.addRoutinesSheet,
                       style: theme.textTheme.titleLarge,
                     ),
                   ),
                   const Spacer(),
                   if (widget.availableRoutines.isEmpty)
                     Text(
-                      'All routines in plan',
+                      l10n.allRoutinesInPlan,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurface.withValues(
                           alpha: 0.55,
@@ -81,7 +83,7 @@ class _AddRoutinesSheetState extends State<AddRoutinesSheet> {
               child: widget.availableRoutines.isEmpty
                   ? Center(
                       child: Text(
-                        'Create more routines to add them here.',
+                        l10n.createMoreRoutines,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurface.withValues(
                             alpha: 0.55,
@@ -126,9 +128,7 @@ class _AddRoutinesSheetState extends State<AddRoutinesSheet> {
                       child: FilledButton(
                         onPressed: () =>
                             Navigator.of(context).pop(_selected.toList()),
-                        child: Text(
-                          'ADD ${_selected.length} ROUTINE${_selected.length > 1 ? 'S' : ''}',
-                        ),
+                        child: Text(l10n.addCountRoutines(_selected.length)),
                       ),
                     ),
                   ),
@@ -155,6 +155,7 @@ class _RoutineSelectTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Material(
@@ -180,7 +181,7 @@ class _RoutineSelectTile extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '${routine.exercises.length} exercises',
+                        l10n.exercisesCount(routine.exercises.length),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurface.withValues(
                             alpha: 0.55,

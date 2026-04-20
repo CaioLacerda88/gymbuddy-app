@@ -7,6 +7,7 @@ import 'package:gymbuddy_app/features/workouts/providers/workout_history_provide
 import 'package:gymbuddy_app/features/workouts/ui/workout_history_screen.dart';
 
 import '../../../../fixtures/test_factories.dart';
+import '../../../../helpers/test_material_app.dart';
 
 // ---------------------------------------------------------------------------
 // Stubs
@@ -73,7 +74,7 @@ Widget buildTestWidget({
         ),
       ),
     ],
-    child: MaterialApp(
+    child: TestMaterialApp(
       theme: AppTheme.dark,
       home: const WorkoutHistoryScreen(),
     ),

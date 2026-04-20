@@ -16,6 +16,7 @@ import 'package:gymbuddy_app/features/workouts/providers/workout_history_provide
 import 'package:gymbuddy_app/features/workouts/ui/widgets/last_session_line.dart';
 
 import '../../../../fixtures/test_factories.dart';
+import 'package:gymbuddy_app/l10n/app_localizations.dart';
 
 class _HistoryStub extends AsyncNotifier<List<Workout>>
     implements WorkoutHistoryNotifier {
@@ -65,7 +66,12 @@ Widget _buildWithRouter({required List<Workout> workouts}) {
     overrides: [
       workoutHistoryProvider.overrideWith(() => _HistoryStub(workouts)),
     ],
-    child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+    child: MaterialApp.router(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      theme: AppTheme.dark,
+      routerConfig: router,
+    ),
   );
 }
 
