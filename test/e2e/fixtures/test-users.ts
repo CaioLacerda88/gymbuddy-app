@@ -93,6 +93,22 @@ export const TEST_USERS = {
     email: 'e2e-smoke-offline-sync@test.local',
     password: 'TestPassword123!',
   },
+  // Localization smoke (Phase 15e) — dedicated user for localization.spec.ts.
+  // Profile row is seeded with locale: 'pt' so the app boots in Portuguese
+  // without requiring the test to open the language picker first. Also has
+  // one seeded workout so the app lands in lapsed state (not brand-new CTA).
+  smokeLocalization: {
+    email: 'e2e-smoke-localization@test.local',
+    password: 'TestPassword123!',
+  },
+  // Localization en-default (Phase 15e) — English locale user for testing
+  // the en→pt live-switch path and persistence across page reload.
+  // No locale seeded in profiles (defaults to English). Has one seeded
+  // workout so the app lands in lapsed state (not brand-new CTA).
+  smokeLocalizationEn: {
+    email: 'e2e-smoke-localization-en@test.local',
+    password: 'TestPassword123!',
+  },
 
   // -------------------------------------------------------------------------
   // Full suite users (one per spec file)

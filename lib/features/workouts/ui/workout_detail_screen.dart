@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/format/number_format.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/workout_formatters.dart';
 import '../../../l10n/app_localizations.dart';
@@ -297,6 +298,14 @@ class _ReadOnlySetRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textStyle = theme.textTheme.bodyMedium;
+    final locale = Localizations.localeOf(context).languageCode;
+    final weightText = set.weight == null
+        ? '- $weightUnit'
+        : AppNumberFormat.weightWithUnit(
+            set.weight!,
+            locale: locale,
+            unit: weightUnit,
+          );
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -319,7 +328,7 @@ class _ReadOnlySetRow extends StatelessWidget {
           ),
           Expanded(
             child: Text(
-              '${set.weight?.toStringAsFixed(set.weight == set.weight?.roundToDouble() ? 0 : 1) ?? '-'} $weightUnit',
+              weightText,
               style: textStyle,
               textAlign: TextAlign.center,
             ),

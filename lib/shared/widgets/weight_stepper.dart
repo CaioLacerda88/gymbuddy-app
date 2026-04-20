@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../core/format/number_format.dart';
 import '../../l10n/app_localizations.dart';
 
 /// A reusable stepper widget for weight values.
@@ -57,10 +58,17 @@ class _WeightStepperState extends State<WeightStepper> {
     _timer = null;
   }
 
-  String _formatWeight(double value) {
-    return value == value.roundToDouble()
-        ? value.toInt().toString()
-        : value.toStringAsFixed(1);
+  String _formatWeight(double value, String locale) {
+    return AppNumberFormat.weight(value, locale: locale);
+  }
+
+  /// Parses a user-entered weight accepting either `.` or `,` as the decimal
+  /// separator so pt-BR users can type `80,5` naturally on the numeric keyboard.
+  double? _parseWeight(String text) {
+    final normalised = text.trim().replaceAll(',', '.');
+    final parsed = double.tryParse(normalised);
+    if (parsed == null || parsed < 0) return null;
+    return parsed;
   }
 
   @override
@@ -70,7 +78,10 @@ class _WeightStepperState extends State<WeightStepper> {
   }
 
   void _showNumberInput() {
-    final controller = TextEditingController(text: _formatWeight(widget.value));
+    final locale = Localizations.localeOf(context).languageCode;
+    final controller = TextEditingController(
+      text: _formatWeight(widget.value, locale),
+    );
     showDialog<void>(
       context: context,
       builder: (dialogCtx) {
@@ -83,8 +94,8 @@ class _WeightStepperState extends State<WeightStepper> {
             autofocus: true,
             decoration: InputDecoration(suffixText: widget.unit),
             onSubmitted: (text) {
-              final parsed = double.tryParse(text);
-              if (parsed != null && parsed >= 0) {
+              final parsed = _parseWeight(text);
+              if (parsed != null) {
                 widget.onChanged(parsed);
               }
               Navigator.of(dialogCtx).pop();
@@ -97,8 +108,8 @@ class _WeightStepperState extends State<WeightStepper> {
             ),
             TextButton(
               onPressed: () {
-                final parsed = double.tryParse(controller.text);
-                if (parsed != null && parsed >= 0) {
+                final parsed = _parseWeight(controller.text);
+                if (parsed != null) {
                   widget.onChanged(parsed);
                 }
                 Navigator.of(dialogCtx).pop();
@@ -114,6 +125,8 @@ class _WeightStepperState extends State<WeightStepper> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final locale = Localizations.localeOf(context).languageCode;
+    final formatted = _formatWeight(widget.value, locale);
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -133,7 +146,7 @@ class _WeightStepperState extends State<WeightStepper> {
         Flexible(
           child: Semantics(
             label:
-                'Weight value: ${_formatWeight(widget.value)} ${widget.unit}. Tap to enter weight.',
+                'Weight value: $formatted ${widget.unit}. Tap to enter weight.',
             button: true,
             child: GestureDetector(
               onTap: _showNumberInput,
@@ -142,7 +155,7 @@ class _WeightStepperState extends State<WeightStepper> {
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    _formatWeight(widget.value),
+                    formatted,
                     textAlign: TextAlign.center,
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontSize: 26,

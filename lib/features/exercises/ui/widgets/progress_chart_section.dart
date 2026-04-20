@@ -1,8 +1,9 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
+import '../../../../core/format/date_format.dart';
+import '../../../../core/format/number_format.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../profile/providers/profile_providers.dart';
@@ -217,6 +218,7 @@ class _ChartBody extends StatelessWidget {
     final sourcePoints = metric == ChartMetric.e1rm ? e1rmPoints : rawPoints;
     final series = _buildSeries(sourcePoints, window: window);
 
+    final locale = Localizations.localeOf(context).languageCode;
     // Trend copy per acceptance #6.
     final (trendText, trendColor) = _buildTrendCopy(
       series: series,
@@ -225,6 +227,7 @@ class _ChartBody extends StatelessWidget {
       windowLabel: windowLabel,
       theme: theme,
       l10n: AppLocalizations.of(context),
+      locale: locale,
     );
 
     // No plottable series but workouts exist → render the toggles + copy
@@ -241,7 +244,7 @@ class _ChartBody extends StatelessWidget {
           windowLabel: windowLabel,
           weightUnit: weightUnit,
           canvas: series.length == 1
-              ? _singlePointCanvas(theme, series.single, weightUnit)
+              ? _singlePointCanvas(theme, series.single, weightUnit, locale)
               : null,
         ),
       );
@@ -285,13 +288,18 @@ class _ChartBody extends StatelessWidget {
     ThemeData theme,
     ProgressPoint point,
     String weightUnit,
+    String locale,
   ) {
     return SizedBox(
       key: const Key('progress-chart-canvas'),
       height: ProgressChartSection._canvasSparse,
       child: Center(
         child: Text(
-          '${_formatWeight(point.weight)} $weightUnit',
+          AppNumberFormat.weightWithUnit(
+            point.weight,
+            locale: locale,
+            unit: weightUnit,
+          ),
           style: theme.textTheme.titleLarge?.copyWith(
             color: theme.colorScheme.onSurface,
           ),
@@ -465,6 +473,7 @@ class _LineChart extends StatelessWidget {
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
     final onSurface = theme.colorScheme.onSurface;
+    final locale = Localizations.localeOf(context).languageCode;
 
     // Y-range: pad = max(span × 0.15, maxValue × 0.10) — per acceptance #3.
     final weights = points.map((p) => p.weight).toList();
@@ -541,7 +550,11 @@ class _LineChart extends StatelessWidget {
                 return Padding(
                   padding: const EdgeInsets.only(right: 4),
                   child: Text(
-                    '${_formatWeight(value)} $weightUnit',
+                    AppNumberFormat.weightWithUnit(
+                      value,
+                      locale: locale,
+                      unit: weightUnit,
+                    ),
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: onSurface.withValues(alpha: 0.55),
                     ),
@@ -572,9 +585,7 @@ class _LineChart extends StatelessWidget {
                 return Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
-                    DateFormat.MMMd(
-                      Localizations.localeOf(context).toString(),
-                    ).format(points[i].date),
+                    AppDateFormat.monthDay(points[i].date, locale: locale),
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: onSurface.withValues(alpha: 0.55),
                     ),
@@ -637,13 +648,14 @@ class _RingSemanticsLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = Localizations.localeOf(context).languageCode;
     return Positioned(
       left: 0,
       top: 0,
       child: Semantics(
         label: AppLocalizations.of(
           context,
-        ).prMarkerAt(_formatWeight(value), unit),
+        ).prMarkerAt(_formatWeight(value, locale), unit),
         child: const SizedBox.shrink(),
       ),
     );
@@ -802,6 +814,7 @@ List<ProgressPoint> _weeklyMax(List<ProgressPoint> points) {
   required String windowLabel,
   required ThemeData theme,
   required AppLocalizations l10n,
+  required String locale,
 }) {
   final neutral = theme.colorScheme.onSurface.withValues(alpha: 0.70);
 
@@ -819,26 +832,28 @@ List<ProgressPoint> _weeklyMax(List<ProgressPoint> points) {
   final delta = series.last.weight - series.first.weight;
   if (delta == 0) {
     return (
-      l10n.holdingSteadyAt(_formatWeight(series.last.weight), weightUnit),
+      l10n.holdingSteadyAt(
+        _formatWeight(series.last.weight, locale),
+        weightUnit,
+      ),
       neutral,
     );
   }
   if (delta > 0) {
     return (
-      l10n.trendUp(_formatWeight(delta), weightUnit, windowLabel),
+      l10n.trendUp(_formatWeight(delta, locale), weightUnit, windowLabel),
       theme.colorScheme.primary,
     );
   }
   // delta < 0 — neutral color per acceptance #6 (no red for deloads).
   return (
-    l10n.trendDown(_formatWeight(delta.abs()), weightUnit, windowLabel),
+    l10n.trendDown(_formatWeight(delta.abs(), locale), weightUnit, windowLabel),
     neutral,
   );
 }
 
-/// Format a weight number with up to one decimal place, trimming the
-/// trailing `.0` when whole.
-String _formatWeight(double value) {
-  if (value == value.roundToDouble()) return value.toStringAsFixed(0);
-  return value.toStringAsFixed(1);
+/// Format a weight number with up to one decimal place, using the given
+/// [locale]'s decimal separator (dot in en, comma in pt).
+String _formatWeight(double value, String locale) {
+  return AppNumberFormat.weight(value, locale: locale);
 }

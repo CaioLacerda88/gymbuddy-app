@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/format/number_format.dart';
 import '../../../../core/utils/enum_l10n.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/reps_stepper.dart';
@@ -47,12 +48,6 @@ class SetRow extends ConsumerStatefulWidget {
 class _SetRowState extends ConsumerState<SetRow> {
   bool _locked = false;
   Timer? _lockTimer;
-
-  static String _formatWeight(double value) {
-    return value == value.roundToDouble()
-        ? value.toInt().toString()
-        : value.toStringAsFixed(1);
-  }
 
   static Map<SetType, String> _setTypeLabels(AppLocalizations l10n) => {
     SetType.working: l10n.setTypeAbbrWorking,
@@ -183,7 +178,10 @@ class _SetRowState extends ConsumerState<SetRow> {
               padding: const EdgeInsets.only(left: 48, bottom: 4),
               child: Text(
                 AppLocalizations.of(context).previousSet(
-                  _formatWeight((widget.lastSet!.weight ?? 0).toDouble()),
+                  AppNumberFormat.weight(
+                    (widget.lastSet!.weight ?? 0).toDouble(),
+                    locale: Localizations.localeOf(context).languageCode,
+                  ),
                   weightUnit,
                   widget.lastSet!.reps ?? 0,
                 ),

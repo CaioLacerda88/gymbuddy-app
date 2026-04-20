@@ -14,7 +14,7 @@
  */
 
 import { Page } from '@playwright/test';
-import { NAV } from './selectors';
+import { NAV, PROFILE } from './selectors';
 
 /**
  * Wait for the Flutter app to finish its initial load.
@@ -263,6 +263,51 @@ export async function flutterFillByInput(
   await page.waitForTimeout(200);
   await page.keyboard.press('Control+a');
   await page.keyboard.type(value, { delay: 10 });
+}
+
+/**
+ * Change the active app locale via the Profile → Language sheet.
+ *
+ * Assumes the user is already logged in and the Profile tab is reachable via
+ * the bottom navigation. The helper:
+ *   1. Navigates to Profile tab (no-op if already there).
+ *   2. Scrolls to / taps the Language row to open LanguagePickerSheet.
+ *   3. Taps the option matching `locale`.
+ *   4. Waits for the sheet to dismiss.
+ *
+ * The app persists the locale to Hive and (for logged-in users) Supabase, so
+ * the new locale survives page reloads and sign-outs. Callers typically want
+ * to reload the page after calling this so deeply-cached widgets rebuild.
+ *
+ * @param page   - Playwright page.
+ * @param locale - Target locale: 'en' for English, 'pt' for Portuguese (Brasil).
+ */
+export async function setLocale(
+  page: Page,
+  locale: 'en' | 'pt',
+): Promise<void> {
+  // Ensure we're on the Profile tab so the language row is in view.
+  await navigateToTab(page, 'Profile');
+
+  // Open the language picker sheet.
+  await page.locator(PROFILE.languageRow).first().click({ timeout: 15_000 });
+  await page
+    .locator(PROFILE.languagePickerSheet)
+    .first()
+    .waitFor({ state: 'visible', timeout: 10_000 });
+
+  // Tap the target locale option.
+  await page
+    .locator(PROFILE.languageOption(locale))
+    .first()
+    .click({ timeout: 10_000 });
+
+  // Wait for the sheet to dismiss. The sheet is detached from the DOM when
+  // Navigator.pop() fires, so we wait for its root semantics node to go away.
+  await page
+    .locator(PROFILE.languagePickerSheet)
+    .first()
+    .waitFor({ state: 'detached', timeout: 10_000 });
 }
 
 /**
