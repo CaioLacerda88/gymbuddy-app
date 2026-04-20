@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/connectivity/connectivity_provider.dart';
 import 'package:gymbuddy_app/core/offline/sync_service.dart';
 import 'package:gymbuddy_app/shared/widgets/sync_failure_card.dart';
+import '../../helpers/test_material_app.dart';
 
 void main() {
   group('SyncFailureCard', () {
@@ -18,7 +19,7 @@ void main() {
           // doesn't attempt real connectivity checks.
           onlineStatusProvider.overrideWith((ref) => Stream.value(isOnline)),
         ],
-        child: const MaterialApp(home: Scaffold(body: SyncFailureCard())),
+        child: const TestMaterialApp(home: Scaffold(body: SyncFailureCard())),
       );
     }
 
@@ -83,7 +84,7 @@ void main() {
             isOnlineProvider.overrideWithValue(true),
             onlineStatusProvider.overrideWith((ref) => Stream.value(true)),
           ],
-          child: const MaterialApp(home: Scaffold(body: SyncFailureCard())),
+          child: const TestMaterialApp(home: Scaffold(body: SyncFailureCard())),
         ),
       );
       await tester.pumpAndSettle();
@@ -106,7 +107,7 @@ void main() {
             isOnlineProvider.overrideWithValue(true),
             onlineStatusProvider.overrideWith((ref) => Stream.value(true)),
           ],
-          child: const MaterialApp(home: Scaffold(body: SyncFailureCard())),
+          child: const TestMaterialApp(home: Scaffold(body: SyncFailureCard())),
         ),
       );
       await tester.pumpAndSettle();

@@ -28,6 +28,7 @@ import 'package:gymbuddy_app/features/profile/providers/profile_providers.dart';
 import 'package:gymbuddy_app/features/weekly_plan/data/models/weekly_plan.dart';
 import 'package:gymbuddy_app/features/weekly_plan/providers/weekly_plan_provider.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:gymbuddy_app/l10n/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -154,7 +155,12 @@ Widget _buildTestWidget({
     // Analytics overrides are prepended so individual tests can still override
     // the same providers later in `overrides` if they need custom behaviour.
     overrides: [..._analyticsOverrides(), ...overrides],
-    child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+    child: MaterialApp.router(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      theme: AppTheme.dark,
+      routerConfig: router,
+    ),
   );
 }
 

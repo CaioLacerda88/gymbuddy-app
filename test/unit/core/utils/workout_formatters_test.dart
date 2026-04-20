@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/utils/workout_formatters.dart';
 import 'package:gymbuddy_app/features/workouts/models/exercise_set.dart';
+import 'package:gymbuddy_app/l10n/app_localizations_en.dart';
 
 import '../../../fixtures/test_factories.dart';
 
@@ -215,6 +216,74 @@ void main() {
     test('returns "12mo ago" for 365 days ago', () {
       final oneYearAgo = DateTime.now().subtract(const Duration(days: 365));
       expect(WorkoutFormatters.formatRelativeDate(oneYearAgo), '12mo ago');
+    });
+  });
+
+  group('WorkoutFormatters.formatVolume (locale-aware)', () {
+    test('uses locale-aware number formatting for pt', () {
+      // Portuguese uses dot as thousands separator.
+      final result = WorkoutFormatters.formatVolume(1234, locale: 'pt');
+      expect(result, '1.234 kg');
+    });
+
+    test('uses locale-aware number formatting for en', () {
+      final result = WorkoutFormatters.formatVolume(1234, locale: 'en');
+      expect(result, '1,234 kg');
+    });
+  });
+
+  group('WorkoutFormatters.formatWorkoutDate (l10n)', () {
+    test('returns localized "Today" when l10n is provided', () {
+      final l10n = AppLocalizationsEn();
+      final today = DateTime.now();
+      final result = WorkoutFormatters.formatWorkoutDate(today, l10n: l10n);
+      expect(result, 'Today');
+    });
+
+    test('returns localized "Yesterday" when l10n is provided', () {
+      final l10n = AppLocalizationsEn();
+      final yesterday = DateTime.now().subtract(const Duration(days: 1));
+      final result = WorkoutFormatters.formatWorkoutDate(yesterday, l10n: l10n);
+      expect(result, 'Yesterday');
+    });
+  });
+
+  group('WorkoutFormatters.formatRelativeDate (l10n)', () {
+    test('returns localized "Yesterday" when l10n is provided', () {
+      final l10n = AppLocalizationsEn();
+      final yesterday = DateTime.now().subtract(const Duration(days: 1));
+      final result = WorkoutFormatters.formatRelativeDate(
+        yesterday,
+        l10n: l10n,
+      );
+      expect(result, 'Yesterday');
+    });
+
+    test('returns localized days ago when l10n is provided', () {
+      final l10n = AppLocalizationsEn();
+      final threeDaysAgo = DateTime.now().subtract(const Duration(days: 3));
+      final result = WorkoutFormatters.formatRelativeDate(
+        threeDaysAgo,
+        l10n: l10n,
+      );
+      expect(result, '3 days ago');
+    });
+  });
+
+  group('WorkoutFormatters.formatDuration (l10n)', () {
+    test('returns localized "< 1m" for null when l10n is provided', () {
+      final l10n = AppLocalizationsEn();
+      expect(WorkoutFormatters.formatDuration(null, l10n: l10n), '< 1m');
+    });
+
+    test('returns localized "< 1m" for 59 seconds when l10n is provided', () {
+      final l10n = AppLocalizationsEn();
+      expect(WorkoutFormatters.formatDuration(59, l10n: l10n), '< 1m');
+    });
+
+    test('returns "45m" for 45 minutes even with l10n', () {
+      final l10n = AppLocalizationsEn();
+      expect(WorkoutFormatters.formatDuration(45 * 60, l10n: l10n), '45m');
     });
   });
 

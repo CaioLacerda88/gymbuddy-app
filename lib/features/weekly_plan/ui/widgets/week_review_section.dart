@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/radii.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../data/models/weekly_plan.dart';
 import 'routine_chip.dart';
 
@@ -42,6 +43,7 @@ class WeekReviewSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final completedCount = plan.routines
         .where((r) => r.completedWorkoutId != null)
         .length;
@@ -62,7 +64,7 @@ class WeekReviewSection extends StatelessWidget {
                     ? 'weekly-plan-complete'
                     : 'weekly-plan-this-week',
                 child: Text(
-                  isAllComplete ? 'WEEK COMPLETE' : 'THIS WEEK',
+                  isAllComplete ? l10n.weekComplete : l10n.thisWeek,
                   style: theme.textTheme.labelLarge?.copyWith(
                     color: isAllComplete
                         ? _primaryGreen
@@ -82,7 +84,7 @@ class WeekReviewSection extends StatelessWidget {
                     vertical: 2,
                   ),
                   child: Text(
-                    'NEW WEEK',
+                    l10n.newWeekLink,
                     style: theme.textTheme.labelLarge?.copyWith(
                       color: _primaryGreen,
                     ),
@@ -95,7 +97,7 @@ class WeekReviewSection extends StatelessWidget {
 
         // Stats row
         Text(
-          _buildStatsText(completedCount),
+          _buildStatsText(completedCount, l10n),
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
           ),
@@ -107,7 +109,7 @@ class WeekReviewSection extends StatelessWidget {
           scrollDirection: Axis.horizontal,
           child: Row(
             children: plan.routines.map((routine) {
-              final name = routineNames[routine.routineId] ?? 'Routine';
+              final name = routineNames[routine.routineId] ?? l10n.routines;
               final isDone = routine.completedWorkoutId != null;
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
@@ -129,8 +131,8 @@ class WeekReviewSection extends StatelessWidget {
     );
   }
 
-  String _buildStatsText(int sessions) {
-    final parts = <String>['$sessions sessions'];
+  String _buildStatsText(int sessions, AppLocalizations l10n) {
+    final parts = <String>[l10n.sessionsCount(sessions)];
 
     if (totalVolume > 0) {
       final volumeStr = totalVolume >= 1000
@@ -140,7 +142,7 @@ class WeekReviewSection extends StatelessWidget {
     }
 
     if (prCount > 0) {
-      parts.add('$prCount PRs');
+      parts.add(l10n.prsCount(prCount));
     }
 
     return parts.join('  ');

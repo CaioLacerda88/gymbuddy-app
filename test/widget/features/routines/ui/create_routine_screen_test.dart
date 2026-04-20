@@ -7,6 +7,7 @@ import 'package:gymbuddy_app/features/routines/models/routine.dart';
 import 'package:gymbuddy_app/features/routines/ui/create_routine_screen.dart';
 
 import '../../../../fixtures/test_factories.dart';
+import '../../../../helpers/test_material_app.dart';
 
 Exercise _makeExercise({
   String id = 'exercise-001',
@@ -20,7 +21,7 @@ Exercise _makeExercise({
 
 Widget _buildScreen({Routine? routine}) {
   return ProviderScope(
-    child: MaterialApp(
+    child: TestMaterialApp(
       theme: AppTheme.dark,
       home: CreateRoutineScreen(routine: routine),
     ),

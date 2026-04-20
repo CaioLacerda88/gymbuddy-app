@@ -22,6 +22,7 @@ import 'package:gymbuddy_app/features/workouts/providers/workout_history_provide
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
+import 'package:gymbuddy_app/l10n/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
 // Stubs
@@ -93,7 +94,12 @@ Widget _buildTestApp() {
       workoutCountProvider.overrideWith((ref) => Future.value(5)),
       prCountProvider.overrideWith((ref) => Future.value(3)),
     ],
-    child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+    child: MaterialApp.router(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      theme: AppTheme.dark,
+      routerConfig: router,
+    ),
   );
 }
 

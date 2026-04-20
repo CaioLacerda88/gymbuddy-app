@@ -27,6 +27,7 @@ import 'package:gymbuddy_app/features/workouts/models/workout.dart';
 import 'package:gymbuddy_app/features/workouts/providers/workout_history_providers.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
+import '../../../helpers/test_material_app.dart';
 
 // ---------------------------------------------------------------------------
 // Stubs
@@ -200,7 +201,7 @@ Widget _build({
         analytics ?? const _FakeAnalyticsRepository(),
       ),
     ],
-    child: MaterialApp(
+    child: TestMaterialApp(
       theme: AppTheme.dark,
       // Wrap in Consumer to eagerly initialise workoutHistoryProvider so
       // the auto-fill loading guard doesn't block on first access.
@@ -558,7 +559,7 @@ void main() {
 
       // Tear down the screen. The dispose() hook should flush a single
       // event.
-      await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+      await tester.pumpWidget(const TestMaterialApp(home: SizedBox()));
       await tester.pumpAndSettle();
 
       final weekPlanSavedEvents = capturing.events
@@ -609,7 +610,7 @@ void main() {
         await tester.pumpAndSettle();
 
         // No edits — just unmount.
-        await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+        await tester.pumpWidget(const TestMaterialApp(home: SizedBox()));
         await tester.pumpAndSettle();
 
         final weekPlanSavedEvents = capturing.events

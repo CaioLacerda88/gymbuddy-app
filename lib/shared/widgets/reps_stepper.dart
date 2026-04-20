@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
+
 /// A reusable stepper widget for rep counts.
 ///
 /// Supports tap and long-press with progressive acceleration on the +/- buttons.
@@ -61,37 +63,40 @@ class _RepsStepperState extends State<RepsStepper> {
     final controller = TextEditingController(text: widget.value.toString());
     showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Enter reps'),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          autofocus: true,
-          onSubmitted: (text) {
-            final parsed = int.tryParse(text);
-            if (parsed != null && parsed >= 0) {
-              widget.onChanged(parsed);
-            }
-            Navigator.of(context).pop();
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              final parsed = int.tryParse(controller.text);
+      builder: (dialogCtx) {
+        final l10n = AppLocalizations.of(dialogCtx);
+        return AlertDialog(
+          title: Text(l10n.enterReps),
+          content: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            autofocus: true,
+            onSubmitted: (text) {
+              final parsed = int.tryParse(text);
               if (parsed != null && parsed >= 0) {
                 widget.onChanged(parsed);
               }
-              Navigator.of(context).pop();
+              Navigator.of(dialogCtx).pop();
             },
-            child: const Text('OK'),
           ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(),
+              child: Text(l10n.cancel),
+            ),
+            TextButton(
+              onPressed: () {
+                final parsed = int.tryParse(controller.text);
+                if (parsed != null && parsed >= 0) {
+                  widget.onChanged(parsed);
+                }
+                Navigator.of(dialogCtx).pop();
+              },
+              child: Text(l10n.ok),
+            ),
+          ],
+        );
+      },
     );
   }
 

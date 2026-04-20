@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/shared/widgets/async_value_builder.dart';
+import '../../../helpers/test_material_app.dart';
 
 void main() {
   group('AsyncValueBuilder', () {
@@ -9,7 +10,7 @@ void main() {
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(
-        MaterialApp(
+        TestMaterialApp(
           home: Scaffold(
             body: AsyncValueBuilder<String>(
               value: const AsyncLoading(),
@@ -26,7 +27,7 @@ void main() {
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(
-        MaterialApp(
+        TestMaterialApp(
           home: Scaffold(
             body: AsyncValueBuilder<String>(
               value: const AsyncData('Hello'),
@@ -43,7 +44,7 @@ void main() {
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(
-        MaterialApp(
+        TestMaterialApp(
           home: Scaffold(
             body: AsyncValueBuilder<String>(
               value: AsyncError(Exception('Oops'), StackTrace.current),
@@ -63,7 +64,7 @@ void main() {
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(
-        MaterialApp(
+        TestMaterialApp(
           home: Scaffold(
             body: AsyncValueBuilder<String>(
               value: const AsyncLoading(),
@@ -82,7 +83,7 @@ void main() {
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(
-        MaterialApp(
+        TestMaterialApp(
           home: Scaffold(
             body: AsyncValueBuilder<String>(
               value: AsyncError(Exception('Fail'), StackTrace.current),

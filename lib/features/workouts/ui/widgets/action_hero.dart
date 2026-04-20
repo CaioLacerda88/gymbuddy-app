@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/connectivity/connectivity_provider.dart';
 import '../../../../core/theme/radii.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../routines/models/routine.dart';
 import '../../../routines/providers/notifiers/routine_list_notifier.dart';
 import '../../../routines/ui/start_routine_action.dart';
@@ -111,9 +112,10 @@ class ActionHero extends ConsumerWidget {
     final isOnline = ref.read(isOnlineProvider);
     if (!isOnline) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(kOfflineStartWorkoutMessage)),
-        );
+        final l10n = AppLocalizations.of(context);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.offlineStartWorkout)));
       }
       return;
     }
@@ -172,12 +174,15 @@ class _ActivePlanHero extends ConsumerWidget {
     );
     if (routine == null) return const SizedBox.shrink();
 
+    final l10n = AppLocalizations.of(context);
     final durationMin = estimateRoutineDurationMinutes(routine);
-    final metadata =
-        '${routine.exercises.length} exercises \u00B7 ~$durationMin min';
+    final metadata = l10n.exerciseCountDuration(
+      routine.exercises.length,
+      durationMin,
+    );
 
     return _HeroBanner(
-      label: 'UP NEXT',
+      label: l10n.heroUpNext,
       headline: routine.name,
       subline: metadata,
       onTap: () => startRoutineWorkout(context, ref, routine),
@@ -227,13 +232,14 @@ class _LapsedHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _HeroBanner(
-          label: 'NO PLAN',
-          headline: 'Plan your week',
-          subline: 'Pick routines for the week',
+          label: l10n.heroNoPlan,
+          headline: l10n.planYourWeek,
+          subline: l10n.pickRoutinesForWeek,
           onTap: onPlanWeek,
           semanticsIdentifier: 'home-plan-your-week',
         ),
@@ -246,7 +252,7 @@ class _LapsedHero extends StatelessWidget {
             style: OutlinedButton.styleFrom(
               minimumSize: const Size(double.infinity, 48),
             ),
-            child: const Text('Quick workout'),
+            child: Text(l10n.quickWorkout),
           ),
         ),
       ],
@@ -265,11 +271,12 @@ class _WeekCompleteHero extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final total = ref.watch(totalBucketCountProvider);
     return _HeroBanner(
-      label: 'NEW WEEK',
-      headline: 'Start new week',
-      subline: total > 0 ? '$total of $total done' : null,
+      label: l10n.heroNewWeek,
+      headline: l10n.startNewWeek,
+      subline: total > 0 ? l10n.nOfNDone(total, total) : null,
       onTap: onTap,
       semanticsIdentifier: 'home-start-new-week',
     );
@@ -292,12 +299,15 @@ class _BeginnerCta extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final durationMin = estimateRoutineDurationMinutes(routine);
-    final stats =
-        '${routine.exercises.length} exercises \u00B7 ~$durationMin min';
+    final stats = l10n.exerciseCountDuration(
+      routine.exercises.length,
+      durationMin,
+    );
 
     return _HeroBanner(
-      label: 'YOUR FIRST WORKOUT',
+      label: l10n.heroYourFirstWorkout,
       headline: routine.name,
       subline: stats,
       onTap: onTap,

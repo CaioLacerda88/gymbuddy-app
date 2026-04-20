@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../l10n/app_localizations.dart';
 import '../../../profile/providers/profile_providers.dart';
 import '../../../weekly_plan/providers/suggested_next_provider.dart';
 import '../../../weekly_plan/providers/weekly_plan_provider.dart';
@@ -25,6 +26,7 @@ class HomeStatusLine extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final planAsync = ref.watch(weeklyPlanProvider);
 
     // Prefer committed values. During reload (AsyncLoading with previous data)
@@ -46,11 +48,13 @@ class HomeStatusLine extends ConsumerWidget {
           container: true,
           identifier: 'home-status-line',
           child: Text(
-            'Week complete \u2014 $total of $total done',
+            l10n.homeStatusWeekComplete(total),
             style: theme.textTheme.titleLarge?.copyWith(
               color: theme.colorScheme.primary,
               fontWeight: FontWeight.w700,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         );
       }
@@ -69,7 +73,7 @@ class HomeStatusLine extends ConsumerWidget {
                 ),
               ),
               TextSpan(
-                text: ' of $total this week',
+                text: l10n.homeStatusProgress(total),
                 style: theme.textTheme.titleLarge?.copyWith(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
                   fontWeight: FontWeight.w600,
@@ -77,6 +81,8 @@ class HomeStatusLine extends ConsumerWidget {
               ),
             ],
           ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
       );
     }
@@ -93,11 +99,13 @@ class HomeStatusLine extends ConsumerWidget {
         container: true,
         identifier: 'home-status-line',
         child: Text(
-          'No plan this week',
+          l10n.noPlanThisWeek,
           style: theme.textTheme.titleMedium?.copyWith(
             color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
             fontWeight: FontWeight.w600,
           ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
       );
     }
@@ -111,7 +119,12 @@ class HomeStatusLine extends ConsumerWidget {
     return Semantics(
       container: true,
       identifier: 'home-status-line',
-      child: Text(displayName, style: theme.textTheme.headlineMedium),
+      child: Text(
+        displayName,
+        style: theme.textTheme.headlineMedium,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
     );
   }
 }

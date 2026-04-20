@@ -24,6 +24,7 @@ import 'package:gymbuddy_app/features/workouts/providers/workout_providers.dart'
 import 'package:gymbuddy_app/features/workouts/ui/active_workout_screen.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:wakelock_plus_platform_interface/wakelock_plus_platform_interface.dart';
+import '../../../../helpers/test_material_app.dart';
 
 // ---------------------------------------------------------------------------
 // Fake platform interface
@@ -150,7 +151,10 @@ Widget _buildWithState(ActiveWorkoutState state) {
         (ref, startedAt) => Stream.value(const Duration(minutes: 5)),
       ),
     ],
-    child: MaterialApp(theme: AppTheme.dark, home: const ActiveWorkoutScreen()),
+    child: TestMaterialApp(
+      theme: AppTheme.dark,
+      home: const ActiveWorkoutScreen(),
+    ),
   );
 }
 
@@ -205,7 +209,7 @@ void main() {
 
       // Replace the whole tree with a blank scaffold to force dispose().
       await tester.pumpWidget(
-        const MaterialApp(home: Scaffold(body: SizedBox.shrink())),
+        const TestMaterialApp(home: Scaffold(body: SizedBox.shrink())),
       );
       await tester.pump();
 
@@ -234,7 +238,7 @@ void main() {
 
         // Unmount should also stay quiet.
         await tester.pumpWidget(
-          const MaterialApp(home: Scaffold(body: SizedBox.shrink())),
+          const TestMaterialApp(home: Scaffold(body: SizedBox.shrink())),
         );
         await tester.pump();
         expect(tester.takeException(), isNull);

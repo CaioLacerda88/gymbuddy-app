@@ -16,6 +16,7 @@ import 'package:gymbuddy_app/features/workouts/providers/workout_history_provide
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
+import '../../../../helpers/test_material_app.dart';
 
 class MockAuthRepository extends Mock implements AuthRepository {
   @override
@@ -41,7 +42,7 @@ Widget _buildProfileScreen({
       workoutCountProvider.overrideWith((ref) => Future.value(workoutCount)),
       prCountProvider.overrideWith((ref) => Future.value(prCount)),
     ],
-    child: MaterialApp(
+    child: TestMaterialApp(
       theme: AppTheme.dark,
       home: const Scaffold(body: ProfileScreen()),
     ),

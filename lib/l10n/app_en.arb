@@ -34,6 +34,30 @@
   "@create": { "description": "Create button label" },
   "add": "Add",
   "@add": { "description": "Add button label" },
+  "skip": "Skip",
+  "@skip": { "description": "Skip button label" },
+  "back": "Back",
+  "@back": { "description": "Back button label" },
+  "close": "Close",
+  "@close": { "description": "Close button label" },
+  "start": "Start",
+  "@start": { "description": "Start action label" },
+  "remove": "Remove",
+  "@remove": { "description": "Remove button label" },
+  "discard": "Discard",
+  "@discard": { "description": "Discard button label" },
+  "resume": "Resume",
+  "@resume": { "description": "Resume button label" },
+  "clear": "Clear",
+  "@clear": { "description": "Clear button label" },
+  "replace": "Replace",
+  "@replace": { "description": "Replace button label" },
+  "undo": "Undo",
+  "@undo": { "description": "Undo action label" },
+  "all": "All",
+  "@all": { "description": "All filter label" },
+  "or": "OR",
+  "@or": { "description": "Separator between login methods" },
 
   "loading": "Loading...",
   "@loading": { "description": "Generic loading indicator text" },
@@ -97,6 +121,1051 @@
   "monthsAgo": "{count} months ago",
   "@monthsAgo": {
     "description": "Relative date: N months ago",
+    "placeholders": {
+      "count": { "type": "int", "example": "3" }
+    }
+  },
+
+  "muscleGroupChest": "Chest",
+  "@muscleGroupChest": { "description": "Muscle group: chest" },
+  "muscleGroupBack": "Back",
+  "@muscleGroupBack": { "description": "Muscle group: back" },
+  "muscleGroupLegs": "Legs",
+  "@muscleGroupLegs": { "description": "Muscle group: legs" },
+  "muscleGroupShoulders": "Shoulders",
+  "@muscleGroupShoulders": { "description": "Muscle group: shoulders" },
+  "muscleGroupArms": "Arms",
+  "@muscleGroupArms": { "description": "Muscle group: arms" },
+  "muscleGroupCore": "Core",
+  "@muscleGroupCore": { "description": "Muscle group: core" },
+  "muscleGroupCardio": "Cardio",
+  "@muscleGroupCardio": { "description": "Muscle group: cardio" },
+
+  "equipmentBarbell": "Barbell",
+  "@equipmentBarbell": { "description": "Equipment type: barbell" },
+  "equipmentDumbbell": "Dumbbell",
+  "@equipmentDumbbell": { "description": "Equipment type: dumbbell" },
+  "equipmentCable": "Cable",
+  "@equipmentCable": { "description": "Equipment type: cable" },
+  "equipmentMachine": "Machine",
+  "@equipmentMachine": { "description": "Equipment type: machine" },
+  "equipmentBodyweight": "Bodyweight",
+  "@equipmentBodyweight": { "description": "Equipment type: bodyweight" },
+  "equipmentBands": "Bands",
+  "@equipmentBands": { "description": "Equipment type: bands" },
+  "equipmentKettlebell": "Kettlebell",
+  "@equipmentKettlebell": { "description": "Equipment type: kettlebell" },
+
+  "setTypeWorking": "Working",
+  "@setTypeWorking": { "description": "Set type: working set" },
+  "setTypeWarmup": "Warm-up",
+  "@setTypeWarmup": { "description": "Set type: warm-up" },
+  "setTypeDropset": "Drop Set",
+  "@setTypeDropset": { "description": "Set type: drop set" },
+  "setTypeFailure": "To Failure",
+  "@setTypeFailure": { "description": "Set type: to failure" },
+
+  "recordTypeMaxWeight": "Max Weight",
+  "@recordTypeMaxWeight": { "description": "Record type: max weight" },
+  "recordTypeMaxReps": "Max Reps",
+  "@recordTypeMaxReps": { "description": "Record type: max reps" },
+  "recordTypeMaxVolume": "Max Volume",
+  "@recordTypeMaxVolume": { "description": "Record type: max volume" },
+
+  "weightUnitKg": "KG",
+  "@weightUnitKg": { "description": "Weight unit: kilograms (display)" },
+  "weightUnitLbs": "LBS",
+  "@weightUnitLbs": { "description": "Weight unit: pounds (display)" },
+
+  "appName": "GymBuddy",
+  "@appName": { "description": "Application name" },
+  "welcomeBack": "Welcome back",
+  "@welcomeBack": { "description": "Login screen subtitle for existing users" },
+  "createYourAccount": "Create your account",
+  "@createYourAccount": { "description": "Login screen subtitle for new users" },
+  "emailRequired": "Email is required",
+  "@emailRequired": { "description": "Email validation error: empty" },
+  "emailInvalid": "Enter a valid email",
+  "@emailInvalid": { "description": "Email validation error: invalid format" },
+  "passwordRequired": "Password is required",
+  "@passwordRequired": { "description": "Password validation error: empty" },
+  "passwordTooShort": "Password must be at least 6 characters",
+  "@passwordTooShort": { "description": "Password validation error: too short" },
+  "forgotPasswordHint": "Enter your email above, then tap \"Forgot password?\"",
+  "@forgotPasswordHint": { "description": "Hint when forgot password tapped without email" },
+  "resetPassword": "Reset Password",
+  "@resetPassword": { "description": "Reset password dialog title" },
+  "sendResetEmailTo": "Send a password reset email to {email}?",
+  "@sendResetEmailTo": {
+    "description": "Reset password confirmation message",
+    "placeholders": {
+      "email": { "type": "String", "example": "user@example.com" }
+    }
+  },
+  "resetEmailSent": "Password reset email sent. Check your inbox.",
+  "@resetEmailSent": { "description": "Snackbar after password reset email sent" },
+  "continueWithGoogle": "Continue with Google",
+  "@continueWithGoogle": { "description": "Google sign-in button label" },
+  "alreadyHaveAccount": "Already have an account? Log in",
+  "@alreadyHaveAccount": { "description": "Toggle to login mode" },
+  "dontHaveAccount": "Don't have an account? Sign up",
+  "@dontHaveAccount": { "description": "Toggle to signup mode" },
+  "legalAgreePrefix": "By continuing, you agree to our ",
+  "@legalAgreePrefix": { "description": "Legal footer prefix text" },
+  "termsOfService": "Terms of Service",
+  "@termsOfService": { "description": "Terms of Service link text" },
+  "andSeparator": " and ",
+  "@andSeparator": { "description": "Legal footer and separator" },
+  "privacyPolicy": "Privacy Policy",
+  "@privacyPolicy": { "description": "Privacy Policy link text" },
+
+  "authErrorInvalidCredentials": "Wrong email or password. Please try again.",
+  "@authErrorInvalidCredentials": { "description": "Auth error: invalid credentials" },
+  "authErrorEmailNotConfirmed": "Please check your inbox and confirm your email first.",
+  "@authErrorEmailNotConfirmed": { "description": "Auth error: email not confirmed" },
+  "authErrorAlreadyRegistered": "An account with this email already exists. Try logging in instead.",
+  "@authErrorAlreadyRegistered": { "description": "Auth error: already registered" },
+  "authErrorRateLimit": "Too many attempts. Please wait a moment and try again.",
+  "@authErrorRateLimit": { "description": "Auth error: rate limited" },
+  "authErrorWeakPassword": "Password is too weak. Use at least 6 characters.",
+  "@authErrorWeakPassword": { "description": "Auth error: weak password" },
+  "authErrorNetwork": "No internet connection. Check your network and try again.",
+  "@authErrorNetwork": { "description": "Auth error: network issue" },
+  "authErrorTimeout": "Request timed out. Please try again.",
+  "@authErrorTimeout": { "description": "Auth error: timeout" },
+  "authErrorTokenExpired": "The confirmation link has expired. Please request a new one.",
+  "@authErrorTokenExpired": { "description": "Auth error: expired token/OTP" },
+  "authErrorGeneric": "Something went wrong. Please try again.",
+  "@authErrorGeneric": { "description": "Auth error: generic fallback" },
+
+  "checkYourInbox": "Check your inbox",
+  "@checkYourInbox": { "description": "Email confirmation screen title" },
+  "confirmationSentTo": "We sent a confirmation email to",
+  "@confirmationSentTo": { "description": "Confirmation email sent to specific address" },
+  "confirmationSent": "We sent you a confirmation email",
+  "@confirmationSent": { "description": "Confirmation email sent (no address)" },
+  "tapLinkToVerify": "Tap the link in the email to verify your account, then come back and log in.",
+  "@tapLinkToVerify": { "description": "Instructions to verify email" },
+  "emailResent": "Email resent! Check your inbox.",
+  "@emailResent": { "description": "Confirmation when email resent" },
+  "backToLogin": "BACK TO LOGIN",
+  "@backToLogin": { "description": "Back to login button" },
+  "didntReceiveResend": "Didn't receive it? Resend email",
+  "@didntReceiveResend": { "description": "Resend confirmation email link" },
+
+  "onboardingHeadline": "Track every rep,\nevery time",
+  "@onboardingHeadline": { "description": "Onboarding welcome headline" },
+  "onboardingSubtitle": "Log workouts, crush personal records, and build the physique you want.",
+  "@onboardingSubtitle": { "description": "Onboarding welcome subtitle" },
+  "getStarted": "GET STARTED",
+  "@getStarted": { "description": "Onboarding get started button" },
+  "setupProfile": "Set up your profile",
+  "@setupProfile": { "description": "Profile setup page title" },
+  "tellUsAboutYourself": "Tell us a bit about yourself",
+  "@tellUsAboutYourself": { "description": "Profile setup subtitle" },
+  "displayName": "Display name",
+  "@displayName": { "description": "Display name field label" },
+  "fitnessLevel": "Fitness level",
+  "@fitnessLevel": { "description": "Fitness level section label" },
+  "howOftenTrain": "How often do you plan to train?",
+  "@howOftenTrain": { "description": "Training frequency question" },
+  "weeklyGoalHint": "Your weekly goal \u2014 you can change this anytime",
+  "@weeklyGoalHint": { "description": "Weekly goal hint text" },
+  "letsGo": "LET'S GO",
+  "@letsGo": { "description": "Finish onboarding button" },
+  "pleaseEnterName": "Please enter your name.",
+  "@pleaseEnterName": { "description": "Validation: name required on onboarding" },
+  "failedToSaveProfile": "Failed to save profile. Please try again.",
+  "@failedToSaveProfile": { "description": "Snackbar: profile save failed" },
+  "fitnessLevelBeginner": "Beginner",
+  "@fitnessLevelBeginner": { "description": "Fitness level: beginner" },
+  "fitnessLevelIntermediate": "Intermediate",
+  "@fitnessLevelIntermediate": { "description": "Fitness level: intermediate" },
+  "fitnessLevelAdvanced": "Advanced",
+  "@fitnessLevelAdvanced": { "description": "Fitness level: advanced" },
+
+  "homeStatusWeekComplete": "Week complete \u2014 {count} of {count} done",
+  "@homeStatusWeekComplete": {
+    "description": "Home status line when week is complete",
+    "placeholders": {
+      "count": { "type": "int", "example": "4" }
+    }
+  },
+  "homeStatusProgress": " of {total} this week",
+  "@homeStatusProgress": {
+    "description": "Home status line suffix showing weekly progress",
+    "placeholders": {
+      "total": { "type": "int", "example": "4" }
+    }
+  },
+  "noPlanThisWeek": "No plan this week",
+  "@noPlanThisWeek": { "description": "Home status: no active plan" },
+  "samePlanThisWeek": "Same plan this week?",
+  "@samePlanThisWeek": { "description": "Confirmation banner question" },
+  "myRoutines": "MY ROUTINES",
+  "@myRoutines": { "description": "Section header for user's routines on home" },
+  "seeAll": "See all",
+  "@seeAll": { "description": "Link to see all routines" },
+  "createYourFirstRoutine": "Create Your First Routine",
+  "@createYourFirstRoutine": { "description": "CTA for first routine creation" },
+
+  "heroUpNext": "UP NEXT",
+  "@heroUpNext": { "description": "Action hero label: up next" },
+  "heroYourFirstWorkout": "YOUR FIRST WORKOUT",
+  "@heroYourFirstWorkout": { "description": "Action hero label: first workout" },
+  "heroNoPlan": "NO PLAN",
+  "@heroNoPlan": { "description": "Action hero label: no plan" },
+  "heroNewWeek": "NEW WEEK",
+  "@heroNewWeek": { "description": "Action hero label: new week" },
+  "planYourWeek": "Plan your week",
+  "@planYourWeek": { "description": "Action hero headline: plan your week" },
+  "pickRoutinesForWeek": "Pick routines for the week",
+  "@pickRoutinesForWeek": { "description": "Action hero subline: pick routines" },
+  "quickWorkout": "Quick workout",
+  "@quickWorkout": { "description": "Quick workout button" },
+  "startNewWeek": "Start new week",
+  "@startNewWeek": { "description": "Start new week headline" },
+  "nOfNDone": "{completed} of {total} done",
+  "@nOfNDone": {
+    "description": "Completed count subline",
+    "placeholders": {
+      "completed": { "type": "int", "example": "3" },
+      "total": { "type": "int", "example": "4" }
+    }
+  },
+  "exerciseCountDuration": "{count} exercises \u00B7 ~{minutes} min",
+  "@exerciseCountDuration": {
+    "description": "Exercise count and estimated duration",
+    "placeholders": {
+      "count": { "type": "int", "example": "5" },
+      "minutes": { "type": "int", "example": "45" }
+    }
+  },
+  "offlineStartWorkout": "Starting a workout requires an internet connection",
+  "@offlineStartWorkout": { "description": "Snackbar: offline start workout blocked" },
+  "couldNotLoadExercises": "Could not load exercises. Please try again.",
+  "@couldNotLoadExercises": { "description": "Snackbar: exercise load failure for routine" },
+
+  "lastSessionPrefix": "Last: ",
+  "@lastSessionPrefix": { "description": "Prefix for last session line on home" },
+
+  "exercises": "Exercises",
+  "@exercises": { "description": "Exercises screen title" },
+  "searchExercises": "Search exercises...",
+  "@searchExercises": { "description": "Search exercises placeholder" },
+  "noExercisesMatchFilters": "No exercises match your filters",
+  "@noExercisesMatchFilters": { "description": "Empty state: filters active, no results" },
+  "yourExercisesWillAppear": "Your exercises will appear here",
+  "@yourExercisesWillAppear": { "description": "Empty state: no exercises at all" },
+  "clearFilters": "Clear Filters",
+  "@clearFilters": { "description": "Clear filters button" },
+  "createExercise": "Create Exercise",
+  "@createExercise": { "description": "Create exercise button" },
+
+  "exerciseDetails": "Exercise Details",
+  "@exerciseDetails": { "description": "Exercise detail screen title" },
+  "failedToLoadExercise": "Failed to load exercise",
+  "@failedToLoadExercise": { "description": "Error loading exercise detail" },
+  "customExercise": "Custom exercise",
+  "@customExercise": { "description": "Badge for user-created exercises" },
+  "personalRecords": "Personal Records",
+  "@personalRecords": { "description": "Section header: personal records" },
+  "noRecordsYet": "No records yet",
+  "@noRecordsYet": { "description": "Empty state: no personal records" },
+  "deleteExercise": "Delete Exercise",
+  "@deleteExercise": { "description": "Delete exercise button/dialog title" },
+  "deleteExerciseConfirm": "Are you sure you want to delete \"{name}\"?",
+  "@deleteExerciseConfirm": {
+    "description": "Delete exercise confirmation message",
+    "placeholders": {
+      "name": { "type": "String", "example": "Bench Press" }
+    }
+  },
+  "deleting": "Deleting...",
+  "@deleting": { "description": "Deleting state label" },
+  "imageStart": "Start",
+  "@imageStart": { "description": "Exercise image label: start position" },
+  "imageEnd": "End",
+  "@imageEnd": { "description": "Exercise image label: end position" },
+  "repsUnit": "{count} reps",
+  "@repsUnit": {
+    "description": "Reps display with count",
+    "placeholders": {
+      "count": { "type": "int", "example": "12" }
+    }
+  },
+
+  "exerciseName": "Exercise Name",
+  "@exerciseName": { "description": "Exercise name field label" },
+  "nameRequired": "Name is required",
+  "@nameRequired": { "description": "Validation: name required" },
+  "nameTooShort": "Name must be at least 2 characters",
+  "@nameTooShort": { "description": "Validation: name too short" },
+  "muscleGroup": "Muscle Group",
+  "@muscleGroup": { "description": "Muscle group section label" },
+  "equipmentType": "Equipment Type",
+  "@equipmentType": { "description": "Equipment type section label" },
+  "selectMuscleAndEquipment": "Please select a muscle group and equipment type",
+  "@selectMuscleAndEquipment": { "description": "Validation: muscle+equipment required" },
+  "sessionExpired": "Session expired. Please log in again.",
+  "@sessionExpired": { "description": "Session expired snackbar" },
+  "exerciseCreated": "Exercise created successfully",
+  "@exerciseCreated": { "description": "Snackbar: exercise created" },
+  "createExerciseButton": "CREATE EXERCISE",
+  "@createExerciseButton": { "description": "Create exercise submit button" },
+  "description": "Description",
+  "@description": { "description": "Description field label" },
+  "descriptionHint": "Brief description of the exercise (optional)",
+  "@descriptionHint": { "description": "Description field hint" },
+  "formTips": "Form Tips",
+  "@formTips": { "description": "Form tips field label" },
+  "formTipsHint": "Form cues, one per line (optional)",
+  "@formTipsHint": { "description": "Form tips field hint" },
+  "formTipsHelper": "Enter each tip on a new line",
+  "@formTipsHelper": { "description": "Form tips field helper text" },
+  "aboutSection": "ABOUT",
+  "@aboutSection": { "description": "Exercise detail about section header" },
+  "formTipsSection": "FORM TIPS",
+  "@formTipsSection": { "description": "Exercise detail form tips section header" },
+
+  "finishWorkout": "Finish Workout",
+  "@finishWorkout": { "description": "Finish workout button" },
+  "completeOneSet": "Complete at least one set to finish",
+  "@completeOneSet": { "description": "Hint: need completed set to finish" },
+  "addFirstExercise": "Add your first exercise",
+  "@addFirstExercise": { "description": "Empty workout: add exercise prompt" },
+  "tapButtonToStart": "Tap the button below to get started",
+  "@tapButtonToStart": { "description": "Empty workout: add exercise hint" },
+  "addExercise": "Add Exercise",
+  "@addExercise": { "description": "Add exercise button" },
+  "addSet": "Add Set",
+  "@addSet": { "description": "Add set button" },
+  "fillRemaining": "Fill remaining",
+  "@fillRemaining": { "description": "Fill remaining sets button" },
+  "filledRemainingSets": "Filled remaining sets",
+  "@filledRemainingSets": { "description": "Snackbar: filled remaining sets" },
+  "removeExerciseTitle": "Remove Exercise?",
+  "@removeExerciseTitle": { "description": "Remove exercise dialog title" },
+  "removeExerciseContent": "Remove {name} and all its sets?",
+  "@removeExerciseContent": {
+    "description": "Remove exercise dialog content",
+    "placeholders": {
+      "name": { "type": "String", "example": "Bench Press" }
+    }
+  },
+  "failedToDiscardWorkout": "Failed to discard workout. Please retry.",
+  "@failedToDiscardWorkout": { "description": "Snackbar: discard workout failed" },
+  "failedToSaveWorkout": "Failed to save workout. Please retry.",
+  "@failedToSaveWorkout": { "description": "Snackbar: save workout failed" },
+  "workoutSavedOffline": "Workout saved. Will sync when back online.",
+  "@workoutSavedOffline": { "description": "Snackbar: workout saved offline" },
+  "setColumnSet": "SET",
+  "@setColumnSet": { "description": "Set column header: set number" },
+  "setColumnWeight": "WEIGHT",
+  "@setColumnWeight": { "description": "Set column header: weight" },
+  "setColumnReps": "REPS",
+  "@setColumnReps": { "description": "Set column header: reps" },
+  "setColumnType": "TYPE",
+  "@setColumnType": { "description": "Set column header: type (read-only detail)" },
+  "setDeleted": "Set {number} deleted",
+  "@setDeleted": {
+    "description": "Snackbar: set deleted",
+    "placeholders": {
+      "number": { "type": "int", "example": "3" }
+    }
+  },
+  "previousSet": "Previous: {weight}{unit} \u00d7 {reps}",
+  "@previousSet": {
+    "description": "Previous session set hint",
+    "placeholders": {
+      "weight": { "type": "String", "example": "80" },
+      "unit": { "type": "String", "example": "kg" },
+      "reps": { "type": "int", "example": "10" }
+    }
+  },
+
+  "discardWorkoutTitle": "Discard Workout?",
+  "@discardWorkoutTitle": { "description": "Discard workout dialog title" },
+  "discardWorkoutContent": "You've been working out for {duration}. This cannot be undone.",
+  "@discardWorkoutContent": {
+    "description": "Discard workout dialog content",
+    "placeholders": {
+      "duration": { "type": "String", "example": "45m 12s" }
+    }
+  },
+
+  "finishWorkoutTitle": "Finish Workout?",
+  "@finishWorkoutTitle": { "description": "Finish workout dialog title" },
+  "incompleteSetsWarning": "{count, plural, =1{You have 1 incomplete set} other{You have {count} incomplete sets}}",
+  "@incompleteSetsWarning": {
+    "description": "Warning about incomplete sets",
+    "placeholders": {
+      "count": { "type": "int", "example": "3" }
+    }
+  },
+  "addNotesHint": "Add notes (optional)",
+  "@addNotesHint": { "description": "Workout notes hint" },
+  "keepGoing": "Keep Going",
+  "@keepGoing": { "description": "Keep going button in finish dialog" },
+  "saveAndFinish": "Save & Finish",
+  "@saveAndFinish": { "description": "Save and finish button" },
+
+  "resumeWorkoutTitle": "Resume workout?",
+  "@resumeWorkoutTitle": { "description": "Resume workout dialog title" },
+  "resumeWorkoutStaleTitle": "Pick up where you left off?",
+  "@resumeWorkoutStaleTitle": { "description": "Resume stale workout dialog title" },
+  "workoutInProgress": "\"{name}\" is still in progress.",
+  "@workoutInProgress": {
+    "description": "Resume dialog: workout in progress",
+    "placeholders": {
+      "name": { "type": "String", "example": "Push Day" }
+    }
+  },
+  "workoutInterrupted": "was interrupted {age}.",
+  "@workoutInterrupted": {
+    "description": "Resume dialog: stale workout interrupted info",
+    "placeholders": {
+      "age": { "type": "String", "example": "yesterday at 3:30 PM" }
+    }
+  },
+  "resumeAnyway": "Resume anyway",
+  "@resumeAnyway": { "description": "Resume anyway button for stale workouts" },
+
+  "restTimerLabel": "Rest",
+  "@restTimerLabel": { "description": "Rest timer default exercise name" },
+  "restTimerRemaining": "Rest timer: {time} remaining",
+  "@restTimerRemaining": {
+    "description": "Rest timer semantics label",
+    "placeholders": {
+      "time": { "type": "String", "example": "1:30" }
+    }
+  },
+  "subtract30Semantics": "Subtract 30 seconds",
+  "@subtract30Semantics": { "description": "Rest timer -30s button semantics" },
+  "add30Semantics": "Add 30 seconds",
+  "@add30Semantics": { "description": "Rest timer +30s button semantics" },
+  "skipRestSemantics": "Skip rest timer",
+  "@skipRestSemantics": { "description": "Rest timer skip button semantics" },
+  "tapToDismiss": "Tap anywhere to dismiss",
+  "@tapToDismiss": { "description": "Rest timer dismiss hint" },
+
+  "lessThanAnHourAgo": "less than an hour ago",
+  "@lessThanAnHourAgo": { "description": "Resume age: less than 1 hour" },
+  "hoursAgo": "{count, plural, =1{1 hour ago} other{{count} hours ago}}",
+  "@hoursAgo": {
+    "description": "Resume age: N hours ago",
+    "placeholders": {
+      "count": { "type": "int", "example": "3" }
+    }
+  },
+  "yesterdayAt": "yesterday at {time}",
+  "@yesterdayAt": {
+    "description": "Resume age: yesterday at time",
+    "placeholders": {
+      "time": { "type": "String", "example": "2:30 PM" }
+    }
+  },
+  "weekdayAt": "{weekday} at {time}",
+  "@weekdayAt": {
+    "description": "Resume age: weekday at time",
+    "placeholders": {
+      "weekday": { "type": "String", "example": "Monday" },
+      "time": { "type": "String", "example": "2:30 PM" }
+    }
+  },
+
+  "history": "History",
+  "@history": { "description": "Workout history screen title" },
+  "failedToLoadHistory": "Failed to load history",
+  "@failedToLoadHistory": { "description": "Error loading workout history" },
+  "noWorkoutsYet": "No workouts yet",
+  "@noWorkoutsYet": { "description": "Empty history: title" },
+  "completedWorkoutsAppear": "Your completed workouts will appear here",
+  "@completedWorkoutsAppear": { "description": "Empty history: subtitle" },
+  "startFirstWorkout": "Start your first workout",
+  "@startFirstWorkout": { "description": "Empty history: CTA" },
+  "failedToLoadWorkout": "Failed to load workout",
+  "@failedToLoadWorkout": { "description": "Error loading workout detail" },
+  "workout": "Workout",
+  "@workout": { "description": "Workout generic label" },
+  "exerciseGeneric": "Exercise",
+  "@exerciseGeneric": { "description": "Fallback exercise name when name is null" },
+  "notes": "Notes",
+  "@notes": { "description": "Notes section label" },
+  "totalVolume": "Total Volume: {volume}",
+  "@totalVolume": {
+    "description": "Total volume footer in workout detail",
+    "placeholders": {
+      "volume": { "type": "String", "example": "1,234 kg" }
+    }
+  },
+
+  "routines": "Routines",
+  "@routines": { "description": "Routines screen title" },
+  "failedToLoadRoutines": "Failed to load routines",
+  "@failedToLoadRoutines": { "description": "Error loading routines" },
+  "myRoutinesSection": "MY ROUTINES",
+  "@myRoutinesSection": { "description": "Section header: my routines" },
+  "starterRoutinesSection": "STARTER ROUTINES",
+  "@starterRoutinesSection": { "description": "Section header: starter routines" },
+  "noCustomRoutines": "No custom routines yet. Tap + to create one.",
+  "@noCustomRoutines": { "description": "Empty state: no custom routines" },
+
+  "createRoutine": "Create Routine",
+  "@createRoutine": { "description": "Create routine screen title" },
+  "editRoutine": "Edit Routine",
+  "@editRoutine": { "description": "Edit routine screen title" },
+  "routineName": "Routine name",
+  "@routineName": { "description": "Routine name field hint" },
+  "failedToSaveRoutine": "Failed to save routine. Please retry.",
+  "@failedToSaveRoutine": { "description": "Snackbar: routine save failed" },
+  "setsLabel": "Sets",
+  "@setsLabel": { "description": "Sets label in routine exercise card" },
+  "restLabel": "Rest",
+  "@restLabel": { "description": "Rest label in routine exercise card" },
+
+  "duplicateAndEdit": "Duplicate and Edit",
+  "@duplicateAndEdit": { "description": "Routine action: duplicate and edit" },
+  "deleteRoutine": "Delete Routine",
+  "@deleteRoutine": { "description": "Delete routine dialog title" },
+  "deleteRoutineConfirm": "Delete \"{name}\"? This cannot be undone.",
+  "@deleteRoutineConfirm": {
+    "description": "Delete routine confirmation",
+    "placeholders": {
+      "name": { "type": "String", "example": "Push Day" }
+    }
+  },
+  "exercisesCount": "{count, plural, =1{1 exercise} other{{count} exercises}}",
+  "@exercisesCount": {
+    "description": "Number of exercises",
+    "placeholders": {
+      "count": { "type": "int", "example": "5" }
+    }
+  },
+
+  "profile": "Profile",
+  "@profile": { "description": "Profile screen title" },
+  "gymUser": "Gym User",
+  "@gymUser": { "description": "Default display name" },
+  "editDisplayName": "Edit Display Name",
+  "@editDisplayName": { "description": "Edit name dialog title" },
+  "enterYourName": "Enter your name",
+  "@enterYourName": { "description": "Edit name field hint" },
+  "workouts": "Workouts",
+  "@workouts": { "description": "Workouts stat label" },
+  "memberSince": "Member since",
+  "@memberSince": { "description": "Member since stat label" },
+  "weightUnit": "Weight Unit",
+  "@weightUnit": { "description": "Weight unit section label" },
+  "weeklyGoal": "Weekly Goal",
+  "@weeklyGoal": { "description": "Weekly goal section label" },
+  "dataManagement": "DATA MANAGEMENT",
+  "@dataManagement": { "description": "Section header: data management" },
+  "manageData": "Manage Data",
+  "@manageData": { "description": "Manage data link" },
+  "legal": "LEGAL",
+  "@legal": { "description": "Section header: legal" },
+  "sendCrashReports": "Send crash reports",
+  "@sendCrashReports": { "description": "Crash reports toggle title" },
+  "crashReportsSubtitle": "Help improve GymBuddy by sending anonymous crash data.",
+  "@crashReportsSubtitle": { "description": "Crash reports toggle subtitle" },
+  "logOutConfirm": "Are you sure you want to log out?",
+  "@logOutConfirm": { "description": "Log out confirmation message" },
+
+  "manageDataTitle": "Manage Data",
+  "@manageDataTitle": { "description": "Manage data screen title" },
+  "deleteWorkoutHistory": "Delete Workout History",
+  "@deleteWorkoutHistory": { "description": "Delete history tile title" },
+  "workoutsWillBeRemoved": "{count} workouts will be removed",
+  "@workoutsWillBeRemoved": {
+    "description": "Delete history subtitle — count is pre-formatted (may be '...' during loading)",
+    "placeholders": {
+      "count": { "type": "String", "example": "12" }
+    }
+  },
+  "resetAllAccountData": "Reset All Account Data",
+  "@resetAllAccountData": { "description": "Reset all data tile title" },
+  "resetAllSubtitle": "Removes everything. Permanent.",
+  "@resetAllSubtitle": { "description": "Reset all data subtitle" },
+  "deleteAccount": "Delete Account",
+  "@deleteAccount": { "description": "Delete account tile title/dialog title" },
+  "deleteAccountSubtitle": "Permanently delete your account and all data",
+  "@deleteAccountSubtitle": { "description": "Delete account subtitle" },
+  "deleteAllHistoryTitle": "Delete all workout history?",
+  "@deleteAllHistoryTitle": { "description": "Delete history dialog title" },
+  "deleteAllHistoryContent": "This will permanently delete all {count} workouts and cannot be undone.",
+  "@deleteAllHistoryContent": {
+    "description": "Delete history dialog content",
+    "placeholders": {
+      "count": { "type": "int", "example": "12" }
+    }
+  },
+  "deleteHistoryButton": "Delete History",
+  "@deleteHistoryButton": { "description": "Delete history confirm button" },
+  "areYouSure": "Are you sure?",
+  "@areYouSure": { "description": "Double confirm dialog title" },
+  "yesDelete": "Yes, Delete",
+  "@yesDelete": { "description": "Double confirm delete button" },
+  "historyCleared": "Workout history cleared",
+  "@historyCleared": { "description": "Snackbar: history cleared" },
+  "failedToClearHistory": "Failed to clear history: {message}",
+  "@failedToClearHistory": {
+    "description": "Snackbar: clear history failed",
+    "placeholders": {
+      "message": { "type": "String", "example": "Server error" }
+    }
+  },
+  "resetAccountData": "Reset Account Data",
+  "@resetAccountData": { "description": "Reset account data dialog title" },
+  "resetAccountWarning": "This will permanently delete all workouts and personal records. Your routines and custom exercises will be kept. There is no undo.",
+  "@resetAccountWarning": { "description": "Reset account warning text" },
+  "typeResetToConfirm": "Type RESET to confirm",
+  "@typeResetToConfirm": { "description": "Reset confirmation instruction" },
+  "resetAccountButton": "Reset Account",
+  "@resetAccountButton": { "description": "Reset account confirm button" },
+  "accountDataReset": "Account data reset",
+  "@accountDataReset": { "description": "Snackbar: account data reset" },
+  "failedToResetData": "Failed to reset data: {message}",
+  "@failedToResetData": {
+    "description": "Snackbar: reset data failed",
+    "placeholders": {
+      "message": { "type": "String", "example": "Server error" }
+    }
+  },
+  "deleteAccountWarning": "This will permanently delete your account, all your workouts, personal records, routines, and custom exercises. This cannot be undone.",
+  "@deleteAccountWarning": { "description": "Delete account warning text" },
+  "typeDeleteToConfirm": "Type DELETE to confirm",
+  "@typeDeleteToConfirm": { "description": "Delete account confirmation instruction" },
+  "deleteAccountButton": "Delete Account",
+  "@deleteAccountButton": { "description": "Delete account confirm button" },
+  "failedToDeleteAccount": "Failed to delete account: {message}",
+  "@failedToDeleteAccount": {
+    "description": "Snackbar: delete account failed",
+    "placeholders": {
+      "message": { "type": "String", "example": "Server error" }
+    }
+  },
+  "prsRoutinesKept": "Your personal records and routines will be kept.",
+  "@prsRoutinesKept": { "description": "Delete history: second dialog content" },
+  "workoutHistorySection": "WORKOUT HISTORY",
+  "@workoutHistorySection": { "description": "Section header: workout history" },
+  "dangerSection": "DANGER",
+  "@dangerSection": { "description": "Section header: danger" },
+  "privacySection": "PRIVACY",
+  "@privacySection": { "description": "Section header: privacy" },
+  "prsLabel": "PRs",
+  "@prsLabel": { "description": "PRs stat label" },
+  "perWeekLabel": "{count}x per week",
+  "@perWeekLabel": {
+    "description": "Training frequency display",
+    "placeholders": {
+      "count": { "type": "int", "example": "3" }
+    }
+  },
+  "frequencyQuestion": "How many times per week do you want to train?",
+  "@frequencyQuestion": { "description": "Frequency picker question" },
+  "pleaseTryAgain": "Please try again.",
+  "@pleaseTryAgain": { "description": "Generic retry message" },
+
+  "personalRecordsTitle": "Personal Records",
+  "@personalRecordsTitle": { "description": "PR list screen title" },
+  "failedToLoadRecords": "Failed to load records",
+  "@failedToLoadRecords": { "description": "Error loading PR list" },
+  "noRecordsYetTitle": "No Records Yet",
+  "@noRecordsYetTitle": { "description": "Empty PR list: title" },
+  "completeWorkoutToTrack": "Complete a workout to start tracking records",
+  "@completeWorkoutToTrack": { "description": "Empty PR list: subtitle" },
+  "startWorkout": "Start Workout",
+  "@startWorkout": { "description": "Start workout CTA" },
+
+  "newPrHeading": "NEW PR",
+  "@newPrHeading": { "description": "PR celebration: new PR heading" },
+  "firstWorkoutComplete": "First Workout Complete!",
+  "@firstWorkoutComplete": { "description": "PR celebration: first workout title" },
+  "startingBenchmarks": "These are your starting benchmarks",
+  "@startingBenchmarks": { "description": "PR celebration: first workout subtitle" },
+  "unknownExercise": "Unknown Exercise",
+  "@unknownExercise": { "description": "Fallback exercise name" },
+
+  "thisWeeksPlan": "This Week's Plan",
+  "@thisWeeksPlan": { "description": "Plan management screen title" },
+  "moreOptions": "More options",
+  "@moreOptions": { "description": "Overflow menu tooltip" },
+  "autoFill": "Auto-fill",
+  "@autoFill": { "description": "Auto-fill menu option" },
+  "clearWeek": "Clear Week",
+  "@clearWeek": { "description": "Clear week menu option" },
+  "addRoutine": "Add Routine",
+  "@addRoutine": { "description": "Add routine row label" },
+  "plannedReadyToGo": "{count}/{total} planned \u2014 ready to go",
+  "@plannedReadyToGo": {
+    "description": "Plan progress: at soft cap",
+    "placeholders": {
+      "count": { "type": "int", "example": "3" },
+      "total": { "type": "int", "example": "3" }
+    }
+  },
+  "plannedThisWeek": "{count}/{total} planned this week",
+  "@plannedThisWeek": {
+    "description": "Plan progress: below soft cap",
+    "placeholders": {
+      "count": { "type": "int", "example": "2" },
+      "total": { "type": "int", "example": "3" }
+    }
+  },
+  "noRoutinesPlanned": "No routines planned this week",
+  "@noRoutinesPlanned": { "description": "Empty plan state" },
+  "addRoutines": "Add Routines",
+  "@addRoutines": { "description": "Add routines button" },
+  "replacePlanTitle": "Replace current plan?",
+  "@replacePlanTitle": { "description": "Auto-fill replace dialog title" },
+  "replacePlanContent": "Auto-fill will replace your current plan with your most-used routines.",
+  "@replacePlanContent": { "description": "Auto-fill replace dialog content" },
+  "clearWeekTitle": "Clear Week",
+  "@clearWeekTitle": { "description": "Clear week dialog title" },
+  "clearWeekContent": "Start fresh this week?",
+  "@clearWeekContent": { "description": "Clear week dialog content" },
+  "routineRemoved": "Routine removed",
+  "@routineRemoved": { "description": "Snackbar: routine removed from plan" },
+  "unknownRoutine": "Unknown Routine",
+  "@unknownRoutine": { "description": "Fallback routine name" },
+
+  "addRoutinesSheet": "Add Routines",
+  "@addRoutinesSheet": { "description": "Add routines sheet title" },
+  "allRoutinesInPlan": "All routines in plan",
+  "@allRoutinesInPlan": { "description": "All routines already in plan" },
+  "createMoreRoutines": "Create more routines to add them here.",
+  "@createMoreRoutines": { "description": "Hint: no more routines to add" },
+  "addCountRoutines": "{count, plural, =1{ADD 1 ROUTINE} other{ADD {count} ROUTINES}}",
+  "@addCountRoutines": {
+    "description": "Add N routines button label",
+    "placeholders": {
+      "count": { "type": "int", "example": "2" }
+    }
+  },
+
+  "weekComplete": "WEEK COMPLETE",
+  "@weekComplete": { "description": "Week review: complete header" },
+  "thisWeek": "THIS WEEK",
+  "@thisWeek": { "description": "Week review: in-progress header" },
+  "newWeekLink": "NEW WEEK",
+  "@newWeekLink": { "description": "Week review: new week link" },
+  "sessionsCount": "{count} sessions",
+  "@sessionsCount": {
+    "description": "Week review: session count",
+    "placeholders": {
+      "count": { "type": "int", "example": "4" }
+    }
+  },
+  "prsCount": "{count} PRs",
+  "@prsCount": {
+    "description": "Week review: PR count",
+    "placeholders": {
+      "count": { "type": "int", "example": "2" }
+    }
+  },
+
+  "addToPlanPrompt": "{name} isn't in your plan yet. Add it?",
+  "@addToPlanPrompt": {
+    "description": "Add routine to plan prompt",
+    "placeholders": {
+      "name": { "type": "String", "example": "Push Day" }
+    }
+  },
+
+  "syncFailureSingular": "Workout couldn't sync",
+  "@syncFailureSingular": { "description": "Sync failure: one workout" },
+  "syncFailurePlural": "{count} workouts couldn't sync",
+  "@syncFailurePlural": {
+    "description": "Sync failure: multiple workouts",
+    "placeholders": {
+      "count": { "type": "int", "example": "3" }
+    }
+  },
+  "savedLocallyRetry": "Saved locally. Retry or dismiss.",
+  "@savedLocallyRetry": { "description": "Sync failure subtitle" },
+  "offlineRetryHint": "You're offline \u2014 retry when back online",
+  "@offlineRetryHint": { "description": "Snackbar: retry blocked while offline" },
+
+  "pendingSyncTitle": "Pending Sync",
+  "@pendingSyncTitle": { "description": "Pending sync sheet title" },
+  "itemCount": "{count, plural, =1{1 item} other{{count} items}}",
+  "@itemCount": {
+    "description": "Item count in pending sync sheet",
+    "placeholders": {
+      "count": { "type": "int", "example": "3" }
+    }
+  },
+  "allSynced": "All synced!",
+  "@allSynced": { "description": "Empty pending sync sheet" },
+  "syncedSuccessfully": "Synced successfully.",
+  "@syncedSuccessfully": { "description": "Snackbar: sync success" },
+  "pendingActionSaveWorkout": "Save workout",
+  "@pendingActionSaveWorkout": { "description": "Pending action: save workout" },
+  "pendingActionUpdateRecords": "Update records",
+  "@pendingActionUpdateRecords": { "description": "Pending action: update records" },
+  "pendingActionMarkComplete": "Mark routine complete",
+  "@pendingActionMarkComplete": { "description": "Pending action: mark routine complete" },
+  "queuedAt": "Queued at {time}",
+  "@queuedAt": {
+    "description": "Pending action queued time",
+    "placeholders": {
+      "time": { "type": "String", "example": "14:30" }
+    }
+  },
+  "retryCount": "{count} retries",
+  "@retryCount": {
+    "description": "Pending action retry count",
+    "placeholders": {
+      "count": { "type": "int", "example": "2" }
+    }
+  },
+
+  "pendingSyncBadgeSingular": "1 workout pending sync",
+  "@pendingSyncBadgeSingular": { "description": "Pending sync badge: one workout" },
+  "pendingSyncBadgePlural": "{count} workouts pending sync",
+  "@pendingSyncBadgePlural": {
+    "description": "Pending sync badge: multiple workouts",
+    "placeholders": {
+      "count": { "type": "int", "example": "3" }
+    }
+  },
+
+  "noExercisesFound": "No exercises found",
+  "@noExercisesFound": { "description": "Exercise picker: empty result" },
+  "failedToLoadExercises": "Failed to load exercises",
+  "@failedToLoadExercises": { "description": "Exercise picker: load error" },
+  "createWithName": "Create \"{name}\"",
+  "@createWithName": {
+    "description": "Exercise picker: create exercise with search query name",
+    "placeholders": {
+      "name": { "type": "String", "example": "Incline Press" }
+    }
+  },
+
+  "durationLessThanOneMin": "< 1m",
+  "@durationLessThanOneMin": { "description": "Duration format: less than 1 minute" },
+
+  "enterWeight": "Enter weight",
+  "@enterWeight": { "description": "Weight input dialog title" },
+  "ok": "OK",
+  "@ok": { "description": "OK button label" },
+  "enterReps": "Enter reps",
+  "@enterReps": { "description": "Reps input dialog title" },
+  "failedToLoadDocument": "Failed to load document",
+  "@failedToLoadDocument": { "description": "Error loading legal document" },
+
+  "discardWorkout": "Discard workout",
+  "@discardWorkout": { "description": "Discard workout tooltip" },
+  "moveUp": "Move up",
+  "@moveUp": { "description": "Move exercise up tooltip" },
+  "moveDown": "Move down",
+  "@moveDown": { "description": "Move exercise down tooltip" },
+  "swapExercise": "Swap exercise",
+  "@swapExercise": { "description": "Swap exercise tooltip" },
+  "removeExercise": "Remove exercise",
+  "@removeExercise": { "description": "Remove exercise tooltip" },
+  "rpeTooltip": "Rate of perceived exertion",
+  "@rpeTooltip": { "description": "RPE tooltip" },
+
+  "last30Days": "30d",
+  "@last30Days": { "description": "Chart time window: last 30 days" },
+  "last90Days": "90d",
+  "@last90Days": { "description": "Chart time window: last 90 days" },
+  "allTime": "All time",
+  "@allTime": { "description": "Chart time window: all time" },
+  "switchMetricTo": "Switch metric to {metric}",
+  "@switchMetricTo": {
+    "description": "Accessibility label for metric cycle button",
+    "placeholders": {
+      "metric": { "type": "String", "example": "Volume" }
+    }
+  },
+
+  "couldNotLoadProgress": "Could not load progress",
+  "@couldNotLoadProgress": { "description": "Chart error: failed to load progress data" },
+  "logFirstSetToTrack": "Log your first set to start tracking",
+  "@logFirstSetToTrack": { "description": "Chart empty state: no data yet" },
+  "chartMetricE1rm": "e1RM",
+  "@chartMetricE1rm": { "description": "Chart metric label: estimated one-rep max" },
+  "chartMetricWeight": "Weight",
+  "@chartMetricWeight": { "description": "Chart metric label: raw weight" },
+  "chartWindowDays30": "30 days",
+  "@chartWindowDays30": { "description": "Chart window label: 30 days" },
+  "chartWindowDays90": "90 days",
+  "@chartWindowDays90": { "description": "Chart window label: 90 days" },
+  "chartWindowAllTime": "all time",
+  "@chartWindowAllTime": { "description": "Chart window label: all time" },
+  "workoutsLoggedKeepGoing": "{count} workouts logged \u2014 keep going",
+  "@workoutsLoggedKeepGoing": {
+    "description": "Chart trend: N workouts logged with no trend direction",
+    "placeholders": {
+      "count": { "type": "int", "example": "3" }
+    }
+  },
+  "oneWorkoutLoggedKeepGoing": "1 workout logged \u2014 keep going",
+  "@oneWorkoutLoggedKeepGoing": { "description": "Chart trend: 1 workout logged" },
+  "holdingSteadyAt": "Holding steady at {weight} {unit}",
+  "@holdingSteadyAt": {
+    "description": "Chart trend: no change",
+    "placeholders": {
+      "weight": { "type": "String", "example": "80" },
+      "unit": { "type": "String", "example": "kg" }
+    }
+  },
+  "trendUp": "Up {weight} {unit} in {window}",
+  "@trendUp": {
+    "description": "Chart trend: positive delta",
+    "placeholders": {
+      "weight": { "type": "String", "example": "5" },
+      "unit": { "type": "String", "example": "kg" },
+      "window": { "type": "String", "example": "30 days" }
+    }
+  },
+  "trendDown": "Down {weight} {unit} in {window}",
+  "@trendDown": {
+    "description": "Chart trend: negative delta",
+    "placeholders": {
+      "weight": { "type": "String", "example": "2.5" },
+      "unit": { "type": "String", "example": "kg" },
+      "window": { "type": "String", "example": "30 days" }
+    }
+  },
+  "prMarkerAt": "PR marker at {weight} {unit}",
+  "@prMarkerAt": {
+    "description": "Accessibility: PR ring anchor label",
+    "placeholders": {
+      "weight": { "type": "String", "example": "100" },
+      "unit": { "type": "String", "example": "kg" }
+    }
+  },
+
+  "setNumberSemantics": "Set {number}. Long press to change type: {type}",
+  "@setNumberSemantics": {
+    "description": "Set row accessibility: set number with type info",
+    "placeholders": {
+      "number": { "type": "int", "example": "1" },
+      "type": { "type": "String", "example": "Working" }
+    }
+  },
+  "setNumberCopySemantics": "Set {number}. Tap to copy previous set. Long press to change type: {type}",
+  "@setNumberCopySemantics": {
+    "description": "Set row accessibility: set number with copy hint and type info",
+    "placeholders": {
+      "number": { "type": "int", "example": "2" },
+      "type": { "type": "String", "example": "Working" }
+    }
+  },
+  "tooltipCopyLastSetAndChangeType": "Tap: copy last set\nHold: change type",
+  "@tooltipCopyLastSetAndChangeType": { "description": "Set row tooltip: tap to copy, hold to change type" },
+  "tooltipChangeType": "Hold: change type",
+  "@tooltipChangeType": { "description": "Set row tooltip: hold to change type" },
+  "setCompleted": "Set completed",
+  "@setCompleted": { "description": "Accessibility: set completion checkbox label (completed)" },
+  "markSetAsDone": "Mark set as done",
+  "@markSetAsDone": { "description": "Accessibility: set completion checkbox label (not completed)" },
+  "rpeValue": "RPE {value}. Tap to change.",
+  "@rpeValue": {
+    "description": "Accessibility: RPE indicator with value",
+    "placeholders": {
+      "value": { "type": "int", "example": "8" }
+    }
+  },
+  "setRpe": "Set RPE",
+  "@setRpe": { "description": "Accessibility: RPE indicator without value" },
+  "rpeLabel": "RPE",
+  "@rpeLabel": { "description": "RPE label displayed in indicator" },
+  "rpeMenuItem": "RPE {value}",
+  "@rpeMenuItem": {
+    "description": "RPE popup menu item",
+    "placeholders": {
+      "value": { "type": "int", "example": "8" }
+    }
+  },
+
+  "reorderExercisesTooltip": "Reorder exercises",
+  "@reorderExercisesTooltip": { "description": "Tooltip: enter reorder mode" },
+  "exitReorderModeTooltip": "Exit reorder mode",
+  "@exitReorderModeTooltip": { "description": "Tooltip: exit reorder mode" },
+  "exerciseSemanticsLabel": "Exercise: {name}. Tap for details. Long press to swap.",
+  "@exerciseSemanticsLabel": {
+    "description": "Exercise card accessibility label in active workout",
+    "placeholders": {
+      "name": { "type": "String", "example": "Bench Press" }
+    }
+  },
+  "fillRemainingSetsSemantics": "Fill remaining sets with last completed values",
+  "@fillRemainingSetsSemantics": { "description": "Accessibility: fill remaining sets button" },
+  "addExerciseToWorkoutSemantics": "Add exercise to workout",
+  "@addExerciseToWorkoutSemantics": { "description": "Accessibility: add exercise FAB" },
+  "searchExercisesToAddSemantics": "Search exercises to add",
+  "@searchExercisesToAddSemantics": { "description": "Accessibility: exercise picker search" },
+  "addExerciseSemantics": "Add {name}",
+  "@addExerciseSemantics": {
+    "description": "Accessibility: add specific exercise from picker",
+    "placeholders": {
+      "name": { "type": "String", "example": "Bench Press" }
+    }
+  },
+
+  "setTypeAbbrWorking": "W",
+  "@setTypeAbbrWorking": { "description": "Set type abbreviation: working" },
+  "setTypeAbbrWarmup": "WU",
+  "@setTypeAbbrWarmup": { "description": "Set type abbreviation: warm-up" },
+  "setTypeAbbrDropset": "D",
+  "@setTypeAbbrDropset": { "description": "Set type abbreviation: drop set" },
+  "setTypeAbbrFailure": "F",
+  "@setTypeAbbrFailure": { "description": "Set type abbreviation: to failure" },
+  "setTypeAbbrWarmupShort": "Wu",
+  "@setTypeAbbrWarmupShort": { "description": "Set type abbreviation: warm-up (detail view)" },
+
+  "lastSessionSemantics": "Last session: {name}, {date}",
+  "@lastSessionSemantics": {
+    "description": "Accessibility: last session line",
+    "placeholders": {
+      "name": { "type": "String", "example": "Push Day" },
+      "date": { "type": "String", "example": "Yesterday" }
+    }
+  },
+
+  "searchExercisesSemantics": "Search exercises",
+  "@searchExercisesSemantics": { "description": "Accessibility: exercise list search" },
+  "exerciseItemSemantics": "Exercise: {name}",
+  "@exerciseItemSemantics": {
+    "description": "Accessibility: exercise list item",
+    "placeholders": {
+      "name": { "type": "String", "example": "Bench Press" }
+    }
+  },
+  "createNewExerciseSemantics": "Create new exercise",
+  "@createNewExerciseSemantics": { "description": "Accessibility: create exercise FAB" },
+  "muscleGroupSemanticsPrefix": "Muscle group",
+  "@muscleGroupSemanticsPrefix": { "description": "Accessibility prefix for muscle group picker" },
+  "equipmentTypeSemanticsPrefix": "Equipment type",
+  "@equipmentTypeSemanticsPrefix": { "description": "Accessibility prefix for equipment type picker" },
+  "deleteExerciseSemantics": "Delete exercise",
+  "@deleteExerciseSemantics": { "description": "Accessibility: delete exercise button" },
+
+  "exerciseNameDuplicate": "An exercise with this name already exists",
+  "@exerciseNameDuplicate": { "description": "Validation: exercise name already exists" },
+
+  "daysAgoShort": "{count}d ago",
+  "@daysAgoShort": {
+    "description": "Short relative date: N days ago",
+    "placeholders": {
+      "count": { "type": "int", "example": "3" }
+    }
+  },
+  "weeksAgoShort": "{count}w ago",
+  "@weeksAgoShort": {
+    "description": "Short relative date: N weeks ago",
+    "placeholders": {
+      "count": { "type": "int", "example": "2" }
+    }
+  },
+  "monthsAgoShort": "{count}mo ago",
+  "@monthsAgoShort": {
+    "description": "Short relative date: N months ago",
     "placeholders": {
       "count": { "type": "int", "example": "3" }
     }

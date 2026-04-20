@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+import '../../../../l10n/app_localizations.dart';
 
 /// Result of the resume workout dialog.
 enum ResumeWorkoutResult { resume, discard }
@@ -24,11 +27,18 @@ bool isStaleWorkout(Duration age) => age >= _staleThreshold;
 ///   - `>= 7d`             → "$N days ago"
 ///
 /// [now] is injected so tests can assert against a fixed clock.
-String formatResumeAge(DateTime startedAt, DateTime now) {
+/// [l10n] is optional for backward-compat with tests; when null,
+/// falls back to hard-coded English.
+String formatResumeAge(
+  DateTime startedAt,
+  DateTime now, {
+  AppLocalizations? l10n,
+  String? locale,
+}) {
   final age = now.difference(startedAt);
 
   if (age < const Duration(hours: 1)) {
-    return 'less than an hour ago';
+    return l10n?.lessThanAnHourAgo ?? 'less than an hour ago';
   }
 
   final startedDay = DateTime(startedAt.year, startedAt.month, startedAt.day);
@@ -38,25 +48,33 @@ String formatResumeAge(DateTime startedAt, DateTime now) {
   // Same calendar day → hour count.
   if (dayDelta == 0) {
     final hours = age.inHours;
-    return hours == 1 ? '1 hour ago' : '$hours hours ago';
+    return l10n?.hoursAgo(hours) ??
+        (hours == 1 ? '1 hour ago' : '$hours hours ago');
   }
 
   // Previous calendar day and still within 48h → "yesterday at H:MM".
   if (dayDelta == 1 && age < const Duration(hours: 48)) {
-    return 'yesterday at ${_formatClock(startedAt)}';
+    final clock = _formatClock(startedAt, locale: locale);
+    return l10n?.yesterdayAt(clock) ?? 'yesterday at $clock';
   }
 
   // Within the last week → weekday name + clock.
   if (dayDelta < 7) {
-    return '${_weekdayName(startedAt.weekday)} at ${_formatClock(startedAt)}';
+    final weekday = _weekdayName(startedAt.weekday, locale: locale);
+    final clock = _formatClock(startedAt, locale: locale);
+    return l10n?.weekdayAt(weekday, clock) ?? '$weekday at $clock';
   }
 
   // Fallback: coarse day count.
   final days = age.inDays;
-  return '$days days ago';
+  return l10n?.daysAgo(days) ?? '$days days ago';
 }
 
-String _formatClock(DateTime t) {
+String _formatClock(DateTime t, {String? locale}) {
+  if (locale != null) {
+    return DateFormat.jm(locale).format(t);
+  }
+  // Manual formatting for consistent test output (no ICU locale dependency).
   final hour24 = t.hour;
   final period = hour24 >= 12 ? 'PM' : 'AM';
   final hour12 = hour24 % 12 == 0 ? 12 : hour24 % 12;
@@ -64,7 +82,12 @@ String _formatClock(DateTime t) {
   return '$hour12:$minute $period';
 }
 
-String _weekdayName(int weekday) {
+String _weekdayName(int weekday, {String? locale}) {
+  if (locale != null) {
+    // Create a DateTime for the given weekday (Mon=1 → 2024-01-01 is a Monday).
+    final reference = DateTime(2024, 1, weekday);
+    return DateFormat.EEEE(locale).format(reference);
+  }
   const names = [
     'Monday',
     'Tuesday',
@@ -121,12 +144,15 @@ class ResumeWorkoutDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final effectiveNow = now ?? DateTime.now();
     final age = effectiveNow.difference(startedAt);
     final isStale = isStaleWorkout(age);
 
     return AlertDialog(
-      title: Text(isStale ? 'Pick up where you left off?' : 'Resume workout?'),
+      title: Text(
+        isStale ? l10n.resumeWorkoutStaleTitle : l10n.resumeWorkoutTitle,
+      ),
       content: isStale
           ? Text.rich(
               TextSpan(
@@ -139,8 +165,9 @@ class ResumeWorkoutDialog extends StatelessWidget {
                   ),
                   const TextSpan(text: '\n'),
                   TextSpan(
-                    text:
-                        'was interrupted ${formatResumeAge(startedAt, effectiveNow)}.',
+                    text: l10n.workoutInterrupted(
+                      formatResumeAge(startedAt, effectiveNow, l10n: l10n),
+                    ),
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
@@ -148,18 +175,18 @@ class ResumeWorkoutDialog extends StatelessWidget {
                 ],
               ),
             )
-          : Text('"$workoutName" is still in progress.'),
+          : Text(l10n.workoutInProgress(workoutName)),
       actions: [
         TextButton(
           onPressed: () =>
               Navigator.of(context).pop(ResumeWorkoutResult.discard),
           style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
-          child: const Text('Discard'),
+          child: Text(l10n.discard),
         ),
         FilledButton(
           onPressed: () =>
               Navigator.of(context).pop(ResumeWorkoutResult.resume),
-          child: Text(isStale ? 'Resume anyway' : 'Resume'),
+          child: Text(isStale ? l10n.resumeAnyway : l10n.resume),
         ),
       ],
     );

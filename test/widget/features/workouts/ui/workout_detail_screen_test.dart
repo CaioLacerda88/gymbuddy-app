@@ -13,6 +13,7 @@ import 'package:gymbuddy_app/features/workouts/providers/workout_history_provide
 import 'package:gymbuddy_app/features/workouts/ui/workout_detail_screen.dart';
 
 import '../../../../fixtures/test_factories.dart';
+import '../../../../helpers/test_material_app.dart';
 
 class _ProfileNotifierWithUnit extends AsyncNotifier<Profile?>
     implements ProfileNotifier {
@@ -58,7 +59,7 @@ void main() {
   Widget buildTestWidget({required List<Override> overrides}) {
     return ProviderScope(
       overrides: overrides,
-      child: MaterialApp(
+      child: TestMaterialApp(
         theme: AppTheme.dark,
         home: const WorkoutDetailScreen(workoutId: 'w-1'),
       ),
@@ -255,7 +256,7 @@ void main() {
             ).overrideWith((ref) => Future.value(<String>{})),
             profileProvider.overrideWith(() => _ProfileNotifierWithUnit('kg')),
           ],
-          child: MaterialApp(
+          child: TestMaterialApp(
             theme: AppTheme.dark,
             home: const WorkoutDetailScreen(workoutId: 'w-1'),
           ),
@@ -295,7 +296,7 @@ void main() {
                 () => _ProfileNotifierWithUnit('lbs'),
               ),
             ],
-            child: MaterialApp(
+            child: TestMaterialApp(
               theme: AppTheme.dark,
               home: const WorkoutDetailScreen(workoutId: 'w-1'),
             ),

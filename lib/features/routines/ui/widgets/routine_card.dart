@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/utils/enum_l10n.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../models/routine.dart';
 
 class RoutineCard extends StatelessWidget {
@@ -14,23 +16,23 @@ class RoutineCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
 
-  String _buildSubtitle() {
+  String _buildSubtitle(AppLocalizations l10n) {
     final muscleGroups = <String>{};
     for (final re in routine.exercises) {
       if (re.exercise != null) {
-        muscleGroups.add(re.exercise!.muscleGroup.displayName);
+        muscleGroups.add(re.exercise!.muscleGroup.localizedName(l10n));
       }
     }
     if (muscleGroups.isNotEmpty) {
       return muscleGroups.join(' \u00b7 ');
     }
-    final count = routine.exercises.length;
-    return '$count exercise${count == 1 ? '' : 's'}';
+    return l10n.exercisesCount(routine.exercises.length);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Material(
       color: theme.cardTheme.color ?? theme.colorScheme.surface,
@@ -57,7 +59,7 @@ class RoutineCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        _buildSubtitle(),
+                        _buildSubtitle(l10n),
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurface.withValues(
                             alpha: 0.6,

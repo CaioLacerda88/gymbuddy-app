@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/radii.dart';
 import '../../../features/auth/providers/auth_providers.dart';
 import '../../../features/auth/providers/notifiers/auth_notifier.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../personal_records/providers/pr_providers.dart'
     show prCountProvider;
 import '../../workouts/providers/workout_history_providers.dart'
@@ -19,6 +20,7 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final profileAsync = ref.watch(profileProvider);
     final email = ref.watch(authRepositoryProvider).currentUser?.email ?? '';
 
@@ -32,7 +34,7 @@ class ProfileScreen extends ConsumerWidget {
             Semantics(
               container: true,
               identifier: 'profile-heading',
-              child: Text('Profile', style: theme.textTheme.headlineMedium),
+              child: Text(l10n.profile, style: theme.textTheme.headlineMedium),
             ),
             const SizedBox(height: 32),
             // Identity card
@@ -56,7 +58,7 @@ class ProfileScreen extends ConsumerWidget {
             const _StatsRow(),
             const SizedBox(height: 32),
             // Weight unit section
-            Text('Weight Unit', style: theme.textTheme.titleMedium),
+            Text(l10n.weightUnit, style: theme.textTheme.titleMedium),
             const SizedBox(height: 12),
             profileAsync.when(
               data: (profile) =>
@@ -69,7 +71,7 @@ class ProfileScreen extends ConsumerWidget {
             Semantics(
               container: true,
               identifier: 'profile-goal-label',
-              child: Text('Weekly Goal', style: theme.textTheme.titleMedium),
+              child: Text(l10n.weeklyGoal, style: theme.textTheme.titleMedium),
             ),
             const SizedBox(height: 12),
             profileAsync.when(
@@ -82,7 +84,7 @@ class ProfileScreen extends ConsumerWidget {
             const SizedBox(height: 32),
             // Data management section
             Text(
-              'DATA MANAGEMENT',
+              l10n.dataManagement,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
               ),
@@ -107,7 +109,7 @@ class ProfileScreen extends ConsumerWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            'Manage Data',
+                            l10n.manageData,
                             style: theme.textTheme.titleMedium,
                           ),
                         ),
@@ -126,27 +128,27 @@ class ProfileScreen extends ConsumerWidget {
             const SizedBox(height: 24),
             // Legal section
             Text(
-              'LEGAL',
+              l10n.legal,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
               ),
             ),
             const SizedBox(height: 8),
             _LegalTile(
-              title: 'Privacy Policy',
+              title: l10n.privacyPolicy,
               icon: Icons.privacy_tip_outlined,
               onTap: () => context.push('/privacy-policy'),
             ),
             const SizedBox(height: 8),
             _LegalTile(
-              title: 'Terms of Service',
+              title: l10n.termsOfService,
               icon: Icons.description_outlined,
               onTap: () => context.push('/terms-of-service'),
             ),
             const SizedBox(height: 24),
             // Privacy section
             Text(
-              'PRIVACY',
+              l10n.privacySection,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
               ),
@@ -162,10 +164,8 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 child: SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Send crash reports'),
-                  subtitle: const Text(
-                    'Help improve GymBuddy by sending anonymous crash data.',
-                  ),
+                  title: Text(l10n.sendCrashReports),
+                  subtitle: Text(l10n.crashReportsSubtitle),
                   value: ref.watch(crashReportsEnabledProvider),
                   onChanged: (value) {
                     ref
@@ -195,28 +195,29 @@ Future<void> _showEditNameDialog(
     context: context,
     builder: (ctx) {
       final dialogTheme = Theme.of(ctx);
+      final l10n = AppLocalizations.of(ctx);
       return AlertDialog(
         backgroundColor: dialogTheme.cardTheme.color,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(kRadiusLg),
         ),
-        title: const Text('Edit Display Name'),
+        title: Text(l10n.editDisplayName),
         content: TextField(
           controller: controller,
           autofocus: true,
           maxLength: 50,
           textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(hintText: 'Enter your name'),
+          decoration: InputDecoration(hintText: l10n.enterYourName),
           onSubmitted: (value) => Navigator.of(ctx).pop(value.trim()),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
-            child: const Text('Save'),
+            child: Text(l10n.save),
           ),
         ],
       );
@@ -250,7 +251,8 @@ class _IdentityCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final name = displayName ?? 'Gym User';
+    final l10n = AppLocalizations.of(context);
+    final name = displayName ?? l10n.gymUser;
 
     return Card(
       child: Padding(
@@ -376,6 +378,7 @@ class _StatsRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final workoutCountAsync = ref.watch(workoutCountProvider);
     final prCountAsync = ref.watch(prCountProvider);
     final profile = ref.watch(profileProvider);
@@ -388,7 +391,7 @@ class _StatsRow extends ConsumerWidget {
       children: [
         Expanded(
           child: _StatCard(
-            label: 'Workouts',
+            label: l10n.workouts,
             value: '$workoutCount',
             icon: Icons.fitness_center,
             theme: theme,
@@ -398,7 +401,7 @@ class _StatsRow extends ConsumerWidget {
         const SizedBox(width: 12),
         Expanded(
           child: _StatCard(
-            label: 'PRs',
+            label: l10n.prsLabel,
             value: '$prCount',
             icon: Icons.emoji_events,
             theme: theme,
@@ -408,9 +411,11 @@ class _StatsRow extends ConsumerWidget {
         const SizedBox(width: 12),
         Expanded(
           child: _StatCard(
-            label: 'Member since',
+            label: l10n.memberSince,
             value: memberSince != null
-                ? DateFormat.yMMM().format(memberSince)
+                ? DateFormat.yMMM(
+                    Localizations.localeOf(context).toString(),
+                  ).format(memberSince)
                 : '--',
             icon: Icons.calendar_today,
             theme: theme,
@@ -452,6 +457,8 @@ class _StatCard extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
             textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 4),
           Text(
@@ -460,6 +467,8 @@ class _StatCard extends StatelessWidget {
               color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             ),
             textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -495,6 +504,7 @@ class _WeeklyGoalRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Material(
       color: theme.cardTheme.color ?? theme.colorScheme.surface,
       borderRadius: BorderRadius.circular(kRadiusMd),
@@ -507,7 +517,7 @@ class _WeeklyGoalRow extends ConsumerWidget {
             children: [
               Expanded(
                 child: Text(
-                  '${frequency}x per week',
+                  l10n.perWeekLabel(frequency),
                   style: theme.textTheme.titleMedium,
                 ),
               ),
@@ -524,6 +534,7 @@ class _WeeklyGoalRow extends ConsumerWidget {
 
   void _showFrequencySheet(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     showModalBottomSheet<void>(
       context: context,
       builder: (ctx) {
@@ -534,13 +545,13 @@ class _WeeklyGoalRow extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Weekly Goal', style: theme.textTheme.titleLarge),
+                Text(l10n.weeklyGoal, style: theme.textTheme.titleLarge),
                 const SizedBox(height: 4),
                 Semantics(
                   container: true,
                   identifier: 'profile-goal-sheet-title',
                   child: Text(
-                    'How many times per week do you want to train?',
+                    l10n.frequencyQuestion,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurface.withValues(
                         alpha: 0.55,
@@ -647,7 +658,7 @@ class _LogoutButton extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(vertical: 16),
         ),
         onPressed: () => _confirmLogout(context, ref),
-        child: const Text('Log Out'),
+        child: Text(AppLocalizations.of(context).logOut),
       ),
     );
   }
@@ -655,31 +666,34 @@ class _LogoutButton extends ConsumerWidget {
   Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Log Out'),
-        content: Semantics(
-          container: true,
-          identifier: 'profile-logout-dialog',
-          child: const Text('Are you sure you want to log out?'),
-        ),
-        actions: [
-          Semantics(
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx);
+        return AlertDialog(
+          title: Text(l10n.logOut),
+          content: Semantics(
             container: true,
-            identifier: 'profile-cancel-btn',
-            child: TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancel'),
-            ),
+            identifier: 'profile-logout-dialog',
+            child: Text(l10n.logOutConfirm),
           ),
-          TextButton(
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.error,
+          actions: [
+            Semantics(
+              container: true,
+              identifier: 'profile-cancel-btn',
+              child: TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: Text(l10n.cancel),
+              ),
             ),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Log Out'),
-          ),
-        ],
-      ),
+            TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+              ),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(l10n.logOut),
+            ),
+          ],
+        );
+      },
     );
 
     if (confirmed == true) {

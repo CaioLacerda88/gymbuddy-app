@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
 import 'package:gymbuddy_app/features/workouts/ui/widgets/resume_workout_dialog.dart';
+import '../../../../helpers/test_material_app.dart';
 
 // ---------------------------------------------------------------------------
 // Helper: pump the dialog via a builder so Navigator.pop works
@@ -32,7 +33,7 @@ Future<ResumeWorkoutResult?> _showResumeDialog(
       startedAt ?? DateTime.now().subtract(const Duration(minutes: 10));
 
   await tester.pumpWidget(
-    MaterialApp(
+    TestMaterialApp(
       theme: AppTheme.dark,
       home: Builder(
         builder: (context) => Scaffold(
@@ -82,7 +83,7 @@ void main() {
       ResumeWorkoutResult? result;
 
       await tester.pumpWidget(
-        MaterialApp(
+        TestMaterialApp(
           theme: AppTheme.dark,
           home: Builder(
             builder: (context) => Scaffold(
@@ -118,7 +119,7 @@ void main() {
       ResumeWorkoutResult? result;
 
       await tester.pumpWidget(
-        MaterialApp(
+        TestMaterialApp(
           theme: AppTheme.dark,
           home: Builder(
             builder: (context) => Scaffold(
@@ -152,7 +153,7 @@ void main() {
 
     testWidgets('dialog is not dismissible by barrier tap', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        TestMaterialApp(
           theme: AppTheme.dark,
           home: Builder(
             builder: (context) => Scaffold(

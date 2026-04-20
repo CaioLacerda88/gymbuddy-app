@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../connectivity/connectivity_provider.dart';
 import '../local_storage/cache_refresh_provider.dart';
 import '../offline/sync_service.dart';
@@ -284,36 +285,36 @@ class _ShellScaffold extends ConsumerWidget {
               Semantics(
                 container: true,
                 identifier: 'nav-home',
-                child: const NavigationDestination(
-                  icon: Icon(Icons.home),
-                  label: 'Home',
+                child: NavigationDestination(
+                  icon: const Icon(Icons.home),
+                  label: AppLocalizations.of(context).navHome,
                   tooltip: '',
                 ),
               ),
               Semantics(
                 container: true,
                 identifier: 'nav-exercises',
-                child: const NavigationDestination(
-                  icon: Icon(Icons.fitness_center),
-                  label: 'Exercises',
+                child: NavigationDestination(
+                  icon: const Icon(Icons.fitness_center),
+                  label: AppLocalizations.of(context).navExercises,
                   tooltip: '',
                 ),
               ),
               Semantics(
                 container: true,
                 identifier: 'nav-routines',
-                child: const NavigationDestination(
-                  icon: Icon(Icons.calendar_today),
-                  label: 'Routines',
+                child: NavigationDestination(
+                  icon: const Icon(Icons.calendar_today),
+                  label: AppLocalizations.of(context).navRoutines,
                   tooltip: '',
                 ),
               ),
               Semantics(
                 container: true,
                 identifier: 'nav-profile',
-                child: const NavigationDestination(
-                  icon: Icon(Icons.person),
-                  label: 'Profile',
+                child: NavigationDestination(
+                  icon: const Icon(Icons.person),
+                  label: AppLocalizations.of(context).navProfile,
                   tooltip: '',
                 ),
               ),

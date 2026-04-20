@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../l10n/app_localizations.dart';
 import '../../models/routine.dart';
 import '../../providers/notifiers/routine_list_notifier.dart';
 import '../start_routine_action.dart';
@@ -22,50 +23,55 @@ Future<void> showRoutineActionSheet(
 
   final action = await showModalBottomSheet<RoutineAction>(
     context: context,
-    builder: (context) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (isDefault) ...[
-            ListTile(
-              leading: const Icon(Icons.play_arrow),
-              title: const Text('Start'),
-              onTap: () => Navigator.pop(context, RoutineAction.start),
-            ),
-            ListTile(
-              leading: const Icon(Icons.copy),
-              title: const Text('Duplicate and Edit'),
-              onTap: () => Navigator.pop(context, RoutineAction.duplicate),
-            ),
-          ] else ...[
-            Semantics(
-              container: true,
-              identifier: 'routine-edit-option',
-              child: ListTile(
-                leading: const Icon(Icons.edit_outlined),
-                title: const Text('Edit'),
-                onTap: () => Navigator.pop(context, RoutineAction.edit),
+    builder: (context) {
+      final l10n = AppLocalizations.of(context);
+      return SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isDefault) ...[
+              ListTile(
+                leading: const Icon(Icons.play_arrow),
+                title: Text(l10n.start),
+                onTap: () => Navigator.pop(context, RoutineAction.start),
               ),
-            ),
-            Semantics(
-              container: true,
-              identifier: 'routine-delete-option',
-              child: ListTile(
-                leading: Icon(
-                  Icons.delete_outline,
-                  color: Theme.of(context).colorScheme.error,
-                ),
-                title: Text(
-                  'Delete',
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-                onTap: () => Navigator.pop(context, RoutineAction.delete),
+              ListTile(
+                leading: const Icon(Icons.copy),
+                title: Text(l10n.duplicateAndEdit),
+                onTap: () => Navigator.pop(context, RoutineAction.duplicate),
               ),
-            ),
+            ] else ...[
+              Semantics(
+                container: true,
+                identifier: 'routine-edit-option',
+                child: ListTile(
+                  leading: const Icon(Icons.edit_outlined),
+                  title: Text(l10n.edit),
+                  onTap: () => Navigator.pop(context, RoutineAction.edit),
+                ),
+              ),
+              Semantics(
+                container: true,
+                identifier: 'routine-delete-option',
+                child: ListTile(
+                  leading: Icon(
+                    Icons.delete_outline,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                  title: Text(
+                    l10n.delete,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                  onTap: () => Navigator.pop(context, RoutineAction.delete),
+                ),
+              ),
+            ],
           ],
-        ],
-      ),
-    ),
+        ),
+      );
+    },
   );
 
   if (!context.mounted || action == null) return;
@@ -87,35 +93,38 @@ Future<void> showRoutineActionSheet(
     case RoutineAction.delete:
       final confirmed = await showDialog<bool>(
         context: context,
-        builder: (context) => AlertDialog(
-          title: Semantics(
-            container: true,
-            identifier: 'routine-delete-dialog-title',
-            child: const Text('Delete Routine'),
-          ),
-          content: Text('Delete "${routine.name}"? This cannot be undone.'),
-          actions: [
-            Semantics(
+        builder: (context) {
+          final l10n = AppLocalizations.of(context);
+          return AlertDialog(
+            title: Semantics(
               container: true,
-              identifier: 'routine-cancel-btn',
-              child: TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
+              identifier: 'routine-delete-dialog-title',
+              child: Text(l10n.deleteRoutine),
             ),
-            Semantics(
-              container: true,
-              identifier: 'routine-delete-confirm',
-              child: FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: FilledButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.error,
+            content: Text(l10n.deleteRoutineConfirm(routine.name)),
+            actions: [
+              Semantics(
+                container: true,
+                identifier: 'routine-cancel-btn',
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text(l10n.cancel),
                 ),
-                child: const Text('Delete'),
               ),
-            ),
-          ],
-        ),
+              Semantics(
+                container: true,
+                identifier: 'routine-delete-confirm',
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                  ),
+                  child: Text(l10n.delete),
+                ),
+              ),
+            ],
+          );
+        },
       );
       if (confirmed == true) {
         await ref.read(routineListProvider.notifier).deleteRoutine(routine.id);

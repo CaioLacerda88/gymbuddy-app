@@ -26,6 +26,7 @@ import 'package:gymbuddy_app/features/weekly_plan/data/models/weekly_plan.dart';
 import 'package:gymbuddy_app/features/weekly_plan/providers/weekly_plan_provider.dart';
 import 'package:gymbuddy_app/features/weekly_plan/ui/widgets/routine_chip.dart';
 import 'package:gymbuddy_app/features/weekly_plan/ui/widgets/week_bucket_section.dart';
+import '../../../helpers/test_material_app.dart';
 
 // ---------------------------------------------------------------------------
 // Stubs
@@ -141,7 +142,7 @@ Widget _build({WeeklyPlan? plan, List<Routine> routines = const []}) {
       weeklyPlanProvider.overrideWith(() => _WeeklyPlanStub(plan)),
       routineListProvider.overrideWith(() => _RoutineListStub(routines)),
     ],
-    child: MaterialApp(
+    child: TestMaterialApp(
       theme: AppTheme.dark,
       home: const Scaffold(body: WeekBucketSection()),
     ),
@@ -205,7 +206,7 @@ void main() {
               () => _RoutineListStub([_routine()]),
             ),
           ],
-          child: MaterialApp(
+          child: TestMaterialApp(
             theme: AppTheme.dark,
             home: const Scaffold(body: WeekBucketSection()),
           ),
@@ -387,7 +388,7 @@ void main() {
               () => _RoutineListStub([_routine(id: 'r-001', name: 'Push Day')]),
             ),
           ],
-          child: MaterialApp(
+          child: TestMaterialApp(
             theme: AppTheme.dark,
             home: const Scaffold(body: WeekBucketSection()),
           ),

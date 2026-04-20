@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
+import '../../l10n/app_localizations.dart';
+
 /// A scrollable screen that loads a markdown document from an asset and
 /// renders it with the app theme.
 ///
@@ -46,7 +48,9 @@ class _LegalDocScreenState extends State<LegalDocScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError || !snapshot.hasData) {
-            return const Center(child: Text('Failed to load document'));
+            return Center(
+              child: Text(AppLocalizations.of(context).failedToLoadDocument),
+            );
           }
           return Markdown(
             data: snapshot.data!,

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/utils/enum_l10n.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/reps_stepper.dart';
 import '../../../../shared/widgets/weight_stepper.dart';
 import '../../../profile/providers/profile_providers.dart';
@@ -52,11 +54,11 @@ class _SetRowState extends ConsumerState<SetRow> {
         : value.toStringAsFixed(1);
   }
 
-  static const _setTypeLabels = {
-    SetType.working: 'W',
-    SetType.warmup: 'WU',
-    SetType.dropset: 'D',
-    SetType.failure: 'F',
+  static Map<SetType, String> _setTypeLabels(AppLocalizations l10n) => {
+    SetType.working: l10n.setTypeAbbrWorking,
+    SetType.warmup: l10n.setTypeAbbrWarmup,
+    SetType.dropset: l10n.setTypeAbbrDropset,
+    SetType.failure: l10n.setTypeAbbrFailure,
   };
 
   @override
@@ -159,10 +161,12 @@ class _SetRowState extends ConsumerState<SetRow> {
           ..hideCurrentSnackBar()
           ..showSnackBar(
             SnackBar(
-              content: Text('Set ${deletedSet.setNumber} deleted'),
+              content: Text(
+                AppLocalizations.of(context).setDeleted(deletedSet.setNumber),
+              ),
               duration: const Duration(seconds: 4),
               action: SnackBarAction(
-                label: 'Undo',
+                label: AppLocalizations.of(context).undo,
                 onPressed: () {
                   notifier.restoreSet(widget.workoutExerciseId, deletedSet);
                 },
@@ -178,7 +182,11 @@ class _SetRowState extends ConsumerState<SetRow> {
             Padding(
               padding: const EdgeInsets.only(left: 48, bottom: 4),
               child: Text(
-                'Previous: ${_formatWeight((widget.lastSet!.weight ?? 0).toDouble())}$weightUnit × ${widget.lastSet!.reps ?? 0}',
+                AppLocalizations.of(context).previousSet(
+                  _formatWeight((widget.lastSet!.weight ?? 0).toDouble()),
+                  weightUnit,
+                  widget.lastSet!.reps ?? 0,
+                ),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
                 ),
@@ -192,14 +200,24 @@ class _SetRowState extends ConsumerState<SetRow> {
                 // Uses 48dp minimum touch target per Material guidelines.
                 Semantics(
                   label: set.setNumber > 1
-                      ? 'Set ${set.setNumber}. Tap to copy previous set. '
-                            'Long press to change type: ${set.setType.displayName}'
-                      : 'Set ${set.setNumber}. '
-                            'Long press to change type: ${set.setType.displayName}',
+                      ? AppLocalizations.of(context).setNumberCopySemantics(
+                          set.setNumber,
+                          set.setType.localizedName(
+                            AppLocalizations.of(context),
+                          ),
+                        )
+                      : AppLocalizations.of(context).setNumberSemantics(
+                          set.setNumber,
+                          set.setType.localizedName(
+                            AppLocalizations.of(context),
+                          ),
+                        ),
                   child: Tooltip(
                     message: set.setNumber > 1
-                        ? 'Tap: copy last set\nHold: change type'
-                        : 'Hold: change type',
+                        ? AppLocalizations.of(
+                            context,
+                          ).tooltipCopyLastSetAndChangeType
+                        : AppLocalizations.of(context).tooltipChangeType,
                     preferBelow: true,
                     child: InkWell(
                       onTap: set.setNumber > 1 ? _copyLastSet : null,
@@ -248,7 +266,12 @@ class _SetRowState extends ConsumerState<SetRow> {
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
-                                _setTypeLabels[set.setType] ?? 'W',
+                                _setTypeLabels(
+                                      AppLocalizations.of(context),
+                                    )[set.setType] ??
+                                    AppLocalizations.of(
+                                      context,
+                                    ).setTypeAbbrWorking,
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   fontSize: 9,
                                   fontWeight: FontWeight.w700,
@@ -310,7 +333,9 @@ class _SetRowState extends ConsumerState<SetRow> {
                   identifier: set.isCompleted
                       ? 'workout-set-completed'
                       : 'workout-set-done',
-                  label: set.isCompleted ? 'Set completed' : 'Mark set as done',
+                  label: set.isCompleted
+                      ? AppLocalizations.of(context).setCompleted
+                      : AppLocalizations.of(context).markSetAsDone,
                   child: SizedBox(
                     width: 48,
                     height: 48,
@@ -352,12 +377,14 @@ class _RpeIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final currentRpe = rpe;
 
     return Semantics(
-      label: rpe != null ? 'RPE $rpe. Tap to change.' : 'Set RPE',
+      label: currentRpe != null ? l10n.rpeValue(currentRpe) : l10n.setRpe,
       child: PopupMenuButton<int>(
         onSelected: onChanged,
-        tooltip: 'Rate of perceived exertion',
+        tooltip: l10n.rpeTooltip,
         constraints: const BoxConstraints(minWidth: 56),
         position: PopupMenuPosition.under,
         itemBuilder: (_) => List.generate(
@@ -366,7 +393,7 @@ class _RpeIndicator extends StatelessWidget {
             value: i + 1,
             height: 40,
             child: Text(
-              'RPE ${i + 1}',
+              l10n.rpeMenuItem(i + 1),
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: (i + 1) == rpe ? FontWeight.w700 : null,
                 color: (i + 1) == rpe ? theme.colorScheme.primary : null,
@@ -384,7 +411,7 @@ class _RpeIndicator extends StatelessWidget {
             borderRadius: BorderRadius.circular(6),
           ),
           child: Text(
-            rpe != null ? '$rpe' : 'RPE',
+            rpe != null ? '$rpe' : l10n.rpeLabel,
             style: theme.textTheme.bodyMedium?.copyWith(
               fontSize: rpe != null ? 13 : 9,
               fontWeight: FontWeight.w700,

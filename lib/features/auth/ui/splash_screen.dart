@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
+
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
 
@@ -19,7 +21,7 @@ class SplashScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'GymBuddy',
+              AppLocalizations.of(context).appName,
               style: theme.textTheme.displayMedium?.copyWith(
                 color: theme.colorScheme.primary,
               ),

@@ -4,12 +4,13 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
 import 'package:gymbuddy_app/features/auth/ui/login_screen.dart';
+import '../../../../helpers/test_material_app.dart';
 
 void main() {
   Widget buildTestWidget({List<Override> overrides = const []}) {
     return ProviderScope(
       overrides: overrides,
-      child: MaterialApp(theme: AppTheme.dark, home: const LoginScreen()),
+      child: TestMaterialApp(theme: AppTheme.dark, home: const LoginScreen()),
     );
   }
 

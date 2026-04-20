@@ -27,6 +27,7 @@ import 'package:gymbuddy_app/features/workouts/providers/workout_providers.dart'
 import 'package:gymbuddy_app/features/workouts/ui/widgets/action_hero.dart';
 
 import '../../../../fixtures/test_factories.dart';
+import 'package:gymbuddy_app/l10n/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
 // Stubs
@@ -297,7 +298,12 @@ Widget _buildWithRouter({
         activeWorkoutNotifier ?? () => _NullActiveWorkoutNotifier(),
       ),
     ],
-    child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+    child: MaterialApp.router(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      theme: AppTheme.dark,
+      routerConfig: router,
+    ),
   );
 }
 

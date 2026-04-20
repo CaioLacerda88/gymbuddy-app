@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/shared/widgets/reps_stepper.dart';
+import '../../../helpers/test_material_app.dart';
 
 Widget buildTestWidget(Widget child) {
-  return MaterialApp(
+  return TestMaterialApp(
     home: Scaffold(body: Center(child: child)),
   );
 }

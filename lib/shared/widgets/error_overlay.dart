@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
+
 class ErrorOverlay extends StatelessWidget {
   const ErrorOverlay({super.key, required this.message, this.onRetry});
 
@@ -25,7 +27,10 @@ class ErrorOverlay extends StatelessWidget {
             ),
             if (onRetry != null) ...[
               const SizedBox(height: 16),
-              ElevatedButton(onPressed: onRetry, child: const Text('Retry')),
+              ElevatedButton(
+                onPressed: onRetry,
+                child: Text(AppLocalizations.of(context).retry),
+              ),
             ],
           ],
         ),

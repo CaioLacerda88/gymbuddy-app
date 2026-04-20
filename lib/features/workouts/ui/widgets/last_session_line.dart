@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../l10n/app_localizations.dart';
 import '../../providers/workout_history_providers.dart';
 
 /// Editorial one-liner showing the user's most recent completed session.
@@ -26,7 +27,9 @@ class LastSessionLine extends ConsumerWidget {
       container: true,
       identifier: 'home-last-session',
       button: true,
-      label: 'Last session: ${last.name}, ${last.relativeDate}',
+      label: AppLocalizations.of(
+        context,
+      ).lastSessionSemantics(last.name, last.relativeDate),
       child: InkWell(
         onTap: () => context.push('/home/history'),
         child: Padding(
@@ -35,7 +38,7 @@ class LastSessionLine extends ConsumerWidget {
             TextSpan(
               children: [
                 TextSpan(
-                  text: 'Last: ',
+                  text: AppLocalizations.of(context).lastSessionPrefix,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
                   ),

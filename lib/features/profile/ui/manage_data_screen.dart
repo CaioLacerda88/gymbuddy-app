@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/exceptions/app_exception.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/gradient_button.dart';
 import '../../auth/providers/notifiers/auth_notifier.dart';
 import '../../workouts/providers/workout_history_providers.dart'
@@ -17,6 +18,7 @@ class ManageDataScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final workoutCount = ref.watch(workoutCountProvider);
 
     final workoutCountValue = workoutCount.value ?? 0;
@@ -32,7 +34,7 @@ class ManageDataScreen extends ConsumerWidget {
         title: Semantics(
           container: true,
           identifier: 'manage-data-heading',
-          child: const Text('Manage Data'),
+          child: Text(l10n.manageDataTitle),
         ),
       ),
       body: SingleChildScrollView(
@@ -42,15 +44,15 @@ class ManageDataScreen extends ConsumerWidget {
           children: [
             // WORKOUT HISTORY section
             Text(
-              'WORKOUT HISTORY',
+              l10n.workoutHistorySection,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
               ),
             ),
             const SizedBox(height: 8),
             _DataManagementTile(
-              title: 'Delete Workout History',
-              subtitle: '$workoutCountText workouts will be removed',
+              title: l10n.deleteWorkoutHistory,
+              subtitle: l10n.workoutsWillBeRemoved(workoutCountText),
               onTap: () =>
                   _showDeleteHistoryDialog(context, ref, workoutCountValue),
               semanticsIdentifier: 'manage-data-delete-history',
@@ -58,15 +60,15 @@ class ManageDataScreen extends ConsumerWidget {
             const SizedBox(height: 24),
             // DANGER section
             Text(
-              'DANGER',
+              l10n.dangerSection,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
               ),
             ),
             const SizedBox(height: 8),
             _DataManagementTile(
-              title: 'Reset All Account Data',
-              subtitle: 'Removes everything. Permanent.',
+              title: l10n.resetAllAccountData,
+              subtitle: l10n.resetAllSubtitle,
               onTap: () => _showResetAllModal(context, ref),
               semanticsIdentifier: 'manage-data-reset-all',
               danger: true,
@@ -76,8 +78,8 @@ class ManageDataScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             _DataManagementTile(
-              title: 'Delete Account',
-              subtitle: 'Permanently delete your account and all data',
+              title: l10n.deleteAccount,
+              subtitle: l10n.deleteAccountSubtitle,
               onTap: () => _showDeleteAccountModal(context, ref),
               danger: true,
               titleStyle: theme.textTheme.titleMedium?.copyWith(
@@ -96,34 +98,35 @@ class ManageDataScreen extends ConsumerWidget {
     int workoutCount,
   ) async {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     // First dialog
     final first = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete all workout history?'),
-        content: Text(
-          'This will permanently delete all $workoutCount workouts '
-          'and cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          Semantics(
-            container: true,
-            identifier: 'manage-data-delete-confirm',
-            child: TextButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              style: TextButton.styleFrom(
-                foregroundColor: theme.colorScheme.error,
-              ),
-              child: const Text('Delete History'),
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx);
+        return AlertDialog(
+          title: Text(l10n.deleteAllHistoryTitle),
+          content: Text(l10n.deleteAllHistoryContent(workoutCount)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(l10n.cancel),
             ),
-          ),
-        ],
-      ),
+            Semantics(
+              container: true,
+              identifier: 'manage-data-delete-confirm',
+              child: TextButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                style: TextButton.styleFrom(
+                  foregroundColor: theme.colorScheme.error,
+                ),
+                child: Text(l10n.deleteHistoryButton),
+              ),
+            ),
+          ],
+        );
+      },
     );
 
     if (first != true || !context.mounted) return;
@@ -131,27 +134,30 @@ class ManageDataScreen extends ConsumerWidget {
     // Second dialog
     final second = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Are you sure?'),
-        content: const Text('Your personal records and routines will be kept.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          Semantics(
-            container: true,
-            identifier: 'manage-data-yes-delete',
-            child: TextButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              style: TextButton.styleFrom(
-                foregroundColor: theme.colorScheme.error,
-              ),
-              child: const Text('Yes, Delete'),
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx);
+        return AlertDialog(
+          title: Text(l10n.areYouSure),
+          content: Text(l10n.prsRoutinesKept),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(l10n.cancel),
             ),
-          ),
-        ],
-      ),
+            Semantics(
+              container: true,
+              identifier: 'manage-data-yes-delete',
+              child: TextButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                style: TextButton.styleFrom(
+                  foregroundColor: theme.colorScheme.error,
+                ),
+                child: Text(l10n.yesDelete),
+              ),
+            ),
+          ],
+        );
+      },
     );
 
     if (second != true || !context.mounted) return;
@@ -162,7 +168,7 @@ class ManageDataScreen extends ConsumerWidget {
     } on AppException catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to clear history: ${e.userMessage}')),
+        SnackBar(content: Text(l10n.failedToClearHistory(e.userMessage))),
       );
       return;
     }
@@ -172,7 +178,7 @@ class ManageDataScreen extends ConsumerWidget {
         content: Semantics(
           container: true,
           identifier: 'manage-data-history-cleared',
-          child: const Text('Workout history cleared'),
+          child: Text(l10n.historyCleared),
         ),
       ),
     );
@@ -192,18 +198,20 @@ class ManageDataScreen extends ConsumerWidget {
       await resetAllAccountData(ref);
     } on AppException catch (e) {
       if (!context.mounted) return;
+      final l10n = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to reset data: ${e.userMessage}')),
+        SnackBar(content: Text(l10n.failedToResetData(e.userMessage))),
       );
       return;
     }
     if (!context.mounted) return;
+    final l10n = AppLocalizations.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Semantics(
           container: true,
           identifier: 'manage-data-account-reset',
-          child: const Text('Account data reset'),
+          child: Text(l10n.accountDataReset),
         ),
       ),
     );
@@ -247,11 +255,12 @@ class ManageDataScreen extends ConsumerWidget {
     final state = ref.read(authNotifierProvider);
     final error = state.error;
     if (error != null) {
+      final l10n = AppLocalizations.of(context);
       final message = error is AppException
           ? error.userMessage
-          : 'Please try again.';
+          : l10n.pleaseTryAgain;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to delete account: $message')),
+        SnackBar(content: Text(l10n.failedToDeleteAccount(message))),
       );
       return;
     }
@@ -335,6 +344,9 @@ class _ResetAllDialogState extends State<_ResetAllDialog> {
   }
 
   void _onTextChanged() {
+    // The confirmation keyword "RESET" is intentionally locale-independent.
+    // Users must type the exact English word regardless of their locale
+    // setting. This is a safety measure — not a localization oversight.
     final typed = _controller.text.trim().toUpperCase() == 'RESET';
     if (typed != _isResetTyped) {
       setState(() => _isResetTyped = typed);
@@ -350,18 +362,19 @@ class _ResetAllDialogState extends State<_ResetAllDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Dialog.fullscreen(
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Reset Account Data'),
+          title: Text(l10n.resetAccountData),
           leading: Semantics(
             container: true,
             identifier: 'manage-data-reset-cancel',
             child: IconButton(
               icon: const Icon(Icons.close),
               onPressed: () => Navigator.of(context).pop(false),
-              tooltip: 'Cancel',
+              tooltip: l10n.cancel,
             ),
           ),
         ),
@@ -372,16 +385,14 @@ class _ResetAllDialogState extends State<_ResetAllDialog> {
             children: [
               const SizedBox(height: 24),
               Text(
-                'This will permanently delete all workouts and personal '
-                'records. Your routines and custom exercises will be kept. '
-                'There is no undo.',
+                l10n.resetAccountWarning,
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
                 ),
               ),
               const SizedBox(height: 32),
               Text(
-                'Type RESET to confirm',
+                l10n.typeResetToConfirm,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
@@ -391,6 +402,8 @@ class _ResetAllDialogState extends State<_ResetAllDialog> {
                 controller: _controller,
                 textCapitalization: TextCapitalization.characters,
                 decoration: InputDecoration(
+                  // Hint text is intentionally the English keyword — see
+                  // _onTextChanged comment above.
                   hintText: 'RESET',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -407,13 +420,13 @@ class _ResetAllDialogState extends State<_ResetAllDialog> {
                   Expanded(
                     child: TextButton(
                       onPressed: () => Navigator.of(context).pop(false),
-                      child: const Text('Cancel'),
+                      child: Text(l10n.cancel),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: GradientButton(
-                      label: 'Reset Account',
+                      label: l10n.resetAccountButton,
                       onPressed: _isResetTyped
                           ? () => Navigator.of(context).pop(true)
                           : null,
@@ -449,6 +462,9 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
   }
 
   void _onTextChanged() {
+    // The confirmation keyword "DELETE" is intentionally locale-independent.
+    // Users must type the exact English word regardless of their locale
+    // setting. This is a safety measure — not a localization oversight.
     final typed = _controller.text.trim().toUpperCase() == 'DELETE';
     if (typed != _isDeleteTyped) {
       setState(() => _isDeleteTyped = typed);
@@ -464,15 +480,16 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Dialog.fullscreen(
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Delete Account'),
+          title: Text(l10n.deleteAccountButton),
           leading: IconButton(
             icon: const Icon(Icons.close),
             onPressed: () => Navigator.of(context).pop(false),
-            tooltip: 'Cancel',
+            tooltip: l10n.cancel,
           ),
         ),
         body: Padding(
@@ -482,16 +499,14 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
             children: [
               const SizedBox(height: 24),
               Text(
-                'This will permanently delete your account, all your '
-                'workouts, personal records, routines, and custom '
-                'exercises. This cannot be undone.',
+                l10n.deleteAccountWarning,
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
                 ),
               ),
               const SizedBox(height: 32),
               Text(
-                'Type DELETE to confirm',
+                l10n.typeDeleteToConfirm,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
@@ -501,6 +516,8 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
                 controller: _controller,
                 textCapitalization: TextCapitalization.characters,
                 decoration: InputDecoration(
+                  // Hint text is intentionally the English keyword — see
+                  // _onTextChanged comment above.
                   hintText: 'DELETE',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -517,13 +534,13 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
                   Expanded(
                     child: TextButton(
                       onPressed: () => Navigator.of(context).pop(false),
-                      child: const Text('Cancel'),
+                      child: Text(l10n.cancel),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: GradientButton(
-                      label: 'Delete Account',
+                      label: l10n.deleteAccountButton,
                       onPressed: _isDeleteTyped
                           ? () => Navigator.of(context).pop(true)
                           : null,

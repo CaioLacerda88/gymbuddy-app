@@ -5,12 +5,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
 import 'package:gymbuddy_app/features/exercises/models/exercise.dart';
 import 'package:gymbuddy_app/features/exercises/ui/create_exercise_screen.dart';
+import '../../../../helpers/test_material_app.dart';
 
 void main() {
   Widget buildTestWidget({List<Override> overrides = const []}) {
     return ProviderScope(
       overrides: overrides,
-      child: MaterialApp(
+      child: TestMaterialApp(
         theme: AppTheme.dark,
         home: const CreateExerciseScreen(),
       ),

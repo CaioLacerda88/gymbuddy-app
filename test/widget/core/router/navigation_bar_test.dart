@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
+import '../../../helpers/test_material_app.dart';
 
 void main() {
   group('Bottom navigation bar styling (QA-011, UX-V08)', () {
@@ -9,7 +10,7 @@ void main() {
     ) async {
       // Build a NavigationBar matching the production configuration.
       await tester.pumpWidget(
-        MaterialApp(
+        TestMaterialApp(
           theme: AppTheme.dark,
           home: Scaffold(
             bottomNavigationBar: NavigationBar(
@@ -48,7 +49,7 @@ void main() {
 
     testWidgets('navigation bar uses custom background color', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        TestMaterialApp(
           theme: AppTheme.dark,
           home: Scaffold(
             bottomNavigationBar: NavigationBar(

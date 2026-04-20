@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/device/platform_info.dart';
 import '../../../core/theme/radii.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../analytics/data/analytics_repository.dart';
 import '../../analytics/data/models/analytics_event.dart';
 import '../../analytics/providers/analytics_providers.dart';
@@ -131,40 +132,41 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
 
     final atSoftCap = _bucketRoutines.length >= trainingFrequency;
 
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
         title: Semantics(
           container: true,
           identifier: 'weekly-plan-title',
-          child: const Text("This Week's Plan"),
+          child: Text(l10n.thisWeeksPlan),
         ),
         actions: [
           Semantics(
             container: true,
             identifier: 'weekly-plan-overflow',
-            label: 'More options',
+            label: l10n.moreOptions,
             child: PopupMenuButton<String>(
-              tooltip: 'More options',
+              tooltip: l10n.moreOptions,
               onSelected: (value) {
                 if (value == 'clear') _confirmClear(context);
                 if (value == 'autofill') {
                   _autoFill(allRoutines, trainingFrequency);
                 }
               },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'autofill',
-                  child: Text('Auto-fill'),
-                ),
-                PopupMenuItem(
-                  value: 'clear',
-                  child: Semantics(
-                    container: true,
-                    identifier: 'weekly-plan-clear-week',
-                    child: const Text('Clear Week'),
+              itemBuilder: (context) {
+                final l10n = AppLocalizations.of(context);
+                return [
+                  PopupMenuItem(value: 'autofill', child: Text(l10n.autoFill)),
+                  PopupMenuItem(
+                    value: 'clear',
+                    child: Semantics(
+                      container: true,
+                      identifier: 'weekly-plan-clear-week',
+                      child: Text(l10n.clearWeek),
+                    ),
                   ),
-                ),
-              ],
+                ];
+              },
             ),
           ),
         ],
@@ -200,7 +202,7 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
                       final bucket = _bucketRoutines[index];
                       final routine = routineMap[bucket.routineId];
                       final isDone = bucket.completedWorkoutId != null;
-                      final name = routine?.name ?? 'Unknown Routine';
+                      final name = routine?.name ?? l10n.unknownRoutine;
                       final exerciseCount = routine?.exercises.length ?? 0;
 
                       return _RoutineRow(
@@ -257,12 +259,13 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
 
     // Undo snackbar.
     if (mounted) {
+      final l10n = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Routine removed'),
+          content: Text(l10n.routineRemoved),
           duration: const Duration(seconds: 5),
           action: SnackBarAction(
-            label: 'UNDO',
+            label: l10n.undo.toUpperCase(),
             onPressed: () {
               setState(() {
                 // Clamp to current list length in case reorders or other
@@ -330,22 +333,23 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
     if (_bucketRoutines.isNotEmpty) {
       final confirmed = await showDialog<bool>(
         context: context,
-        builder: (dialogCtx) => AlertDialog(
-          title: const Text('Replace current plan?'),
-          content: const Text(
-            'Auto-fill will replace your current plan with your most-used routines.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogCtx).pop(false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(dialogCtx).pop(true),
-              child: const Text('Replace'),
-            ),
-          ],
-        ),
+        builder: (dialogCtx) {
+          final l10n = AppLocalizations.of(dialogCtx);
+          return AlertDialog(
+            title: Text(l10n.replacePlanTitle),
+            content: Text(l10n.replacePlanContent),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogCtx).pop(false),
+                child: Text(l10n.cancel),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(dialogCtx).pop(true),
+                child: Text(l10n.replace),
+              ),
+            ],
+          );
+        },
       );
       if (confirmed != true || !mounted) return;
     }
@@ -387,24 +391,27 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
   Future<void> _confirmClear(BuildContext ctx) async {
     final confirmed = await showDialog<bool>(
       context: ctx,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('Clear Week'),
-        content: const Text('Start fresh this week?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogCtx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          Semantics(
-            container: true,
-            identifier: 'weekly-plan-clear-confirm',
-            child: TextButton(
-              onPressed: () => Navigator.of(dialogCtx).pop(true),
-              child: const Text('Clear'),
+      builder: (dialogCtx) {
+        final l10n = AppLocalizations.of(dialogCtx);
+        return AlertDialog(
+          title: Text(l10n.clearWeekTitle),
+          content: Text(l10n.clearWeekContent),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(false),
+              child: Text(l10n.cancel),
             ),
-          ),
-        ],
-      ),
+            Semantics(
+              container: true,
+              identifier: 'weekly-plan-clear-confirm',
+              child: TextButton(
+                onPressed: () => Navigator.of(dialogCtx).pop(true),
+                child: Text(l10n.clear),
+              ),
+            ),
+          ],
+        );
+      },
     );
 
     if (confirmed != true || !mounted) return;
@@ -516,6 +523,7 @@ class _RoutineRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     // Use the theme primary color (M3 green) instead of a hardcoded hex so
     // future brand/theme changes propagate here automatically.
     final primary = theme.colorScheme.primary;
@@ -566,7 +574,7 @@ class _RoutineRow extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '$exerciseCount exercises',
+                  l10n.exercisesCount(exerciseCount),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
                   ),
@@ -624,6 +632,7 @@ class _AddRoutineRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Column(
@@ -663,7 +672,7 @@ class _AddRoutineRow extends StatelessWidget {
                       container: true,
                       identifier: 'weekly-plan-add-routine-row',
                       child: Text(
-                        'Add Routine',
+                        l10n.addRoutine,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurface.withValues(
                             alpha: atSoftCap ? 0.3 : 0.55,
@@ -680,8 +689,8 @@ class _AddRoutineRow extends StatelessWidget {
             padding: const EdgeInsets.only(top: 6),
             child: Text(
               atSoftCap
-                  ? '$trainingFrequency/$trainingFrequency planned — ready to go'
-                  : '$bucketCount/$trainingFrequency planned this week',
+                  ? l10n.plannedReadyToGo(trainingFrequency, trainingFrequency)
+                  : l10n.plannedThisWeek(bucketCount, trainingFrequency),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
               ),
@@ -702,6 +711,7 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -713,7 +723,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'No routines planned this week',
+            l10n.noRoutinesPlanned,
             style: theme.textTheme.bodyLarge?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
             ),
@@ -725,14 +735,14 @@ class _EmptyState extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: onAddRoutines,
               icon: const Icon(Icons.add),
-              label: const Text('Add Routines'),
+              label: Text(l10n.addRoutines),
             ),
           ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: onAutoFill,
             icon: const Icon(Icons.repeat),
-            label: const Text('Auto-fill'),
+            label: Text(l10n.autoFill),
           ),
         ],
       ),

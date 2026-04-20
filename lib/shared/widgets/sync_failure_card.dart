@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/connectivity/connectivity_provider.dart';
 import '../../core/offline/sync_service.dart';
 import '../../core/theme/radii.dart';
+import '../../l10n/app_localizations.dart';
 
 /// An in-flow card that surfaces terminal sync failures on the home screen.
 ///
@@ -22,9 +23,10 @@ class SyncFailureCard extends ConsumerWidget {
     if (count == 0 || !isOnline) return const SizedBox.shrink();
 
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final label = count == 1
-        ? "Workout couldn't sync"
-        : "$count workouts couldn't sync";
+        ? l10n.syncFailureSingular
+        : l10n.syncFailurePlural(count);
 
     return Semantics(
       container: true,
@@ -56,7 +58,7 @@ class SyncFailureCard extends ConsumerWidget {
                       container: true,
                       identifier: 'offline-failure-subtitle',
                       child: Text(
-                        'Saved locally. Retry or dismiss.',
+                        l10n.savedLocallyRetry,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurface.withValues(
                             alpha: 0.65,
@@ -75,7 +77,7 @@ class SyncFailureCard extends ConsumerWidget {
                       .read(syncServiceProvider.notifier)
                       .dismissTerminalItems(),
                   child: Text(
-                    'Dismiss',
+                    l10n.dismiss,
                     style: TextStyle(
                       color: theme.colorScheme.onSurface.withValues(
                         alpha: 0.65,
@@ -89,7 +91,7 @@ class SyncFailureCard extends ConsumerWidget {
                 identifier: 'offline-retry',
                 child: TextButton(
                   onPressed: () => _handleRetry(context, ref),
-                  child: const Text('Retry'),
+                  child: Text(l10n.retry),
                 ),
               ),
             ],
@@ -102,11 +104,10 @@ class SyncFailureCard extends ConsumerWidget {
   void _handleRetry(BuildContext context, WidgetRef ref) {
     final isOnline = ref.read(isOnlineProvider);
     if (!isOnline) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("You're offline \u2014 retry when back online"),
-        ),
-      );
+      final l10n = AppLocalizations.of(context);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.offlineRetryHint)));
       return;
     }
     ref.read(syncServiceProvider.notifier).retryTerminalItems();

@@ -8,6 +8,7 @@ import 'package:gymbuddy_app/features/exercises/providers/exercise_progress_prov
 import 'package:gymbuddy_app/features/exercises/ui/widgets/progress_chart_section.dart';
 import 'package:gymbuddy_app/features/profile/models/profile.dart';
 import 'package:gymbuddy_app/features/profile/providers/profile_providers.dart';
+import '../../../../helpers/test_material_app.dart';
 
 /// Fake profile notifier so tests can pin the weight unit without hitting the
 /// real profile repository.
@@ -70,7 +71,7 @@ Widget _buildHarness({
         ),
       ),
     ],
-    child: MaterialApp(
+    child: TestMaterialApp(
       theme: AppTheme.dark,
       home: Scaffold(
         body: ProgressChartSection(exerciseId: 'ex-1', prValue: prValue),
@@ -676,7 +677,7 @@ void main() {
               return (rawPoints: points, e1rmPoints: e1rm, workoutCount: 3);
             }),
           ],
-          child: MaterialApp(
+          child: TestMaterialApp(
             theme: AppTheme.dark,
             home: const Scaffold(
               body: ProgressChartSection(exerciseId: 'ex-1'),

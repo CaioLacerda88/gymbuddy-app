@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
 import 'package:gymbuddy_app/features/workouts/ui/widgets/finish_workout_dialog.dart';
+import '../../../../../helpers/test_material_app.dart';
 
 Widget buildTestWidget(Widget child) {
-  return MaterialApp(
+  return TestMaterialApp(
     theme: AppTheme.dark,
     home: Scaffold(body: Center(child: child)),
   );
@@ -19,7 +20,7 @@ Future<FinishWorkoutResult?> showDialog(
   FinishWorkoutResult? result;
 
   await tester.pumpWidget(
-    MaterialApp(
+    TestMaterialApp(
       theme: AppTheme.dark,
       home: Builder(
         builder: (context) => Scaffold(
@@ -115,7 +116,7 @@ void main() {
         FinishWorkoutResult? captured;
 
         await tester.pumpWidget(
-          MaterialApp(
+          TestMaterialApp(
             theme: AppTheme.dark,
             home: Builder(
               builder: (context) => Scaffold(
@@ -151,7 +152,7 @@ void main() {
           FinishWorkoutResult? captured;
 
           await tester.pumpWidget(
-            MaterialApp(
+            TestMaterialApp(
               theme: AppTheme.dark,
               home: Builder(
                 builder: (context) => Scaffold(
@@ -186,7 +187,7 @@ void main() {
           FinishWorkoutResult? captured;
 
           await tester.pumpWidget(
-            MaterialApp(
+            TestMaterialApp(
               theme: AppTheme.dark,
               home: Builder(
                 builder: (context) => Scaffold(
@@ -220,7 +221,7 @@ void main() {
         FinishWorkoutResult? captured;
 
         await tester.pumpWidget(
-          MaterialApp(
+          TestMaterialApp(
             theme: AppTheme.dark,
             home: Builder(
               builder: (context) => Scaffold(
@@ -251,7 +252,7 @@ void main() {
 
       testWidgets('dismisses dialog after confirming', (tester) async {
         await tester.pumpWidget(
-          MaterialApp(
+          TestMaterialApp(
             theme: AppTheme.dark,
             home: Builder(
               builder: (context) => Scaffold(

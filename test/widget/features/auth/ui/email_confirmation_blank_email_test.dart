@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
 import 'package:gymbuddy_app/features/auth/providers/signup_state_provider.dart';
 import 'package:gymbuddy_app/features/auth/ui/email_confirmation_screen.dart';
+import '../../../../helpers/test_material_app.dart';
 
 void main() {
   group('EmailConfirmationScreen blank email (PO-002)', () {
@@ -15,7 +15,7 @@ void main() {
               (ref) => 'test@example.com',
             ),
           ],
-          child: MaterialApp(
+          child: TestMaterialApp(
             theme: AppTheme.dark,
             home: const EmailConfirmationScreen(),
           ),
@@ -30,7 +30,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [signupPendingEmailProvider.overrideWith((ref) => null)],
-          child: MaterialApp(
+          child: TestMaterialApp(
             theme: AppTheme.dark,
             home: const EmailConfirmationScreen(),
           ),

@@ -15,6 +15,7 @@ import 'package:gymbuddy_app/features/profile/ui/profile_screen.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../helpers/test_material_app.dart';
 
 class MockAuthRepository extends Mock implements AuthRepository {}
 
@@ -53,7 +54,7 @@ Widget buildTestWidget({
       profileProvider.overrideWith(() => MockProfileNotifier(profile)),
       authRepositoryProvider.overrideWithValue(mockAuth),
     ],
-    child: MaterialApp(theme: AppTheme.dark, home: const ProfileScreen()),
+    child: TestMaterialApp(theme: AppTheme.dark, home: const ProfileScreen()),
   );
 }
 
@@ -255,7 +256,7 @@ void main() {
                   ..setSignOut(),
               ),
             ],
-            child: MaterialApp(
+            child: TestMaterialApp(
               theme: AppTheme.dark,
               home: const ProfileScreen(),
             ),
@@ -291,7 +292,7 @@ void main() {
                   ..setSignOut(),
               ),
             ],
-            child: MaterialApp(
+            child: TestMaterialApp(
               theme: AppTheme.dark,
               home: const ProfileScreen(),
             ),
@@ -320,7 +321,10 @@ void main() {
                 ..setSignOut(),
             ),
           ],
-          child: MaterialApp(theme: AppTheme.dark, home: const ProfileScreen()),
+          child: TestMaterialApp(
+            theme: AppTheme.dark,
+            home: const ProfileScreen(),
+          ),
         ),
       );
       // Only pump once so we catch the loading frame.
@@ -396,7 +400,7 @@ void main() {
               profileProvider.overrideWith(() => MockProfileNotifier(profile)),
               authRepositoryProvider.overrideWithValue(mockAuth),
             ],
-            child: MaterialApp(
+            child: TestMaterialApp(
               theme: AppTheme.dark,
               home: const ProfileScreen(),
             ),
@@ -434,7 +438,7 @@ void main() {
               profileProvider.overrideWith(() => MockProfileNotifier(profile)),
               authRepositoryProvider.overrideWithValue(mockAuth),
             ],
-            child: MaterialApp(
+            child: TestMaterialApp(
               theme: AppTheme.dark,
               home: const ProfileScreen(),
             ),
@@ -575,7 +579,7 @@ void main() {
               profileProvider.overrideWith(() => MockProfileNotifier(profile)),
               authRepositoryProvider.overrideWithValue(mockAuth),
             ],
-            child: MaterialApp(
+            child: TestMaterialApp(
               theme: AppTheme.dark,
               home: const ProfileScreen(),
             ),

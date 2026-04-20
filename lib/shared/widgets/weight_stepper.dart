@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
+
 /// A reusable stepper widget for weight values.
 ///
 /// Supports tap and long-press with progressive acceleration on the +/- buttons.
@@ -71,38 +73,41 @@ class _WeightStepperState extends State<WeightStepper> {
     final controller = TextEditingController(text: _formatWeight(widget.value));
     showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Enter weight'),
-        content: TextField(
-          controller: controller,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          autofocus: true,
-          decoration: InputDecoration(suffixText: widget.unit),
-          onSubmitted: (text) {
-            final parsed = double.tryParse(text);
-            if (parsed != null && parsed >= 0) {
-              widget.onChanged(parsed);
-            }
-            Navigator.of(context).pop();
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              final parsed = double.tryParse(controller.text);
+      builder: (dialogCtx) {
+        final l10n = AppLocalizations.of(dialogCtx);
+        return AlertDialog(
+          title: Text(l10n.enterWeight),
+          content: TextField(
+            controller: controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            autofocus: true,
+            decoration: InputDecoration(suffixText: widget.unit),
+            onSubmitted: (text) {
+              final parsed = double.tryParse(text);
               if (parsed != null && parsed >= 0) {
                 widget.onChanged(parsed);
               }
-              Navigator.of(context).pop();
+              Navigator.of(dialogCtx).pop();
             },
-            child: const Text('OK'),
           ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(),
+              child: Text(l10n.cancel),
+            ),
+            TextButton(
+              onPressed: () {
+                final parsed = double.tryParse(controller.text);
+                if (parsed != null && parsed >= 0) {
+                  widget.onChanged(parsed);
+                }
+                Navigator.of(dialogCtx).pop();
+              },
+              child: Text(l10n.ok),
+            ),
+          ],
+        );
+      },
     );
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../l10n/app_localizations.dart';
 import '../../../routines/models/routine.dart';
 import '../../../routines/providers/notifiers/routine_list_notifier.dart';
 import '../../../routines/ui/start_routine_action.dart';
@@ -88,13 +89,14 @@ class _ActiveBucketRow extends ConsumerWidget {
   }
 
   List<Widget> _buildChips(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final suggestedNext = ref.watch(suggestedNextProvider);
 
     final sortedRoutines = [...plan.routines]
       ..sort((a, b) => a.order.compareTo(b.order));
 
     return sortedRoutines.map((bucket) {
-      final name = nameMap[bucket.routineId] ?? 'Routine';
+      final name = nameMap[bucket.routineId] ?? l10n.routines;
       final isDone = bucket.completedWorkoutId != null;
       final isNext =
           suggestedNext != null &&

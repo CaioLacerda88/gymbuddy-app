@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/exceptions/app_exception.dart';
+import '../../../core/utils/enum_l10n.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/gradient_button.dart';
 import '../../auth/providers/auth_providers.dart';
@@ -38,8 +40,9 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
 
   String? _validateName(String? value) {
     if (_nameError != null) return _nameError;
-    if (value == null || value.trim().isEmpty) return 'Name is required';
-    if (value.trim().length < 2) return 'Name must be at least 2 characters';
+    final l10n = AppLocalizations.of(context);
+    if (value == null || value.trim().isEmpty) return l10n.nameRequired;
+    if (value.trim().length < 2) return l10n.nameTooShort;
     return null;
   }
 
@@ -49,12 +52,11 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
     // Always validate the form fields to show inline errors.
     final isFormValid = _formKey.currentState?.validate() ?? false;
 
+    final l10n = AppLocalizations.of(context);
     if (_selectedMuscleGroup == null || _selectedEquipmentType == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a muscle group and equipment type'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.selectMuscleAndEquipment)));
       return;
     }
 
@@ -66,11 +68,9 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
       final userId = ref.read(currentUserIdProvider);
       if (userId == null) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Session expired. Please log in again.'),
-            ),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(l10n.sessionExpired)));
           context.go('/login');
         }
         return;
@@ -92,9 +92,9 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
       _invalidateExerciseList();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Exercise created successfully')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.exerciseCreated)));
         context.pop();
       }
     } on ValidationException catch (e) {
@@ -112,10 +112,11 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Create Exercise'),
+        title: Text(l10n.createExercise),
         backgroundColor: Colors.transparent,
       ),
       body: SafeArea(
@@ -127,7 +128,7 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 AppTextField(
-                  label: 'Exercise Name',
+                  label: l10n.exerciseName,
                   controller: _nameController,
                   validator: _validateName,
                   textInputAction: TextInputAction.done,
@@ -141,26 +142,26 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
                   },
                 ),
                 const SizedBox(height: 24),
-                Text('Muscle Group', style: theme.textTheme.titleMedium),
+                Text(l10n.muscleGroup, style: theme.textTheme.titleMedium),
                 const SizedBox(height: 12),
                 _SelectableGrid<MuscleGroup>(
                   values: MuscleGroup.values,
                   selected: _selectedMuscleGroup,
                   onSelected: (v) => setState(() => _selectedMuscleGroup = v),
-                  labelFor: (v) => v.displayName,
+                  labelFor: (v) => v.localizedName(l10n),
                   iconFor: (v) => v.icon,
-                  semanticPrefix: 'Muscle group',
+                  semanticPrefix: l10n.muscleGroupSemanticsPrefix,
                 ),
                 const SizedBox(height: 24),
-                Text('Equipment Type', style: theme.textTheme.titleMedium),
+                Text(l10n.equipmentType, style: theme.textTheme.titleMedium),
                 const SizedBox(height: 12),
                 _SelectableGrid<EquipmentType>(
                   values: EquipmentType.values,
                   selected: _selectedEquipmentType,
                   onSelected: (v) => setState(() => _selectedEquipmentType = v),
-                  labelFor: (v) => v.displayName,
+                  labelFor: (v) => v.localizedName(l10n),
                   iconFor: (v) => v.icon,
-                  semanticPrefix: 'Equipment type',
+                  semanticPrefix: l10n.equipmentTypeSemanticsPrefix,
                 ),
                 const SizedBox(height: 24),
                 TextField(
@@ -169,8 +170,8 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
                   maxLines: 3,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: InputDecoration(
-                    labelText: 'Description',
-                    hintText: 'Brief description of the exercise (optional)',
+                    labelText: l10n.description,
+                    hintText: l10n.descriptionHint,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -183,9 +184,9 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
                   maxLines: 5,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: InputDecoration(
-                    labelText: 'Form Tips',
-                    hintText: 'Form cues, one per line (optional)',
-                    helperText: 'Enter each tip on a new line',
+                    labelText: l10n.formTips,
+                    hintText: l10n.formTipsHint,
+                    helperText: l10n.formTipsHelper,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -193,7 +194,7 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
                 ),
                 const SizedBox(height: 32),
                 GradientButton(
-                  label: 'CREATE EXERCISE',
+                  label: l10n.createExerciseButton,
                   onPressed: _isLoading ? null : _submit,
                   isLoading: _isLoading,
                   semanticsIdentifier: 'create-exercise-save',

@@ -7,6 +7,7 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
 import 'package:gymbuddy_app/shared/widgets/legal_doc_screen.dart';
+import '../../../helpers/test_material_app.dart';
 
 /// Test-only asset bundle that serves a fixed markdown string for a known
 /// asset path and throws for unknown paths (so "failed to load" paths can be
@@ -40,7 +41,7 @@ void main() {
     required AssetBundle bundle,
     String title = 'Test Document',
   }) {
-    return MaterialApp(
+    return TestMaterialApp(
       theme: AppTheme.dark,
       home: DefaultAssetBundle(
         bundle: bundle,

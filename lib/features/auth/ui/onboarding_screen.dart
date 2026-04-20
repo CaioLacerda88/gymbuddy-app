@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/device/platform_info.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/gradient_button.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../analytics/data/models/analytics_event.dart';
@@ -58,9 +59,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter your name.')),
-        );
+        final l10n = AppLocalizations.of(context);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.pleaseEnterName)));
       }
       return;
     }
@@ -95,11 +97,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       if (mounted) context.go('/home');
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to save profile. Please try again.'),
-          ),
-        );
+        final l10n = AppLocalizations.of(context);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.failedToSaveProfile)));
       }
     }
   }
@@ -178,6 +179,7 @@ class _WelcomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -201,7 +203,7 @@ class _WelcomePage extends StatelessWidget {
                   container: true,
                   identifier: 'onboarding-welcome',
                   child: Text(
-                    'Track every rep,\nevery time',
+                    l10n.onboardingHeadline,
                     style: theme.textTheme.displayMedium?.copyWith(
                       color: theme.colorScheme.primary,
                     ),
@@ -210,7 +212,7 @@ class _WelcomePage extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Log workouts, crush personal records, and build the physique you want.',
+                  l10n.onboardingSubtitle,
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
@@ -223,7 +225,7 @@ class _WelcomePage extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: GradientButton(
-              label: 'GET STARTED',
+              label: l10n.getStarted,
               onPressed: onNext,
               semanticsIdentifier: 'onboarding-get-started',
             ),
@@ -258,9 +260,19 @@ class _ProfileSetupPage extends StatelessWidget {
   static const _fitnessLevels = ['beginner', 'intermediate', 'advanced'];
   static const _frequencyOptions = [2, 3, 4, 5, 6];
 
+  String _fitnessLevelLabel(String level, AppLocalizations l10n) {
+    return switch (level) {
+      'beginner' => l10n.fitnessLevelBeginner,
+      'intermediate' => l10n.fitnessLevelIntermediate,
+      'advanced' => l10n.fitnessLevelAdvanced,
+      _ => level[0].toUpperCase() + level.substring(1),
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -269,13 +281,13 @@ class _ProfileSetupPage extends StatelessWidget {
         children: [
           const SizedBox(height: 32),
           Text(
-            'Set up your profile',
+            l10n.setupProfile,
             style: theme.textTheme.headlineLarge,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           Text(
-            'Tell us a bit about yourself',
+            l10n.tellUsAboutYourself,
             style: theme.textTheme.bodyLarge?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
             ),
@@ -283,7 +295,7 @@ class _ProfileSetupPage extends StatelessWidget {
           ),
           const SizedBox(height: 40),
           AppTextField(
-            label: 'Display name',
+            label: l10n.displayName,
             controller: nameController,
             textInputAction: TextInputAction.done,
             prefixIcon: Icons.person_outlined,
@@ -292,7 +304,7 @@ class _ProfileSetupPage extends StatelessWidget {
             semanticsIdentifier: 'onboarding-display-name',
           ),
           const SizedBox(height: 24),
-          Text('Fitness level', style: theme.textTheme.titleMedium),
+          Text(l10n.fitnessLevel, style: theme.textTheme.titleMedium),
           const SizedBox(height: 12),
           Wrap(
             spacing: 12,
@@ -302,7 +314,7 @@ class _ProfileSetupPage extends StatelessWidget {
                 container: true,
                 identifier: 'onboarding-$level',
                 child: ChoiceChip(
-                  label: Text(level[0].toUpperCase() + level.substring(1)),
+                  label: Text(_fitnessLevelLabel(level, l10n)),
                   selected: isSelected,
                   onSelected: (_) => onFitnessLevelChanged(level),
                   selectedColor: theme.colorScheme.primary,
@@ -322,13 +334,10 @@ class _ProfileSetupPage extends StatelessWidget {
             }).toList(),
           ),
           const SizedBox(height: 24),
-          Text(
-            'How often do you plan to train?',
-            style: theme.textTheme.titleMedium,
-          ),
+          Text(l10n.howOftenTrain, style: theme.textTheme.titleMedium),
           const SizedBox(height: 4),
           Text(
-            'Your weekly goal \u2014 you can change this anytime',
+            l10n.weeklyGoalHint,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
             ),
@@ -359,7 +368,7 @@ class _ProfileSetupPage extends StatelessWidget {
           ),
           const Spacer(),
           GradientButton(
-            label: "LET'S GO",
+            label: l10n.letsGo,
             onPressed: onFinish,
             semanticsIdentifier: 'onboarding-lets-go',
           ),
@@ -371,7 +380,7 @@ class _ProfileSetupPage extends StatelessWidget {
               child: TextButton.icon(
                 onPressed: onBack,
                 icon: const Icon(Icons.arrow_back, size: 18),
-                label: const Text('Back'),
+                label: Text(l10n.back),
               ),
             ),
           ),

@@ -8,6 +8,7 @@ import 'package:gymbuddy_app/features/workouts/models/workout.dart';
 import 'package:gymbuddy_app/features/workouts/models/workout_exercise.dart';
 import 'package:gymbuddy_app/features/workouts/providers/workout_providers.dart';
 import 'package:gymbuddy_app/features/workouts/ui/widgets/resume_workout_banner.dart';
+import 'package:gymbuddy_app/l10n/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
 // Fake notifier helpers
@@ -99,6 +100,8 @@ Widget buildBanner(
       ),
     ],
     child: MaterialApp.router(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       theme: AppTheme.dark,
       routerConfig: effectiveRouter,
     ),

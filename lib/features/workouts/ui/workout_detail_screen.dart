@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/workout_formatters.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../personal_records/providers/pr_providers.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../data/workout_repository.dart';
@@ -21,26 +22,27 @@ class WorkoutDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncDetail = ref.watch(workoutDetailProvider(workoutId));
 
+    final l10n = AppLocalizations.of(context);
     return asyncDetail.when(
       loading: () => Scaffold(
         appBar: AppBar(),
         body: const Center(child: CircularProgressIndicator()),
       ),
       error: (error, _) => Scaffold(
-        appBar: AppBar(title: const Text('Workout')),
+        appBar: AppBar(title: Text(l10n.workout)),
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Failed to load workout',
+                l10n.failedToLoadWorkout,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 8),
               FilledButton(
                 onPressed: () =>
                     ref.invalidate(workoutDetailProvider(workoutId)),
-                child: const Text('Retry'),
+                child: Text(l10n.retry),
               ),
             ],
           ),
@@ -59,13 +61,18 @@ class _WorkoutDetailBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final workout = detail.workout;
     final weightUnit = ref.watch(profileProvider).value?.weightUnit ?? 'kg';
+    final locale = Localizations.localeOf(context).toString();
     final dateText = WorkoutFormatters.formatWorkoutDate(
       workout.finishedAt ?? workout.startedAt,
+      l10n: l10n,
+      locale: locale,
     );
     final durationText = WorkoutFormatters.formatDuration(
       workout.durationSeconds,
+      l10n: l10n,
     );
 
     // Calculate total volume across all exercises.
@@ -114,7 +121,7 @@ class _WorkoutDetailBody extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Notes', style: theme.textTheme.titleMedium),
+                      Text(l10n.notes, style: theme.textTheme.titleMedium),
                       const SizedBox(height: 8),
                       Text(
                         workout.notes!,
@@ -144,8 +151,13 @@ class _WorkoutDetailBody extends ConsumerWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Total Volume: '
-                  '${WorkoutFormatters.formatVolume(totalVolume, weightUnit: weightUnit)}',
+                  l10n.totalVolume(
+                    WorkoutFormatters.formatVolume(
+                      totalVolume,
+                      weightUnit: weightUnit,
+                      locale: locale,
+                    ),
+                  ),
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: theme.colorScheme.primary,
                   ),
@@ -175,6 +187,7 @@ class _ReadOnlyExerciseCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final prSetIds = ref.watch(workoutPRSetIdsProvider(workoutId)).value ?? {};
 
     return Card(
@@ -185,7 +198,7 @@ class _ReadOnlyExerciseCard extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              exercise.exercise?.name ?? 'Exercise',
+              exercise.exercise?.name ?? l10n.exerciseGeneric,
               style: theme.textTheme.titleMedium,
             ),
             if (sets.isNotEmpty) ...[
@@ -215,6 +228,7 @@ class _SetColumnHeaders extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final style = theme.textTheme.bodyMedium?.copyWith(
       color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
       fontSize: 11,
@@ -225,16 +239,28 @@ class _SetColumnHeaders extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
-          SizedBox(width: 40, child: Text('SET', style: style)),
+          SizedBox(width: 40, child: Text(l10n.setColumnSet, style: style)),
           Expanded(
-            child: Text('WEIGHT', style: style, textAlign: TextAlign.center),
+            child: Text(
+              l10n.setColumnWeight,
+              style: style,
+              textAlign: TextAlign.center,
+            ),
           ),
           Expanded(
-            child: Text('REPS', style: style, textAlign: TextAlign.center),
+            child: Text(
+              l10n.setColumnReps,
+              style: style,
+              textAlign: TextAlign.center,
+            ),
           ),
           SizedBox(
             width: 48,
-            child: Text('TYPE', style: style, textAlign: TextAlign.center),
+            child: Text(
+              l10n.setColumnType,
+              style: style,
+              textAlign: TextAlign.center,
+            ),
           ),
         ],
       ),
@@ -253,11 +279,11 @@ class _ReadOnlySetRow extends StatelessWidget {
   final bool isPR;
   final String weightUnit;
 
-  String get _typeLabel => switch (set.setType) {
-    SetType.working => 'W',
-    SetType.warmup => 'Wu',
-    SetType.dropset => 'D',
-    SetType.failure => 'F',
+  String _typeLabel(AppLocalizations l10n) => switch (set.setType) {
+    SetType.working => l10n.setTypeAbbrWorking,
+    SetType.warmup => l10n.setTypeAbbrWarmupShort,
+    SetType.dropset => l10n.setTypeAbbrDropset,
+    SetType.failure => l10n.setTypeAbbrFailure,
   };
 
   Color _typeColor(ThemeData theme) => switch (set.setType) {
@@ -315,7 +341,7 @@ class _ReadOnlySetRow extends StatelessWidget {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  _typeLabel,
+                  _typeLabel(AppLocalizations.of(context)),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: _typeColor(theme),
                     fontWeight: FontWeight.w600,

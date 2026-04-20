@@ -14,6 +14,7 @@ import 'package:gymbuddy_app/features/workouts/providers/workout_providers.dart'
 import 'package:gymbuddy_app/shared/widgets/gradient_button.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../helpers/test_material_app.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -74,7 +75,10 @@ Widget buildTestWidget({
       workoutCountProvider.overrideWith((ref) => Future.value(workoutCount)),
       prCountProvider.overrideWith((ref) => Future.value(prCount)),
     ],
-    child: MaterialApp(theme: AppTheme.dark, home: const ManageDataScreen()),
+    child: TestMaterialApp(
+      theme: AppTheme.dark,
+      home: const ManageDataScreen(),
+    ),
   );
 }
 

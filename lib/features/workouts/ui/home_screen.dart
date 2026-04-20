@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/radii.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../../routines/models/routine.dart';
 import '../../routines/providers/notifiers/routine_list_notifier.dart';
@@ -102,7 +103,7 @@ class _ConfirmBanner extends ConsumerWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Same plan this week?',
+                  AppLocalizations.of(context).samePlanThisWeek,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
                   ),
@@ -110,14 +111,14 @@ class _ConfirmBanner extends ConsumerWidget {
               ),
               TextButton(
                 onPressed: () => context.push('/plan/week'),
-                child: const Text('Edit'),
+                child: Text(AppLocalizations.of(context).edit),
               ),
               TextButton(
                 onPressed: () {
                   ref.read(weeklyPlanNeedsConfirmationProvider.notifier).state =
                       false;
                 },
-                child: const Text('Confirm'),
+                child: Text(AppLocalizations.of(context).confirm),
               ),
             ],
           ),
@@ -203,7 +204,7 @@ class _HomeRoutinesList extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'MY ROUTINES',
+              AppLocalizations.of(context).myRoutines,
               style: theme.textTheme.labelLarge?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
               ),
@@ -226,7 +227,7 @@ class _HomeRoutinesList extends ConsumerWidget {
                   identifier: 'home-see-all-routines',
                   child: TextButton(
                     onPressed: () => context.go('/routines'),
-                    child: const Text('See all'),
+                    child: Text(AppLocalizations.of(context).seeAll),
                   ),
                 ),
               ),
@@ -263,7 +264,7 @@ class _CreateRoutineCta extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  'Create Your First Routine',
+                  AppLocalizations.of(context).createYourFirstRoutine,
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: theme.colorScheme.onSurface,
                     fontWeight: FontWeight.w700,

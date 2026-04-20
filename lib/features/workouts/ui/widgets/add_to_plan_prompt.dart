@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../l10n/app_localizations.dart';
+
 /// Shows a compact bottom sheet asking if the user wants to add
 /// a standalone routine to their weekly plan.
 ///
@@ -23,6 +25,7 @@ class _AddToPlanPromptContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return SafeArea(
       child: Padding(
@@ -40,7 +43,7 @@ class _AddToPlanPromptContent extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    "$routineName isn't in your plan yet. Add it?",
+                    l10n.addToPlanPrompt(routineName),
                     style: theme.textTheme.bodyLarge,
                   ),
                 ),
@@ -52,12 +55,12 @@ class _AddToPlanPromptContent extends StatelessWidget {
               children: [
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Skip'),
+                  child: Text(l10n.skip),
                 ),
                 const SizedBox(width: 8),
                 FilledButton(
                   onPressed: () => Navigator.pop(context, true),
-                  child: const Text('Add'),
+                  child: Text(l10n.add),
                 ),
               ],
             ),

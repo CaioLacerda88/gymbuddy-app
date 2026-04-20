@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../profile/providers/profile_providers.dart';
 import '../../models/progress_point.dart';
 import '../../providers/exercise_progress_provider.dart';
@@ -79,10 +80,10 @@ class _ProgressChartSectionState extends ConsumerState<ProgressChartSection> {
     }
   }
 
-  String _windowLabel(TimeWindow w) => switch (w) {
-    TimeWindow.last30Days => '30 days',
-    TimeWindow.last90Days => '90 days',
-    TimeWindow.allTime => 'all time',
+  String _windowLabel(TimeWindow w, AppLocalizations l10n) => switch (w) {
+    TimeWindow.last30Days => l10n.chartWindowDays30,
+    TimeWindow.last90Days => l10n.chartWindowDays90,
+    TimeWindow.allTime => l10n.chartWindowAllTime,
   };
 
   @override
@@ -94,6 +95,8 @@ class _ProgressChartSectionState extends ConsumerState<ProgressChartSection> {
       ),
     );
     final weightUnit = ref.watch(profileProvider).value?.weightUnit ?? 'kg';
+
+    final l10n = AppLocalizations.of(context);
 
     return asyncData.when(
       loading: () => _ChartCard(
@@ -117,9 +120,9 @@ class _ProgressChartSectionState extends ConsumerState<ProgressChartSection> {
           window: _window,
           onWindowChanged: (w) => setState(() => _window = w),
           onMetricChanged: (m) => setState(() => _metric = m),
-          trendText: 'Could not load progress',
+          trendText: l10n.couldNotLoadProgress,
           trendColor: theme.colorScheme.onSurface.withValues(alpha: 0.70),
-          windowLabel: _windowLabel(_window),
+          windowLabel: _windowLabel(_window, l10n),
           weightUnit: weightUnit,
         ),
       ),
@@ -132,7 +135,7 @@ class _ProgressChartSectionState extends ConsumerState<ProgressChartSection> {
           metric: _metric,
           weightUnit: weightUnit,
           prValue: widget.prValue,
-          windowLabel: _windowLabel(_window),
+          windowLabel: _windowLabel(_window, l10n),
           onWindowChanged: (w) => setState(() => _window = w),
           onMetricChanged: (m) => setState(() => _metric = m),
         );
@@ -198,7 +201,7 @@ class _ChartBody extends StatelessWidget {
             container: true,
             identifier: 'exercise-detail-chart-empty',
             child: Text(
-              'Log your first set to start tracking',
+              AppLocalizations.of(context).logFirstSetToTrack,
               style: theme.textTheme.bodyMedium?.copyWith(color: onSurface70),
               textAlign: TextAlign.center,
             ),
@@ -221,6 +224,7 @@ class _ChartBody extends StatelessWidget {
       weightUnit: weightUnit,
       windowLabel: windowLabel,
       theme: theme,
+      l10n: AppLocalizations.of(context),
     );
 
     // No plottable series but workouts exist → render the toggles + copy
@@ -355,11 +359,16 @@ class _TrendRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final metricLabel = metric == ChartMetric.e1rm ? 'e1RM' : 'Weight';
+    final l10n = AppLocalizations.of(context);
+    final metricLabel = metric == ChartMetric.e1rm
+        ? l10n.chartMetricE1rm
+        : l10n.chartMetricWeight;
     // Announce the *next* state in the Semantics label so screen readers
     // hear the affordance, not the current value. Computed inline per
     // review NIT #1 — no need to lift to a local.
-    final nextMetricLabel = metric == ChartMetric.e1rm ? 'Weight' : 'e1RM';
+    final nextMetricLabel = metric == ChartMetric.e1rm
+        ? l10n.chartMetricWeight
+        : l10n.chartMetricE1rm;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -379,12 +388,18 @@ class _TrendRow extends StatelessWidget {
                 visualDensity: VisualDensity.compact,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              segments: const [
-                ButtonSegment(value: TimeWindow.last30Days, label: Text('30d')),
-                ButtonSegment(value: TimeWindow.last90Days, label: Text('90d')),
+              segments: [
+                ButtonSegment(
+                  value: TimeWindow.last30Days,
+                  label: Text(l10n.last30Days),
+                ),
+                ButtonSegment(
+                  value: TimeWindow.last90Days,
+                  label: Text(l10n.last90Days),
+                ),
                 ButtonSegment(
                   value: TimeWindow.allTime,
-                  label: Text('All time'),
+                  label: Text(l10n.allTime),
                 ),
               ],
               selected: {window},
@@ -394,7 +409,7 @@ class _TrendRow extends StatelessWidget {
             // Subordinate metric cycle — one label, one tap, one style step
             // down from the window segments.
             Semantics(
-              label: 'Switch metric to $nextMetricLabel',
+              label: l10n.switchMetricTo(nextMetricLabel),
               button: true,
               child: TextButton(
                 onPressed: () => onMetricChanged(
@@ -557,7 +572,9 @@ class _LineChart extends StatelessWidget {
                 return Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
-                    DateFormat.MMMd().format(points[i].date),
+                    DateFormat.MMMd(
+                      Localizations.localeOf(context).toString(),
+                    ).format(points[i].date),
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: onSurface.withValues(alpha: 0.55),
                     ),
@@ -624,7 +641,9 @@ class _RingSemanticsLabel extends StatelessWidget {
       left: 0,
       top: 0,
       child: Semantics(
-        label: 'PR marker at ${_formatWeight(value)} $unit',
+        label: AppLocalizations.of(
+          context,
+        ).prMarkerAt(_formatWeight(value), unit),
         child: const SizedBox.shrink(),
       ),
     );
@@ -782,36 +801,37 @@ List<ProgressPoint> _weeklyMax(List<ProgressPoint> points) {
   required String weightUnit,
   required String windowLabel,
   required ThemeData theme,
+  required AppLocalizations l10n,
 }) {
   final neutral = theme.colorScheme.onSurface.withValues(alpha: 0.70);
 
   if (workoutCount == 0) {
-    return ('Log your first set to start tracking', neutral);
+    return (l10n.logFirstSetToTrack, neutral);
   }
   if (workoutCount == 1) {
-    return ('1 workout logged — keep going', neutral);
+    return (l10n.oneWorkoutLoggedKeepGoing, neutral);
   }
   if (series.length < 2) {
     // N workouts (N≥2) but all aggregate to one point → no trend direction.
-    return ('$workoutCount workouts logged — keep going', neutral);
+    return (l10n.workoutsLoggedKeepGoing(workoutCount), neutral);
   }
 
   final delta = series.last.weight - series.first.weight;
   if (delta == 0) {
     return (
-      'Holding steady at ${_formatWeight(series.last.weight)} $weightUnit',
+      l10n.holdingSteadyAt(_formatWeight(series.last.weight), weightUnit),
       neutral,
     );
   }
   if (delta > 0) {
     return (
-      'Up ${_formatWeight(delta)} $weightUnit in $windowLabel',
+      l10n.trendUp(_formatWeight(delta), weightUnit, windowLabel),
       theme.colorScheme.primary,
     );
   }
   // delta < 0 — neutral color per acceptance #6 (no red for deloads).
   return (
-    'Down ${_formatWeight(delta.abs())} $weightUnit in $windowLabel',
+    l10n.trendDown(_formatWeight(delta.abs()), weightUnit, windowLabel),
     neutral,
   );
 }

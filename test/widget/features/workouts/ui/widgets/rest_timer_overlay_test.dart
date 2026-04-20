@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymbuddy_app/core/theme/app_theme.dart';
 import 'package:gymbuddy_app/features/workouts/providers/notifiers/rest_timer_notifier.dart';
 import 'package:gymbuddy_app/features/workouts/ui/widgets/rest_timer_overlay.dart';
+import '../../../../../helpers/test_material_app.dart';
 
 /// Builds a testable widget tree with an overridden [restTimerProvider].
 Widget buildOverlay(RestTimerState? timerState) {
@@ -11,7 +12,7 @@ Widget buildOverlay(RestTimerState? timerState) {
     overrides: [
       restTimerProvider.overrideWith(() => _FakeRestTimerNotifier(timerState)),
     ],
-    child: MaterialApp(
+    child: TestMaterialApp(
       theme: AppTheme.dark,
       home: const Scaffold(body: RestTimerOverlay()),
     ),
@@ -166,7 +167,7 @@ void main() {
         await tester.pumpWidget(
           UncontrolledProviderScope(
             container: container,
-            child: MaterialApp(
+            child: TestMaterialApp(
               theme: AppTheme.dark,
               home: const Scaffold(body: RestTimerOverlay()),
             ),
@@ -203,7 +204,7 @@ void main() {
         await tester.pumpWidget(
           UncontrolledProviderScope(
             container: container,
-            child: MaterialApp(
+            child: TestMaterialApp(
               theme: AppTheme.dark,
               home: const Scaffold(body: RestTimerOverlay()),
             ),
@@ -237,7 +238,7 @@ void main() {
         await tester.pumpWidget(
           UncontrolledProviderScope(
             container: container,
-            child: MaterialApp(
+            child: TestMaterialApp(
               theme: AppTheme.dark,
               home: const Scaffold(body: RestTimerOverlay()),
             ),
@@ -271,7 +272,7 @@ void main() {
         await tester.pumpWidget(
           UncontrolledProviderScope(
             container: container,
-            child: MaterialApp(
+            child: TestMaterialApp(
               theme: AppTheme.dark,
               home: const Scaffold(body: RestTimerOverlay()),
             ),
