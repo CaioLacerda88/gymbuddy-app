@@ -50,7 +50,7 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 14e | Polish + Edge Cases | DONE | #85 |
 | 14 | Offline Support | DONE | #78-#85 |
 | 15a | i18n Infrastructure + E2E Selector Migration | DONE | #86 |
-| 15b | Full String Extraction | TODO | - |
+| 15b | Full String Extraction | DONE | #87 |
 | 15c | Portuguese Translations + Exercise Content | TODO | - |
 | 15d | Language Picker UI + Persistence | TODO | - |
 | 15e | QA + E2E + Overflow Polish | TODO | - |
@@ -770,23 +770,13 @@ Full pt-BR localization with language switcher in profile settings. Official `fl
 - Widget test harness created (`test/helpers/localized_widget.dart`); widget test migration deferred to 15b
 - 1357 unit/widget tests, 155 E2E tests pass
 
-### 15b: Full String Extraction
+### 15b: Full String Extraction (DONE — PR #87)
 
-**Goal:** Extract ALL remaining UI strings to ARB. English-only (pt values are stubs). High-churn PR.
-
-**Acceptance Criteria:**
-- [ ] Zero hardcoded user-visible English strings in `lib/` (except AppTheme, routes, constants)
-- [ ] All ~20 UI screens + ~15 shared widgets use `AppLocalizations.of(context)`
-- [ ] Enum `displayName` refactored: `String localizedName(AppLocalizations l10n)` via switch expression for `MuscleGroup`, `EquipmentType`, `SetType`, `RecordType`, `WeightUnit`
-- [ ] `WorkoutFormatters` date strings ("Today", "Yesterday", "N days ago") moved to ARB
-- [ ] `AuthErrorMessages` ~10 strings moved to ARB
-- [ ] `NumberFormat` locale-aware (comma decimal for pt-BR: `80,5 kg`)
-- [ ] `DateFormat` locale-aware (dd/MM/yyyy for pt-BR)
-- [ ] `maxLines: 1` + `overflow: TextOverflow.ellipsis` added to overflow-risk widgets
-- [ ] `app_en.arb` grows to ~350-400 keys; `app_pt.arb` has same keys (placeholders)
-- [ ] All tests pass
-
-**String estimates:** Auth ~40, Home ~25, Exercises ~35, Workouts ~60, Routines ~30, Profile ~35, Records ~20, Weekly Plan ~35, Shared ~15, Enums ~25, Formatters ~15. Total ~335.
+- Extracted all hardcoded UI strings into ARB files (396 keys in en + pt, up from ~200)
+- Refactored enum `displayName` → `localizedName(l10n)` via `enum_l10n.dart` (5 enums, exhaustive switches)
+- Localized `WorkoutFormatters` (date strings, NumberFormat with locale, DateFormat with locale)
+- Created `TestMaterialApp` harness, updated 52 widget test files
+- 15 dead ARB keys removed per review; 1381 tests + 155 E2E pass
 
 ### 15c: Portuguese Translations + Exercise Content
 
