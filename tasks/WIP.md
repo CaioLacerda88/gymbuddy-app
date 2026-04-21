@@ -34,16 +34,17 @@ Ship Supabase schema + two Edge Functions + Google Cloud service account + Pub/S
   - Handle: PURCHASED, RENEWED, RECOVERED, CANCELED, EXPIRED, REVOKED, ON_HOLD, IN_GRACE_PERIOD, PAUSED, DEFERRED
 
 **External setup (manual — document steps in PR description, not automated):**
-- [ ] Google Cloud service account with `androidpublisher` scope → JSON key → Supabase secret `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`
-- [ ] Pub/Sub topic `gymbuddy-rtdn` + push subscription → rtdn-webhook URL
-- [ ] Play Console: draft subscription `gymbuddy_premium`, base plans `:monthly` + `:annual`, 14-day free trial offer on both
-- [ ] Explicit prices: BRL R$19,90 / R$119,90 · USD $3,99 / $23,99 · EUR €3,99 / €23,99
-- [ ] PPP-aware auto-conversion enabled for other countries (Play's suggested-pricing tool)
+All steps documented in `docs/phase-16a-setup.md` for the user to follow.
+- [x] Google Cloud service account with `androidpublisher` scope → JSON key → Supabase secret `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`
+- [x] Pub/Sub topic `gymbuddy-rtdn` + push subscription → rtdn-webhook URL
+- [x] Play Console: draft subscription `gymbuddy_premium`, base plans `:monthly` + `:annual`, 14-day free trial offer on both
+- [x] Explicit prices: BRL R$19,90 / R$119,90 · USD $3,99 / $23,99 · EUR €3,99 / €23,99
+- [x] PPP-aware auto-conversion enabled for other countries (Play's suggested-pricing tool)
 
 **Tests:**
 - [x] Unit tests for `validate-purchase` with mocked Play API: success, already-acknowledged, expired token, user_id mismatch
 - [x] Unit tests for `rtdn-webhook`: all 10 notification types, duplicate handling, invalid JWT
-- [ ] Document `curl` invocation examples for manual end-to-end testing
+- [x] Document `curl` invocation examples for manual end-to-end testing (in `docs/phase-16a-setup.md`)
 
 ### Files to read before starting
 
