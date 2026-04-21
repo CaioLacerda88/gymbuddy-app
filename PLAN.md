@@ -53,8 +53,8 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 15b | Full String Extraction | DONE | #87 |
 | 15c | Portuguese Translations + Exercise Content | DONE | #88 |
 | 15d | Language Picker UI + Persistence | DONE | #89 |
-| 15e | QA + E2E + Overflow Polish | TODO | - |
-| 15 | Portuguese (Brazil) Localization | TODO | - |
+| 15e | QA + E2E + Overflow Polish | DONE | #91 |
+| 15 | Portuguese (Brazil) Localization | DONE | #86–#91 |
 | 16 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
 | 17 | Gamification Advanced (Quests, Stats Panel) | TODO | - |
 | 18 | Nice-to-Have (v2.0+) | BACKLOG | - |
@@ -794,19 +794,13 @@ Full pt-BR localization with language switcher in profile settings. Official `fl
 - App.build() listens to `authStateProvider` (not profileProvider) for post-login reconcile — prevents caching AsyncData(null) on a non-reactive currentUserId dependency
 - Tests: locale_provider unit (incl. reconcile + remote sync paths), language_picker_sheet widget, profile_screen integration
 
-### 15e: QA + E2E + Overflow Polish
+### 15e: QA + E2E + Overflow Polish — DONE (PR #91)
 
-**Goal:** Verify pt-BR renders correctly, fix overflows, add targeted E2E coverage.
-
-**Acceptance Criteria:**
-- [ ] `test/e2e/specs/localization.spec.ts` with ~8 pt-BR tests
-- [ ] `setLocale()` E2E helper in `helpers/app.ts`
-- [ ] Text overflow test at 320dp width with pt-BR (widget test)
-- [ ] All overflow issues fixed
-- [ ] All 148+ existing E2E tests pass (locale-independent selectors from 15a)
-- [ ] Full regression: ~1339 unit/widget tests pass
-- [ ] Number formatting: "80,5 kg" in pt-BR; Date: "18/04/2026"
-- [ ] New test user `smokeLocalization` in test fixtures
+- `lib/core/format`: `AppNumberFormat` + `AppDateFormat` with explicit locale — `80,5 kg` / `18/04/2026` in pt, `80.5 kg` / `04/18/2026` in en
+- `WeightStepper` dialog accepts both `,` and `.` decimal separators for pt-BR native keyboards
+- Bottom nav + profile label overflow guards validated at 320dp under pt
+- E2E: `setLocale()` helper, `smokeLocalization` (server-seeded `locale='pt'`) + `smokeLocalizationEn` users, 9-test `localization.spec.ts` covering boot-in-pt / live switch / reload persistence / nav rendering
+- Tests: 1449 unit+widget pass; 164 E2E pass
 
 ### Cultural UX Requirements
 
