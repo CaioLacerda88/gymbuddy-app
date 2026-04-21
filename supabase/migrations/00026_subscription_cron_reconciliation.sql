@@ -14,9 +14,15 @@
 -- identical.
 --
 -- NOTE: this migration requires the `pg_cron` and `pg_net` extensions,
--- which are available on Supabase Pro+. On hosted Supabase the extensions
--- live in the `extensions` schema and `cron.schedule` lives in the `cron`
--- schema. We guard with IF NOT EXISTS so the migration is idempotent.
+-- which are available on Supabase Pro+. On hosted Supabase `pg_cron`
+-- installs into the `cron` schema and `pg_net` installs its public API
+-- functions into the `net` schema — regardless of the `WITH SCHEMA`
+-- clause on CREATE EXTENSION, pg_net's `http_post` / `http_get` live at
+-- `net.http_post` / `net.http_get`. Calling `extensions.http_post`
+-- raises "function does not exist" at runtime, which in a cron context
+-- fails silently forever. We use `net.http_post` with named parameters
+-- to match the documented pg_net signature.
+-- We guard with IF NOT EXISTS so the migration is idempotent.
 --
 -- The job POSTs to the Edge Function using the service role key as a
 -- bearer token so the function can authenticate via its existing
@@ -66,26 +72,37 @@ BEGIN
     RETURN;
   END IF;
 
-  PERFORM extensions.http_post(
-    url     := v_function_url || '/validate-purchase',
-    headers := jsonb_build_object(
-                 'Content-Type',  'application/json',
-                 'Authorization', 'Bearer ' || v_service_key
-               ),
-    body    := jsonb_build_object(
-                 'product_id',     v_product_id,
-                 'purchase_token', v_purchase_token,
-                 'user_id',        p_user_id,
-                 'source',         'cron_reconcile'
-               )::text
+  -- pg_net exposes http_post in the `net` schema (not `extensions`).
+  -- Named parameters; body is jsonb. timeout_milliseconds keeps the
+  -- cron tick bounded if the Edge Function hangs.
+  PERFORM net.http_post(
+    url                := v_function_url || '/validate-purchase',
+    headers            := jsonb_build_object(
+                            'Content-Type',  'application/json',
+                            'Authorization', 'Bearer ' || v_service_key
+                          ),
+    body               := jsonb_build_object(
+                            'product_id',     v_product_id,
+                            'purchase_token', v_purchase_token,
+                            'user_id',        p_user_id,
+                            'source',         'cron_reconcile'
+                          ),
+    timeout_milliseconds := 30000
   );
 END;
 $$;
 
--- Batch entrypoint: scan recently-expiring or recently-expired rows and
--- fan out reconcile calls. Running as SECURITY DEFINER so the scheduler
--- (which executes as the cron superuser) can read the subscriptions table
--- without needing RLS bypass privileges on the caller.
+-- Batch entrypoint: scan subs whose expires_at falls inside a ±7-day
+-- window around now() (either about to expire or recently expired) and
+-- fan out reconcile calls. The window is deliberately bounded on BOTH
+-- sides so the batch size stays constant as the subscriber base grows —
+-- we don't want to re-poll every active sub for the next decade on
+-- every tick, only the ones where an RTDN miss could matter. Rows with
+-- expires_at further in the future are handled by the next RTDN or the
+-- next reconcile when they drift into the window.
+-- Running as SECURITY DEFINER so the scheduler (which executes as the
+-- cron superuser) can read the subscriptions table without needing RLS
+-- bypass privileges on the caller.
 CREATE OR REPLACE FUNCTION public.reconcile_subscriptions_batch()
 RETURNS void
 LANGUAGE plpgsql
@@ -100,6 +117,7 @@ BEGIN
       FROM public.subscriptions
      WHERE expires_at IS NOT NULL
        AND expires_at > now() - interval '7 days'
+       AND expires_at < now() + interval '7 days'
   LOOP
     PERFORM public.reconcile_subscription(v_row.user_id);
   END LOOP;

@@ -46,8 +46,10 @@ CREATE TABLE IF NOT EXISTS public.subscriptions (
   updated_at             timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_subscriptions_user
-  ON public.subscriptions (user_id);
+-- No explicit index on user_id: the UNIQUE(user_id) constraint above
+-- creates an implicit unique btree index that serves every user_id
+-- lookup (RLS policy, UPSERT onConflict, SELECT own). A second index
+-- on the same column would just duplicate storage and write cost.
 
 -- `rtdn-webhook` looks up the owning user row on every incoming Pub/Sub
 -- notification via `... WHERE purchase_token = $1`. With a production

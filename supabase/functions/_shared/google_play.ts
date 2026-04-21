@@ -41,6 +41,14 @@ export interface PlayAccessToken {
 const ANDROIDPUBLISHER_SCOPE = 'https://www.googleapis.com/auth/androidpublisher';
 const DEFAULT_TOKEN_URI = 'https://oauth2.googleapis.com/token';
 
+// Module-scope cache. Deno Edge Function isolates on Supabase are
+// per-instance; a cold container starts with a fresh empty cache and a
+// warm container reuses it. Multiple concurrent isolates on the same
+// deployment each maintain their own copy — that's fine, Google's token
+// endpoint happily issues many parallel tokens for the same service
+// account. Do NOT treat this as a shared cross-request singleton: if
+// the platform migrates the function to a different isolate, the next
+// request will cache-miss and re-sign.
 let cachedToken: PlayAccessToken | null = null;
 
 // Test-only: lets a unit test drop the cache between cases. Not exported

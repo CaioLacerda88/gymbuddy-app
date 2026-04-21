@@ -15,7 +15,7 @@ import {
   assertEquals,
   assertStringIncludes,
 } from 'https://deno.land/std@0.224.0/assert/mod.ts';
-import { validatePurchase } from './index.ts';
+import { deriveEntitlement, isServiceRoleJwt, validatePurchase } from './index.ts';
 import {
   _resetPlayTokenCacheForTests,
   type ServiceAccountJson,
@@ -137,15 +137,36 @@ function makeClient(opts: {
         },
         update(patch: unknown) {
           calls.push({ table, op: 'update', payload: patch });
-          return {
+          // Mirror the shape used by `rtdn-webhook/test.ts` —
+          // `.update(...).eq(...).eq(...)` — even though the
+          // production code for validate-purchase currently only
+          // chains ONE .eq(). A future refactor that adds a second
+          // filter (e.g. to guard against stale user_id matches)
+          // would otherwise hit a TypeError at `undefined.eq is not a
+          // function` and hide the real bug. Keep stubs symmetric
+          // across functions.
+          const result = () =>
+            Promise.resolve(
+              opts.updateError
+                ? { data: null, error: opts.updateError }
+                : { data: patch, error: null },
+            );
+          const chain = {
             eq(_k: string, _v: unknown) {
-              return Promise.resolve(
-                opts.updateError
-                  ? { data: null, error: opts.updateError }
-                  : { data: patch, error: null },
-              );
+              return {
+                eq(_k2: string, _v2: unknown) {
+                  return result();
+                },
+                then(
+                  onFulfilled?: (v: unknown) => unknown,
+                  onRejected?: (e: unknown) => unknown,
+                ) {
+                  return result().then(onFulfilled, onRejected);
+                },
+              };
             },
           };
+          return chain;
         },
       };
     },
@@ -456,4 +477,203 @@ Deno.test('UPSERT failure → 500, no audit insert', async () => {
   assertEquals(result.status, 500);
   assertStringIncludes(result.body.error as string, 'UPSERT failed');
   assertEquals(calls.filter((c) => c.op === 'insert').length, 0);
+});
+
+// --- Partial-failure contract (Play ack succeeds, DB ack-state write fails) -
+//
+// When Play has acknowledged the token but the follow-up UPDATE to mark
+// `acknowledgement_state='acknowledged'` in our table errors out, we must:
+//   (a) still return 200 — Play is the source of truth, the reconcile cron
+//       will fix the DB on its next tick, and re-returning 500 would make
+//       the client re-ack a token that Play already acknowledged.
+//   (b) log the DB failure via console.error so ops can alert on it.
+
+Deno.test(
+  'Play ack OK + DB ack-state update FAILS → 200 AND console.error logged',
+  async () => {
+    _resetPlayTokenCacheForTests();
+    const { client } = makeClient({
+      updateError: { message: 'db temporarily unavailable' },
+    });
+    const fetchFn = buildFetchMock([
+      OAUTH_TOKEN_OK,
+      { url: 'subscriptionsv2/tokens/tok_partial', response: { body: playOk() } },
+      { url: ':acknowledge', response: { body: {} } },
+    ]);
+
+    // Spy on console.error. Capture calls + args so we can assert the
+    // specific log fires on this path.
+    const originalError = console.error;
+    const errorCalls: unknown[][] = [];
+    console.error = (...args: unknown[]) => {
+      errorCalls.push(args);
+    };
+
+    try {
+      const result = await validatePurchase(
+        await baseInput(client, { purchaseToken: 'tok_partial' }),
+        { fetchFn },
+      );
+
+      assertEquals(
+        result.status,
+        200,
+        'DB ack-state failure must NOT downgrade to 500 — Play is acked',
+      );
+      assertEquals(result.body.success, true);
+
+      // Exactly one error log from this code path, with the expected prefix.
+      assertEquals(
+        errorCalls.length,
+        1,
+        'expected one console.error for ack-state update failure',
+      );
+      const [msg, ctx] = errorCalls[0] as [string, Record<string, unknown>];
+      assertStringIncludes(msg, 'Play ack succeeded but DB ack-state update failed');
+      assertEquals(ctx.user_id, FAKE_USER_ID);
+      assertEquals(ctx.purchase_token, 'tok_partial');
+      assertEquals(ctx.detail, 'db temporarily unavailable');
+    } finally {
+      console.error = originalError;
+    }
+  },
+);
+
+// --- deriveEntitlement branch coverage -------------------------------------
+//
+// Mirrors the SQL CASE in 00025_create_entitlements_view.sql. The TS and
+// SQL derivations MUST agree; these tests pin the ordering:
+//   * active + not expired  → premium  (covers Play's own retry grace)
+//   * in_grace_period + expires_at within our 3d soft tail → grace_period
+//   * on_hold                → on_hold
+//   * otherwise              → free
+
+Deno.test('deriveEntitlement: state=active + future expires_at → premium', () => {
+  const now = new Date('2025-06-01T00:00:00Z');
+  const result = deriveEntitlement(
+    {
+      state: 'active',
+      in_grace_period: false,
+      expires_at: '2025-07-01T00:00:00Z',
+    },
+    now,
+  );
+  assertEquals(result, 'premium');
+});
+
+Deno.test(
+  'deriveEntitlement: in_grace_period=true + state=active + future expires_at → premium'
+    + ' (Play retry window, not our soft tail)',
+  () => {
+    const now = new Date('2025-06-01T00:00:00Z');
+    // Play is actively retrying billing — state stays active and
+    // expires_at is still in the future. Per the view ordering, this
+    // must resolve to `premium`, NOT `grace_period`.
+    const result = deriveEntitlement(
+      {
+        state: 'active',
+        in_grace_period: true,
+        expires_at: '2025-06-05T00:00:00Z',
+      },
+      now,
+    );
+    assertEquals(result, 'premium');
+  },
+);
+
+Deno.test(
+  'deriveEntitlement: in_grace_period=true + expires_at just past + state!=active → grace_period',
+  () => {
+    const now = new Date('2025-06-01T00:00:00Z');
+    // expires_at slipped 1 day into the past; our 3d soft tail still
+    // applies. State is not active because Play may have transitioned
+    // it (e.g. expired) by the time the client polls, but the grace
+    // flag was captured from the prior RTDN.
+    const result = deriveEntitlement(
+      {
+        state: 'expired',
+        in_grace_period: true,
+        expires_at: '2025-05-31T00:00:00Z',
+      },
+      now,
+    );
+    assertEquals(result, 'grace_period');
+  },
+);
+
+Deno.test(
+  'deriveEntitlement: in_grace_period=true + expires_at >3d past → free',
+  () => {
+    const now = new Date('2025-06-10T00:00:00Z');
+    const result = deriveEntitlement(
+      {
+        state: 'expired',
+        in_grace_period: true,
+        expires_at: '2025-06-01T00:00:00Z', // 9 days past, outside the 3d tail
+      },
+      now,
+    );
+    assertEquals(result, 'free');
+  },
+);
+
+Deno.test('deriveEntitlement: state=on_hold → on_hold', () => {
+  const now = new Date('2025-06-10T00:00:00Z');
+  const result = deriveEntitlement(
+    {
+      state: 'on_hold',
+      in_grace_period: false,
+      expires_at: '2025-06-01T00:00:00Z',
+    },
+    now,
+  );
+  assertEquals(result, 'on_hold');
+});
+
+Deno.test('deriveEntitlement: no expires_at → free', () => {
+  const result = deriveEntitlement(
+    { state: 'active', in_grace_period: false, expires_at: null },
+    new Date('2025-06-10T00:00:00Z'),
+  );
+  assertEquals(result, 'free');
+});
+
+// --- isServiceRoleJwt decoder ----------------------------------------------
+//
+// The HTTP wrapper uses this to detect the reconcile cron's caller.
+// We decode the middle segment and check payload.role without verifying
+// the signature (the Edge Function runtime verified it). These tests lock
+// that contract and ensure garbage input returns false rather than
+// throwing.
+
+function encodeJwtPayload(payload: unknown): string {
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const b64url = (s: string) =>
+    btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  const h = b64url(JSON.stringify(header));
+  const p = b64url(JSON.stringify(payload));
+  // Signature segment is irrelevant for decoding; use a fixed placeholder.
+  return `${h}.${p}.sig`;
+}
+
+Deno.test('isServiceRoleJwt: role=service_role → true', () => {
+  const jwt = encodeJwtPayload({ role: 'service_role', iss: 'supabase' });
+  assertEquals(isServiceRoleJwt(jwt), true);
+});
+
+Deno.test('isServiceRoleJwt: role=authenticated → false', () => {
+  const jwt = encodeJwtPayload({ role: 'authenticated', sub: 'some-user-id' });
+  assertEquals(isServiceRoleJwt(jwt), false);
+});
+
+Deno.test('isServiceRoleJwt: role missing → false', () => {
+  const jwt = encodeJwtPayload({ sub: 'anon' });
+  assertEquals(isServiceRoleJwt(jwt), false);
+});
+
+Deno.test('isServiceRoleJwt: malformed input → false (no throw)', () => {
+  assertEquals(isServiceRoleJwt(''), false);
+  assertEquals(isServiceRoleJwt('not.a.jwt'), false);
+  assertEquals(isServiceRoleJwt('onlyonepart'), false);
+  assertEquals(isServiceRoleJwt('a..c'), false);
 });

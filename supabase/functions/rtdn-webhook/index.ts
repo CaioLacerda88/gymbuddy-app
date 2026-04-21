@@ -41,13 +41,26 @@ import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { verifyPubSubJwt } from '../_shared/google_play.ts';
 
+// Pub/Sub push is server-to-server; no browser CORS needed for the real
+// production traffic. We still answer OPTIONS for the Supabase dashboard
+// (which issues a preflight when invoking the function from the browser).
+// Pinning Allow-Origin to SUPABASE_URL matches the pattern used by
+// validate-purchase and avoids a wildcard origin on a public endpoint.
+//
+// Same "fail loudly at module scope if SUPABASE_URL is missing" rule as
+// validate-purchase — a deployment without SUPABASE_URL is broken and
+// we prefer a boot error to a silent blank Allow-Origin.
+const allowedOrigin = (() => {
+  const u = Deno.env.get('SUPABASE_URL');
+  if (!u) throw new Error('SUPABASE_URL is not set');
+  return u;
+})();
 const corsHeaders = {
-  // Pub/Sub push is server-to-server; no browser CORS needed. We still
-  // answer OPTIONS for local curl testing and the Supabase dashboard.
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': allowedOrigin,
   'Access-Control-Allow-Headers':
     'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  Vary: 'Origin',
 };
 
 function json(body: Record<string, unknown>, status: number): Response {

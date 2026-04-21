@@ -33,6 +33,16 @@
 //      non-2xx ack → function returns 500 and the client is responsible
 //      for retrying.
 //
+//      PARTIAL FAILURE CONTRACT: If the Play :acknowledge call SUCCEEDS
+//      but the subsequent `UPDATE subscriptions SET acknowledgement_state
+//      = 'acknowledged'` FAILS, the function still returns 200. Play is
+//      the source of truth once it has acknowledged — returning 500 would
+//      make the client retry and re-ack a token that Play already treats
+//      as acknowledged. The DB drift (row says 'pending' even though Play
+//      says acknowledged) is corrected by the reconcile cron on its next
+//      tick. We log the DB failure via console.error so ops can alert on
+//      it.
+//
 // Env vars (Supabase sets the first three automatically):
 //   SUPABASE_URL
 //   SUPABASE_ANON_KEY
@@ -51,7 +61,17 @@ import {
   type ServiceAccountJson,
 } from '../_shared/google_play.ts';
 
-const allowedOrigin = Deno.env.get('SUPABASE_URL') ?? '';
+// Intentionally no `?? ''` fallback — a missing SUPABASE_URL at module
+// load is a deployment misconfiguration and we want it to blow up
+// loudly when the isolate first boots rather than silently serving a
+// blank Allow-Origin. The runtime env check inside the handler (line
+// below) would only fire on the first request, by which point CORS
+// preflights to this isolate have already been answered incorrectly.
+const allowedOrigin = (() => {
+  const u = Deno.env.get('SUPABASE_URL');
+  if (!u) throw new Error('SUPABASE_URL is not set');
+  return u;
+})();
 const corsHeaders = {
   'Access-Control-Allow-Origin': allowedOrigin,
   'Access-Control-Allow-Headers':
@@ -65,6 +85,37 @@ function json(body: Record<string, unknown>, status: number): Response {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
+}
+
+// --- Service-role identity check -----------------------------------------
+//
+// The reconcile cron (see migration 00026) invokes this function with a
+// service-role JWT in the Authorization header so it can set user_id
+// explicitly in the body (no user session attached). We detect that by
+// decoding the JWT payload and checking `role === 'service_role'`.
+//
+// The Supabase Edge Function runtime has ALREADY cryptographically verified
+// the JWT signature by the time we see it (verify_jwt is on for this
+// function), so decoding without verifying again is safe here — we are only
+// reading a claim the runtime already authenticated. We deliberately do NOT
+// compare the raw service-role key as a bearer token: that conflates a
+// secret with an auth token and breaks as soon as Supabase rotates keys or
+// issues alternate service-role JWTs.
+export function isServiceRoleJwt(jwt: string): boolean {
+  const parts = jwt.split('.');
+  if (parts.length < 2) return false;
+  const payloadB64 = parts[1];
+  if (!payloadB64) return false;
+  try {
+    // JWT uses base64url without padding. atob wants standard base64
+    // with correct padding, so translate and re-pad.
+    const b64 = payloadB64.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
+    const payload = JSON.parse(atob(b64 + pad)) as { role?: unknown };
+    return payload?.role === 'service_role';
+  } catch {
+    return false;
+  }
 }
 
 // --- Core handler, extracted so unit tests can drive it without HTTP ------
@@ -182,8 +233,17 @@ export async function validatePurchase(
     };
   }
 
-  // 5. Audit row. Duplicate RTDNs are collapsed elsewhere; this
-  // validation source is always fresh so we use `now` as event_time.
+  // 5. Audit row. Duplicate RTDNs are collapsed at the
+  // (purchase_token, notification_type, event_time) UNIQUE constraint
+  // elsewhere; that dedupe is designed for Play replaying the SAME
+  // RTDN. For validate-purchase we WANT each client-initiated call
+  // audited as its own row — the client may legitimately call us
+  // multiple times (retry after 5xx, polling during payment settle,
+  // cron reconcile) and each invocation is a distinct event worth
+  // recording. Generating a fresh event_time per call guarantees the
+  // UNIQUE constraint won't collapse rows that semantically differ,
+  // at the cost of a duplicate on true retry-after-success (rare; the
+  // audit table is append-only and cheap).
   const eventTime = (deps.now ? deps.now() : new Date()).toISOString();
   const { error: evErr } = await adminClient
     .from('subscription_events')
@@ -235,10 +295,22 @@ export async function validatePurchase(
     // Best-effort: update acknowledgement_state. If this write fails
     // we still return 200 because Play itself has been acknowledged —
     // the reconcile cron will pick up the truth on its next run.
-    await adminClient
+    // See the "PARTIAL FAILURE CONTRACT" note at the top of this file.
+    const { error: ackUpdateErr } = await adminClient
       .from('subscriptions')
       .update({ acknowledgement_state: 'acknowledged' })
       .eq('user_id', input.userId);
+    if (ackUpdateErr) {
+      // Log so ops can see it; do NOT flip the response to 500.
+      console.error(
+        'validate-purchase: Play ack succeeded but DB ack-state update failed',
+        {
+          user_id: input.userId,
+          purchase_token: input.purchaseToken,
+          detail: ackUpdateErr.message,
+        },
+      );
+    }
   }
 
   return {
@@ -255,7 +327,17 @@ function isUniqueViolation(err: { code?: string; message?: string }): boolean {
   return err.code === '23505' || /duplicate key/i.test(err.message ?? '');
 }
 
-function deriveEntitlement(
+// Mirror of the entitlements SQL view's CASE (see migration 00025). Kept
+// in TS so the HTTP response can echo the derived state without a round
+// trip. The branch ordering MATCHES the view exactly:
+//   1. active + not-expired  → premium (covers Play's own retry grace)
+//   2. in_grace_period + within our 3d soft tail → grace_period
+//   3. on_hold               → on_hold
+//   4. otherwise             → free
+// Keep this in sync with 00025_create_entitlements_view.sql.
+//
+// Exported so unit tests can exercise the branches directly.
+export function deriveEntitlement(
   n: { state: string; in_grace_period: boolean; expires_at: string | null },
   now: Date,
 ): string {
@@ -317,8 +399,12 @@ serve(async (req) => {
     // explicitly in the body. Authenticated users are identified from
     // their JWT and MUST match any user_id they pass (prevents a
     // user acting on another user's purchase via a forged body).
+    //
+    // Service-role detection decodes the JWT role claim rather than
+    // string-comparing the raw service-role key — see isServiceRoleJwt
+    // above for why.
     let userId: string;
-    if (jwt === serviceRoleKey) {
+    if (isServiceRoleJwt(jwt)) {
       if (typeof body.user_id !== 'string' || !body.user_id) {
         return json({ error: 'user_id required for service-role calls' }, 400);
       }
