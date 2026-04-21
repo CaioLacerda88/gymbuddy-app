@@ -4,7 +4,7 @@
 
 Gym training app for logging workouts, tracking personal records, and managing exercises. Flutter + Supabase + Riverpod. Android-first, iOS deferred. Dark bold theme, gym-floor UX (one-handed, glanceable, sweat-proof).
 
-**Market context:** $12B+ fitness app market, 70% abandoned within 90 days. Core differentiator: RPG gamification tightly coupled to real training data (see Phase 16-17). Brazilian fitness market $1.32B — pt-BR localization in Phase 15.
+**Market context:** $12B+ fitness app market, 70% abandoned within 90 days. Core differentiator: RPG gamification tightly coupled to real training data (see Phase 17-18). Brazilian fitness market $1.32B — pt-BR localization in Phase 15. Monetization: trial-to-paywall subscription via Google Play Billing (Phase 16).
 
 ### Progress
 
@@ -55,9 +55,14 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 15d | Language Picker UI + Persistence | DONE | #89 |
 | 15e | QA + E2E + Overflow Polish | DONE | #91 |
 | 15 | Portuguese (Brazil) Localization | DONE | #86–#91 |
-| 16 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
-| 17 | Gamification Advanced (Quests, Stats Panel) | TODO | - |
-| 18 | Nice-to-Have (v2.0+) | BACKLOG | - |
+| 16 | Subscription Monetization (GPB + trial-to-paywall) | TODO | - |
+| 16a | Backend: schema + Edge Functions + Play Console draft | TODO | - |
+| 16b | Client integration + paywall UI + onboarding rewire | TODO | - |
+| 16c | Hard gate enforcement + router guard + E2E refactor | TODO | - |
+| 16d | Analytics + hardening + launch-readiness checklist | TODO | - |
+| 17 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
+| 18 | Gamification Advanced (Quests, Stats Panel) | TODO | - |
+| 19 | Nice-to-Have (v2.0+) | BACKLOG | - |
 
 ### Section Index
 
@@ -73,7 +78,8 @@ Read only what you need:
 | Phase 13: Launch | Final work before Play Store submission |
 | Phase 14: Offline Support | Implementing offline-first workout capture |
 | Phase 15: Localization | Implementing pt-BR support |
-| Phase 16-17: Gamification | Implementing RPG system |
+| Phase 16: Subscription Monetization | Implementing GPB subscriptions / paywall |
+| Phase 17-18: Gamification | Implementing RPG system |
 | QA Status | Doing QA or review |
 | Verification & Testing | Writing tests |
 | UX Design Direction | Building UI |
@@ -844,9 +850,170 @@ Full pt-BR localization with language switcher in profile settings. Official `fl
 
 ---
 
-## Phase 16: Gamification Foundation
+## Phase 16: Subscription Monetization
+
+> Trial-to-paywall model. No free tier — users get full app during 14-day trial, then subscribe to continue. Gamification progress (Phase 17-18) becomes the retention lever via loss aversion: letting the sub lapse freezes accumulated XP, levels, and streaks behind the paywall.
+
+### Business Model (locked)
+
+- **Monthly:** R$19,90 / $3,99 / €3,99 · **Annual:** R$119,90 / $23,99 / €23,99 (~50% discount vs monthly-equivalent)
+- **Currency & reach:** Global availability from day one. Explicit prices set for BRL, USD, EUR. PPP-aware auto-conversion enabled in Play Console for all other countries (uses Play's suggested-pricing-per-country tool). Merchant account location (Brazil) determines payout currency (BRL) and tax jurisdiction — NOT buyer eligibility. Users in any Play-supported country can subscribe.
+- **Trial:** 14-day free trial via Play intro offer on both base plans. One trial per Google account (Play-enforced, returning lapsed users go straight to "Subscribe").
+- **Gating:** Hard paywall — no feature-tier split. Trial OR active sub → full access. No trial + no sub → paywall-only.
+- **No lifetime.** **No installment base plan** at launch (can add post-launch as a second Brazilian base plan without schema changes).
+- **Offline grace:** 7 days past server `expires_at` before locking features.
+- **Launch blocker:** Merchant account in Play Console not yet created (planned: Brazilian, receives BRL payouts from global sales). All code/infra ships and is testable via closed testing + license-tester accounts before merchant is live; production go-live is gated on merchant setup.
+
+### Architecture (locked)
+
+- **Package:** `in_app_purchase ^3.2.x` (official Flutter plugin over Play Billing Library 7+). No RevenueCat — no vendor-in-the-middle, Supabase Edge Functions replace RC's server.
+- **Server validation:** Every purchase token validated server-side via `validate-purchase` Edge Function calling Google Play Developer API `purchases.subscriptionsv2.get`. Zero client writes to entitlement state.
+- **Acknowledgement:** Edge Function calls `purchases.subscriptions.acknowledge` within 3 days (Google auto-refunds unacknowledged subs). If acknowledgement fails, do NOT grant entitlement.
+- **RTDN:** Google Cloud Pub/Sub push → `rtdn-webhook` Edge Function. Handles all 10 notification types (PURCHASED, RENEWED, RECOVERED, CANCELED, EXPIRED, REVOKED, ON_HOLD, IN_GRACE_PERIOD, PAUSED, DEFERRED). Pub/Sub JWT verified on inbound against Google's public keys.
+- **Idempotency:** `subscription_events` audit log with `UNIQUE(purchase_token, notification_type, event_time)` — duplicate RTDNs return 200 immediately.
+- **Fallback:** pg_cron reconciliation job every 6h polls `purchases.subscriptionsv2.get` for subs with `expires_at > now() - interval '7 days'` in case Pub/Sub misses events.
+- **Entitlement read path:** `entitlements` SQL view derives state from `subscriptions` row; client reads the view only.
+- **Offline cache:** Hive box `entitlement_cache` with `cached_at` + `offline_expires_at = server_expires_at + 7d`.
+- **Security binding:** `obfuscatedAccountId = supabase_user_id` on every `PurchaseParam` — binds purchase token to the Supabase user. Edge Function validates JWT user_id matches `obfuscatedExternalAccountId` in Play API response.
+- **RLS:** users SELECT own rows only; no client INSERT/UPDATE/DELETE on subscription tables. All writes go through Edge Functions using service role.
+
+### Schema
+
+**`subscriptions`** (one row per user, upserted on each event)
+
+```
+id, user_id UNIQUE REFERENCES auth.users ON DELETE CASCADE,
+product_id, purchase_token, linked_purchase_token,
+state (active|canceled|expired|on_hold|paused|revoked),
+auto_renewing, in_grace_period, acknowledgement_state,
+started_at, expires_at, updated_at
+```
+
+**`subscription_events`** (immutable audit log)
+
+```
+id, user_id, purchase_token, notification_type, event_time, raw_payload,
+UNIQUE(purchase_token, notification_type, event_time)
+```
+
+**`entitlements` view** (computed)
+
+```sql
+CASE
+  WHEN state='active' AND expires_at > now() THEN 'premium'
+  WHEN in_grace_period AND expires_at > now() - interval '3 days' THEN 'grace_period'
+  WHEN state='on_hold' THEN 'on_hold'
+  ELSE 'free'
+END AS entitlement_state
+```
+
+RLS: SELECT `auth.uid() = user_id` on all three. No client writes. Service role for Edge Function writes.
+
+### User Lifecycle Flow
+
+1. **Signup** → onboarding → `/paywall` (NEW: onboarding now precedes paywall, not home)
+2. **Start trial** → Play Billing sheet → user selects payment method → trial active → client calls `validate-purchase` → entitlement granted → home
+3. **Trial (14d)** → full app, gamification accumulates (this IS the retention asset)
+4. **Day 14** → Google Play auto-renewal → RTDN `SUBSCRIPTION_RENEWED` → `expires_at` extended
+5. **Cancel during trial** → state=canceled; access continues until `expires_at`, then paywall. No second trial.
+6. **Payment fails** → Google enables 7-day grace → our cache grace (7d) stacks on top → banner prompts user to update payment → if never recovered, state transitions to `on_hold` → paywall.
+7. **Lapsed user returns** → paywall only (Google blocks second trial) → XP/levels preserved server-side, accessible only after re-subscribing. **This is the retention moat.**
+
+### Paywall UX (per UI brief)
+
+- Full-screen, same dark theme as rest of app (`#0F0F1A` background, no modal-on-blur)
+- Hero claim in `displayLarge` w900 (e.g., "TREINAR SEM LIMITES" / "TRAIN WITHOUT LIMITS")
+- Two pricing tier cards side-by-side: annual default-selected with amber `#FFD54F` "MELHOR VALOR" / "BEST VALUE" badge; monthly unselected. Full-card tap area.
+- Compact 3-row benefit table (not bulleted icons)
+- Primary CTA: full-width 56dp `#00E676` button, "Começar Grátis" / "Start Free Trial"
+- Restore purchases as secondary text button
+- Fine print below fold: trial end date, easy-cancel link
+- Gating pattern: teaser-then-`DraggableScrollableSheet` for inline contextual upsells (NOT padlock + hard lock)
+
+### Sub-phases
+
+#### 16a — Backend foundation
+
+- Migrations `00023_create_subscriptions.sql`, `00024_create_subscription_events.sql`, `00025_create_entitlements_view.sql`, `00026_subscription_cron_reconciliation.sql`
+- Google Cloud service account (scope: `androidpublisher`) + JSON key stored as Supabase secret `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`
+- `supabase/functions/validate-purchase/index.ts` — JWT verify, Play API call, DB upsert, acknowledge
+- `supabase/functions/rtdn-webhook/index.ts` — Pub/Sub JWT verify, state transitions for all 10 types, idempotency via unique constraint
+- Google Cloud Pub/Sub topic `gymbuddy-rtdn` + push subscription → rtdn-webhook URL
+- Play Console draft subscription `gymbuddy_premium` with base plans `:monthly` + `:annual`; 14-day free trial offer on both; explicit prices for BRL + USD + EUR; PPP-aware auto-conversion enabled for all other countries via Play's suggested-pricing tool
+- Unit tests: edge function logic with mocked Play API responses
+- **No Flutter code.** Backend independently testable via `curl` / `supabase functions invoke`.
+
+#### 16b — Client integration + paywall UI + onboarding rewire
+
+- `in_app_purchase ^3.2.x` added to `pubspec.yaml`
+- `BillingException` subtype added to `AppException` hierarchy (`userCancelled`, `billingUnavailable`, `alreadyOwned`, `networkError`, `billingConfigError`)
+- `HiveService.entitlementCache` box key + init/clear integration
+- Freezed models: `Subscription`, `SubscriptionEvent`, sealed `EntitlementState` (Free / Premium / GracePeriod / OnHold)
+- `SubscriptionRepository extends BaseRepository` — fetch products, `initiatePurchase` (sets `obfuscatedAccountId`), `restorePurchases`, `validateAndGrant`
+- `EntitlementNotifier` (AsyncNotifier) — offline-first read, Hive cache, Realtime subscription to `subscriptions` for post-purchase flash
+- `PurchaseNotifier` (AsyncNotifier) — manages `PurchaseUpdatedStream` lifecycle at provider level
+- `PaywallScreen`, `SubscriptionSettingsCard` (in Profile), `PaywallBottomSheet` widget
+- Onboarding flow rewire: `/email-confirmation` → onboarding → `/paywall` → `/home` (was: straight to `/home`)
+- l10n keys added to `app_en.arb` + `app_pt.arb` (paywall copy, CTAs, trial/grace messaging)
+- Unit tests: entitlement state transitions, offline cache grace logic, 7-day boundary conditions
+- Widget tests: paywall renders, tier selection state, restore flow, error states
+
+#### 16c — Hard gate enforcement + E2E refactor
+
+- `EntitlementGate` widget wraps app shell; Premium/GracePeriod → child, else redirect to `/paywall`
+- `app_router.dart` redirect guard: authenticated + no entitlement → `/paywall`
+- `/paywall` as top-level route (outside ShellRoute, like `/onboarding`)
+- `/subscription-manage` deep-links to Play Store subscription management
+- **E2E test harness:** override `subscriptionRepositoryProvider` → `FakeSubscriptionRepository` returns active-trial state so existing 145 tests continue passing unchanged
+- New E2E spec `specs/subscriptions.spec.ts`: paywall-after-onboarding, no-paywall-when-trial-active, paywall-after-trial-expired, restore-flow
+- Acceptance: full suite green; no real purchase required
+
+#### 16d — Analytics, hardening, launch-readiness
+
+- Analytics events added to sealed `AnalyticsEvent`: `paywall_viewed`, `trial_started`, `subscribe_completed`, `subscription_cancelled`, `subscription_restored`, `grace_period_entered`, `subscription_expired`
+- Sentry breadcrumbs on every purchase state transition
+- Grace-period banner in app shell (red left-border variant, tap → Play Store billing management)
+- pg_cron reconciliation monitoring + alerting
+- Privacy Policy + ToS updates with subscription-specific clauses
+- Play Store listing prep: subscription disclosure text, screenshots
+- **Launch-readiness checklist** (gated on external steps):
+  - [ ] Brazilian merchant account active in Play Console
+  - [ ] Explicit prices set for BRL + USD + EUR; PPP auto-conversion enabled for all other countries via Play's suggested-pricing tool
+  - [ ] Spot-check price rendering in top-10 target markets (US, UK, DE, FR, ES, PT, MX, AR, CA, AU) — no weird auto-converted numbers
+  - [ ] Production Pub/Sub topic + push subscription → live Edge Function URL
+  - [ ] End-to-end validation with license-tester: subscribe → cancel → re-subscribe cycle
+  - [ ] Brazilian test account confirms BRL rendering; US test account confirms USD; EU test account confirms EUR
+  - [ ] ToS + Privacy Policy live on Play Store listing
+
+### Acceptance Criteria (full phase)
+
+- Every purchase token validated server-side before entitlement grant
+- Zero client-side writes to `subscriptions` / `subscription_events` / entitlement fields
+- RTDN handled idempotently for all 10 notification types
+- 7-day offline grace window enforced: app functional for 7 days past server expiry on loss of connectivity, locks on day 8
+- Every paywall state transition fires analytics event
+- Trial starts exactly once per Google account (enforced by Google, verified in our flow)
+- Paywall renders correctly in `en` and `pt-BR` at 360dp minimum width
+- `make ci` green; full E2E suite green (145 existing + ~4-6 new = ~150 tests)
+- No UI flash between app launch and paywall/home decision (entitlement check resolves before first non-splash frame)
+
+### External dependencies / open items
+
+- **Brazilian merchant account** — user to set up in Play Console before 16d "go live" checklist completes
+- **Google Cloud project** for Pub/Sub — user confirms existing or creates new
+- **Legal review** — Privacy Policy + ToS subscription clauses (not blocking code, blocking Play Store submission)
+- **Pricing localization** — confirm BRL prices render in all test accounts before launch
+- **Analytics dashboards** (follow-up, not 16d-blocking): Supabase SQL views for trial conversion, churn, grace recovery
+
+---
+
+## Phase 17: Gamification Foundation
 
 > Adapted from GAMIFICATION.md. RPG layer tightly coupled to real training data — "your strength IS your character."
+
+### Retention Dependency (from Phase 16 pricing research)
+
+Our annual price ($23,99 USD) is identical to Hevy's, and Hevy offers a permanent freemium tier. A user comparing the two at trial-end will ask "why pay when Hevy is free?" The answer has to be delivered **inside the 14-day trial**: the RPG progression must feel real and rewarding within the first 2-3 sessions, not week 3. **Scoping implication:** prioritize mechanics felt immediately (XP ticks on set completion, first-PR celebration, visible level bar, week-1 streak nudge) over mechanics that pay off later (multi-week quest arcs, deep stat panels, advanced analytics). 17a-c land the immediate-felt layer; 17d-e and Phase 18 build the long-tail. This ordering is now a retention constraint, not a preference.
 
 ### Design Principles
 
@@ -856,7 +1023,7 @@ Full pt-BR localization with language switcher in profile settings. Official `fl
 - Beginners see only XP bar + level for first 30 days
 - Stats normalized to personal best (0-100 scale), not population norms
 
-### 16a: PR Celebration Overlay (Phase 1)
+### 17a: PR Celebration Overlay (Phase 1)
 
 Full-screen overlay (not dialog). Background `#0F0F23` at 0.96 opacity. Dismissible with tap.
 - XP animation: `+N XP` tween from 0 to final over 600ms, color `#FFFFFF60` -> `#00E676`
@@ -864,7 +1031,7 @@ Full-screen overlay (not dialog). Background `#0F0F23` at 0.96 opacity. Dismissi
 - PR section: amber `#FFD54F` band, `NEW RECORD` label, exercise name + new value
 - Level up: green vignette glow, scale punch animation, `LEVEL UP` label
 
-### 16b: XP & Level System (Phase 2)
+### 17b: XP & Level System (Phase 2)
 
 **XP formula:** `Base(50) + Volume(floor(kg/500)) + Intensity((rpe-5)*10) + PR(+100/+50) + Quest(+75)`
 **Level curve:** `XP for Level N = 500 * N^1.5` (fast early, meaningful later)
@@ -872,35 +1039,35 @@ Full-screen overlay (not dialog). Background `#0F0F23` at 0.96 opacity. Dismissi
 
 Computed from existing data — retroactive for existing users. Never decreases, never paywalled.
 
-### 16c: Weekly Streak (Phase 1)
+### 17c: Weekly Streak (Phase 1)
 
 - Weekly consistency meter: 7 segments (Mon-Sun), trained=green, not-trained=neutral (NOT red)
 - Streak: consecutive weeks meeting training frequency goal. Resets only if entire week missed
 - Comeback bonus (2x XP) instead of shame on miss
 - Lives on Profile screen (character sheet)
 
-### 16d: Profile -> Character Sheet
+### 17d: Profile -> Character Sheet
 
 Same `/profile` URL. Identity block with `LVL N` badge, XP bar (6dp height, `#00E676`), weekly consistency band.
 
-### 16e: Home Screen Integration
+### 17e: Home Screen Integration
 
 One line replacing date subtitle: `[LVL 12] . [14d streak] . [Mon, Apr 7]`
 Daily quest chip (44dp, dismissible) between stat cards and routine list.
 
-**Observation from B6 smoke (2026-04-16) — factor into 16e scope:** On the `active-plan` home state (Samsung S25 Ultra), the top ~30% of the screen holds the plan counter + hero banner + week strip; the bottom ~70% down to the bottom nav is dead space. `Last: <routine>, Today` is a token text gesture with no data payload. The highest-dopamine moment in a training app is seeing your own work reflected back — right now we don't. When scoping 16e, the daily quest chip + LVL/streak line alone likely will not fill the returning-lifter gap; consider a post-workout recap surface (last-session best-set-per-exercise, trailing 7-day volume, PR-of-the-week) as part of the same pass so XP/streak/quest additions and the recap fill compose into one coherent design rather than two disjoint passes. Anti-generic-AI: do NOT ship a vanilla "Recent workouts" list — whatever lands must feel like GymBuddy (dark, bold, data-forward, glance-first).
+**Observation from B6 smoke (2026-04-16) — factor into 17e scope:** On the `active-plan` home state (Samsung S25 Ultra), the top ~30% of the screen holds the plan counter + hero banner + week strip; the bottom ~70% down to the bottom nav is dead space. `Last: <routine>, Today` is a token text gesture with no data payload. The highest-dopamine moment in a training app is seeing your own work reflected back — right now we don't. When scoping 17e, the daily quest chip + LVL/streak line alone likely will not fill the returning-lifter gap; consider a post-workout recap surface (last-session best-set-per-exercise, trailing 7-day volume, PR-of-the-week) as part of the same pass so XP/streak/quest additions and the recap fill compose into one coherent design rather than two disjoint passes. Anti-generic-AI: do NOT ship a vanilla "Recent workouts" list — whatever lands must feel like GymBuddy (dark, bold, data-forward, glance-first).
 
 ---
 
-## Phase 17: Gamification Advanced
+## Phase 18: Gamification Advanced
 
-### 17a: Weekly Smart Quests (Phase 3)
+### 18a: Weekly Smart Quests (Phase 3)
 
 3 auto-generated per week: one improvement, one exploration, one consistency. Never expire with failure state. Completion gives bonus XP, never access to core features.
 
 New schema: `quests` table (`user_id`, `week`, `type`, `target`, `completed_at`).
 
-### 17b: Training Stats Panel (Phase 4)
+### 18b: Training Stats Panel (Phase 4)
 
 Six stats computed from real workout data:
 - Strength (`#FF6B6B`), Endurance (`#40C4FF`), Power (`#FF9F43`), Consistency (`#00E676`), Volume (`#9B8DFF`), Mobility (`#26C6DA`)
@@ -913,7 +1080,7 @@ Confetti, streak flames/emoji, badge walls, multiple progress bars on home, leve
 
 ---
 
-## Phase 18: Nice-to-Have (v2.0+)
+## Phase 19: Nice-to-Have (v2.0+)
 
 | Feature | Notes |
 |---------|-------|
@@ -927,12 +1094,9 @@ Confetti, streak flames/emoji, badge walls, multiple progress bars on home, leve
 | App review prompt | Ask happy users for store review |
 | Seasonal content | Battle passes, dungeon/boss — only if v1.0 research shows demand |
 
-### Monetization Path
+### Monetization
 
-**Free forever:** Core logging, routines, exercise library, XP/level, PR tracking, streaks, 3 weekly quests.
-**Pro ($5-8/month):** Training stats panel + charts, expanded quests, class selection, PR history with e1RM, CSV export.
-**Cosmetic (one-time):** Avatar items, rank icons, XP bar themes.
-**Never paywalled:** Historical data, personal records, core progression.
+Subscription-based — see Phase 16 for full spec. No feature-tier split: trial OR active subscription = full app access. Cosmetic one-time purchases (avatar items, rank icons, XP bar themes) remain v2.0+ candidates.
 
 ---
 
