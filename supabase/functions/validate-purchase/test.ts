@@ -23,44 +23,44 @@ import {
 
 // --- Fixtures --------------------------------------------------------------
 
-// A throwaway RSA-2048 PKCS#8 key used ONLY to satisfy
-// `crypto.subtle.importKey` during signing. The signature is never
-// verified (we mock the token endpoint to return success regardless).
-const FAKE_PRIVATE_KEY = `-----BEGIN PRIVATE KEY-----
-MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7VJTUt9Us8cKj
-MzEfYyjiWA4R4/M2bS1GB4t7NXp98C3SC6dVMvDuictGeurT8jNbvJZHtCSuYEvu
-NMoSfm76oqFvAp8Gy0iz5sxjZmSnXyCdPEovGhLa0VzMaQ8s+CLOyS56YyCFGeJZ
-qgtzJ6GR3eqoYSW9b9UMvkBpZODSctWSNGj3P7jRFDO5VoTwCQAWbFnOjDfH5Ulg
-p2PKSQnSJP3AJLQNFNe7br1XbrhV//eO+t51mIpGSDCUv3E0DDFcWDTH9cXDTTlR
-ZVEiR2BwpZOOkE/Z0/BVnhZYL71oZV34bKfWjQIt6V/isSMahdsAASACp4ZTGtwi
-VuNd9tybAgMBAAECggEBAKTmjaS6tkK8BlPXClTQ2vpz/N6uxDeS35mXpqasqskV
-laAidgg/sWqpjXDbXr93otIMLlWsM+X0CqMDgSXKejLS2jx4GDjI1ZTXg++0AMJ8
-sJ74pWzVDOfmCEQ/7wXs3+cbnXhKriO8Z036q92Qc1+N87SI38nkGa0ABH9CN83H
-mQqt4fB7UdHzuIRe/me2PGhIq5ZBzj6h3BpoPGzEP+x3l9YmK8t/1cN0pqI+dQwY
-dgfGjackLu/2qH80MCF7IyQaseZUOJyKrCLtSD/Iixv/hzDEUPfOCjFDgTpzf3cw
-ta8+oE4wHCo1iI1/4TlPkwmXx4qSXtmw4aQPz7IDQvECgYEA8KNThCO2gsC2I9PQ
-DM/8Cw0O983WCDY+oi+7JPiNAJwv5DYBqEZB1QYdj06YD16XlC/HAZMsMku1na2T
-N0driwenQQWzoev3g2S7gRDoS/FCJSI3jJ+kjgtaA7Qmzlgk1TxODN+G1H91HW7t
-0l7VnL27IWyYo2qRRK3jzxqUiPUCgYEAx0oQs2reBQGMVZnApD1jeq7n4MvNLcPv
-t8b/eU9iUv6Y4Mj0Suo/AU8lYZXm8ubbqAlwz2VSVunD2tOplHyMUrtCtObAfVDU
-AhCndKaA9gApgfb3xw1IKbuQ1u4IF1FJl3VtumfQn//LiH1B3rXhcdyo3/vIttEk
-48RakUKClU8CgYEAzV7W3COOlDDcQd935DdtKBFRAPRPAlspQUnzMi5eSHMD/ISL
-DY5IiQHbIH83D4bvXq0X7qQoSBSNP7Dvv3HYuqMhf0DaegrlBuJllFVVq9qPVRnK
-xt1Il2HgxOBvbhOT+9in1BzA+YJ99UzC85O0Qz06A+CmtHEy4aZ2kj5hHjECgYEA
-mNS4+A8Fkss8Js1RieK2LniBxMgmYml3pfVLKGnzmng7H2+cwPLhPIzIuwytXywh
-2bzbsYEfYx3EoEVgMEpPhoarQnYPukrJO4gwE2o5Te6T5mJSZGlQJQj9q4ZB2Dfz
-et6INsK0oG8XVGXSpQvQh3RUYekCZQkBBFcpqWpbIEsCgYAnM3DQf3FJoSnXaMhr
-VBIovic5l0xFkEHskAjFTevO86Fsz1C2aSeRKSqGFoOQ0tmJzBEs1R6KqnHInicD
-TQrKhArgLXX4v3CddjfTRJkFWDbE/CkvKZNOrcf1nhaGCPspRJj2KUkj1Fhl9Cnc
-dn/RsYEONbwQSjIfMPkvxF+8HQ==
------END PRIVATE KEY-----
-`;
+// `signAssertion()` in the shared helper calls `crypto.subtle.importKey`
+// with the PEM private_key, so we need a PEM that is actually importable.
+// We generate a throwaway RSA-2048 keypair at test-suite start and export
+// its PKCS#8 body as PEM. The signature is never verified upstream in
+// tests (we mock the OAuth token endpoint to succeed regardless), so the
+// key just needs to be valid enough to import + sign.
+async function generateFakeServiceAccount(): Promise<ServiceAccountJson> {
+  const { privateKey } = await crypto.subtle.generateKey(
+    {
+      name: 'RSASSA-PKCS1-v1_5',
+      modulusLength: 2048,
+      publicExponent: new Uint8Array([1, 0, 1]),
+      hash: 'SHA-256',
+    },
+    true,
+    ['sign', 'verify'],
+  );
+  const pkcs8 = new Uint8Array(await crypto.subtle.exportKey('pkcs8', privateKey));
+  let bin = '';
+  for (const b of pkcs8) bin += String.fromCharCode(b);
+  const b64 = btoa(bin);
+  const lines = b64.match(/.{1,64}/g) ?? [b64];
+  const pem = `-----BEGIN PRIVATE KEY-----\n${lines.join('\n')}\n-----END PRIVATE KEY-----\n`;
+  return {
+    client_email: 'test@example.iam.gserviceaccount.com',
+    private_key: pem,
+    token_uri: 'https://oauth2.googleapis.com/token',
+  };
+}
 
-const FAKE_SERVICE_ACCOUNT: ServiceAccountJson = {
-  client_email: 'test@example.iam.gserviceaccount.com',
-  private_key: FAKE_PRIVATE_KEY,
-  token_uri: 'https://oauth2.googleapis.com/token',
-};
+// Cache a single generated service account for the whole test run —
+// generating 2048-bit RSA keys is slow (~100ms) and we don't need
+// per-test isolation of the key material (the OAuth endpoint is mocked).
+let _cachedFakeSa: ServiceAccountJson | null = null;
+async function getFakeServiceAccount(): Promise<ServiceAccountJson> {
+  if (!_cachedFakeSa) _cachedFakeSa = await generateFakeServiceAccount();
+  return _cachedFakeSa;
+}
 
 const FAKE_USER_ID = '11111111-1111-1111-1111-111111111111';
 
@@ -186,16 +186,16 @@ const OAUTH_TOKEN_OK: FetchMockEntry = {
 
 // --- Tests -----------------------------------------------------------------
 
-function baseInput(
+async function baseInput(
   client: unknown,
   overrides: Partial<Parameters<typeof validatePurchase>[0]> = {},
-): Parameters<typeof validatePurchase>[0] {
+): Promise<Parameters<typeof validatePurchase>[0]> {
   return {
     userId: FAKE_USER_ID,
     productId: 'gymbuddy_premium:monthly',
     purchaseToken: 'tok_1',
     source: 'client',
-    serviceAccount: FAKE_SERVICE_ACCOUNT,
+    serviceAccount: await getFakeServiceAccount(),
     packageName: 'com.gymbuddy.app',
     // deno-lint-ignore no-explicit-any
     client: client as any,
@@ -212,7 +212,7 @@ Deno.test('happy path: active sub + pending ack → acknowledges + 200', async (
     { url: ':acknowledge', response: { body: {} } },
   ]);
 
-  const result = await validatePurchase(baseInput(client), { fetchFn });
+  const result = await validatePurchase(await baseInput(client), { fetchFn });
 
   assertEquals(result.status, 200);
   assertEquals(result.body.success, true);
@@ -244,7 +244,7 @@ Deno.test('already-acknowledged sub does NOT call :acknowledge', async () => {
   };
 
   const result = await validatePurchase(
-    baseInput(client, { purchaseToken: 'tok_ack' }),
+    await baseInput(client, { purchaseToken: 'tok_ack' }),
     { fetchFn },
   );
 
@@ -266,7 +266,7 @@ Deno.test('user_id mismatch → 403, no DB writes', async () => {
   ]);
 
   const result = await validatePurchase(
-    baseInput(client, { purchaseToken: 'tok_mismatch' }),
+    await baseInput(client, { purchaseToken: 'tok_mismatch' }),
     { fetchFn },
   );
 
@@ -285,7 +285,7 @@ Deno.test('missing obfuscatedAccountId → 400', async () => {
     { url: 'subscriptionsv2', response: { body: playBody } },
   ]);
   const result = await validatePurchase(
-    baseInput(client, { purchaseToken: 'tok_noacct' }),
+    await baseInput(client, { purchaseToken: 'tok_noacct' }),
     { fetchFn },
   );
   assertEquals(result.status, 400);
@@ -304,7 +304,7 @@ Deno.test('Play API 410 (expired/invalid token) → 400 relay', async () => {
     },
   ]);
   const result = await validatePurchase(
-    baseInput(client, { purchaseToken: 'tok_expired' }),
+    await baseInput(client, { purchaseToken: 'tok_expired' }),
     { fetchFn },
   );
   assertEquals(result.status, 400);
@@ -319,10 +319,60 @@ Deno.test('Play API 500 → 502 relay', async () => {
     { url: 'subscriptionsv2', response: { status: 500, body: { error: 'boom' } } },
   ]);
   const result = await validatePurchase(
-    baseInput(client, { purchaseToken: 'tok_500' }),
+    await baseInput(client, { purchaseToken: 'tok_500' }),
     { fetchFn },
   );
   assertEquals(result.status, 502);
+});
+
+Deno.test('pending ack + no product id in Play response → 500, no :acknowledge call', async () => {
+  _resetPlayTokenCacheForTests();
+  const { client, calls } = makeClient();
+
+  // Play returns a PENDING ack with zero lineItems — the function cannot
+  // build the `:acknowledge` URL without a base product id, so it must
+  // bail with 500 BEFORE marking the row acknowledged.
+  const playBody: Record<string, unknown> = {
+    kind: 'androidpublisher#subscriptionPurchaseV2',
+    subscriptionState: 'SUBSCRIPTION_STATE_ACTIVE',
+    startTime: new Date(Date.now() - 60_000).toISOString(),
+    latestOrderId: 'GPA.no-line-items',
+    lineItems: [],
+    acknowledgementState: 'ACKNOWLEDGEMENT_STATE_PENDING',
+    externalAccountIdentifiers: { obfuscatedExternalAccountId: FAKE_USER_ID },
+  };
+
+  let ackCalled = false;
+  const base = buildFetchMock([
+    OAUTH_TOKEN_OK,
+    { url: 'subscriptionsv2/tokens/tok_nolineitem', response: { body: playBody } },
+  ]);
+  const fetchFn: typeof fetch = (input, init) => {
+    const url = typeof input === 'string' ? input : (input as Request).url;
+    if (url.includes(':acknowledge')) ackCalled = true;
+    return base(input, init);
+  };
+
+  const result = await validatePurchase(
+    await baseInput(client, { purchaseToken: 'tok_nolineitem' }),
+    { fetchFn },
+  );
+
+  assertEquals(result.status, 500);
+  assertEquals(
+    result.body.error,
+    'Cannot acknowledge: no product id in Play response',
+  );
+  // Critical: we must NOT have issued a Play :acknowledge call, and we
+  // must NOT have PATCHed the row to acknowledged.
+  assertEquals(ackCalled, false, ':acknowledge must not be called');
+  assertEquals(
+    calls.filter((c) => c.op === 'update').length,
+    0,
+    'no UPDATE should run when we cannot acknowledge',
+  );
+  // UPSERT + audit insert still ran (state is known, audit is best-effort).
+  assert(calls.some((c) => c.table === 'subscriptions' && c.op === 'upsert'));
 });
 
 Deno.test('acknowledgement failure → 500, subscriptions row NOT marked acknowledged', async () => {
@@ -335,7 +385,7 @@ Deno.test('acknowledgement failure → 500, subscriptions row NOT marked acknowl
   ]);
 
   const result = await validatePurchase(
-    baseInput(client, { purchaseToken: 'tok_ackfail' }),
+    await baseInput(client, { purchaseToken: 'tok_ackfail' }),
     { fetchFn },
   );
 
@@ -362,7 +412,7 @@ Deno.test('duplicate audit insert (unique violation) is tolerated', async () => 
   ]);
 
   const result = await validatePurchase(
-    baseInput(client, { purchaseToken: 'tok_dup' }),
+    await baseInput(client, { purchaseToken: 'tok_dup' }),
     { fetchFn },
   );
 
@@ -383,7 +433,7 @@ Deno.test('non-dedupe audit insert failure → 500', async () => {
     { url: 'subscriptionsv2/tokens/tok_evterr', response: { body: playOk() } },
   ]);
   const result = await validatePurchase(
-    baseInput(client, { purchaseToken: 'tok_evterr' }),
+    await baseInput(client, { purchaseToken: 'tok_evterr' }),
     { fetchFn },
   );
   assertEquals(result.status, 500);
@@ -400,7 +450,7 @@ Deno.test('UPSERT failure → 500, no audit insert', async () => {
     { url: 'subscriptionsv2/tokens/tok_upfail', response: { body: playOk() } },
   ]);
   const result = await validatePurchase(
-    baseInput(client, { purchaseToken: 'tok_upfail' }),
+    await baseInput(client, { purchaseToken: 'tok_upfail' }),
     { fetchFn },
   );
   assertEquals(result.status, 500);

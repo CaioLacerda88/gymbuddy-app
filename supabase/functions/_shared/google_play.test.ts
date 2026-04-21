@@ -13,9 +13,12 @@ import {
 } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 import {
   _resetJwkCacheForTests,
+  _resetPlayTokenCacheForTests,
   baseProductIdFromPlay,
+  getPlayAccessToken,
   normalizePlaySubscription,
   playStateToDbState,
+  type ServiceAccountJson,
   verifyPubSubJwt,
 } from './google_play.ts';
 
@@ -303,9 +306,15 @@ Deno.test('verifyPubSubJwt: tampered signature rejected', async () => {
       iat: now,
     },
   });
-  // Flip the last byte of the signature.
+  // Flip the FIRST byte of the signature. Flipping the last base64 char
+  // is risky because for a 256-byte RSA signature the last base64 char
+  // only carries 2 data bits + 4 padding bits — a flip that happens to
+  // land in the padding bits produces a signature that decodes to the
+  // same bytes, and the test would pass a valid signature and fail to
+  // verify its tampered premise. The first char always encodes 6 real
+  // data bits of byte 0, so flipping it always mutates the signature.
   const parts = jwt.split('.');
-  parts[2] = parts[2].slice(0, -1) + (parts[2].endsWith('A') ? 'B' : 'A');
+  parts[2] = (parts[2].startsWith('A') ? 'B' : 'A') + parts[2].slice(1);
   const tampered = parts.join('.');
 
   await assertRejects(
@@ -317,4 +326,142 @@ Deno.test('verifyPubSubJwt: tampered signature rejected', async () => {
     Error,
     'signature',
   );
+});
+
+// --- JWK cache hit --------------------------------------------------------
+//
+// Google's JWKs barely change; our verifier caches the imported keys for
+// 1h. Locking that in so a regression that refetches on every call (e.g.
+// accidentally clearing the cache) surfaces immediately.
+
+Deno.test('verifyPubSubJwt: second call reuses cached JWKs (no refetch)', async () => {
+  _resetJwkCacheForTests();
+  const { privateKey, jwksBody } = await makeKeypairAndJwks('kid_cache');
+  const now = Math.floor(Date.now() / 1000);
+
+  let certsFetches = 0;
+  const countingFetch: typeof fetch = (input, _init) => {
+    const url = typeof input === 'string' ? input : (input as Request).url;
+    if (url.includes('/oauth2/v3/certs')) {
+      certsFetches += 1;
+      return Promise.resolve(new Response(JSON.stringify(jwksBody), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }));
+    }
+    return Promise.reject(new Error(`unexpected fetch: ${url}`));
+  };
+
+  const mkJwt = () => signJwt({
+    privateKey,
+    header: { alg: 'RS256', kid: 'kid_cache', typ: 'JWT' },
+    payload: {
+      iss: 'https://accounts.google.com',
+      aud: 'aud',
+      exp: now + 3600,
+      iat: now,
+    },
+  });
+
+  await verifyPubSubJwt({
+    token: await mkJwt(),
+    expectedAudience: 'aud',
+    fetchFn: countingFetch,
+  });
+  await verifyPubSubJwt({
+    token: await mkJwt(),
+    expectedAudience: 'aud',
+    fetchFn: countingFetch,
+  });
+
+  assertEquals(certsFetches, 1, 'JWKs should be fetched once and reused');
+});
+
+// --- OAuth access-token cache hit -----------------------------------------
+//
+// `getPlayAccessToken` caches the access_token for its stated lifetime
+// (minus a 60s safety margin). Calling twice in quick succession must hit
+// the token endpoint exactly once — otherwise every Play API call re-signs
+// a JWT + roundtrips to Google, which would burn cold-start budget.
+
+async function generatePkcs8PemKeypair(): Promise<ServiceAccountJson> {
+  const { privateKey } = await crypto.subtle.generateKey(
+    {
+      name: 'RSASSA-PKCS1-v1_5',
+      modulusLength: 2048,
+      publicExponent: new Uint8Array([1, 0, 1]),
+      hash: 'SHA-256',
+    },
+    true,
+    ['sign', 'verify'],
+  );
+  const pkcs8 = new Uint8Array(await crypto.subtle.exportKey('pkcs8', privateKey));
+  // Chunk base64 into PEM-standard 64-char lines.
+  let bin = '';
+  for (const b of pkcs8) bin += String.fromCharCode(b);
+  const b64 = btoa(bin);
+  const lines = b64.match(/.{1,64}/g) ?? [b64];
+  const pem = `-----BEGIN PRIVATE KEY-----\n${lines.join('\n')}\n-----END PRIVATE KEY-----\n`;
+  return {
+    client_email: 'cachetest@example.iam.gserviceaccount.com',
+    private_key: pem,
+    token_uri: 'https://oauth2.googleapis.com/token',
+  };
+}
+
+Deno.test('getPlayAccessToken: second call served from cache (no refetch)', async () => {
+  _resetPlayTokenCacheForTests();
+  const sa = await generatePkcs8PemKeypair();
+
+  let tokenFetches = 0;
+  const countingFetch: typeof fetch = (input, _init) => {
+    const url = typeof input === 'string' ? input : (input as Request).url;
+    if (url.includes('oauth2.googleapis.com/token')) {
+      tokenFetches += 1;
+      return Promise.resolve(new Response(JSON.stringify({
+        access_token: 'ya29.cached',
+        expires_in: 3600,
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }));
+    }
+    return Promise.reject(new Error(`unexpected fetch: ${url}`));
+  };
+
+  const t1 = await getPlayAccessToken(sa, countingFetch);
+  const t2 = await getPlayAccessToken(sa, countingFetch);
+
+  assertEquals(t1, 'ya29.cached');
+  assertEquals(t2, 'ya29.cached');
+  assertEquals(tokenFetches, 1, 'token endpoint should be hit exactly once');
+});
+
+// --- SUBSCRIPTION_STATE_PENDING normalization -----------------------------
+//
+// Play returns SUBSCRIPTION_STATE_PENDING when a purchase hasn't finished
+// settling (e.g. slow payment method). Our mapping deliberately surfaces
+// this as `active` at the DB level — the entitlement derivation in
+// `deriveEntitlement` gates on expires_at, so a pending-but-unexpired sub
+// still grants premium (matches Play's own "grant entitlement optimistically,
+// revoke if payment fails" guidance). Locking this in so a future
+// refactor doesn't silently downgrade PENDING to expired/free.
+
+Deno.test('normalizePlaySubscription: SUBSCRIPTION_STATE_PENDING → active', () => {
+  const n = normalizePlaySubscription({
+    purchaseToken: 'tok_pending',
+    playResponse: {
+      subscriptionState: 'SUBSCRIPTION_STATE_PENDING',
+      acknowledgementState: 'ACKNOWLEDGEMENT_STATE_PENDING',
+      lineItems: [{
+        productId: 'gymbuddy_premium',
+        expiryTime: '2030-01-01T00:00:00Z',
+        autoRenewingPlan: { autoRenewEnabled: true },
+        offerDetails: { basePlanId: 'monthly' },
+      }],
+    },
+  });
+  assertEquals(n.state, 'active');
+  assertEquals(n.in_grace_period, false);
+  assertEquals(n.acknowledgement_state, 'pending');
 });

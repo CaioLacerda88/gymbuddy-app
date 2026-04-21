@@ -3,8 +3,8 @@
 // We exercise `handleRtdn()` + `rtdnTypeToStatePatch()` +
 // `decodePubSubPayload()` directly. HTTP boundary + Pub/Sub JWT
 // verification are covered by a dedicated JWT test against the shared
-// helper (tests_shared.test.ts) — this file focuses on state machine +
-// idempotency.
+// helper (`_shared/google_play.test.ts`) — this file focuses on state
+// machine + idempotency.
 //
 // Run with: deno test --allow-net --allow-env supabase/functions/
 

@@ -49,6 +49,15 @@ CREATE TABLE IF NOT EXISTS public.subscriptions (
 CREATE INDEX IF NOT EXISTS idx_subscriptions_user
   ON public.subscriptions (user_id);
 
+-- `rtdn-webhook` looks up the owning user row on every incoming Pub/Sub
+-- notification via `... WHERE purchase_token = $1`. With a production
+-- subscriber base this is a hot read path; without an index it's a full
+-- table scan on every RTDN. The UNIQUE(user_id) constraint doesn't help
+-- here because we don't know the user_id at webhook time — that's exactly
+-- what we're resolving.
+CREATE INDEX IF NOT EXISTS idx_subscriptions_purchase_token
+  ON public.subscriptions (purchase_token);
+
 -- Reconciliation cron (00026) scans subs whose server expiry is within the
 -- last 7 days to re-poll Play in case a Pub/Sub notification was lost. A
 -- partial index on expires_at keeps that scan cheap.

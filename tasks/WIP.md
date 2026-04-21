@@ -44,7 +44,19 @@ All steps documented in `docs/phase-16a-setup.md` for the user to follow.
 **Tests:**
 - [x] Unit tests for `validate-purchase` with mocked Play API: success, already-acknowledged, expired token, user_id mismatch
 - [x] Unit tests for `rtdn-webhook`: all 10 notification types, duplicate handling, invalid JWT
+- [x] Unit test for `validate-purchase` pending-ack + no-product-id branch (500, no :acknowledge call) — QA gate
+- [x] Unit tests for shared helpers: OAuth token cache hit, JWK cache hit, SUBSCRIPTION_STATE_PENDING normalizer — QA gate
 - [x] Document `curl` invocation examples for manual end-to-end testing (in `docs/phase-16a-setup.md`)
+
+**QA gate fixes (Apr 21):**
+- [x] Important #1 — added `idx_subscriptions_purchase_token` on `public.subscriptions(purchase_token)` for RTDN lookup hot path
+- [x] Important #2 — regression test for "pending ack + empty lineItems" → 500, no ack call, no row mark
+- [x] Nit #1 — corrected stale `tests_shared.test.ts` reference in `rtdn-webhook/test.ts` comment
+- [x] Nit #2 — added OAuth access-token and JWK cache-hit tests to `_shared/google_play.test.ts`
+- [x] Nit #3 — added `SUBSCRIPTION_STATE_PENDING → 'active'` normalizer test
+- [x] Drive-by (uncovered by local Deno 2.7 run): `validate-purchase/test.ts` was unrunnable because `FAKE_PRIVATE_KEY` failed `crypto.subtle.importKey` on Deno 2.x — replaced with runtime-generated RSA-2048 PKCS#8 PEM
+- [x] Drive-by: tampered-signature JWT test was intermittently flaky (flipping last base64 char of a 256-byte RSA sig can hit padding-only bits) — now flips first char (always mutates data bits)
+- [x] Verified: 46/46 Deno tests pass on two consecutive runs (containerized Deno 2.7.12)
 
 ### Files to read before starting
 
