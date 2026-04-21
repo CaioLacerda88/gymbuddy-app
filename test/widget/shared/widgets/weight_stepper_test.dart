@@ -197,6 +197,109 @@ void main() {
       });
     });
 
+    group('tap-to-type comma/dot parsing', () {
+      testWidgets(
+        'comma as decimal separator ("80,5") calls onChanged with 80.5',
+        (tester) async {
+          double? emitted;
+          await tester.pumpWidget(
+            buildTestWidget(
+              WeightStepper(value: 60, onChanged: (v) => emitted = v),
+            ),
+          );
+
+          await tester.tap(find.text('60'));
+          await tester.pumpAndSettle();
+
+          await tester.enterText(find.byType(TextField), '80,5');
+          await tester.tap(find.text('OK'));
+          await tester.pumpAndSettle();
+
+          expect(emitted, 80.5);
+        },
+      );
+
+      testWidgets(
+        'dot as decimal separator ("80.5") calls onChanged with 80.5',
+        (tester) async {
+          double? emitted;
+          await tester.pumpWidget(
+            buildTestWidget(
+              WeightStepper(value: 60, onChanged: (v) => emitted = v),
+            ),
+          );
+
+          await tester.tap(find.text('60'));
+          await tester.pumpAndSettle();
+
+          await tester.enterText(find.byType(TextField), '80.5');
+          await tester.tap(find.text('OK'));
+          await tester.pumpAndSettle();
+
+          expect(emitted, 80.5);
+        },
+      );
+
+      testWidgets('negative input ("-5") does not call onChanged', (
+        tester,
+      ) async {
+        double? emitted;
+        await tester.pumpWidget(
+          buildTestWidget(
+            WeightStepper(value: 60, onChanged: (v) => emitted = v),
+          ),
+        );
+
+        await tester.tap(find.text('60'));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextField), '-5');
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
+
+        expect(emitted, isNull);
+      });
+
+      testWidgets('empty submit does not call onChanged', (tester) async {
+        double? emitted;
+        await tester.pumpWidget(
+          buildTestWidget(
+            WeightStepper(value: 60, onChanged: (v) => emitted = v),
+          ),
+        );
+
+        await tester.tap(find.text('60'));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextField), '');
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
+
+        expect(emitted, isNull);
+      });
+
+      testWidgets(
+        'malformed mixed separators ("80,5.2") does not call onChanged',
+        (tester) async {
+          double? emitted;
+          await tester.pumpWidget(
+            buildTestWidget(
+              WeightStepper(value: 60, onChanged: (v) => emitted = v),
+            ),
+          );
+
+          await tester.tap(find.text('60'));
+          await tester.pumpAndSettle();
+
+          await tester.enterText(find.byType(TextField), '80,5.2');
+          await tester.tap(find.text('OK'));
+          await tester.pumpAndSettle();
+
+          expect(emitted, isNull);
+        },
+      );
+    });
+
     group('tap-to-type edge cases', () {
       testWidgets('entering non-numeric text does not call onChanged', (
         tester,

@@ -412,6 +412,22 @@ export const PROFILE = {
    * "Manage Data" row — Semantics(identifier: 'profile-manage-data')
    */
   manageData: '[flt-semantics-identifier="profile-manage-data"]',
+  /**
+   * "Language" row — Semantics(identifier: 'profile-language-row').
+   * Tapping opens the LanguagePickerSheet.
+   */
+  languageRow: '[flt-semantics-identifier="profile-language-row"]',
+  /**
+   * Root of the language picker bottom sheet — Semantics(identifier: 'profile-language-picker').
+   * Useful to assert the sheet opened or closed.
+   */
+  languagePickerSheet: '[flt-semantics-identifier="profile-language-picker"]',
+  /**
+   * Language option tile inside the LanguagePickerSheet.
+   * Identifier pattern: 'language-option-{locale}' where locale is 'en' or 'pt'.
+   */
+  languageOption: (locale: 'en' | 'pt') =>
+    `[flt-semantics-identifier="language-option-${locale}"]`,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -615,4 +631,27 @@ export const FIRST_WORKOUT_CTA = {
   card: '[flt-semantics-identifier="first-workout-card"]',
   /** Routine name displayed as the headline — parameterized for flexibility */
   routineName: (name: string) => `text=${name}`,
+} as const;
+
+// ---------------------------------------------------------------------------
+// Localization — pt-BR nav tab accessible names (Phase 15e)
+//
+// Flutter exposes NavigationDestination items as role=tab in the AOM.
+// The accessible name of each tab IS the label text (set by the l10n string).
+// These selectors are used in localization.spec.ts to verify that locale
+// reconciliation has applied pt-BR labels to the bottom navigation.
+//
+// Contrast with NAV.* which use flt-semantics-identifier (locale-independent)
+// for navigation actions. These LOCALIZATION selectors are assertion-only and
+// should only be used in locale-specific tests.
+// ---------------------------------------------------------------------------
+export const LOCALIZATION = {
+  /** pt-BR nav tab — "Início" (Home) */
+  ptNavHome: 'role=tab[name="Início"]',
+  /** pt-BR nav tab — "Exercícios" (Exercises) */
+  ptNavExercises: 'role=tab[name="Exercícios"]',
+  /** pt-BR nav tab — "Rotinas" (Routines) */
+  ptNavRoutines: 'role=tab[name="Rotinas"]',
+  /** pt-BR nav tab — "Perfil" (Profile) */
+  ptNavProfile: 'role=tab[name="Perfil"]',
 } as const;

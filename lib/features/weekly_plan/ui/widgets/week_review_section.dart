@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/format/number_format.dart';
 import '../../../../core/theme/radii.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../data/models/weekly_plan.dart';
@@ -97,7 +98,11 @@ class WeekReviewSection extends StatelessWidget {
 
         // Stats row
         Text(
-          _buildStatsText(completedCount, l10n),
+          _buildStatsText(
+            completedCount,
+            l10n,
+            Localizations.localeOf(context).languageCode,
+          ),
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
           ),
@@ -131,13 +136,14 @@ class WeekReviewSection extends StatelessWidget {
     );
   }
 
-  String _buildStatsText(int sessions, AppLocalizations l10n) {
+  String _buildStatsText(int sessions, AppLocalizations l10n, String locale) {
     final parts = <String>[l10n.sessionsCount(sessions)];
 
     if (totalVolume > 0) {
-      final volumeStr = totalVolume >= 1000
-          ? '${(totalVolume / 1000).toStringAsFixed(1)}k'
-          : totalVolume.toStringAsFixed(0);
+      final volumeStr = AppNumberFormat.compactVolume(
+        totalVolume,
+        locale: locale,
+      );
       parts.add('$volumeStr $weightUnit');
     }
 

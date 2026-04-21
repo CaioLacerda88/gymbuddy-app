@@ -57,6 +57,10 @@ const TEST_USERS = [
   'e2e-smoke-exercise-progress@test.local',
   // Offline sync smoke (Phase 14) — offline-sync.spec.ts
   'e2e-smoke-offline-sync@test.local',
+  // Localization smoke (Phase 15e) — localization.spec.ts
+  'e2e-smoke-localization@test.local',
+  // Localization en-default (Phase 15e) — en→pt picker + persistence tests
+  'e2e-smoke-localization-en@test.local',
 ];
 
 /**
@@ -627,6 +631,13 @@ async function globalSetup(): Promise<void> {
     'e2e-smoke-first-workout@test.local',
     // Offline sync — clean Hive queue state on each run
     'e2e-smoke-offline-sync@test.local',
+    // Localization — must start with a clean slate each run because tests
+    // may mutate the locale; the profile row is re-upserted with locale:'pt'
+    // below so the app boots in Portuguese.
+    'e2e-smoke-localization@test.local',
+    // Localization en-default — tests mutate the locale (en→pt and back),
+    // so we clean and re-seed each run to guarantee an en-default start.
+    'e2e-smoke-localization-en@test.local',
   ];
 
   for (const email of freshStateUsers) {
@@ -815,6 +826,73 @@ async function globalSetup(): Promise<void> {
         { onConflict: 'id' },
       );
     await seedMinimalWorkout(supabase, uid);
+  }
+
+  // ── Seed Portuguese locale for smokeLocalization user ─────────────────
+  // The Flutter app reads `profiles.locale` on login and seeds the local Hive
+  // box, which MaterialApp.locale reads at render time. By upserting
+  // locale: 'pt' here we guarantee the app boots in Portuguese without any
+  // test-side setup dance. Also seed one minimal workout so the app lands in
+  // lapsed state (not the brand-new CTA state).
+  const localizationUserId = await getUserId(
+    supabase,
+    'e2e-smoke-localization@test.local',
+  );
+  if (localizationUserId) {
+    const { error: localeProfileError } = await supabase
+      .from('profiles')
+      .upsert(
+        {
+          id: localizationUserId,
+          display_name: 'Localization User',
+          fitness_level: 'intermediate',
+          locale: 'pt',
+        },
+        { onConflict: 'id' },
+      );
+    if (localeProfileError) {
+      console.log(
+        `[global-setup] Warning: could not upsert pt-locale profile: ${localeProfileError.message}`,
+      );
+    } else {
+      console.log(
+        '[global-setup] Seeded pt locale profile for smokeLocalization user',
+      );
+    }
+    await seedMinimalWorkout(supabase, localizationUserId);
+  }
+
+  // ── Seed en-default profile for smokeLocalizationEn user ──────────────
+  // locale is explicitly set to 'en' (the column is NOT NULL DEFAULT 'en').
+  // Omitting the field would leave stale values if a prior run wrote 'pt' — an
+  // upsert only overwrites columns that are present in the payload.
+  // One minimal workout is seeded so the app lands in lapsed state.
+  const localizationEnUserId = await getUserId(
+    supabase,
+    'e2e-smoke-localization-en@test.local',
+  );
+  if (localizationEnUserId) {
+    const { error: localeEnProfileError } = await supabase
+      .from('profiles')
+      .upsert(
+        {
+          id: localizationEnUserId,
+          display_name: 'Localization En User',
+          fitness_level: 'intermediate',
+          locale: 'en',
+        },
+        { onConflict: 'id' },
+      );
+    if (localeEnProfileError) {
+      console.log(
+        `[global-setup] Warning: could not upsert en-default profile: ${localeEnProfileError.message}`,
+      );
+    } else {
+      console.log(
+        '[global-setup] Seeded en-default profile for smokeLocalizationEn user',
+      );
+    }
+    await seedMinimalWorkout(supabase, localizationEnUserId);
   }
 
   console.log('[global-setup] Done.');

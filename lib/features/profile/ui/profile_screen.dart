@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
+import '../../../core/format/date_format.dart';
 import '../../../core/l10n/locale_provider.dart';
 import '../../../core/theme/radii.dart';
 import '../../../features/auth/providers/auth_providers.dart';
@@ -60,7 +60,12 @@ class ProfileScreen extends ConsumerWidget {
             const _StatsRow(),
             const SizedBox(height: 32),
             // Weight unit section
-            Text(l10n.weightUnit, style: theme.textTheme.titleMedium),
+            Text(
+              l10n.weightUnit,
+              style: theme.textTheme.titleMedium,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
             const SizedBox(height: 12),
             profileAsync.when(
               data: (profile) =>
@@ -425,9 +430,10 @@ class _StatsRow extends ConsumerWidget {
           child: _StatCard(
             label: l10n.memberSince,
             value: memberSince != null
-                ? DateFormat.yMMM(
-                    Localizations.localeOf(context).toString(),
-                  ).format(memberSince)
+                ? AppDateFormat.monthYear(
+                    memberSince,
+                    locale: Localizations.localeOf(context).languageCode,
+                  )
                 : '--',
             icon: Icons.calendar_today,
             theme: theme,
