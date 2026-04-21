@@ -56,7 +56,7 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 15e | QA + E2E + Overflow Polish | DONE | #91 |
 | 15 | Portuguese (Brazil) Localization | DONE | #86–#91 |
 | 16 | Subscription Monetization (GPB + trial-to-paywall) | TODO | - |
-| 16a | Backend: schema + Edge Functions + Play Console draft | TODO | - |
+| 16a | Backend: schema + Edge Functions + Play Console draft | DONE | #93 |
 | 16b | Client integration + paywall UI + onboarding rewire | TODO | - |
 | 16c | Hard gate enforcement + router guard + E2E refactor | TODO | - |
 | 16d | Analytics + hardening + launch-readiness checklist | TODO | - |
@@ -932,16 +932,14 @@ RLS: SELECT `auth.uid() = user_id` on all three. No client writes. Service role 
 
 ### Sub-phases
 
-#### 16a — Backend foundation
+#### 16a — Backend foundation — DONE (PR #93)
 
-- Migrations `00023_create_subscriptions.sql`, `00024_create_subscription_events.sql`, `00025_create_entitlements_view.sql`, `00026_subscription_cron_reconciliation.sql`
-- Google Cloud service account (scope: `androidpublisher`) + JSON key stored as Supabase secret `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`
-- `supabase/functions/validate-purchase/index.ts` — JWT verify, Play API call, DB upsert, acknowledge
-- `supabase/functions/rtdn-webhook/index.ts` — Pub/Sub JWT verify, state transitions for all 10 types, idempotency via unique constraint
-- Google Cloud Pub/Sub topic `gymbuddy-rtdn` + push subscription → rtdn-webhook URL
-- Play Console draft subscription `gymbuddy_premium` with base plans `:monthly` + `:annual`; 14-day free trial offer on both; explicit prices for BRL + USD + EUR; PPP-aware auto-conversion enabled for all other countries via Play's suggested-pricing tool
-- Unit tests: edge function logic with mocked Play API responses
-- **No Flutter code.** Backend independently testable via `curl` / `supabase functions invoke`.
+- 4 migrations (`00023` subscriptions + RLS, `00024` events audit log with `UNIQUE(purchase_token, notification_type, event_time)`, `00025` entitlements view with `security_invoker`, `00026` pg_cron ±7d reconciliation via `net.http_post`). Applied to hosted Supabase.
+- 2 Edge Functions: `validate-purchase` (decodes JWT `role` claim for service-role detection; `obfuscatedAccountId` binding; ack within 3d; 200-with-log on Play-ack-OK/DB-update-fail partial failure), `rtdn-webhook` (Pub/Sub JWT verify, all 10 RTDN types, idempotent via UNIQUE).
+- Shared `_shared/google_play.ts`: OAuth2 with `androidpublisher` scope, module-scope token + JWK caches, state normalizer.
+- 57 Deno unit tests passing (Deno 2.7.12); Flutter test suite unchanged at 1449/1449.
+- Manual setup documented in `docs/phase-16a-setup.md` — Google Cloud SA, Pub/Sub topic+push sub, Play Console draft product with BRL/USD/EUR + PPP auto-convert, DB settings `app.settings.edge_functions_url` / `app.settings.service_role_key` for the cron. **User handles these external steps before 16b closed testing.**
+- No Flutter code, no `pubspec.yaml` changes.
 
 #### 16b — Client integration + paywall UI + onboarding rewire
 
