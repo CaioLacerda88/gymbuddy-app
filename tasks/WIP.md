@@ -41,8 +41,8 @@ Ship Supabase schema + two Edge Functions + Google Cloud service account + Pub/S
 - [ ] PPP-aware auto-conversion enabled for other countries (Play's suggested-pricing tool)
 
 **Tests:**
-- [ ] Unit tests for `validate-purchase` with mocked Play API: success, already-acknowledged, expired token, user_id mismatch
-- [ ] Unit tests for `rtdn-webhook`: all 10 notification types, duplicate handling, invalid JWT
+- [x] Unit tests for `validate-purchase` with mocked Play API: success, already-acknowledged, expired token, user_id mismatch
+- [x] Unit tests for `rtdn-webhook`: all 10 notification types, duplicate handling, invalid JWT
 - [ ] Document `curl` invocation examples for manual end-to-end testing
 
 ### Files to read before starting

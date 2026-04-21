@@ -41,7 +41,7 @@
 //   GOOGLE_PLAY_PACKAGE_NAME          (e.g. "com.gymbuddy.app")
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
   acknowledgePlaySubscription,
   baseProductIdFromPlay,
@@ -81,8 +81,7 @@ export interface ValidatePurchaseInput {
   source: string;
   serviceAccount: ServiceAccountJson;
   packageName: string;
-  supabaseUrl: string;
-  serviceRoleKey: string;
+  client: SupabaseClient;
 }
 
 export interface ValidatePurchaseResult {
@@ -152,9 +151,7 @@ export async function validatePurchase(
   }
 
   // 4. Normalize + UPSERT the subscription row via the service role.
-  const adminClient = createClient(input.supabaseUrl, input.serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  const adminClient = input.client;
 
   const normalized = normalizePlaySubscription({
     purchaseToken: input.purchaseToken,
@@ -349,6 +346,9 @@ serve(async (req) => {
       return json({ error: 'Invalid GOOGLE_PLAY_SERVICE_ACCOUNT_JSON' }, 500);
     }
 
+    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
     const result = await validatePurchase({
       userId,
       productId,
@@ -356,8 +356,7 @@ serve(async (req) => {
       source,
       serviceAccount,
       packageName,
-      supabaseUrl,
-      serviceRoleKey,
+      client: adminClient,
     });
     return json(result.body, result.status);
   } catch (e) {
