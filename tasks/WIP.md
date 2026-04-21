@@ -23,12 +23,12 @@ Ship Supabase schema + two Edge Functions + Google Cloud service account + Pub/S
 - [x] `00026_subscription_cron_reconciliation.sql` — pg_cron fallback job every 6h for subs with `expires_at > now() - interval '7 days'`
 
 **Edge Functions (`supabase/functions/`):**
-- [ ] `validate-purchase/index.ts` — JWT verify → Play API `purchases.subscriptionsv2.get` → DB upsert → acknowledge within 3d
+- [x] `validate-purchase/index.ts` — JWT verify → Play API `purchases.subscriptionsv2.get` → DB upsert → acknowledge within 3d
   - Service account JSON from Supabase secret `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`
   - OAuth2 exchange for short-lived access token (scope: `androidpublisher`)
   - Validate `obfuscatedAccountId` in Play response matches JWT user_id
   - If acknowledgement fails → DO NOT grant entitlement, return 500
-- [ ] `rtdn-webhook/index.ts` — Pub/Sub JWT verify → state transitions for all 10 RTDN types
+- [x] `rtdn-webhook/index.ts` — Pub/Sub JWT verify → state transitions for all 10 RTDN types
   - Verify Pub/Sub JWT against Google's public keys (`https://www.googleapis.com/oauth2/v3/certs`)
   - Idempotency via UNIQUE constraint on `subscription_events`; return 200 on duplicate
   - Handle: PURCHASED, RENEWED, RECOVERED, CANCELED, EXPIRED, REVOKED, ON_HOLD, IN_GRACE_PERIOD, PAUSED, DEFERRED
