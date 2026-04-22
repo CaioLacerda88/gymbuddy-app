@@ -69,23 +69,52 @@ supabase secrets set GOOGLE_PLAY_PACKAGE_NAME="com.gymbuddy.app"
 supabase secrets set RTDN_PUBSUB_AUDIENCE="https://<your-project-ref>.supabase.co/functions/v1/rtdn-webhook"
 ```
 
-The reconciliation cron (migration 00026) also needs two database-level
-settings so it knows which URL to POST to and which JWT to use:
+The three secrets above are Edge Function environment variables (Deno
+runtime, injected into `Deno.env` at function cold-start, not readable
+from SQL). The two secrets below live in Supabase Vault, which is a
+SQL-readable encrypted store — the pg_cron reconciler runs inside
+Postgres and reads them via `vault.decrypted_secrets`. Don't cross-wire
+the two mechanisms: `supabase secrets set` will not expose anything to
+SQL, and adding a Vault entry will not expose anything to an Edge
+Function.
 
-```sql
--- Supabase SQL editor, connected as the postgres superuser:
-ALTER DATABASE postgres SET app.settings.edge_functions_url =
-  'https://<your-project-ref>.supabase.co/functions/v1';
-ALTER DATABASE postgres SET app.settings.service_role_key =
-  '<paste service role key from Supabase project settings>';
-```
+The reconciliation cron (migrations 00026 + 00027) needs two Vault
+secrets so it knows which URL to POST to and which JWT to use. Hosted
+Supabase doesn't let project owners set `app.settings.*` parameters
+(`ALTER DATABASE/ROLE SET` returns `ERROR: 42501: permission denied`),
+so we store both values in Supabase Vault instead — `vault.decrypted_secrets`
+is the sanctioned read path for `SECURITY DEFINER` cron functions.
+
+1. Open the Vault UI:
+   `https://supabase.com/dashboard/project/<your-project-ref>/settings/vault`
+   → **New secret**.
+2. Add secret #1:
+   * **Name:** `edge_functions_url`
+   * **Secret:** `https://<your-project-ref>.supabase.co/functions/v1`
+   * **Description:** `Base URL for invoking Edge Functions from SQL (pg_cron reconciler).`
+3. Add secret #2:
+   * **Name:** `service_role_key`
+   * **Secret:** the project's `service_role` JWT, obtained with
+     ```bash
+     supabase projects api-keys --project-ref <ref> --output json \
+       | jq -r '.[] | select(.name=="service_role") | .api_key'
+     ```
+     (or copy it from Project Settings → API → Project API keys →
+     `service_role` → Reveal.)
+   * **Description:** `Service-role JWT for server-to-server Edge Function auth (cron reconciler only).`
 
 Verify from the SQL editor:
 
 ```sql
-SELECT current_setting('app.settings.edge_functions_url', true);
-SELECT current_setting('app.settings.service_role_key',    true) IS NOT NULL;
+-- Expected: exactly 2 rows. If 0 or 1, the cron reconciler will no-op
+-- silently (RAISE NOTICE only) and Play subscriptions will not be
+-- refreshed on schedule.
+SELECT name, decrypted_secret IS NOT NULL AS present
+  FROM vault.decrypted_secrets
+ WHERE name IN ('edge_functions_url', 'service_role_key');
 ```
+
+Expected: 2 rows, both `present = true`.
 
 ---
 
