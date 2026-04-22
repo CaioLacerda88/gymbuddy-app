@@ -375,6 +375,15 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# RTDN webhook receives OIDC JWTs from Google Pub/Sub, not Supabase JWTs.
+# The function verifies Google's token itself (verifyPubSubJwt in
+# _shared/google_play.ts); the gateway-level JWT check would reject
+# Google's OIDC token as "not a Supabase JWT" with 401 before our handler
+# ever runs. Disabling verify_jwt here shifts the auth boundary into the
+# function itself — which is where it belongs for a third-party webhook.
+[functions.rtdn-webhook]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
