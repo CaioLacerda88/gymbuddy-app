@@ -8,6 +8,10 @@ noted.
 Everything here is pre-launch infrastructure. **You do not need a
 Brazilian merchant account for 16a.** Merchant setup is the 16d gate.
 
+> If you need to replay this setup in a brand-new GCP project (e.g., a
+> rebrand or org move), follow [`gcp-project-recreation.md`](./gcp-project-recreation.md)
+> — it's a linear runbook that supersedes sections 1 and 3 here.
+
 ---
 
 ## 1. Google Cloud — service account for the Play Developer API
@@ -35,20 +39,24 @@ Console requires the service account to be linked to the Play app.
 GCP Console → APIs & Services → Library → search "Google Play Android
 Developer API" → **Enable** for the project.
 
-### 1.3 Link the service account to Play Console
+### 1.3 Grant the service account access to the RepSaga app
 
-1. Play Console → Setup → API access.
-2. Find the GCP project you used above; click **Link**.
-3. Under "Service accounts", find `repsaga-play-api@…iam.gserviceaccount.com`
-   → **Grant access**.
-4. Permissions: minimum set for Phase 16a —
-   * **Account permissions**: (none needed)
-   * **App permissions**: pick the RepSaga app
-   * Permissions: **View financial data**, **Manage orders and
-     subscriptions**, **View app information**. Leave everything else
-     off.
-5. Invite user. Wait ~1 minute for the grant to propagate before the
-   first API call.
+> **Flow change (~2024):** Google deprecated the "API access" page and
+> no longer requires you to link a GCP project to your Play developer
+> account. The new flow is to invite the service account email as a
+> regular Play Console user. Source: [Play Developer API Getting Started](https://developers.google.com/android-publisher/getting_started).
+
+1. Play Console → **Users and permissions** → **Invite new users**.
+2. Email address: `repsaga-play-api@<gcp-project-id>.iam.gserviceaccount.com`
+3. **Account permissions (cross-app tab):** leave all unchecked.
+4. **App permissions:** **Add app** → select **RepSaga** (`com.repsaga.app`).
+5. For RepSaga, check these 3 only:
+   * ✅ View app information and download bulk reports
+   * ✅ View financial data, orders, and cancellation survey responses
+   * ✅ Manage orders and subscriptions
+   * ❌ Leave everything else off
+6. **Invite user**. Wait ~1 minute for the grant to propagate before
+   the first API call.
 
 ---
 
