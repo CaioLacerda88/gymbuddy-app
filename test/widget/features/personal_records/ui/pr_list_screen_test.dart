@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/theme/app_theme.dart';
-import 'package:gymbuddy_app/features/exercises/models/exercise.dart';
-import 'package:gymbuddy_app/features/personal_records/models/personal_record.dart';
-import 'package:gymbuddy_app/features/personal_records/models/record_type.dart';
-import 'package:gymbuddy_app/features/personal_records/providers/pr_providers.dart';
-import 'package:gymbuddy_app/features/personal_records/ui/pr_list_screen.dart';
+import 'package:repsaga/core/theme/app_theme.dart';
+import 'package:repsaga/features/exercises/models/exercise.dart';
+import 'package:repsaga/features/personal_records/models/personal_record.dart';
+import 'package:repsaga/features/personal_records/models/record_type.dart';
+import 'package:repsaga/features/personal_records/providers/pr_providers.dart';
+import 'package:repsaga/features/personal_records/ui/pr_list_screen.dart';
 import '../../../../helpers/test_material_app.dart';
 
 void main() {

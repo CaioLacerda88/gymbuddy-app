@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
 
-/// Primary button for GymBuddy.
+/// Primary button for RepSaga.
 ///
 /// Renders an [ElevatedButton] on top of a gradient background.
 /// Supports an optional [icon], a loading spinner that preserves the

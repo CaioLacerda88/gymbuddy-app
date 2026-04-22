@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/exceptions/app_exception.dart';
-import 'package:gymbuddy_app/features/auth/data/auth_repository.dart';
+import 'package:repsaga/core/exceptions/app_exception.dart';
+import 'package:repsaga/features/auth/data/auth_repository.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 

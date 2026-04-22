@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/features/routines/models/routine.dart';
+import 'package:repsaga/features/routines/models/routine.dart';
 
 import '../../../../fixtures/test_factories.dart';
 

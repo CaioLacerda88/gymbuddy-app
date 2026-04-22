@@ -2,12 +2,12 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/theme/app_theme.dart';
-import 'package:gymbuddy_app/features/exercises/models/progress_point.dart';
-import 'package:gymbuddy_app/features/exercises/providers/exercise_progress_provider.dart';
-import 'package:gymbuddy_app/features/exercises/ui/widgets/progress_chart_section.dart';
-import 'package:gymbuddy_app/features/profile/models/profile.dart';
-import 'package:gymbuddy_app/features/profile/providers/profile_providers.dart';
+import 'package:repsaga/core/theme/app_theme.dart';
+import 'package:repsaga/features/exercises/models/progress_point.dart';
+import 'package:repsaga/features/exercises/providers/exercise_progress_provider.dart';
+import 'package:repsaga/features/exercises/ui/widgets/progress_chart_section.dart';
+import 'package:repsaga/features/profile/models/profile.dart';
+import 'package:repsaga/features/profile/providers/profile_providers.dart';
 import '../../../../helpers/test_material_app.dart';
 
 /// Fake profile notifier so tests can pin the weight unit without hitting the

@@ -74,7 +74,7 @@ void main() {
     /// Keys where EN == PT is expected (brand names, abbreviations,
     /// identical short words, or format-only strings).
     const allowedIdentical = <String>{
-      'appName', // GymBuddy
+      'appName', // RepSaga
       'prsLabel', // PRs
       'setTypeDropset', // Drop Set
       'rpeLabel', // RPE

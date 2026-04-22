@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/utils/workout_formatters.dart';
-import 'package:gymbuddy_app/features/workouts/models/exercise_set.dart';
-import 'package:gymbuddy_app/l10n/app_localizations_en.dart';
+import 'package:repsaga/core/utils/workout_formatters.dart';
+import 'package:repsaga/features/workouts/models/exercise_set.dart';
+import 'package:repsaga/l10n/app_localizations_en.dart';
 
 import '../../../fixtures/test_factories.dart';
 

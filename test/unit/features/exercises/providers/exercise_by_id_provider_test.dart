@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/features/exercises/providers/exercise_providers.dart';
+import 'package:repsaga/features/exercises/providers/exercise_providers.dart';
 
 void main() {
   group('exerciseByIdProvider', () {

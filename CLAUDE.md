@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-GymBuddy — a gym training app for logging workouts, tracking personal records, and managing exercises.
+RepSaga — a gym training app for logging workouts, tracking personal records, and managing exercises.
 
 **On session start:** Read `PLAN.md` Quick Reference (progress table + current state) and `tasks/WIP.md` (in-flight work). Only read full PLAN.md sections relevant to the current task.
 

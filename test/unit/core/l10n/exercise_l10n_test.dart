@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/l10n/exercise_l10n.dart';
-import 'package:gymbuddy_app/l10n/app_localizations.dart';
-import 'package:gymbuddy_app/l10n/app_localizations_en.dart';
-import 'package:gymbuddy_app/l10n/app_localizations_pt.dart';
+import 'package:repsaga/core/l10n/exercise_l10n.dart';
+import 'package:repsaga/l10n/app_localizations.dart';
+import 'package:repsaga/l10n/app_localizations_en.dart';
+import 'package:repsaga/l10n/app_localizations_pt.dart';
 
 void main() {
   group('exerciseSlug', () {

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/features/exercises/models/exercise.dart';
-import 'package:gymbuddy_app/features/workouts/models/routine_start_config.dart';
+import 'package:repsaga/features/exercises/models/exercise.dart';
+import 'package:repsaga/features/workouts/models/routine_start_config.dart';
 
 import '../../../../fixtures/test_factories.dart';
 

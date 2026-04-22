@@ -45,7 +45,7 @@ class App extends ConsumerWidget {
     });
 
     return MaterialApp.router(
-      title: 'GymBuddy',
+      title: 'RepSaga',
       theme: AppTheme.dark,
       routerConfig: router,
       locale: locale,

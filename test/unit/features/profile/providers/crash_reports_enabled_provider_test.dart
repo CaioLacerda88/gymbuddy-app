@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/local_storage/hive_service.dart';
-import 'package:gymbuddy_app/core/observability/sentry_report.dart';
-import 'package:gymbuddy_app/features/profile/providers/crash_reports_enabled_provider.dart';
+import 'package:repsaga/core/local_storage/hive_service.dart';
+import 'package:repsaga/core/observability/sentry_report.dart';
+import 'package:repsaga/features/profile/providers/crash_reports_enabled_provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 void main() {

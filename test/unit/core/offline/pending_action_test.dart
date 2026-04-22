@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/offline/pending_action.dart';
+import 'package:repsaga/core/offline/pending_action.dart';
 
 void main() {
   group('PendingAction serialization', () {

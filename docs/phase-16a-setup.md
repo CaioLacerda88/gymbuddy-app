@@ -21,7 +21,7 @@ Console requires the service account to be linked to the Play app.
 1. Google Cloud Console → pick (or create) the GCP project you want for
    this app's server-side work.
 2. IAM & Admin → Service Accounts → **Create service account**.
-   * Name: `gymbuddy-play-api`
+   * Name: `repsaga-play-api`
    * ID: leave auto-generated
    * Description: `Server-to-server calls to Play Developer API (validate, acknowledge, reconcile).`
 3. Grant no project-level roles. Continue. Done.
@@ -39,11 +39,11 @@ Developer API" → **Enable** for the project.
 
 1. Play Console → Setup → API access.
 2. Find the GCP project you used above; click **Link**.
-3. Under "Service accounts", find `gymbuddy-play-api@…iam.gserviceaccount.com`
+3. Under "Service accounts", find `repsaga-play-api@…iam.gserviceaccount.com`
    → **Grant access**.
 4. Permissions: minimum set for Phase 16a —
    * **Account permissions**: (none needed)
-   * **App permissions**: pick the GymBuddy app
+   * **App permissions**: pick the RepSaga app
    * Permissions: **View financial data**, **Manage orders and
      subscriptions**, **View app information**. Leave everything else
      off.
@@ -59,10 +59,10 @@ Supabase CLI:
 
 ```bash
 # Paste the full JSON key file contents as one secret value.
-supabase secrets set GOOGLE_PLAY_SERVICE_ACCOUNT_JSON="$(cat ~/Downloads/gymbuddy-play-api-xxxxx.json)"
+supabase secrets set GOOGLE_PLAY_SERVICE_ACCOUNT_JSON="$(cat ~/Downloads/repsaga-play-api-xxxxx.json)"
 
 # The package name that appears in Play Console for the Android build.
-supabase secrets set GOOGLE_PLAY_PACKAGE_NAME="com.gymbuddy.app"
+supabase secrets set GOOGLE_PLAY_PACKAGE_NAME="com.repsaga.app"
 
 # The audience that Pub/Sub will set on its push-delivery JWT. Must
 # match exactly what you configure in step 3 below.
@@ -123,7 +123,7 @@ Expected: 2 rows, both `present = true`.
 ### 3.1 Topic
 
 GCP Console → Pub/Sub → Topics → **Create topic**.
-* Name: `gymbuddy-rtdn`
+* Name: `repsaga-rtdn`
 * Default encryption. Leave schema off.
 
 ### 3.2 Grant Play the right to publish
@@ -139,7 +139,7 @@ Topic → Permissions → **Add principal** →
 ### 3.3 Push subscription → Edge Function
 
 Topic → Create subscription.
-* Name: `gymbuddy-rtdn-push`
+* Name: `repsaga-rtdn-push`
 * Delivery type: **Push**
 * Endpoint URL: `https://<your-project-ref>.supabase.co/functions/v1/rtdn-webhook`
 * Enable authentication: **Yes**
@@ -156,7 +156,7 @@ Topic → Create subscription.
 
 Play Console → Monetize → Subscriptions → **Monetization setup** →
 Real-time developer notifications (RTDN) → Topic name:
-`projects/<gcp-project-id>/topics/gymbuddy-rtdn` → **Send test
+`projects/<gcp-project-id>/topics/repsaga-rtdn` → **Send test
 notification** → confirm you see a 200 in Pub/Sub metrics for the
 subscription.
 
@@ -164,15 +164,15 @@ subscription.
 
 ## 4. Play Console — draft subscription product
 
-This is the gymbuddy_premium draft. It does NOT require a merchant
+This is the repsaga_premium draft. It does NOT require a merchant
 account, but the subscription cannot be published to production until
 the merchant is live.
 
 ### 4.1 Product
 
 Play Console → Monetize → Subscriptions → **Create subscription**.
-* Product ID: `gymbuddy_premium`
-* Name: `GymBuddy Premium`
+* Product ID: `repsaga_premium`
+* Name: `RepSaga Premium`
 * Description: (2-3 sentences, Play Store policy: must be benefits-first,
   not feature-first).
 
@@ -256,7 +256,7 @@ curl -X POST \
   -H "Authorization: Bearer <user-jwt>" \
   -H "Content-Type: application/json" \
   -d '{
-    "product_id": "gymbuddy_premium:monthly",
+    "product_id": "repsaga_premium:monthly",
     "purchase_token": "<token from Play>",
     "source": "client"
   }' \

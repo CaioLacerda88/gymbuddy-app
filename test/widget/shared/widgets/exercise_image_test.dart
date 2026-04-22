@@ -1,8 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/theme/app_theme.dart';
-import 'package:gymbuddy_app/shared/widgets/exercise_image.dart';
+import 'package:repsaga/core/theme/app_theme.dart';
+import 'package:repsaga/shared/widgets/exercise_image.dart';
 import '../../../helpers/test_material_app.dart';
 
 Widget _buildTestWidget(ExerciseImage image) {

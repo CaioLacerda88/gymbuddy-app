@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/features/personal_records/models/record_type.dart';
+import 'package:repsaga/features/personal_records/models/record_type.dart';
 
 void main() {
   group('RecordType', () {

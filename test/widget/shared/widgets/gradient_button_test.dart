@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/theme/app_theme.dart';
-import 'package:gymbuddy_app/shared/widgets/gradient_button.dart';
+import 'package:repsaga/core/theme/app_theme.dart';
+import 'package:repsaga/shared/widgets/gradient_button.dart';
 import '../../../helpers/test_material_app.dart';
 
 void main() {

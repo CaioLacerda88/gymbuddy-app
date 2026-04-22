@@ -1,12 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/features/exercises/models/exercise.dart';
-import 'package:gymbuddy_app/features/personal_records/domain/pr_detection_service.dart';
-import 'package:gymbuddy_app/features/personal_records/models/personal_record.dart';
-import 'package:gymbuddy_app/features/personal_records/models/record_type.dart';
-import 'package:gymbuddy_app/features/workouts/models/active_workout_state.dart';
-import 'package:gymbuddy_app/features/workouts/models/exercise_set.dart';
-import 'package:gymbuddy_app/features/workouts/models/set_type.dart';
-import 'package:gymbuddy_app/features/workouts/models/workout_exercise.dart';
+import 'package:repsaga/features/exercises/models/exercise.dart';
+import 'package:repsaga/features/personal_records/domain/pr_detection_service.dart';
+import 'package:repsaga/features/personal_records/models/personal_record.dart';
+import 'package:repsaga/features/personal_records/models/record_type.dart';
+import 'package:repsaga/features/workouts/models/active_workout_state.dart';
+import 'package:repsaga/features/workouts/models/exercise_set.dart';
+import 'package:repsaga/features/workouts/models/set_type.dart';
+import 'package:repsaga/features/workouts/models/workout_exercise.dart';
 
 ActiveWorkoutExercise makeExercise({
   String exerciseId = 'exercise-001',

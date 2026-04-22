@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/local_storage/cache_service.dart';
-import 'package:gymbuddy_app/core/local_storage/hive_service.dart';
-import 'package:gymbuddy_app/features/personal_records/data/pr_repository.dart';
-import 'package:gymbuddy_app/features/personal_records/models/record_type.dart';
+import 'package:repsaga/core/local_storage/cache_service.dart';
+import 'package:repsaga/core/local_storage/hive_service.dart';
+import 'package:repsaga/features/personal_records/data/pr_repository.dart';
+import 'package:repsaga/features/personal_records/models/record_type.dart';
 import 'package:hive/hive.dart';
 
 import '../../../../fixtures/test_factories.dart';

@@ -21,7 +21,7 @@ import 'widgets/action_hero.dart';
 import 'widgets/home_status_line.dart';
 import 'widgets/last_session_line.dart';
 
-/// The GymBuddy home surface.
+/// The RepSaga home surface.
 ///
 /// Per PLAN W8, the composition is state-aware and intent-first:
 ///

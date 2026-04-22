@@ -136,11 +136,11 @@ Deno.test('rtdnTypeToStatePatch returns null for unknown types', () => {
 Deno.test('decodePubSubPayload base64-decodes + parses', () => {
   const env = makeEnvelope({
     eventTimeMillis: '1700000000000',
-    packageName: 'com.gymbuddy.app',
+    packageName: 'com.repsaga.app',
     subscriptionNotification: {
       notificationType: 4,
       purchaseToken: FAKE_TOKEN,
-      subscriptionId: 'gymbuddy_premium',
+      subscriptionId: 'repsaga_premium',
     },
   });
   const payload = decodePubSubPayload(env);
@@ -164,11 +164,11 @@ for (const type of [1, 2, 3, 4, 5, 6, 7, 9, 10, 12, 13]) {
     const { client, calls } = makeClient({ lookupUser: FAKE_USER_ID });
     const payload = {
       eventTimeMillis: '1700000000000',
-      packageName: 'com.gymbuddy.app',
+      packageName: 'com.repsaga.app',
       subscriptionNotification: {
         notificationType: type,
         purchaseToken: FAKE_TOKEN,
-        subscriptionId: 'gymbuddy_premium',
+        subscriptionId: 'repsaga_premium',
       },
     };
     // deno-lint-ignore no-explicit-any

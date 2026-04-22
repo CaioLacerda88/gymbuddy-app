@@ -26,17 +26,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:gymbuddy_app/core/theme/app_theme.dart';
-import 'package:gymbuddy_app/features/routines/models/routine.dart';
-import 'package:gymbuddy_app/features/routines/providers/notifiers/routine_list_notifier.dart';
-import 'package:gymbuddy_app/features/weekly_plan/data/models/weekly_plan.dart';
-import 'package:gymbuddy_app/features/weekly_plan/providers/weekly_plan_provider.dart';
-import 'package:gymbuddy_app/features/workouts/models/active_workout_state.dart';
-import 'package:gymbuddy_app/features/workouts/providers/notifiers/active_workout_notifier.dart';
-import 'package:gymbuddy_app/features/workouts/providers/workout_history_providers.dart';
-import 'package:gymbuddy_app/features/workouts/providers/workout_providers.dart';
-import 'package:gymbuddy_app/features/workouts/ui/widgets/action_hero.dart';
-import 'package:gymbuddy_app/l10n/app_localizations.dart';
+import 'package:repsaga/core/theme/app_theme.dart';
+import 'package:repsaga/features/routines/models/routine.dart';
+import 'package:repsaga/features/routines/providers/notifiers/routine_list_notifier.dart';
+import 'package:repsaga/features/weekly_plan/data/models/weekly_plan.dart';
+import 'package:repsaga/features/weekly_plan/providers/weekly_plan_provider.dart';
+import 'package:repsaga/features/workouts/models/active_workout_state.dart';
+import 'package:repsaga/features/workouts/providers/notifiers/active_workout_notifier.dart';
+import 'package:repsaga/features/workouts/providers/workout_history_providers.dart';
+import 'package:repsaga/features/workouts/providers/workout_providers.dart';
+import 'package:repsaga/features/workouts/ui/widgets/action_hero.dart';
+import 'package:repsaga/l10n/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
 // Notifier stubs

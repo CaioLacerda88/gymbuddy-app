@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/features/analytics/data/analytics_repository.dart';
-import 'package:gymbuddy_app/features/analytics/data/models/analytics_event.dart';
+import 'package:repsaga/features/analytics/data/analytics_repository.dart';
+import 'package:repsaga/features/analytics/data/models/analytics_event.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 // ---------------------------------------------------------------------------

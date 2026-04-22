@@ -10,19 +10,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:gymbuddy_app/core/local_storage/hive_service.dart';
-import 'package:gymbuddy_app/core/theme/app_theme.dart';
-import 'package:gymbuddy_app/features/auth/data/auth_repository.dart';
-import 'package:gymbuddy_app/features/auth/providers/auth_providers.dart';
-import 'package:gymbuddy_app/features/personal_records/providers/pr_providers.dart';
-import 'package:gymbuddy_app/features/profile/models/profile.dart';
-import 'package:gymbuddy_app/features/profile/providers/profile_providers.dart';
-import 'package:gymbuddy_app/features/profile/ui/profile_screen.dart';
-import 'package:gymbuddy_app/features/workouts/providers/workout_history_providers.dart';
+import 'package:repsaga/core/local_storage/hive_service.dart';
+import 'package:repsaga/core/theme/app_theme.dart';
+import 'package:repsaga/features/auth/data/auth_repository.dart';
+import 'package:repsaga/features/auth/providers/auth_providers.dart';
+import 'package:repsaga/features/personal_records/providers/pr_providers.dart';
+import 'package:repsaga/features/profile/models/profile.dart';
+import 'package:repsaga/features/profile/providers/profile_providers.dart';
+import 'package:repsaga/features/profile/ui/profile_screen.dart';
+import 'package:repsaga/features/workouts/providers/workout_history_providers.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
-import 'package:gymbuddy_app/l10n/app_localizations.dart';
+import 'package:repsaga/l10n/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
 // Stubs

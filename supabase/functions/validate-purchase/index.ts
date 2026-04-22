@@ -7,7 +7,7 @@
 //
 // Contract (POST JSON):
 //   {
-//     "product_id":     "gymbuddy_premium:monthly",
+//     "product_id":     "repsaga_premium:monthly",
 //     "purchase_token": "eyjk...",
 //     "user_id":        "<uuid>",       // optional; defaults to JWT sub
 //     "source":         "client" | "cron_reconcile"  // optional, audit only
@@ -48,7 +48,7 @@
 //   SUPABASE_ANON_KEY
 //   SUPABASE_SERVICE_ROLE_KEY
 //   GOOGLE_PLAY_SERVICE_ACCOUNT_JSON  (service account credentials)
-//   GOOGLE_PLAY_PACKAGE_NAME          (e.g. "com.gymbuddy.app")
+//   GOOGLE_PLAY_PACKAGE_NAME          (e.g. "com.repsaga.app")
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';

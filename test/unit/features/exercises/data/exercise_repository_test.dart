@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/exceptions/app_exception.dart';
-import 'package:gymbuddy_app/core/local_storage/cache_service.dart';
-import 'package:gymbuddy_app/features/exercises/data/exercise_repository.dart';
-import 'package:gymbuddy_app/features/exercises/models/exercise.dart';
+import 'package:repsaga/core/exceptions/app_exception.dart';
+import 'package:repsaga/core/local_storage/cache_service.dart';
+import 'package:repsaga/features/exercises/data/exercise_repository.dart';
+import 'package:repsaga/features/exercises/models/exercise.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 import '../../../../fixtures/test_factories.dart';

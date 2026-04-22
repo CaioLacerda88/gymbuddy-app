@@ -9,12 +9,12 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/local_storage/hive_service.dart';
-import 'package:gymbuddy_app/features/exercises/models/exercise.dart';
-import 'package:gymbuddy_app/features/workouts/data/workout_local_storage.dart';
-import 'package:gymbuddy_app/features/workouts/models/active_workout_state.dart';
-import 'package:gymbuddy_app/features/workouts/models/workout_exercise.dart';
-import 'package:gymbuddy_app/features/workouts/models/workout.dart';
+import 'package:repsaga/core/local_storage/hive_service.dart';
+import 'package:repsaga/features/exercises/models/exercise.dart';
+import 'package:repsaga/features/workouts/data/workout_local_storage.dart';
+import 'package:repsaga/features/workouts/models/active_workout_state.dart';
+import 'package:repsaga/features/workouts/models/workout_exercise.dart';
+import 'package:repsaga/features/workouts/models/workout.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../../../fixtures/test_factories.dart';

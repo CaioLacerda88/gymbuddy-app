@@ -7,8 +7,8 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/features/workouts/models/workout.dart';
-import 'package:gymbuddy_app/features/workouts/providers/workout_history_providers.dart';
+import 'package:repsaga/features/workouts/models/workout.dart';
+import 'package:repsaga/features/workouts/providers/workout_history_providers.dart';
 
 import '../../../../fixtures/test_factories.dart';
 

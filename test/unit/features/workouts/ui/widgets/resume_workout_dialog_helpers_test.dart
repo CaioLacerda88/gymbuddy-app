@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/features/workouts/ui/widgets/resume_workout_dialog.dart';
+import 'package:repsaga/features/workouts/ui/widgets/resume_workout_dialog.dart';
 
 void main() {
   group('isStaleWorkout', () {

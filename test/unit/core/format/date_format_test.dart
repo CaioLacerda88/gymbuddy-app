@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/format/date_format.dart';
+import 'package:repsaga/core/format/date_format.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 void main() {

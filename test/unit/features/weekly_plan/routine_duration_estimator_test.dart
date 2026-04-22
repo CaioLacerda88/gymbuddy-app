@@ -6,8 +6,8 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/features/routines/models/routine.dart';
-import 'package:gymbuddy_app/features/weekly_plan/utils/routine_duration_estimator.dart';
+import 'package:repsaga/features/routines/models/routine.dart';
+import 'package:repsaga/features/weekly_plan/utils/routine_duration_estimator.dart';
 
 void main() {
   group('estimateRoutineDurationMinutes', () {

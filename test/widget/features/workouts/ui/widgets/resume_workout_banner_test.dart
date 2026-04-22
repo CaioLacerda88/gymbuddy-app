@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:gymbuddy_app/core/theme/app_theme.dart';
-import 'package:gymbuddy_app/features/workouts/models/active_workout_state.dart';
-import 'package:gymbuddy_app/features/workouts/models/workout.dart';
-import 'package:gymbuddy_app/features/workouts/models/workout_exercise.dart';
-import 'package:gymbuddy_app/features/workouts/providers/workout_providers.dart';
-import 'package:gymbuddy_app/features/workouts/ui/widgets/resume_workout_banner.dart';
-import 'package:gymbuddy_app/l10n/app_localizations.dart';
+import 'package:repsaga/core/theme/app_theme.dart';
+import 'package:repsaga/features/workouts/models/active_workout_state.dart';
+import 'package:repsaga/features/workouts/models/workout.dart';
+import 'package:repsaga/features/workouts/models/workout_exercise.dart';
+import 'package:repsaga/features/workouts/providers/workout_providers.dart';
+import 'package:repsaga/features/workouts/ui/widgets/resume_workout_banner.dart';
+import 'package:repsaga/l10n/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
 // Fake notifier helpers

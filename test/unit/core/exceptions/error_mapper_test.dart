@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/exceptions/app_exception.dart';
-import 'package:gymbuddy_app/core/exceptions/error_mapper.dart';
+import 'package:repsaga/core/exceptions/app_exception.dart';
+import 'package:repsaga/core/exceptions/error_mapper.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 void main() {

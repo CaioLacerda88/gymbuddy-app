@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/data/base_repository.dart';
-import 'package:gymbuddy_app/core/exceptions/app_exception.dart';
+import 'package:repsaga/core/data/base_repository.dart';
+import 'package:repsaga/core/exceptions/app_exception.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 class _TestRepository extends BaseRepository {

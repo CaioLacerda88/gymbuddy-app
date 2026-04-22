@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/shared/widgets/weight_stepper.dart';
+import 'package:repsaga/shared/widgets/weight_stepper.dart';
 import '../../../helpers/test_material_app.dart';
 
 Widget buildTestWidget(Widget child) {

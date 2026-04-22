@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/shared/widgets/async_value_builder.dart';
+import 'package:repsaga/shared/widgets/async_value_builder.dart';
 import '../../../helpers/test_material_app.dart';
 
 void main() {

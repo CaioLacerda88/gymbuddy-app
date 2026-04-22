@@ -1,6 +1,6 @@
 # Manual Exploratory QA Test Plan
 
-**App:** GymBuddy
+**App:** RepSaga
 **Date:** 2026-04-09
 **Scope:** All shipped features -- Auth, Exercise Library, Workout Logging, Routines, Personal Records, Weekly Plan, Home Screen, Profile
 **Tester mindset:** Gym-goer between sets. Sweaty hands. In a hurry. Will tap wrong things.

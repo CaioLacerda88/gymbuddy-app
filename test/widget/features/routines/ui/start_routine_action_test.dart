@@ -12,18 +12,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 // ignore: depend_on_referenced_packages
 import 'package:go_router/go_router.dart';
-import 'package:gymbuddy_app/core/theme/app_theme.dart';
-import 'package:gymbuddy_app/features/routines/models/routine.dart';
-import 'package:gymbuddy_app/features/routines/ui/start_routine_action.dart';
-import 'package:gymbuddy_app/features/workouts/data/workout_local_storage.dart';
-import 'package:gymbuddy_app/features/workouts/data/workout_repository.dart';
-import 'package:gymbuddy_app/features/workouts/models/active_workout_state.dart';
-import 'package:gymbuddy_app/features/workouts/providers/workout_providers.dart';
+import 'package:repsaga/core/theme/app_theme.dart';
+import 'package:repsaga/features/routines/models/routine.dart';
+import 'package:repsaga/features/routines/ui/start_routine_action.dart';
+import 'package:repsaga/features/workouts/data/workout_local_storage.dart';
+import 'package:repsaga/features/workouts/data/workout_repository.dart';
+import 'package:repsaga/features/workouts/models/active_workout_state.dart';
+import 'package:repsaga/features/workouts/providers/workout_providers.dart';
 import 'package:mocktail/mocktail.dart';
 
 import '../../../../fixtures/test_factories.dart';
 import '../../../../helpers/test_material_app.dart';
-import 'package:gymbuddy_app/l10n/app_localizations.dart';
+import 'package:repsaga/l10n/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks & fakes

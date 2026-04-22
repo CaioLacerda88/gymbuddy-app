@@ -1,16 +1,16 @@
--- GymBuddy Custom Email Templates for Supabase
+-- RepSaga Custom Email Templates for Supabase
 --
 -- HOW TO APPLY:
 -- 1. Go to Supabase Dashboard > Authentication > Email Templates
 -- 2. Replace the default template content for each template type
 -- 3. Copy the HTML from each section below into the corresponding template
 --
--- These templates match GymBuddy's dark+green brand identity.
+-- These templates match RepSaga's dark+green brand identity.
 -- Variables: {{ .ConfirmationURL }}, {{ .Email }}, {{ .Token }}
 
 -- ============================================================
 -- TEMPLATE: Confirm signup
--- Subject: Confirm your GymBuddy account
+-- Subject: Confirm your RepSaga account
 -- ============================================================
 -- Copy the HTML below into the "Confirm signup" template body:
 --
@@ -22,7 +22,7 @@
 --         <table width="480" cellpadding="0" cellspacing="0" style="background-color:#1A1A2E;border-radius:16px;padding:40px;max-width:480px;">
 --           <tr>
 --             <td align="center" style="padding-bottom:24px;">
---               <span style="font-size:36px;font-weight:800;color:#00E676;letter-spacing:-0.5px;">GymBuddy</span>
+--               <span style="font-size:36px;font-weight:800;color:#00E676;letter-spacing:-0.5px;">RepSaga</span>
 --             </td>
 --           </tr>
 --           <tr>
@@ -50,7 +50,7 @@
 --           <tr>
 --             <td align="center" style="padding-bottom:16px;">
 --               <span style="font-size:13px;color:#666680;">
---                 If you didn't create a GymBuddy account, you can safely ignore this email.
+--                 If you didn't create a RepSaga account, you can safely ignore this email.
 --               </span>
 --             </td>
 --           </tr>
@@ -70,7 +70,7 @@
 
 -- ============================================================
 -- TEMPLATE: Reset password
--- Subject: Reset your GymBuddy password
+-- Subject: Reset your RepSaga password
 -- ============================================================
 -- Copy the HTML below into the "Reset password" template body:
 --
@@ -82,7 +82,7 @@
 --         <table width="480" cellpadding="0" cellspacing="0" style="background-color:#1A1A2E;border-radius:16px;padding:40px;max-width:480px;">
 --           <tr>
 --             <td align="center" style="padding-bottom:24px;">
---               <span style="font-size:36px;font-weight:800;color:#00E676;letter-spacing:-0.5px;">GymBuddy</span>
+--               <span style="font-size:36px;font-weight:800;color:#00E676;letter-spacing:-0.5px;">RepSaga</span>
 --             </td>
 --           </tr>
 --           <tr>
@@ -131,7 +131,7 @@
 
 -- ============================================================
 -- TEMPLATE: Magic link
--- Subject: Your GymBuddy login link
+-- Subject: Your RepSaga login link
 -- ============================================================
 -- Copy the HTML below into the "Magic link" template body:
 --
@@ -143,7 +143,7 @@
 --         <table width="480" cellpadding="0" cellspacing="0" style="background-color:#1A1A2E;border-radius:16px;padding:40px;max-width:480px;">
 --           <tr>
 --             <td align="center" style="padding-bottom:24px;">
---               <span style="font-size:36px;font-weight:800;color:#00E676;letter-spacing:-0.5px;">GymBuddy</span>
+--               <span style="font-size:36px;font-weight:800;color:#00E676;letter-spacing:-0.5px;">RepSaga</span>
 --             </td>
 --           </tr>
 --           <tr>
@@ -154,7 +154,7 @@
 --           <tr>
 --             <td align="center" style="padding-bottom:32px;">
 --               <span style="font-size:16px;color:#B0B0C0;line-height:1.5;">
---                 Tap the button below to log in to GymBuddy.<br/>
+--                 Tap the button below to log in to RepSaga.<br/>
 --                 No password needed.
 --               </span>
 --             </td>

@@ -1,12 +1,12 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/local_storage/cache_service.dart';
+import 'package:repsaga/core/local_storage/cache_service.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:gymbuddy_app/features/workouts/data/workout_repository.dart';
+import 'package:repsaga/features/workouts/data/workout_repository.dart';
 
 class _MockSupabaseClient extends Mock implements SupabaseClient {}
 

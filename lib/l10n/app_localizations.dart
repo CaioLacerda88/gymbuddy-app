@@ -521,7 +521,7 @@ abstract class AppLocalizations {
   /// Application name
   ///
   /// In en, this message translates to:
-  /// **'GymBuddy'**
+  /// **'RepSaga'**
   String get appName;
 
   /// Login screen subtitle for existing users
@@ -1601,7 +1601,7 @@ abstract class AppLocalizations {
   /// Crash reports toggle subtitle
   ///
   /// In en, this message translates to:
-  /// **'Help improve GymBuddy by sending anonymous crash data.'**
+  /// **'Help improve RepSaga by sending anonymous crash data.'**
   String get crashReportsSubtitle;
 
   /// Log out confirmation message

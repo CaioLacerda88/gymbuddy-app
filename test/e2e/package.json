@@ -1,7 +1,7 @@
 {
-  "name": "gymbuddy-e2e",
+  "name": "repsaga-e2e",
   "version": "1.0.0",
-  "description": "Playwright e2e tests for GymBuddy Flutter web app",
+  "description": "Playwright e2e tests for RepSaga Flutter web app",
   "scripts": {
     "test": "playwright test",
     "test:smoke": "playwright test --grep @smoke",

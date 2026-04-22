@@ -25,7 +25,7 @@ test.describe('Auth', { tag: '@smoke' }, () => {
     await page.goto('/');
     await waitForAppReady(page);
 
-    // The login screen identifies itself with the "GymBuddy" title and
+    // The login screen identifies itself with the "RepSaga" title and
     // "Welcome back" subtitle.
     await expect(page.locator(AUTH.appTitle)).toBeVisible();
     await expect(page.locator(AUTH.welcomeBack)).toBeVisible();

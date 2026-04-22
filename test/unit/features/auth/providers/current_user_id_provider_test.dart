@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/features/auth/providers/auth_providers.dart';
+import 'package:repsaga/features/auth/providers/auth_providers.dart';
 
 // currentUserIdProvider is a one-liner over Supabase.instance.client — there
 // is no branching to cover in its body. These tests pin the String? contract

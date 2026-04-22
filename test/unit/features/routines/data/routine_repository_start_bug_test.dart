@@ -12,8 +12,8 @@
 // These tests verify what SHOULD happen (with assertions that expose the bugs).
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/features/exercises/models/exercise.dart';
-import 'package:gymbuddy_app/features/routines/models/routine.dart';
+import 'package:repsaga/features/exercises/models/exercise.dart';
+import 'package:repsaga/features/routines/models/routine.dart';
 
 import '../../../../fixtures/test_factories.dart';
 

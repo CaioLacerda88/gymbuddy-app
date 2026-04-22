@@ -10,13 +10,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:gymbuddy_app/core/theme/app_theme.dart';
-import 'package:gymbuddy_app/features/workouts/models/workout.dart';
-import 'package:gymbuddy_app/features/workouts/providers/workout_history_providers.dart';
-import 'package:gymbuddy_app/features/workouts/ui/widgets/last_session_line.dart';
+import 'package:repsaga/core/theme/app_theme.dart';
+import 'package:repsaga/features/workouts/models/workout.dart';
+import 'package:repsaga/features/workouts/providers/workout_history_providers.dart';
+import 'package:repsaga/features/workouts/ui/widgets/last_session_line.dart';
 
 import '../../../../fixtures/test_factories.dart';
-import 'package:gymbuddy_app/l10n/app_localizations.dart';
+import 'package:repsaga/l10n/app_localizations.dart';
 
 class _HistoryStub extends AsyncNotifier<List<Workout>>
     implements WorkoutHistoryNotifier {

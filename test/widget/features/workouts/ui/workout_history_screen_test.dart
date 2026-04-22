@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/theme/app_theme.dart';
-import 'package:gymbuddy_app/features/workouts/models/workout.dart';
-import 'package:gymbuddy_app/features/workouts/providers/workout_history_providers.dart';
-import 'package:gymbuddy_app/features/workouts/ui/workout_history_screen.dart';
+import 'package:repsaga/core/theme/app_theme.dart';
+import 'package:repsaga/features/workouts/models/workout.dart';
+import 'package:repsaga/features/workouts/providers/workout_history_providers.dart';
+import 'package:repsaga/features/workouts/ui/workout_history_screen.dart';
 
 import '../../../../fixtures/test_factories.dart';
 import '../../../../helpers/test_material_app.dart';

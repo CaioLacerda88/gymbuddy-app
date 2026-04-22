@@ -7,11 +7,11 @@ layout: default
 
 **Last updated: 2026-04-09**
 
-Welcome to GymBuddy. These Terms of Service ("Terms") govern your use of the GymBuddy mobile and web application (the "App"). By using the App, you agree to these Terms. If you do not agree, please do not use the App.
+Welcome to RepSaga. These Terms of Service ("Terms") govern your use of the RepSaga mobile and web application (the "App"). By using the App, you agree to these Terms. If you do not agree, please do not use the App.
 
 ## 1. Not Medical Advice
 
-**Important:** GymBuddy is a workout tracking tool. It is **not** a medical device, a certified fitness trainer, or a substitute for professional advice.
+**Important:** RepSaga is a workout tracking tool. It is **not** a medical device, a certified fitness trainer, or a substitute for professional advice.
 
 - Consult a licensed physician before starting any exercise program.
 - Do not use the App as a diagnostic, treatment, or medical planning tool.
@@ -22,7 +22,7 @@ If you experience pain, dizziness, shortness of breath, or any other symptom dur
 
 ## 2. Service Description
 
-GymBuddy lets you:
+RepSaga lets you:
 
 - Log workouts (exercises, sets, reps, weight, duration)
 - Track personal records
@@ -52,11 +52,11 @@ You agree **not** to:
 
 ## 5. Your Content
 
-You retain ownership of the content you create in the App (your workouts, notes, profile data). By using the App, you grant GymBuddy a limited, worldwide, royalty-free license to store, process, and display this content **solely for the purpose of providing the service to you**. We will never sell or publish your personal fitness data.
+You retain ownership of the content you create in the App (your workouts, notes, profile data). By using the App, you grant RepSaga a limited, worldwide, royalty-free license to store, process, and display this content **solely for the purpose of providing the service to you**. We will never sell or publish your personal fitness data.
 
 ## 6. Intellectual Property
 
-The App — including its code, design, logos, and original exercise library content — is owned by GymBuddy and its creator. All rights reserved. You may use the App for personal, non-commercial purposes. You may not copy, modify, distribute, or create derivative works of the App without permission.
+The App — including its code, design, logos, and original exercise library content — is owned by RepSaga and its creator. All rights reserved. You may use the App for personal, non-commercial purposes. You may not copy, modify, distribute, or create derivative works of the App without permission.
 
 ## 7. Termination
 
@@ -70,7 +70,7 @@ The App is provided **"as is"** and **"as available"**, without warranties of an
 
 ## 9. Limitation of Liability
 
-To the maximum extent permitted by law, GymBuddy and its creators will not be liable for any indirect, incidental, consequential, or punitive damages arising from your use of the App, including but not limited to loss of data, loss of profits, personal injury, or service interruption. Our total liability for any claim will not exceed the greater of US $0 or the amount you paid us in the 12 months preceding the claim.
+To the maximum extent permitted by law, RepSaga and its creators will not be liable for any indirect, incidental, consequential, or punitive damages arising from your use of the App, including but not limited to loss of data, loss of profits, personal injury, or service interruption. Our total liability for any claim will not exceed the greater of US $0 or the amount you paid us in the 12 months preceding the claim.
 
 ## 10. Changes to These Terms
 
@@ -82,4 +82,4 @@ These Terms are governed by the laws of **the Federative Republic of Brazil**. A
 
 ## 12. Contact
 
-Questions about these Terms? Contact us at **support@gymbuddy.app**.
+Questions about these Terms? Contact us at **support@repsaga.app**.

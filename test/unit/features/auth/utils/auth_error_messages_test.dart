@@ -1,8 +1,8 @@
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/features/auth/utils/auth_error_messages.dart';
-import 'package:gymbuddy_app/l10n/app_localizations.dart';
+import 'package:repsaga/features/auth/utils/auth_error_messages.dart';
+import 'package:repsaga/l10n/app_localizations.dart';
 
 void main() {
   late AppLocalizations l10n;

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/features/exercises/utils/e1rm.dart';
-import 'package:gymbuddy_app/features/workouts/models/exercise_set.dart';
-import 'package:gymbuddy_app/features/workouts/models/set_type.dart';
+import 'package:repsaga/features/exercises/utils/e1rm.dart';
+import 'package:repsaga/features/workouts/models/exercise_set.dart';
+import 'package:repsaga/features/workouts/models/set_type.dart';
 
 ExerciseSet _set({
   String id = 'set-001',

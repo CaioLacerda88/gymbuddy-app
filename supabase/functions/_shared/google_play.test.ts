@@ -48,7 +48,7 @@ Deno.test('normalizePlaySubscription: active + pending ack', () => {
       startTime: '2024-01-01T00:00:00Z',
       linkedPurchaseToken: 'prev_tok',
       lineItems: [{
-        productId: 'gymbuddy_premium',
+        productId: 'repsaga_premium',
         expiryTime: '2025-01-01T00:00:00Z',
         autoRenewingPlan: { autoRenewEnabled: true },
         offerDetails: { basePlanId: 'monthly' },
@@ -59,7 +59,7 @@ Deno.test('normalizePlaySubscription: active + pending ack', () => {
   assertEquals(n.acknowledgement_state, 'pending');
   assertEquals(n.auto_renewing, true);
   assertEquals(n.in_grace_period, false);
-  assertEquals(n.product_id, 'gymbuddy_premium:monthly');
+  assertEquals(n.product_id, 'repsaga_premium:monthly');
   assertEquals(n.linked_purchase_token, 'prev_tok');
   assertEquals(n.started_at, '2024-01-01T00:00:00Z');
   assertEquals(n.expires_at, '2025-01-01T00:00:00Z');
@@ -71,7 +71,7 @@ Deno.test('normalizePlaySubscription: in_grace_period', () => {
     playResponse: {
       subscriptionState: 'SUBSCRIPTION_STATE_IN_GRACE_PERIOD',
       acknowledgementState: 'ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED',
-      lineItems: [{ productId: 'gymbuddy_premium', autoRenewingPlan: { autoRenewEnabled: true } }],
+      lineItems: [{ productId: 'repsaga_premium', autoRenewingPlan: { autoRenewEnabled: true } }],
     },
   });
   assertEquals(n.state, 'active');
@@ -82,9 +82,9 @@ Deno.test('normalizePlaySubscription: in_grace_period', () => {
 Deno.test('baseProductIdFromPlay extracts top-level product', () => {
   assertEquals(
     baseProductIdFromPlay({
-      lineItems: [{ productId: 'gymbuddy_premium', offerDetails: { basePlanId: 'annual' } }],
+      lineItems: [{ productId: 'repsaga_premium', offerDetails: { basePlanId: 'annual' } }],
     }),
-    'gymbuddy_premium',
+    'repsaga_premium',
   );
   assertEquals(baseProductIdFromPlay({}), null);
   assertEquals(baseProductIdFromPlay({ lineItems: [] }), null);
@@ -454,7 +454,7 @@ Deno.test('normalizePlaySubscription: SUBSCRIPTION_STATE_PENDING → active', ()
       subscriptionState: 'SUBSCRIPTION_STATE_PENDING',
       acknowledgementState: 'ACKNOWLEDGEMENT_STATE_PENDING',
       lineItems: [{
-        productId: 'gymbuddy_premium',
+        productId: 'repsaga_premium',
         expiryTime: '2030-01-01T00:00:00Z',
         autoRenewingPlan: { autoRenewEnabled: true },
         offerDetails: { basePlanId: 'monthly' },

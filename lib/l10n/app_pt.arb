@@ -82,7 +82,7 @@
   "weightUnitKg": "KG",
   "weightUnitLbs": "LBS",
 
-  "appName": "GymBuddy",
+  "appName": "RepSaga",
   "welcomeBack": "Bem-vindo de volta",
   "createYourAccount": "Crie sua conta",
   "emailRequired": "E-mail é obrigatório",
@@ -281,7 +281,7 @@
   "manageData": "Gerenciar Dados",
   "legal": "JURÍDICO",
   "sendCrashReports": "Enviar relatórios de erro",
-  "crashReportsSubtitle": "Ajude a melhorar o GymBuddy enviando dados anônimos de falhas.",
+  "crashReportsSubtitle": "Ajude a melhorar o RepSaga enviando dados anônimos de falhas.",
   "logOutConfirm": "Tem certeza que deseja sair?",
 
   "manageDataTitle": "Gerenciar Dados",

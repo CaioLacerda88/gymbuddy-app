@@ -7,8 +7,8 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/theme/app_theme.dart';
-import 'package:gymbuddy_app/features/weekly_plan/ui/widgets/routine_chip.dart';
+import 'package:repsaga/core/theme/app_theme.dart';
+import 'package:repsaga/features/weekly_plan/ui/widgets/routine_chip.dart';
 import '../../../helpers/test_material_app.dart';
 
 // ---------------------------------------------------------------------------
