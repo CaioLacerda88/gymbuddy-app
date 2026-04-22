@@ -188,7 +188,7 @@ function playOk(opts: {
     startTime: new Date(Date.now() - 60_000).toISOString(),
     latestOrderId: 'GPA.1234-5678-9012-34567',
     lineItems: [{
-      productId: 'gymbuddy_premium',
+      productId: 'repsaga_premium',
       expiryTime: new Date(Date.now() + (opts.expiresInMs ?? 30 * 24 * 60 * 60 * 1000)).toISOString(),
       autoRenewingPlan: { autoRenewEnabled: true },
       offerDetails: { basePlanId: 'monthly' },
@@ -213,11 +213,11 @@ async function baseInput(
 ): Promise<Parameters<typeof validatePurchase>[0]> {
   return {
     userId: FAKE_USER_ID,
-    productId: 'gymbuddy_premium:monthly',
+    productId: 'repsaga_premium:monthly',
     purchaseToken: 'tok_1',
     source: 'client',
     serviceAccount: await getFakeServiceAccount(),
-    packageName: 'com.gymbuddy.app',
+    packageName: 'com.repsaga.app',
     // deno-lint-ignore no-explicit-any
     client: client as any,
     ...overrides,

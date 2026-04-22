@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:gymbuddy_app/core/theme/app_theme.dart';
-import 'package:gymbuddy_app/features/routines/models/routine.dart';
-import 'package:gymbuddy_app/features/routines/providers/notifiers/routine_list_notifier.dart';
-import 'package:gymbuddy_app/features/routines/ui/widgets/routine_action_sheet.dart';
-import 'package:gymbuddy_app/l10n/app_localizations.dart';
+import 'package:repsaga/core/theme/app_theme.dart';
+import 'package:repsaga/features/routines/models/routine.dart';
+import 'package:repsaga/features/routines/providers/notifiers/routine_list_notifier.dart';
+import 'package:repsaga/features/routines/ui/widgets/routine_action_sheet.dart';
+import 'package:repsaga/l10n/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers

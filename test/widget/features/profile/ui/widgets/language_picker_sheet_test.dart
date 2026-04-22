@@ -3,10 +3,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/l10n/locale_provider.dart';
-import 'package:gymbuddy_app/core/local_storage/hive_service.dart';
-import 'package:gymbuddy_app/core/theme/app_theme.dart';
-import 'package:gymbuddy_app/features/profile/ui/widgets/language_picker_sheet.dart';
+import 'package:repsaga/core/l10n/locale_provider.dart';
+import 'package:repsaga/core/local_storage/hive_service.dart';
+import 'package:repsaga/core/theme/app_theme.dart';
+import 'package:repsaga/features/profile/ui/widgets/language_picker_sheet.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../../../../helpers/test_material_app.dart';

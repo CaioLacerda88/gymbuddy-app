@@ -5,7 +5,7 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/features/weekly_plan/providers/weekly_plan_provider.dart';
+import 'package:repsaga/features/weekly_plan/providers/weekly_plan_provider.dart';
 
 void main() {
   group('computeWeekNumberSinceSignup', () {

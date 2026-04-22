@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/offline/pending_action.dart';
-import 'package:gymbuddy_app/core/offline/pending_sync_provider.dart';
-import 'package:gymbuddy_app/shared/widgets/pending_sync_badge.dart';
+import 'package:repsaga/core/offline/pending_action.dart';
+import 'package:repsaga/core/offline/pending_sync_provider.dart';
+import 'package:repsaga/shared/widgets/pending_sync_badge.dart';
 import '../../helpers/test_material_app.dart';
 
 void main() {

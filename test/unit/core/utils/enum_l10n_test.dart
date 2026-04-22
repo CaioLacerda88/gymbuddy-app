@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/utils/enum_l10n.dart';
-import 'package:gymbuddy_app/features/exercises/models/exercise.dart';
-import 'package:gymbuddy_app/features/personal_records/models/record_type.dart';
-import 'package:gymbuddy_app/features/workouts/models/set_type.dart';
-import 'package:gymbuddy_app/features/workouts/models/weight_unit.dart';
-import 'package:gymbuddy_app/l10n/app_localizations_en.dart';
+import 'package:repsaga/core/utils/enum_l10n.dart';
+import 'package:repsaga/features/exercises/models/exercise.dart';
+import 'package:repsaga/features/personal_records/models/record_type.dart';
+import 'package:repsaga/features/workouts/models/set_type.dart';
+import 'package:repsaga/features/workouts/models/weight_unit.dart';
+import 'package:repsaga/l10n/app_localizations_en.dart';
 
 void main() {
   final l10n = AppLocalizationsEn();

@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/observability/sentry_init.dart';
+import 'package:repsaga/core/observability/sentry_init.dart';
 
 /// Unit tests for [sanitizeRouteName].
 ///

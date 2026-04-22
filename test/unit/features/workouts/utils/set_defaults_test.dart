@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/features/exercises/models/exercise.dart';
-import 'package:gymbuddy_app/features/workouts/models/weight_unit.dart';
-import 'package:gymbuddy_app/features/workouts/utils/set_defaults.dart';
+import 'package:repsaga/features/exercises/models/exercise.dart';
+import 'package:repsaga/features/workouts/models/weight_unit.dart';
+import 'package:repsaga/features/workouts/utils/set_defaults.dart';
 
 void main() {
   group('defaultSetValues — kg', () {

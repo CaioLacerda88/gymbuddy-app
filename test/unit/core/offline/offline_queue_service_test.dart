@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/offline/offline_queue_service.dart';
-import 'package:gymbuddy_app/core/offline/pending_action.dart';
+import 'package:repsaga/core/offline/offline_queue_service.dart';
+import 'package:repsaga/core/offline/pending_action.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 void main() {

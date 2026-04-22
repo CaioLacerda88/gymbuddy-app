@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/theme/app_theme.dart';
-import 'package:gymbuddy_app/shared/widgets/legal_doc_screen.dart';
+import 'package:repsaga/core/theme/app_theme.dart';
+import 'package:repsaga/shared/widgets/legal_doc_screen.dart';
 import '../../../helpers/test_material_app.dart';
 
 /// Test-only asset bundle that serves a fixed markdown string for a known

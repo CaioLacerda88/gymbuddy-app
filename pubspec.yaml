@@ -1,5 +1,5 @@
-name: gymbuddy_app
-description: "GymBuddy - Track every rep, every time."
+name: repsaga
+description: "RepSaga - Track every rep, every time."
 publish_to: 'none'
 version: 0.1.0+1
 

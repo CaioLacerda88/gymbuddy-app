@@ -1,4 +1,4 @@
-package com.gymbuddy.app
+package com.repsaga.app
 
 import io.flutter.embedding.android.FlutterActivity
 

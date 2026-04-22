@@ -1,4 +1,4 @@
-# GymBuddy R8 keep rules. Narrow by design — do NOT add -keep class ** wildcards.
+# RepSaga R8 keep rules. Narrow by design — do NOT add -keep class ** wildcards.
 # Every block documents WHY it exists and which library triggers it.
 #
 # Order: attributes -> JNI -> Flutter engine -> per-library blocks.

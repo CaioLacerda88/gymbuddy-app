@@ -1,13 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/features/auth/data/auth_repository.dart';
-import 'package:gymbuddy_app/features/auth/providers/auth_providers.dart';
-import 'package:gymbuddy_app/features/exercises/models/progress_point.dart';
-import 'package:gymbuddy_app/features/exercises/providers/exercise_progress_provider.dart';
-import 'package:gymbuddy_app/features/workouts/data/workout_repository.dart';
-import 'package:gymbuddy_app/features/workouts/models/exercise_set.dart';
-import 'package:gymbuddy_app/features/workouts/models/set_type.dart';
-import 'package:gymbuddy_app/features/workouts/providers/workout_providers.dart';
+import 'package:repsaga/features/auth/data/auth_repository.dart';
+import 'package:repsaga/features/auth/providers/auth_providers.dart';
+import 'package:repsaga/features/exercises/models/progress_point.dart';
+import 'package:repsaga/features/exercises/providers/exercise_progress_provider.dart';
+import 'package:repsaga/features/workouts/data/workout_repository.dart';
+import 'package:repsaga/features/workouts/models/exercise_set.dart';
+import 'package:repsaga/features/workouts/models/set_type.dart';
+import 'package:repsaga/features/workouts/providers/workout_providers.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
 

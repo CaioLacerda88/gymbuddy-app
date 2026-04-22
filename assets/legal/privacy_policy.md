@@ -2,15 +2,15 @@
 
 **Last updated: 2026-04-10**
 
-This Privacy Policy describes how GymBuddy ("we", "us", or "our") collects, uses, and protects your information when you use the GymBuddy mobile and web application (the "App").
+This Privacy Policy describes how RepSaga ("we", "us", or "our") collects, uses, and protects your information when you use the RepSaga mobile and web application (the "App").
 
 ## 1. Who We Are
 
-GymBuddy is a fitness tracking application that helps you log workouts, track personal records, and manage your exercise library. If you have questions about this policy, contact us at **support@gymbuddy.app**.
+RepSaga is a fitness tracking application that helps you log workouts, track personal records, and manage your exercise library. If you have questions about this policy, contact us at **support@repsaga.app**.
 
 ## 2. Information We Collect
 
-We collect only the information you provide directly and a small number of in-app events used to improve the App (see "Usage Events" below). GymBuddy does not use advertising SDKs, ad networks, or analytics services that share your data with advertisers. We use Sentry to receive crash reports when the App encounters an unhandled error — see Section 5.
+We collect only the information you provide directly and a small number of in-app events used to improve the App (see "Usage Events" below). RepSaga does not use advertising SDKs, ad networks, or analytics services that share your data with advertisers. We use Sentry to receive crash reports when the App encounters an unhandled error — see Section 5.
 
 ### Account Information
 - **Email address** — used for authentication and account recovery.
@@ -48,7 +48,7 @@ Supabase may process data in the regions it operates. See [supabase.com/privacy]
 
 ## 5. Third Parties
 
-GymBuddy uses the following third-party services:
+RepSaga uses the following third-party services:
 
 - **Supabase** — hosting, authentication, and database.
 - **Google** — OAuth authentication only, if you choose to sign in with Google.
@@ -74,11 +74,11 @@ You can delete your account at any time through **Profile → Manage Data → De
 
 ## 8. Children
 
-GymBuddy is not directed to children under 13. Users in the European Economic Area must be at least 16 years old (or have verifiable parental consent where permitted by local law). We do not knowingly collect data from children below these ages. If you believe a child has provided us with personal information, contact us and we will delete it.
+RepSaga is not directed to children under 13. Users in the European Economic Area must be at least 16 years old (or have verifiable parental consent where permitted by local law). We do not knowingly collect data from children below these ages. If you believe a child has provided us with personal information, contact us and we will delete it.
 
 ## 9. International Users
 
-GymBuddy is available globally. Your data may be processed in any region where Supabase operates its infrastructure. By using the App, you consent to this processing.
+RepSaga is available globally. Your data may be processed in any region where Supabase operates its infrastructure. By using the App, you consent to this processing.
 
 ## 10. Changes to This Policy
 
@@ -86,4 +86,4 @@ We may update this Privacy Policy from time to time. When we do, we will update 
 
 ## 11. Contact
 
-Questions, concerns, or requests? Reach us at **support@gymbuddy.app**.
+Questions, concerns, or requests? Reach us at **support@repsaga.app**.

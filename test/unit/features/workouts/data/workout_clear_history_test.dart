@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/local_storage/cache_service.dart';
-import 'package:gymbuddy_app/features/workouts/data/workout_repository.dart';
+import 'package:repsaga/core/local_storage/cache_service.dart';
+import 'package:repsaga/features/workouts/data/workout_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 // ---------------------------------------------------------------------------

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/connectivity/connectivity_provider.dart';
-import 'package:gymbuddy_app/core/offline/sync_service.dart';
-import 'package:gymbuddy_app/shared/widgets/sync_failure_card.dart';
+import 'package:repsaga/core/connectivity/connectivity_provider.dart';
+import 'package:repsaga/core/offline/sync_service.dart';
+import 'package:repsaga/shared/widgets/sync_failure_card.dart';
 import '../../helpers/test_material_app.dart';
 
 void main() {

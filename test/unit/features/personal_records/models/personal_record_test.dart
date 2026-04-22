@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/features/personal_records/models/personal_record.dart';
-import 'package:gymbuddy_app/features/personal_records/models/record_type.dart';
+import 'package:repsaga/features/personal_records/models/personal_record.dart';
+import 'package:repsaga/features/personal_records/models/record_type.dart';
 
 import '../../../../fixtures/test_factories.dart';
 

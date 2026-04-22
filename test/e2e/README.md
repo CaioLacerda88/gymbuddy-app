@@ -1,6 +1,6 @@
-# GymBuddy E2E Tests (Playwright)
+# RepSaga E2E Tests (Playwright)
 
-End-to-end regression tests for the GymBuddy Flutter web app.
+End-to-end regression tests for the RepSaga Flutter web app.
 
 ## Prerequisites
 

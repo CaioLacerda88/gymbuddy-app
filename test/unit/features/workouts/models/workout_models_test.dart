@@ -1,11 +1,11 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/features/workouts/models/active_workout_state.dart';
-import 'package:gymbuddy_app/features/workouts/models/exercise_set.dart';
-import 'package:gymbuddy_app/features/workouts/models/set_type.dart';
-import 'package:gymbuddy_app/features/workouts/models/workout.dart';
-import 'package:gymbuddy_app/features/workouts/models/workout_exercise.dart';
+import 'package:repsaga/features/workouts/models/active_workout_state.dart';
+import 'package:repsaga/features/workouts/models/exercise_set.dart';
+import 'package:repsaga/features/workouts/models/set_type.dart';
+import 'package:repsaga/features/workouts/models/workout.dart';
+import 'package:repsaga/features/workouts/models/workout_exercise.dart';
 
 import '../../../../fixtures/test_factories.dart';
 

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/offline/sync_error_classifier.dart';
+import 'package:repsaga/core/offline/sync_error_classifier.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 void main() {

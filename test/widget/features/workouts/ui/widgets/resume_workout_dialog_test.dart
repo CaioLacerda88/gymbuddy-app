@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/theme/app_theme.dart';
-import 'package:gymbuddy_app/features/workouts/ui/widgets/resume_workout_dialog.dart';
+import 'package:repsaga/core/theme/app_theme.dart';
+import 'package:repsaga/features/workouts/ui/widgets/resume_workout_dialog.dart';
 import '../../../../../helpers/test_material_app.dart';
 
 /// Pumps the dialog via a builder so [Navigator.pop] works correctly and the

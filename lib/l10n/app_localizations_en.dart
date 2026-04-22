@@ -230,7 +230,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get weightUnitLbs => 'LBS';
 
   @override
-  String get appName => 'GymBuddy';
+  String get appName => 'RepSaga';
 
   @override
   String get welcomeBack => 'Welcome back';
@@ -847,7 +847,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get crashReportsSubtitle =>
-      'Help improve GymBuddy by sending anonymous crash data.';
+      'Help improve RepSaga by sending anonymous crash data.';
 
   @override
   String get logOutConfirm => 'Are you sure you want to log out?';

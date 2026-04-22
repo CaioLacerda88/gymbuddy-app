@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:gymbuddy_app/core/exceptions/app_exception.dart';
-import 'package:gymbuddy_app/core/exceptions/error_mapper.dart';
-import 'package:gymbuddy_app/core/observability/sentry_report.dart';
+import 'package:repsaga/core/exceptions/app_exception.dart';
+import 'package:repsaga/core/exceptions/error_mapper.dart';
+import 'package:repsaga/core/observability/sentry_report.dart';
 
 abstract class BaseRepository {
   const BaseRepository();

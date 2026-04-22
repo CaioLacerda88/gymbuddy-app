@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/observability/sentry_init.dart';
+import 'package:repsaga/core/observability/sentry_init.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 /// Unit tests for [scrubEmails], [scrubEventPii], and the beforeBreadcrumb

@@ -1,10 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/exceptions/app_exception.dart';
-import 'package:gymbuddy_app/core/local_storage/hive_service.dart';
-import 'package:gymbuddy_app/features/auth/data/auth_repository.dart';
-import 'package:gymbuddy_app/features/auth/providers/auth_providers.dart';
-import 'package:gymbuddy_app/features/auth/providers/notifiers/auth_notifier.dart';
+import 'package:repsaga/core/exceptions/app_exception.dart';
+import 'package:repsaga/core/local_storage/hive_service.dart';
+import 'package:repsaga/features/auth/data/auth_repository.dart';
+import 'package:repsaga/features/auth/providers/auth_providers.dart';
+import 'package:repsaga/features/auth/providers/notifiers/auth_notifier.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 

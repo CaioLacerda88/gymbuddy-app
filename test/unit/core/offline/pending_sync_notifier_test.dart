@@ -2,17 +2,17 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/offline/offline_queue_service.dart';
-import 'package:gymbuddy_app/core/offline/pending_action.dart';
-import 'package:gymbuddy_app/core/offline/pending_sync_provider.dart';
-import 'package:gymbuddy_app/features/personal_records/data/pr_repository.dart';
-import 'package:gymbuddy_app/features/personal_records/models/personal_record.dart';
-import 'package:gymbuddy_app/features/personal_records/providers/pr_providers.dart';
-import 'package:gymbuddy_app/features/workouts/data/workout_repository.dart';
-import 'package:gymbuddy_app/features/workouts/models/workout.dart';
-import 'package:gymbuddy_app/features/workouts/models/workout_exercise.dart';
-import 'package:gymbuddy_app/features/workouts/models/exercise_set.dart';
-import 'package:gymbuddy_app/features/workouts/providers/workout_providers.dart';
+import 'package:repsaga/core/offline/offline_queue_service.dart';
+import 'package:repsaga/core/offline/pending_action.dart';
+import 'package:repsaga/core/offline/pending_sync_provider.dart';
+import 'package:repsaga/features/personal_records/data/pr_repository.dart';
+import 'package:repsaga/features/personal_records/models/personal_record.dart';
+import 'package:repsaga/features/personal_records/providers/pr_providers.dart';
+import 'package:repsaga/features/workouts/data/workout_repository.dart';
+import 'package:repsaga/features/workouts/models/workout.dart';
+import 'package:repsaga/features/workouts/models/workout_exercise.dart';
+import 'package:repsaga/features/workouts/models/exercise_set.dart';
+import 'package:repsaga/features/workouts/providers/workout_providers.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:mocktail/mocktail.dart';
 

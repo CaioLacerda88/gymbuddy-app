@@ -10,11 +10,11 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/features/auth/data/auth_repository.dart';
-import 'package:gymbuddy_app/features/auth/providers/auth_providers.dart';
-import 'package:gymbuddy_app/features/weekly_plan/data/models/weekly_plan.dart';
-import 'package:gymbuddy_app/features/weekly_plan/data/weekly_plan_repository.dart';
-import 'package:gymbuddy_app/features/weekly_plan/providers/weekly_plan_provider.dart';
+import 'package:repsaga/features/auth/data/auth_repository.dart';
+import 'package:repsaga/features/auth/providers/auth_providers.dart';
+import 'package:repsaga/features/weekly_plan/data/models/weekly_plan.dart';
+import 'package:repsaga/features/weekly_plan/data/weekly_plan_repository.dart';
+import 'package:repsaga/features/weekly_plan/providers/weekly_plan_provider.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
 

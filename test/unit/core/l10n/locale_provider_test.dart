@@ -3,11 +3,11 @@ import 'dart:ui';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/l10n/locale_provider.dart';
-import 'package:gymbuddy_app/core/local_storage/hive_service.dart';
-import 'package:gymbuddy_app/features/auth/providers/auth_providers.dart';
-import 'package:gymbuddy_app/features/profile/data/profile_repository.dart';
-import 'package:gymbuddy_app/features/profile/providers/profile_providers.dart';
+import 'package:repsaga/core/l10n/locale_provider.dart';
+import 'package:repsaga/core/local_storage/hive_service.dart';
+import 'package:repsaga/features/auth/providers/auth_providers.dart';
+import 'package:repsaga/features/profile/data/profile_repository.dart';
+import 'package:repsaga/features/profile/providers/profile_providers.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:mocktail/mocktail.dart';
 

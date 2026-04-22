@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/theme/app_theme.dart';
-import 'package:gymbuddy_app/features/auth/ui/onboarding_screen.dart';
-import 'package:gymbuddy_app/features/profile/models/profile.dart';
-import 'package:gymbuddy_app/features/profile/providers/profile_providers.dart';
+import 'package:repsaga/core/theme/app_theme.dart';
+import 'package:repsaga/features/auth/ui/onboarding_screen.dart';
+import 'package:repsaga/features/profile/models/profile.dart';
+import 'package:repsaga/features/profile/providers/profile_providers.dart';
 import '../../../../helpers/test_material_app.dart';
 
 // Minimal stub to avoid hitting Supabase during widget tests.

@@ -177,7 +177,7 @@
   "weightUnitLbs": "LBS",
   "@weightUnitLbs": { "description": "Weight unit: pounds (display)" },
 
-  "appName": "GymBuddy",
+  "appName": "RepSaga",
   "@appName": { "description": "Application name" },
   "welcomeBack": "Welcome back",
   "@welcomeBack": { "description": "Login screen subtitle for existing users" },
@@ -667,7 +667,7 @@
   "@legal": { "description": "Section header: legal" },
   "sendCrashReports": "Send crash reports",
   "@sendCrashReports": { "description": "Crash reports toggle title" },
-  "crashReportsSubtitle": "Help improve GymBuddy by sending anonymous crash data.",
+  "crashReportsSubtitle": "Help improve RepSaga by sending anonymous crash data.",
   "@crashReportsSubtitle": { "description": "Crash reports toggle subtitle" },
   "logOutConfirm": "Are you sure you want to log out?",
   "@logOutConfirm": { "description": "Log out confirmation message" },

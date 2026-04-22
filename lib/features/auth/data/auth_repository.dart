@@ -47,7 +47,7 @@ class AuthRepository extends BaseRepository {
     return mapException(
       () => _auth.signInWithOAuth(
         OAuthProvider.google,
-        redirectTo: 'io.supabase.gymbuddy://login-callback/',
+        redirectTo: 'io.supabase.repsaga://login-callback/',
       ),
     );
   }

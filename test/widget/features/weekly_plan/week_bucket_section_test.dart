@@ -19,13 +19,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/theme/app_theme.dart';
-import 'package:gymbuddy_app/features/routines/models/routine.dart';
-import 'package:gymbuddy_app/features/routines/providers/notifiers/routine_list_notifier.dart';
-import 'package:gymbuddy_app/features/weekly_plan/data/models/weekly_plan.dart';
-import 'package:gymbuddy_app/features/weekly_plan/providers/weekly_plan_provider.dart';
-import 'package:gymbuddy_app/features/weekly_plan/ui/widgets/routine_chip.dart';
-import 'package:gymbuddy_app/features/weekly_plan/ui/widgets/week_bucket_section.dart';
+import 'package:repsaga/core/theme/app_theme.dart';
+import 'package:repsaga/features/routines/models/routine.dart';
+import 'package:repsaga/features/routines/providers/notifiers/routine_list_notifier.dart';
+import 'package:repsaga/features/weekly_plan/data/models/weekly_plan.dart';
+import 'package:repsaga/features/weekly_plan/providers/weekly_plan_provider.dart';
+import 'package:repsaga/features/weekly_plan/ui/widgets/routine_chip.dart';
+import 'package:repsaga/features/weekly_plan/ui/widgets/week_bucket_section.dart';
 import '../../../helpers/test_material_app.dart';
 
 // ---------------------------------------------------------------------------

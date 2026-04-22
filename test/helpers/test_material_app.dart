@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:gymbuddy_app/core/theme/app_theme.dart';
-import 'package:gymbuddy_app/l10n/app_localizations.dart';
+import 'package:repsaga/core/theme/app_theme.dart';
+import 'package:repsaga/l10n/app_localizations.dart';
 
 /// A drop-in replacement for [MaterialApp] in widget tests.
 ///

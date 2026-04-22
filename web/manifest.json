@@ -1,11 +1,11 @@
 {
-    "name": "GymBuddy",
-    "short_name": "GymBuddy",
+    "name": "RepSaga",
+    "short_name": "RepSaga",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0F0F1A",
     "theme_color": "#00E676",
-    "description": "GymBuddy — Track every rep, every time.",
+    "description": "RepSaga — Track every rep, every time.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

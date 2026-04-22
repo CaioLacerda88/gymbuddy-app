@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/exceptions/app_exception.dart' as app;
-import 'package:gymbuddy_app/features/profile/data/profile_repository.dart';
-import 'package:gymbuddy_app/features/profile/models/profile.dart';
+import 'package:repsaga/core/exceptions/app_exception.dart' as app;
+import 'package:repsaga/features/profile/data/profile_repository.dart';
+import 'package:repsaga/features/profile/models/profile.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 // ---------------------------------------------------------------------------

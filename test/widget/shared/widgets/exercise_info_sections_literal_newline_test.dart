@@ -12,8 +12,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymbuddy_app/core/theme/app_theme.dart';
-import 'package:gymbuddy_app/shared/widgets/exercise_info_sections.dart';
+import 'package:repsaga/core/theme/app_theme.dart';
+import 'package:repsaga/shared/widgets/exercise_info_sections.dart';
 
 import '../../../fixtures/test_finders.dart';
 import '../../../helpers/test_material_app.dart';

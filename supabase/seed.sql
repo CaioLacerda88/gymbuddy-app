@@ -1,4 +1,4 @@
--- GymBuddy Seed Data
+-- RepSaga Seed Data
 -- Default exercises (~60) and starter workout templates (4)
 -- Run after migrations: psql ... < supabase/seed.sql
 

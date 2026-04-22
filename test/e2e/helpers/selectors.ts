@@ -1,5 +1,5 @@
 /**
- * Centralized selectors for GymBuddy Flutter web.
+ * Centralized selectors for RepSaga Flutter web.
  *
  * Flutter 3.41.6+ uses the Accessibility Object Model (AOM) for accessible
  * names instead of setting `aria-label` as a DOM attribute on flt-semantics
@@ -47,8 +47,8 @@ export const AUTH = {
   forgotPasswordButton: '[flt-semantics-identifier="auth-forgot-pwd"]',
   /** "Send Reset Email" button in dialog — Semantics(identifier: 'auth-send-reset') */
   sendResetEmailButton: '[flt-semantics-identifier="auth-send-reset"]',
-  /** The "GymBuddy" headline present on the login screen */
-  appTitle: 'text=GymBuddy',
+  /** The "RepSaga" headline present on the login screen */
+  appTitle: 'text=RepSaga',
   /** "Welcome back" subtitle (sign-in mode) — Semantics(identifier: 'auth-welcome-back') */
   welcomeBack: '[flt-semantics-identifier="auth-welcome-back"]',
   /** Inline error message — Semantics(liveRegion: true) sets aria-live */
