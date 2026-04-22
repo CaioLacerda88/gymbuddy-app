@@ -4,63 +4,53 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ---
 
-## refactor/rebrand-repsaga — rename GymBuddy → RepSaga across codebase
+## post-rebrand: external service rename cascade (tracking only)
 
-**Branch:** `refactor/rebrand-repsaga`
-**Why:** `com.gymbuddy.app` is taken on Play Store. After a BR-market-aware naming
-exercise (see chat history), the brand is now **RepSaga** (package `com.repsaga.app`).
-This rename unblocks Play Console app creation, which in turn unblocks Phase 16a
-Stages 1.3, 3.4, 4, and 5.3. PO analysis: RepSaga has virgin Play namespace,
-strong Phase 17 gamification fit (MMO vocabulary), available domains + handles,
-and avoids the VW Jornada namespace collision on BR Play Store.
+**Why:** PR #98 merged the GymBuddy → RepSaga code rename. Codebase is 100% clean
+(zero `gymbuddy`/`GymBuddy` refs post-merge). This section tracks external
+services and manual actions that still need renaming outside the repo. Not a
+branch — purely a coordination checklist.
 
-**Scope:** Everything in the repo. External service renames (GCP display name,
-Supabase project name, Play app creation, Pub/Sub topic rename, domain/handle
-locking) are handled by the user out-of-band.
+### GitHub
 
-### Tasks
+- [x] **Rename repo** `gymbuddy-app` → `repsaga` (done; local `origin` updated; old URL auto-redirects)
+- [x] **Rename local folder** — Claude Code session now runs in `C:\Users\caiol\Projects\repsaga` (folder + memory dir already migrated)
 
-- [x] **pubspec.yaml**: `name: gymbuddy_app` → `name: repsaga`; update `description`
-- [x] **Dart imports**: global find-replace `package:gymbuddy_app/` → `package:repsaga/` across `lib/` and `test/`
-- [x] **Android `applicationId`**: `com.gymbuddy.app` → `com.repsaga.app` in `android/app/build.gradle.kts`
-- [x] **Android `namespace`**: `com.gymbuddy.app` → `com.repsaga.app`
-- [x] **Android MainActivity**: move `android/app/src/main/kotlin/com/gymbuddy/app/MainActivity.kt` → `com/repsaga/app/MainActivity.kt` and update `package` declaration
-- [x] **Android deep-link scheme**: `AndroidManifest.xml` `android:scheme="io.supabase.gymbuddy"` → `io.supabase.repsaga`
-- [x] **Android label**: `AndroidManifest.xml` `android:label="GymBuddy"` → `"RepSaga"`
-- [x] **Dart auth redirect URL**: `lib/features/auth/data/auth_repository.dart` `io.supabase.gymbuddy://login-callback/` → `io.supabase.repsaga://login-callback/`
-- [x] **l10n ARB files**: `lib/l10n/app_en.arb` + `app_pt.arb` — `appName` and any user-facing mentions (`crashReportsSubtitle`)
-- [x] **Regenerate l10n**: `flutter gen-l10n` to refresh `app_localizations*.dart`
-- [x] **App title in `lib/app.dart`**: `title: 'GymBuddy'` → `'RepSaga'`
-- [x] **web/manifest.json**: `name`, `short_name`, `description`
-- [x] **supabase/config.toml**: `project_id = "gymbuddy-app"` → `"repsaga"` (Supabase project ref stays; this is the local-dev identifier)
-- [x] **Edge Function test fixtures**: `packageName: 'com.gymbuddy.app'` → `'com.repsaga.app'` in `validate-purchase/test.ts`, `rtdn-webhook/test.ts`, `_shared/google_play.test.ts`
-- [x] **Subscription product ID**: `gymbuddy_premium` → `repsaga_premium` in the same test files + code comments in `validate-purchase/index.ts`
-- [x] **Email templates** (`supabase/email_templates.sql`): brand mentions in comments + HTML samples
-- [x] **Seed/migration comments**: update header comments in `supabase/seed.sql`, `migrations/00001_initial_schema.sql`, `email_templates.sql`
-- [x] **Docs**: PLAN.md, CLAUDE.md, README.md, `docs/phase-16a-setup.md`, `docs/privacy_policy.md`, `docs/terms_of_service.md`, `docs/index.md`, `docs/_config.yml`, `assets/legal/*`, `tasks/manual-qa-testplan.md`
-- [~] **IntelliJ module**: `gymbuddy_app.iml` and `android/gymbuddy_app_android.iml` are gitignored (not tracked). Skipped rename — IDE will regenerate `.iml` files matching the new pubspec name on next project reload. User should close + reopen in IntelliJ/Android Studio to trigger regeneration.
-- [x] **E2E helpers**: `test/e2e/helpers/selectors.ts`, `test/e2e/specs/auth.spec.ts`, `test/e2e/README.md` — update any brand string assertions
-- [x] **Keystore example**: `android/key.properties.example` — comment updates if brand mentioned
-- [x] **Widget tests**: any hardcoded `'GymBuddy'` string assertions in `test/widget/**/*_test.dart`
-- [x] **Code generation**: run `make gen` (regenerates freezed/json_serializable artifacts)
-- [x] **Clean build**: `flutter clean && flutter pub get`
-- [x] **Full `make ci`** — must pass (format, analyze, test, android-debug-build) — passed (format clean, analyze 0 issues, 1449 tests all pass, APK built with applicationId `com.repsaga.app` and deep-link scheme `io.supabase.repsaga` verified)
-- [ ] **QA review** — selectors + any flow strings still match
-- [ ] **Open PR** — verify all 177 original `gymbuddy` matches are addressed
-- [ ] **Merge** — squash merge, delete branch
+### Google Cloud Platform
 
-### Manual follow-ups (user, post-merge)
+- [x] **Fresh GCP project** `repsaga-prod` created; old `gymbuddy-app-proj` shut down (2026-04-22, see `docs/gcp-project-recreation.md`)
+- [x] **Pub/Sub topic** `repsaga-rtdn` created in `repsaga-prod`; Play granted publisher; Play Console RTDN pointed at `projects/repsaga-prod/topics/repsaga-rtdn`
+- [x] **Pub/Sub push subscription** `repsaga-rtdn-push` → `rtdn-webhook` Edge Function (OIDC-authed, test notification returns 200)
 
-- [ ] Set `GOOGLE_PLAY_PACKAGE_NAME=com.repsaga.app` via `npx supabase secrets set`
-- [ ] Update Supabase Auth redirect URL to `io.supabase.repsaga://login-callback/`
-- [ ] Rename Supabase + GCP project display names
-- [ ] Rename GitHub repo (optional, auto-redirects)
-- [ ] Rename/recreate Pub/Sub topic if current name contains "gymbuddy"
+### Supabase
+
+- [ ] **Project display name** — Dashboard → Project Settings → General → rename to "RepSaga"
+- [ ] **Auth redirect URLs allowlist** — Dashboard → Authentication → URL Configuration → add `io.supabase.repsaga://login-callback/` **when Google Sign-In is enabled** (Phase 16b+). Not blocking today since only email/password auth is wired.
+- [x] **Edge Function secrets** — `GOOGLE_PLAY_PACKAGE_NAME=com.repsaga.app`, `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` (new `repsaga-prod` SA), `RTDN_PUBSUB_AUDIENCE` all set; Edge Functions redeployed (2026-04-22)
+
+### Google Play Console (blocked → now unblocked)
+
+- [x] **Create app** with package `com.repsaga.app` — unblocks Phase 16a Stages 1.3, 3.4, 4, 5.3
+- [ ] **Create subscription product** `repsaga_premium` (code + test fixtures already expect this ID)
+- [x] **Link service account** — `repsaga-play-api@repsaga-prod.iam.gserviceaccount.com` invited via Users and permissions (new flow; old API-access page deprecated by Google ~2024)
+- [x] **Point Play at Pub/Sub topic** — `projects/repsaga-prod/topics/repsaga-rtdn`; test notification verified end-to-end (Play → Pub/Sub → `rtdn-webhook` 200)
+
+### Brand assets
+
+- [ ] **Domains** — register `repsaga.com`, `repsaga.app`, `repsaga.com.br`
+- [ ] **Social handles** — lock `@repsaga` on Instagram, X/Twitter, TikTok
+
+### Local development environment
+
+- [x] **IntelliJ/Android Studio** — stale `.iml` files + `.idea/modules.xml` deleted; IDE will regenerate with `repsaga` names on next open
+- [x] **Claude Code memory dir** — migrated to `C--Users-caiol-Projects-repsaga\memory\`; MEMORY.md index loads correctly this session
+
+### Not renameable (stuck forever — fine)
+
+- Supabase project ref `dgcueqvqfyuedclkxixz` — internal ID, appears in `.env` as part of the Supabase URL
+- Android keystore signing certificate (cryptographic; key alias is internal-only)
+- Git commit history (correct historical record)
 
 ### Acceptance
 
-- `grep -ri "gymbuddy\|GymBuddy" .` returns only intentional historical refs (git log, this WIP, PLAN.md history)
-- `make ci` green
-- Android build produces APK with `com.repsaga.app` applicationId
-- Widget + unit tests pass without brand-string failures
-- E2E smoke suite passes locally (selectors + flows unaffected)
+All checklist items above completed. Phase 16a external setup can proceed with `com.repsaga.app` everywhere.
