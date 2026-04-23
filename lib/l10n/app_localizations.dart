@@ -3445,6 +3445,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Language'**
   String get language;
+
+  /// Saga intro overlay, step 1 hero headline
+  ///
+  /// In en, this message translates to:
+  /// **'YOUR TRAINING IS YOUR CHARACTER'**
+  String get sagaIntroStep1Title;
+
+  /// Saga intro overlay, step 1 body copy
+  ///
+  /// In en, this message translates to:
+  /// **'Every set you complete shapes who you become. Lift, track, level up.'**
+  String get sagaIntroStep1Body;
+
+  /// Saga intro overlay, step 2 hero headline
+  ///
+  /// In en, this message translates to:
+  /// **'XP FROM EVERY SET, PR, QUEST'**
+  String get sagaIntroStep2Title;
+
+  /// Saga intro overlay, step 2 body copy
+  ///
+  /// In en, this message translates to:
+  /// **'Volume, intensity, personal records and weekly quests all grant XP.'**
+  String get sagaIntroStep2Body;
+
+  /// Saga intro overlay, step 3 hero headline with the user's starting level and rank
+  ///
+  /// In en, this message translates to:
+  /// **'LVL {level} — {rank}'**
+  String sagaIntroStep3Title(int level, String rank);
+
+  /// Saga intro overlay, step 3 body copy
+  ///
+  /// In en, this message translates to:
+  /// **'Your journey begins here. Keep training to climb ranks.'**
+  String get sagaIntroStep3Body;
+
+  /// Saga intro overlay primary button, non-final steps
+  ///
+  /// In en, this message translates to:
+  /// **'NEXT'**
+  String get sagaIntroNext;
+
+  /// Saga intro overlay primary button, final step (dismisses)
+  ///
+  /// In en, this message translates to:
+  /// **'BEGIN'**
+  String get sagaIntroBegin;
+
+  /// Rank name: rookie
+  ///
+  /// In en, this message translates to:
+  /// **'ROOKIE'**
+  String get sagaRankRookie;
+
+  /// Rank name: iron
+  ///
+  /// In en, this message translates to:
+  /// **'IRON'**
+  String get sagaRankIron;
+
+  /// Rank name: copper
+  ///
+  /// In en, this message translates to:
+  /// **'COPPER'**
+  String get sagaRankCopper;
+
+  /// Rank name: silver
+  ///
+  /// In en, this message translates to:
+  /// **'SILVER'**
+  String get sagaRankSilver;
+
+  /// Rank name: gold
+  ///
+  /// In en, this message translates to:
+  /// **'GOLD'**
+  String get sagaRankGold;
+
+  /// Rank name: platinum
+  ///
+  /// In en, this message translates to:
+  /// **'PLATINUM'**
+  String get sagaRankPlatinum;
+
+  /// Rank name: diamond
+  ///
+  /// In en, this message translates to:
+  /// **'DIAMOND'**
+  String get sagaRankDiamond;
 }
 
 class _AppLocalizationsDelegate

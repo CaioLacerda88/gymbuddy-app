@@ -61,6 +61,8 @@ const TEST_USERS = [
   'e2e-smoke-localization@test.local',
   // Localization en-default (Phase 15e) — en→pt picker + persistence tests
   'e2e-smoke-localization-en@test.local',
+  // Phase 17b gamification intro — fresh user, saga intro never dismissed
+  'e2e-saga-intro@test.local',
 ];
 
 /**
@@ -638,6 +640,11 @@ async function globalSetup(): Promise<void> {
     // Localization en-default — tests mutate the locale (en→pt and back),
     // so we clean and re-seed each run to guarantee an en-default start.
     'e2e-smoke-localization-en@test.local',
+    // Phase 17b gamification intro — must start fresh so the SagaIntroGate
+    // logic sees a clean Hive state (no retro flag, no intro-seen flag) and
+    // the overlay appears on first login. Also cleans xp_events / user_xp
+    // so retro_backfill_xp has a deterministic outcome.
+    'e2e-saga-intro@test.local',
   ];
 
   for (const email of freshStateUsers) {
@@ -674,6 +681,11 @@ async function globalSetup(): Promise<void> {
     // Delete weekly plans (P8 CTA requires plan == null || plan.routines.isEmpty)
     await supabase.from('weekly_plans').delete().eq('user_id', userId);
 
+    // Delete XP data (Phase 17b) so retro_backfill_xp starts from a clean
+    // slate on each run. Only relevant for users whose tests rely on XP state.
+    await supabase.from('xp_events').delete().eq('user_id', userId);
+    await supabase.from('user_xp').delete().eq('user_id', userId);
+
     console.log(`[global-setup] Cleaned workout data for ${email}`);
   }
 
@@ -688,6 +700,10 @@ async function globalSetup(): Promise<void> {
     // P8 first-workout user needs a profile row (otherwise router redirects
     // to /onboarding, not /home where the beginner CTA is shown).
     'e2e-smoke-first-workout@test.local',
+    // Phase 17b: sagaIntroUser needs a profile row so the router lands on
+    // /home (not /onboarding), where the SagaIntroGate wraps the shell.
+    // Zero workout history is intentional — retro yields 0 XP, user gets LVL 1.
+    'e2e-saga-intro@test.local',
   ];
 
   // Delete profile rows for users that need to test onboarding (fresh state).

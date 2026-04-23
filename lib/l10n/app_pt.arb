@@ -793,5 +793,21 @@
   "@exerciseName_kettlebell_windmill": { "description": "Exercise name: Kettlebell Windmill" },
 
   "preferences": "PREFERÊNCIAS",
-  "language": "Idioma"
+  "language": "Idioma",
+
+  "sagaIntroStep1Title": "SEU TREINO É SEU PERSONAGEM",
+  "sagaIntroStep1Body": "Cada série concluída define quem você se torna. Treine, registre, evolua.",
+  "sagaIntroStep2Title": "XP DE CADA SÉRIE, PR E MISSÃO",
+  "sagaIntroStep2Body": "Volume, intensidade, recordes pessoais e missões semanais geram XP.",
+  "sagaIntroStep3Title": "NÍVEL {level} — {rank}",
+  "sagaIntroStep3Body": "Sua jornada começa aqui. Continue treinando para subir de rank.",
+  "sagaIntroNext": "PRÓXIMO",
+  "sagaIntroBegin": "COMEÇAR",
+  "sagaRankRookie": "NOVATO",
+  "sagaRankIron": "FERRO",
+  "sagaRankCopper": "BRONZE",
+  "sagaRankSilver": "PRATA",
+  "sagaRankGold": "OURO",
+  "sagaRankPlatinum": "PLATINA",
+  "sagaRankDiamond": "DIAMANTE"
 }

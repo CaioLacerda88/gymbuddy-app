@@ -83,7 +83,11 @@ async function deleteUserData(
       .eq('user_id', userId)
       .eq('is_default', false);
 
-    // 10. Delete profile
+    // 10. Delete XP ledger (Phase 17b)
+    await supabase.from('xp_events').delete().eq('user_id', userId);
+    await supabase.from('user_xp').delete().eq('user_id', userId);
+
+    // 11. Delete profile
     await supabase.from('profiles').delete().eq('id', userId);
   } catch (err) {
     console.error(

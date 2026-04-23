@@ -18,6 +18,7 @@ import '../../features/auth/ui/splash_screen.dart';
 import '../../features/exercises/ui/create_exercise_screen.dart';
 import '../../features/exercises/ui/exercise_detail_screen.dart';
 import '../../features/exercises/ui/exercise_list_screen.dart';
+import '../../features/gamification/ui/saga_intro_gate.dart';
 import '../../features/workouts/models/active_workout_state.dart';
 import '../../features/workouts/providers/workout_providers.dart';
 import '../../features/profile/ui/manage_data_screen.dart';
@@ -146,7 +147,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       ShellRoute(
-        builder: (context, state, child) => _ShellScaffold(child: child),
+        builder: (context, state, child) =>
+            SagaIntroGate(child: _ShellScaffold(child: child)),
         routes: [
           GoRoute(
             path: '/home',
