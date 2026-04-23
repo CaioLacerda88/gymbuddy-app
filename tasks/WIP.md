@@ -4,6 +4,34 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ---
 
+## Phase 16 — Subscription Monetization — PARKED (2026-04-22)
+
+**Why parked:** Phase 16 keeps hitting external blockers (Brazilian merchant account, Play Console → upload signed AAB required before subscription product can be created, license-tester account setup). Phase 17 gamification is fully internal code work with no external gates and produces the retention moat that makes Phase 16's paywall pitch compelling. Decision: ship Phase 17 (Gamification) before resuming 16b/c/d.
+
+### What's complete in Phase 16
+
+- **16a** (backend): migrations + Edge Functions shipped in PR #93. Vault secrets set. Confirmed working end-to-end after GCP migration (PR #99): Play test notification → Pub/Sub → `rtdn-webhook` returns 200 with new `repsaga-prod` credentials.
+- External infrastructure fully rebuilt in `repsaga-prod`: SA, Pub/Sub topic/push-sub, Supabase secrets rotated, Edge Functions redeployed. Old `gymbuddy-app-proj` shut down.
+
+### What's blocked (resume on Phase 17 complete)
+
+- **16b** (client + paywall UI + onboarding rewire): needs `in_app_purchase` package added, models, repo, notifier, `PaywallScreen`, l10n. No external dep; could technically ship without real purchases. **Deferred by choice, not blocker.**
+- **Play Console subscription product `repsaga_premium`**: blocked on uploading a signed AAB to Internal Testing. Blocked on generating the upload keystore (`android/keystore/repsaga-release.jks` + `android/key.properties`). Keystore generation is a 10-min chore; the app bundle upload + Play App Signing enrollment is another ~15 min. **Not doing now — pivot to Phase 17.**
+- **16c** (hard gate + E2E): depends on 16b.
+- **16d** (analytics + merchant-account launch gate): depends on Brazilian merchant account, blocked on 16b/c.
+
+### Resume checklist (when we come back to Phase 16)
+
+- [ ] Generate upload keystore: `keytool -genkey -keystore android/keystore/repsaga-release.jks -alias repsaga-release -keyalg RSA -keysize 2048 -validity 10000`
+- [ ] Create `android/key.properties` (not committed) from `android/key.properties.example`
+- [ ] Back up keystore + key.properties (1Password attachment, encrypted secondary)
+- [ ] `flutter build appbundle --release` → `build/app/outputs/bundle/release/app-release.aab`
+- [ ] Upload AAB to Play Console → RepSaga → Testing → Internal testing → Create release (save as draft, no rollout needed). Enroll in Play App Signing (Google-managed).
+- [ ] Create subscription product `repsaga_premium` with 2 base plans (monthly + annual), trial-14d offer, BRL/USD/EUR prices + PPP auto-convert (full spec in PLAN.md Phase 16 → Business Model)
+- [ ] Proceed with Phase 16b dev (tech-lead pipeline per CLAUDE.md)
+
+---
+
 ## post-rebrand: external service rename cascade (tracking only)
 
 **Why:** PR #98 merged the GymBuddy → RepSaga code rename. Codebase is 100% clean

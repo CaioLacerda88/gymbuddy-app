@@ -55,13 +55,21 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 15d | Language Picker UI + Persistence | DONE | #89 |
 | 15e | QA + E2E + Overflow Polish | DONE | #91 |
 | 15 | Portuguese (Brazil) Localization | DONE | #86–#91 |
-| 16 | Subscription Monetization (GPB + trial-to-paywall) | TODO | - |
+| 16 | Subscription Monetization (GPB + trial-to-paywall) | PARKED | #93, #99 |
 | 16a | Backend: schema + Edge Functions + Play Console draft | DONE | #93 |
-| 16b | Client integration + paywall UI + onboarding rewire | TODO | - |
-| 16c | Hard gate enforcement + router guard + E2E refactor | TODO | - |
-| 16d | Analytics + hardening + launch-readiness checklist | TODO | - |
-| 17 | Gamification Foundation (XP, Levels, Streaks) | TODO | - |
-| 18 | Gamification Advanced (Quests, Stats Panel) | TODO | - |
+| 16b | Client integration + paywall UI + onboarding rewire | DEFERRED | - |
+| 16c | Hard gate enforcement + router guard + E2E refactor | DEFERRED | - |
+| 16d | Analytics + hardening + launch-readiness checklist | DEFERRED | - |
+| 17.0 | Visual Language Foundation (theme tokens, gradients, hero typography) | NEXT | - |
+| 17b | XP & Level System + Retroactive Backfill | TODO | - |
+| 17a | Celebration Overlay + Active Logger Hardening | TODO | - |
+| 17c | Weekly Streak + Comeback Bonus | TODO | - |
+| 17d | Character Sheet + Milestone Signal | TODO | - |
+| 17e | Home Recap + First-Week Quest + LVL Line | TODO | - |
+| 17 | Gamification Foundation (Visual, XP, Levels, Streaks, Character, Recap) | IN PROGRESS | - |
+| 18a | Weekly Smart Quests (engine + localized pool) | TODO | - |
+| 18b | Training Stats Panel (radar) | TODO | - |
+| 18 | Gamification Advanced (Quests, Stats Panel) | PLANNED | - |
 | 19 | Nice-to-Have (v2.0+) | BACKLOG | - |
 
 ### Section Index
@@ -1007,74 +1015,466 @@ RLS: SELECT `auth.uid() = user_id` on all three. No client writes. Service role 
 
 ## Phase 17: Gamification Foundation
 
-> Adapted from GAMIFICATION.md. RPG layer tightly coupled to real training data — "your strength IS your character."
+> RPG progression tightly coupled to real training data — "your strength IS your character." Refined from the Phase 17 v1 spec after PO + UX post-mortem of GymLevels, Arise, and competitor teardown (2026-04-22).
 
 ### Retention Dependency (from Phase 16 pricing research)
 
-Our annual price ($23,99 USD) is identical to Hevy's, and Hevy offers a permanent freemium tier. A user comparing the two at trial-end will ask "why pay when Hevy is free?" The answer has to be delivered **inside the 14-day trial**: the RPG progression must feel real and rewarding within the first 2-3 sessions, not week 3. **Scoping implication:** prioritize mechanics felt immediately (XP ticks on set completion, first-PR celebration, visible level bar, week-1 streak nudge) over mechanics that pay off later (multi-week quest arcs, deep stat panels, advanced analytics). 17a-c land the immediate-felt layer; 17d-e and Phase 18 build the long-tail. This ordering is now a retention constraint, not a preference.
+Our annual price ($23.99 USD) matches Hevy; Hevy offers a permanent freemium tier. A user comparing the two at trial-end will ask "why pay when Hevy is free?" The answer has to be delivered **inside the 14-day trial**: the RPG progression must feel real within the first 2–3 sessions, not week 3. **Scoping implication:** prioritize mechanics felt immediately (XP on set completion, first-PR celebration, visible LVL bar, week-1 streak nudge) over long-tail mechanics (multi-week quest arcs, deep radar, seasonal content). The **level curve is retuned to `xpForLevel(n) = floor(300 * pow(n, 1.3))`** so a typical trial user hits LVL 8 (not LVL 4) by day 14 — the single highest-impact numeric change.
 
-### Design Principles
+### Cross-Phase: Paywall Personalization Hook (consumed by Phase 16b)
 
-- Every game mechanic must be defensible with real training logic
-- Gamification only in post-workout overlay and profile — never interrupts logging
-- No punishment for rest days, no streak anxiety, no confetti
-- Beginners see only XP bar + level for first 30 days
-- Stats normalized to personal best (0-100 scale), not population norms
+When Phase 16b unparks and wires `PaywallScreen`, the paywall MUST display the user's actual progression — `LVL N`, last PR, current streak — not generic bullet points. Phase 17 exposes `GamificationSummary` from `xp_provider` + `streak_provider` specifically so 16b can read it without re-querying. **This callout is load-bearing: do not let 16b drift back to a stock paywall.**
 
-### 17a: PR Celebration Overlay (Phase 1)
+### Design Principles (non-negotiable)
 
-Full-screen overlay (not dialog). Background `#0F0F23` at 0.96 opacity. Dismissible with tap.
-- XP animation: `+N XP` tween from 0 to final over 600ms, color `#FFFFFF60` -> `#00E676`
-- Stat bumps: staggered cascade below XP
-- PR section: amber `#FFD54F` band, `NEW RECORD` label, exercise name + new value
-- Level up: green vignette glow, scale punch animation, `LEVEL UP` label
+- Every mechanic must be defensible with real training logic. No arbitrary dopamine.
+- Gamification lives in the post-workout overlay and profile — never interrupts logging.
+- No punishment for rest days, no streak anxiety, no confetti, no particle spam.
+- Beginners see only XP bar + LVL for the first 30 days; stats panel is behind a "more" expand.
+- Stats normalized to personal best (0–100), not population norms.
+- Variable rewards are tied to **real behavior** (PR, milestone, comeback), never pure chance. No loot boxes.
+- Milestones are **signals** (geometric marks), not collectible badge walls.
 
-### 17b: XP & Level System (Phase 2)
+### Build Order (dependency-ordered, not priority-ordered)
 
-**XP formula:** `Base(50) + Volume(floor(kg/500)) + Intensity((rpe-5)*10) + PR(+100/+50) + Quest(+75)`
-**Level curve:** `XP for Level N = 500 * N^1.5` (fast early, meaningful later)
-**Ranks:** Rookie(0) -> Iron(2.5K) -> Bronze(10K) -> Silver(25K) -> Gold(60K) -> Platinum(125K) -> Diamond(250K)
+1. **17.0** — Visual Language Foundation (theme + typography). No game logic yet; gives every subsequent sub-phase the surface to paint on.
+2. **17b** — XP & Level data layer (migrations + calculator + retroactive backfill). No UI; provides real values for 17a to reveal.
+3. **17a** — Celebration Overlay + Active Logger Hardening. Renders the data 17b produced. First visible payoff.
+4. **17c** — Weekly Streak + Comeback Bonus. Reuses overlay from 17a for the comeback moment.
+5. **17d** — Character Sheet + Milestone Signal. Profile revamp; reads all prior data.
+6. **17e** — Home Recap + First-Week Quest stub + LVL line. Closes the retention loop for returning lifters.
 
-Computed from existing data — retroactive for existing users. Never decreases, never paywalled.
+Then Phase 18 (Quests engine, Stats radar) extends without reworking foundation.
 
-### 17c: Weekly Streak (Phase 1)
+---
 
-- Weekly consistency meter: 7 segments (Mon-Sun), trained=green, not-trained=neutral (NOT red)
-- Streak: consecutive weeks meeting training frequency goal. Resets only if entire week missed
-- Comeback bonus (2x XP) instead of shame on miss
-- Lives on Profile screen (character sheet)
+### 17.0: Visual Language Foundation
 
-### 17d: Profile -> Character Sheet
+**Goal:** Replace the current flat `#232340` surface with a layered, atmospheric, gym-native visual identity so nothing built after this point looks like a generic AI-assembled fitness app.
 
-Same `/profile` URL. Identity block with `LVL N` badge, XP bar (6dp height, `#00E676`), weekly consistency band.
+**Scope (no feature logic; pure theme):**
 
-### 17e: Home Screen Integration
+- New file `lib/core/theme/surface_treatments.dart`:
+  - `kSurfaceGradient` — radial gradient, center `Alignment(-0.4, -0.6)`, inner `#1A1B2E`, outer `#0F0F23`. Applied behind every screen body (wrap `Scaffold.body`).
+  - `kAmbientGreenTint` — radial overlay, 6% `#00E676` alpha, top-right, used on workout-active + celebration surfaces only.
+  - `kDepthShadow` — `BoxShadow(blurRadius: 32, offset: Offset(0,16), color: Colors.black.withOpacity(0.4))` for hero cards.
+- New asset `assets/textures/noise_3pct.png` — 256×256 tileable monochrome noise, 3% opacity overlay via `Opacity + Image.asset(repeat: ImageRepeat.repeat)`.
+- Typography extension in `lib/core/theme/app_theme.dart`:
+  - `heroNumeric` — `fontSize: 56, fontWeight: w900, letterSpacing: -2.0, height: 1.0` (for weight/reps in active logger, LVL number on character sheet).
+  - `heroLabel` — `fontSize: 11, fontWeight: w700, letterSpacing: 2.4, height: 1.0` (for ALL-CAPS section labels: "XP EARNED", "NEW RECORD", "STREAK").
+  - `displayMono` — Roboto Mono 600, used for volume/XP totals in stat chips.
+- Token cleanup: every hardcoded color in `lib/features/**` that is not already from `AppColors` gets migrated. Lint rule (grep-based) added to `scripts/check_hardcoded_colors.sh` and wired into `make analyze`.
 
-One line replacing date subtitle: `[LVL 12] . [14d streak] . [Mon, Apr 7]`
-Daily quest chip (44dp, dismissible) between stat cards and routine list.
+**Acceptance:**
 
-**Observation from B6 smoke (2026-04-16) — factor into 17e scope:** On the `active-plan` home state (Samsung S25 Ultra), the top ~30% of the screen holds the plan counter + hero banner + week strip; the bottom ~70% down to the bottom nav is dead space. `Last: <routine>, Today` is a token text gesture with no data payload. The highest-dopamine moment in a training app is seeing your own work reflected back — right now we don't. When scoping 17e, the daily quest chip + LVL/streak line alone likely will not fill the returning-lifter gap; consider a post-workout recap surface (last-session best-set-per-exercise, trailing 7-day volume, PR-of-the-week) as part of the same pass so XP/streak/quest additions and the recap fill compose into one coherent design rather than two disjoint passes. Anti-generic-AI: do NOT ship a vanilla "Recent workouts" list — whatever lands must feel like RepSaga (dark, bold, data-forward, glance-first).
+- Home, Profile, Active Workout, and Exercise Detail screens all render the new radial gradient background.
+- `grep -r "Color(0x" lib/features` returns 0 hits (all colors go through `AppColors`).
+- Hero numeric typography applied in active logger weight/reps fields and profile LVL badge.
+- Visual diff approved by `ui-ux-critic` — must explicitly state "does not look like a generic AI fitness app."
+
+**Files:**
+
+- Create: `lib/core/theme/surface_treatments.dart`, `assets/textures/noise_3pct.png`, `scripts/check_hardcoded_colors.sh`
+- Modify: `lib/core/theme/app_theme.dart`, `lib/core/theme/app_colors.dart`, every screen scaffold, `pubspec.yaml` (asset registration), `Makefile` (wire color grep into analyze)
+
+**Test plan:**
+
+- **Unit:** `test/unit/core/theme/surface_treatments_test.dart` — verify gradient stops, tint alpha, shadow values.
+- **Widget:** `test/widget/core/theme/hero_typography_test.dart` — golden-ish style assertions (font size/weight/letterSpacing match spec).
+- **E2E:** No new specs — visual-only change, `qa-engineer` runs selector impact assessment per CLAUDE.md. One `@smoke` visual sanity check added to `specs/home.spec.ts`: assert home Scaffold body has the gradient container descendant (role-based, not CSS).
+- **Manual:** Side-by-side screenshot diff (pre/post) attached to PR description.
+
+---
+
+### 17b: XP & Level System + Retroactive Backfill
+
+**Goal:** Ship the data layer that every later sub-phase reads. No UI yet beyond a first-run intro overlay.
+
+**Data model:**
+
+- Migration `supabase/migrations/0028_user_xp.sql`:
+  ```sql
+  create table public.user_xp (
+    user_id uuid primary key references auth.users(id) on delete cascade,
+    total_xp bigint not null default 0,
+    current_level int not null default 1,
+    rank text not null default 'rookie',
+    last_xp_event_id uuid,
+    updated_at timestamptz not null default now()
+  );
+  -- RLS: owner SELECT only; writes happen via `award_xp` RPC (SECURITY DEFINER).
+  create table public.xp_events (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null references auth.users(id) on delete cascade,
+    workout_id uuid references public.workouts(id) on delete cascade,
+    amount int not null check (amount > 0),
+    source text not null check (source in ('workout','pr','quest','comeback','milestone','retro')),
+    breakdown jsonb not null,
+    created_at timestamptz not null default now()
+  );
+  create index on public.xp_events (user_id, created_at desc);
+  ```
+- Migration `0029_retroactive_xp.sql`: SQL procedure `retro_backfill_xp(user_id uuid)` that iterates every completed workout, applies the formula, writes `xp_events (source='retro')`, and updates `user_xp`. Idempotent — rerunnable without duplicating events.
+
+**Domain logic:**
+
+- `XpCalculator.compute(workout, prs)` returns `XpBreakdown{ base, volume, intensity, pr, quest, comeback, total }`.
+- **Formula:** `base(50) + volume(floor(totalKg/500)) + intensity(sum((rpe-5)*10) for rpe>5) + pr(100 heavy / 50 rep) + quest(75) + comeback(x2 multiplier, applied last)`.
+- **Level curve:** `xpForLevel(n) = floor(300 * pow(n, 1.3))`. Precomputed into `kXpCurve` const list for levels 1..100.
+- **Ranks:** Rookie(0) → Iron(2_500) → Copper(10_000) → Silver(25_000) → Gold(60_000) → Platinum(125_000) → Diamond(250_000).
+
+**UI (minimal, first-run only):**
+
+- `SagaIntroOverlay` — one-time full-screen explainer, shown after first retro-backfill completes. Three screens: "Your training is your character" → "XP from every set, PR, quest" → "LVL N — Rank". Dismissible with "Begin". `user_prefs.saga_intro_seen = true` on dismiss.
+
+**Providers:**
+
+- `xpProvider` (AsyncNotifier) — exposes `GamificationSummary{ totalXp, currentLevel, xpIntoLevel, xpToNext, rank }`. Watched by 17d, 17e, 16b (paywall).
+
+**Acceptance:**
+
+- Existing users: after app update, on next launch, `retro_backfill_xp(my_uid)` runs once, inserts N `xp_events` rows with `source='retro'`, `user_xp.total_xp` matches the sum of all breakdowns. Idempotency verified by running twice → same result.
+- `XpCalculator.compute` returns expected breakdown for 12 test-factory workouts (golden file).
+- Level curve is monotonic strictly increasing; LVL 8 ≈ 3,800 XP (achievable in 2–3 sessions with 1 PR).
+- `xpProvider` emits updated state within 500ms of a workout save.
+- First-time user sees `SagaIntroOverlay` exactly once.
+
+**Files:**
+
+- Create: `supabase/migrations/0028_user_xp.sql`, `supabase/migrations/0029_retroactive_xp.sql`, `lib/features/gamification/` (new feature folder: `domain/xp_calculator.dart`, `data/xp_repository.dart`, `providers/xp_provider.dart`, `models/xp_state.dart`, `models/xp_breakdown.dart`, `ui/saga_intro_overlay.dart`)
+- Modify: `lib/features/workouts/data/workouts_repository.dart` (on successful save_workout → enqueue XP award)
+
+**Test plan:**
+
+- **Unit:** `test/unit/features/gamification/xp_calculator_test.dart` — 20+ cases covering base, volume floor, RPE edge (rpe=5 → 0, rpe=10 → 50), PR combinations, comeback multiplier ordering. `test/unit/features/gamification/level_curve_test.dart` — monotonicity, boundary values at LVL 1, 8, 50. `test/unit/features/gamification/xp_repository_test.dart` — mocked Supabase, retro-backfill idempotency.
+- **Widget:** `test/widget/features/gamification/saga_intro_overlay_test.dart` — 3-step navigation, dismiss sets pref, second-launch does not render.
+- **E2E:** New spec `test/e2e/specs/gamification-intro.spec.ts` (tagged `@smoke`) — fresh user completes onboarding, reaches home, sees SagaIntroOverlay, taps through 3 steps, lands on home with LVL 1 placeholder visible. `helpers/selectors.ts` gets `sagaIntroNext`, `sagaIntroBegin`, `lvlBadge`. New test user `sagaIntroUser`.
+- **Migration QA:** `qa-engineer` runs `supabase db push` against a local branch with seed data, confirms retro-backfill populates correctly, then reruns to confirm idempotency. Documented in PR description.
+
+---
+
+### 17a: Celebration Overlay + Active Logger Hardening
+
+**Goal:** Make XP/PRs/level-ups visible and felt. Harden the active logger so the "I'm in the gym with sweaty hands" moment is contrast-strong.
+
+**Celebration Overlay (`CelebrationOverlay`):**
+
+- Full-screen `#0F0F23` @ 0.96 opacity, dismiss on tap.
+- **Sequential zone reveals** (not simultaneous — reveals are what create awe):
+  1. `XpZone` — counter tweens 0 → total over 600ms (ease-out-cubic), color `#FFFFFF60` → `#00E676`. Haptic `HapticFeedback.mediumImpact()` on final value.
+  2. `PrBand` (if any PR) — amber `#FFD54F` band slides in at 900ms, `NEW RECORD` heroLabel, exercise name + new value (kg × reps). Haptic `HapticFeedback.heavyImpact()`.
+  3. `LevelUpZone` (if level changed) — at 1400ms, green radial glow expands from center, scale-punch 0.8 → 1.1 → 1.0 on "LEVEL UP N → N+1" text, rank label if rank changed.
+- Tap-to-dismiss available after the full sequence completes (dismissible flag flips at 1800ms). Tapping earlier skips to end state (all zones visible, no replay).
+- Reused by 17c for comeback bonus: same overlay, `ComebackZone` slides in replacing PrBand.
+
+**Active Logger Hardening (contrast pass, not a new theme):**
+
+- Completed-set row: 6% `#00E676` tint background + bold white text.
+- Set checkbox: 28dp filled green circle with white checkmark when done; outlined circle when pending.
+- Active set row: 2dp `#00E676` left border.
+- Weight/reps input: `heroNumeric` typography (56pt w900). Input fields become the visually dominant element.
+- Finish Workout button: bottom-zone anchored, `#00E676` fill, 64dp tall, heroLabel "FINISH WORKOUT". Replaces current AppBar action.
+- Mid-session PR chip: when a set breaks a PR, `MidSessionPrChip` slides in from top of logger, 3s visible, text "PR! {exercise} {kg}×{reps}" amber, dismiss on tap or timeout. NON-MODAL — does not interrupt logging. Haptic `selectionClick`.
+- `XpAccumulator` — subtle "+ N XP" number that floats up briefly on each set completion (800ms fade, 20dp translate), next to the set row. Not a counter; just a whisper.
+
+**Acceptance:**
+
+- Finishing a workout shows `CelebrationOverlay` with zones revealing in the defined sequence.
+- PR detection in `17b` triggers the PR band.
+- Level-up detection triggers the Level Up zone.
+- Active logger visually distinct vs current build (screenshot diff on PR).
+- Mid-session PR chip fires correctly and does not block the logger.
+- XP accumulator fires on every set tap and does not cause jank (profile: < 2ms per frame).
+
+**Files:**
+
+- Create: `lib/features/gamification/ui/celebration_overlay.dart`, `lib/features/gamification/ui/overlay_zones/xp_zone.dart`, `pr_band.dart`, `level_up_zone.dart`, `comeback_zone.dart` (used by 17c), `lib/features/workouts/ui/widgets/mid_session_pr_chip.dart`, `xp_accumulator.dart`, `set_checkbox.dart` (extracted), `active_set_row_decorations.dart`
+- Modify: `lib/features/workouts/ui/active_workout_screen.dart` (new logger styling, wire chip + accumulator + finish button), `lib/features/workouts/ui/workout_finish_flow.dart` (show overlay after save)
+
+**Test plan:**
+
+- **Unit:** `test/unit/features/gamification/overlay_sequencer_test.dart` — verify zone reveal timing given breakdowns.
+- **Widget:** `test/widget/features/gamification/celebration_overlay_test.dart` — every zone combination (XP only / XP+PR / XP+LVL / XP+PR+LVL / XP+Comeback). `test/widget/features/workouts/active_workout_screen_logger_test.dart` — active set styling, completed set tint, finish button placement.
+- **E2E:** New spec `test/e2e/specs/celebration-overlay.spec.ts` (tagged `@smoke`) — complete a workout → overlay renders → XP counter visible → dismiss → return to home. Regression case: complete a workout that triggers a PR, verify PR band copy. Regression case: simulate level up by pre-seeding XP close to threshold, verify LEVEL UP zone. Selectors added: `celebrationOverlay`, `xpZoneCounter`, `prBandLabel`, `levelUpLabel`, `finishWorkoutButton` (replaces prior). Existing `specs/workouts.spec.ts` updated: all finish-workout paths now assert overlay appears.
+- **Selector migration:** The `FinishWorkout` action moved from AppBar to bottom sheet — `helpers/selectors.ts` and every workouts spec updated. This is a navigation-flow change per CLAUDE.md E2E rules → full suite run required.
+
+---
+
+### 17c: Weekly Streak + Comeback Bonus
+
+**Goal:** Reward consistency without punishment. A missed week never creates shame; a returning user is rewarded.
+
+**Data model:**
+
+- Migration `0030_streaks.sql`:
+  ```sql
+  create table public.user_streaks (
+    user_id uuid primary key references auth.users(id) on delete cascade,
+    current_weeks int not null default 0,
+    longest_weeks int not null default 0,
+    last_active_iso_week text,  -- format: 'YYYY-Www'
+    last_comeback_at timestamptz,
+    updated_at timestamptz not null default now()
+  );
+  ```
+- Procedure `update_streak_on_workout(user_id)` — called from `save_workout` RPC. Computes ISO week; compares to `last_active_iso_week`.
+  - Same week → no change.
+  - Consecutive week → `current_weeks += 1`, update `last_active_iso_week`.
+  - Skipped 1+ weeks AFTER a streak ≥ 2 → trigger **comeback**: set `last_comeback_at = now()`, reset `current_weeks = 1`, flag `xp_events` next workout with `comeback_multiplier=2.0`.
+
+**UI:**
+
+- `WeekStrip` — 7 segments (Mon-Sun), trained=`#00E676`, not-trained=`#2A2A40` (NOT red, NOT empty). Today highlighted with 2dp outline.
+- `StreakBadge` — shown on character sheet (17d) and home line (17e). Format: `{N}w streak` or `—` if 0.
+- `ComebackBanner` — after a comeback is triggered, next time user opens active logger, a non-modal banner at top: "Welcome back. This session earns 2× XP." Dismissible. Shown once per comeback event.
+- Comeback zone in celebration overlay fires on first workout post-comeback.
+
+**Acceptance:**
+
+- Completing first workout of a new ISO week increments streak correctly.
+- Missing a week after a 3-week streak triggers comeback flag, next workout XP doubles and shows comeback zone.
+- WeekStrip reflects current week accurately.
+- No RED color ever appears for missed days. No streak anxiety copy.
+
+**Files:**
+
+- Create: `supabase/migrations/0030_streaks.sql`, `lib/features/gamification/data/streak_repository.dart`, `providers/streak_provider.dart`, `models/streak_state.dart`, `ui/week_strip.dart`, `ui/streak_badge.dart`, `ui/comeback_banner.dart`
+- Modify: `lib/features/gamification/ui/overlay_zones/comeback_zone.dart` (wiring), `save_workout` RPC migration (add streak update call)
+
+**Test plan:**
+
+- **Unit:** `test/unit/features/gamification/iso_week_test.dart`, `streak_calculator_test.dart` — transitions (first week, consecutive, same-week, skip-1, skip-many, comeback trigger, post-comeback reset).
+- **Widget:** `test/widget/features/gamification/week_strip_test.dart` — 7 segments render, today highlighted, correct color map.
+- **E2E:** New spec `test/e2e/specs/streak.spec.ts` (tagged `@smoke`) — test user with seeded prior workout data: opens home, sees streak badge; opens profile, sees week strip with correct segments. Regression: comeback banner renders after simulated skip-week. New test user `streakUser` with fixtures in `fixtures/test-users.ts` seeded via Supabase Admin API. Selectors: `weekStrip`, `weekStripSegment`, `streakBadge`, `comebackBanner`.
+
+---
+
+### 17d: Character Sheet + Milestone Signal
+
+**Goal:** Replace the profile screen's generic list with a character-sheet identity layer. Introduce **milestones as signals**, not badges.
+
+**Identity & layout:**
+
+- Profile URL stays `/profile`. Screen restructured into stacked zones:
+  1. **Character Zone** — LVL badge (heroNumeric 72pt), rank glyph (chemistry symbol: `Rk/Fe/Cu/Ag/Au/Pt/◆`), XP progress bar (8dp, `#00E676` fill, shimmer on recent gain), "X,XXX XP to LVL N+1" caption.
+  2. **Highlights Row** — three stat cards: `Total Volume Lifted`, `Heaviest PR`, `Weeks Trained`. Not a 6-stat radar (that's 18b).
+  3. **Week Strip** — from 17c, labeled "This Week".
+  4. **Milestones List** — vertical list (not grid), capped at 20 entries, newest on top, scrollable. See below.
+  5. **Settings access** — unchanged list, moved to bottom.
+
+**Milestone Signal system:**
+
+- Milestones are **timeline entries**, not collectible artifacts. Each entry:
+  - Geometric mark (single glyph): `▲` first PR, `◆` rank promotion, `≡` streak milestone, `●` quest streak, `◯` workout count milestone.
+  - Date line: `Apr 18, 2026`
+  - Short copy: `First bench PR — 80kg × 5`
+  - No "locked" states. No grid view. No percentage-complete. No shame for anything not yet earned.
+- New table `user_milestones (id, user_id, kind, payload jsonb, achieved_at)`. Detector runs in `MilestoneDetector.evaluate(workout, xp_result, streak_result)` and inserts entries on significant events:
+  - First PR ever.
+  - Rank promotion (Iron, Copper, Silver, Gold, Platinum, Diamond).
+  - Streak thresholds: 4w, 12w, 26w, 52w.
+  - Quest-completion streaks (from 18a): 4w, 12w.
+  - Workout count thresholds: 10, 50, 100, 250, 500.
+- Recent milestones (last 3) surface as a "Recent" sub-block in the profile header; the rest scroll in the list.
+
+**Acceptance:**
+
+- Profile screen renders all zones in the stated order.
+- Rank glyph uses chemistry symbols; no ambiguity (Rookie=`Rk`, Iron=`Fe`, Copper=`Cu`, Silver=`Ag`, Gold=`Au`, Platinum=`Pt`, Diamond=`◆`).
+- Milestones insert exactly once per trigger (no duplicates on repeated PRs of the same exercise+weight+reps).
+- Milestone list does not render a grid/matrix under any state.
+- Existing "Profile" E2E flows still pass after restructure; selectors migrate.
+
+**Files:**
+
+- Create: `supabase/migrations/0031_milestones.sql`, `lib/features/gamification/domain/milestone_detector.dart`, `providers/milestones_provider.dart`, `models/milestone.dart`, `lib/features/profile/ui/widgets/character_zone.dart`, `identity_block.dart`, `highlights_row.dart`, `milestone_card.dart`, `milestones_list.dart`, `rank_glyph.dart`
+- Modify: `lib/features/profile/ui/profile_screen.dart` (full restructure), `save_workout` RPC (hook milestone detector)
+
+**Test plan:**
+
+- **Unit:** `test/unit/features/gamification/milestone_detector_test.dart` — every trigger kind, duplicate-guard, payload shape. `test/unit/features/gamification/rank_glyph_test.dart` — rank → symbol mapping.
+- **Widget:** `test/widget/features/profile/character_zone_test.dart`, `milestones_list_test.dart` — renders vertical list only, honors cap, newest-first order, no grid state possible.
+- **E2E:** Existing `specs/profile.spec.ts` updated wholesale (prior selectors removed, new zones asserted). New tests: `should render LVL badge with rank glyph`, `should render milestones as vertical list`, `should not render milestones as grid` (negative assertion). Selectors: `lvlBadge`, `rankGlyph`, `xpProgressBar`, `highlightsRow`, `milestonesList`, `milestoneCard`. Full suite run required — this restructures profile navigation.
+
+---
+
+### 17e: Home Recap + First-Week Quest Stub + LVL Line
+
+**Goal:** Close the "returning lifter sees their own work" gap. Fill home dead zone.
+
+**Home subtitle line (replaces date-only subtitle):**
+
+- Format: `[LVL 12]  ·  [14w streak]  ·  Mon, Apr 7`
+- `LastSessionLine` (current ghost file) is **deleted** — replaced by the recap card below.
+- Heights: LVL pill 24dp, separator middot, streak pill 24dp, date text. `heroLabel` typography for the two pills.
+
+**Last Session Recap card (new, anchored below stat cards):**
+
+- `LastSessionRecapCard` — single card, full-width minus 16dp padding.
+- Contents:
+  - Eyebrow: `LAST SESSION  ·  2 DAYS AGO` (heroLabel, muted).
+  - Headline: routine name or `Freestyle` + duration.
+  - Three best-set chips: top 3 sets by estimated 1RM from the session. Chip format: `Bench  80kg × 5`.
+  - Footer: trailing-7d volume delta (`+ 12% vs last week`, green if positive, neutral if flat, muted grey if negative — NEVER red).
+- Tap → opens the session in `/home/history/:workoutId`.
+- Empty state: when user has never logged, card shows `Your saga starts with the first rep.` + prominent "Start a workout" button.
+
+**First-Week Quest (stub, zero-schema):**
+
+- Hardcoded consistency quest for the trial window: "Train 3 times this week — 150 XP bonus."
+- Rendered as `QuestChip` (44dp, `#00E676` border, dismissible on completion only), anchored between stat cards and routine list.
+- Progress computed client-side from `workouts` table filtered to current ISO week. No DB column added — 18a replaces this with full engine.
+
+**Acceptance:**
+
+- Home subtitle shows LVL/streak/date line correctly.
+- Recap card shows accurate best-sets from the latest workout.
+- Empty state renders for first-time users.
+- Quest chip progress reflects ISO-week workout count, dismissible only after target hit, persists across app launches (completion logged to `xp_events` with `source='quest'`).
+- `LastSessionLine` is deleted from the codebase (`grep "LastSessionLine" lib/` returns 0).
+
+**Files:**
+
+- Create: `lib/features/workouts/ui/widgets/last_session_recap_card.dart`, `best_set_chip.dart`, `volume_delta_badge.dart`, `lib/features/gamification/ui/quest_chip.dart`, `lib/features/gamification/domain/first_week_quest.dart`
+- Modify: `lib/features/home/ui/home_screen.dart` (subtitle, inject recap card, inject quest chip)
+- Delete: `lib/features/workouts/ui/widgets/last_session_line.dart`
+
+**Test plan:**
+
+- **Unit:** `test/unit/features/workouts/best_set_selector_test.dart` — picks top 3 by estimated 1RM, ties broken by timestamp. `test/unit/features/gamification/first_week_quest_test.dart` — progress math, ISO-week boundary.
+- **Widget:** `test/widget/features/home/last_session_recap_card_test.dart` — populated, empty, and loading states. `test/widget/features/gamification/quest_chip_test.dart` — progress visual, dismiss-after-completion.
+- **E2E:** New spec `test/e2e/specs/quests.spec.ts` (tagged `@smoke`) — seed user with 0/1/2/3 weekly workouts, verify chip progress; complete third workout, verify chip flips to done state and XP event inserted. Update `specs/home.spec.ts` — assert subtitle format, assert recap card visible, assert quest chip visible. Selectors: `homeSubtitle`, `lvlPill`, `streakPill`, `lastSessionRecapCard`, `bestSetChip`, `questChip`, `questChipProgress`. New test user `questUser`.
+- **Flow-change classification:** Home layout adds new interactive elements (recap card tap, quest chip) → full E2E suite run required per CLAUDE.md.
 
 ---
 
 ## Phase 18: Gamification Advanced
 
-### 18a: Weekly Smart Quests (Phase 3)
+### 18a: Weekly Smart Quests (engine + localized pool)
 
-3 auto-generated per week: one improvement, one exploration, one consistency. Never expire with failure state. Completion gives bonus XP, never access to core features.
+**Goal:** Replace 17e's hardcoded first-week quest with a full three-quest-per-week engine.
 
-New schema: `quests` table (`user_id`, `week`, `type`, `target`, `completed_at`).
+**Data model:**
 
-### 18b: Training Stats Panel (Phase 4)
+- Migration `0032_weekly_quests.sql`:
+  ```sql
+  create table public.weekly_quests (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null references auth.users(id) on delete cascade,
+    iso_week text not null,  -- 'YYYY-Www'
+    quest_key text not null,  -- references quest_pool.json key
+    quest_type text not null check (quest_type in ('consistency','improvement','exploration')),
+    target_json jsonb not null,
+    progress_json jsonb not null default '{}'::jsonb,
+    completed_at timestamptz,
+    created_at timestamptz not null default now(),
+    unique (user_id, iso_week, quest_type)
+  );
+  create index on public.weekly_quests (user_id, iso_week);
+  ```
+- Migration `0033_weekly_quests_cron.sql` — pg_cron job `generate_weekly_quests` runs Monday 03:00 UTC per user based on `user_prefs.timezone`. Uses Vault secret for Edge Function auth (same pattern as Phase 16 reconciler).
 
-Six stats computed from real workout data:
-- Strength (`#FF6B6B`), Endurance (`#40C4FF`), Power (`#FF9F43`), Consistency (`#00E676`), Volume (`#9B8DFF`), Mobility (`#26C6DA`)
+**Quest pool:**
 
-Hexagonal radar chart on profile (`CustomPaint`). Animates once on mount. Below chart: 2x3 grid of stat chips.
+- `assets/quests/quest_pool.json` — hand-authored, localized (en, pt-BR). Each entry: `{ key, type, title_l10n, description_l10n, target_schema, xp_reward }`.
+- 18 quests minimum: 6 consistency, 6 improvement, 6 exploration. Examples: `consistency_3x_week`, `improvement_bench_add_2_5kg`, `exploration_try_new_exercise`.
+- Engine picks 1 per type, weighted by recency (don't repeat last week's), constrained by user history (don't assign "add 2.5kg to bench" if they've never benched).
 
-### Anti-Patterns (Explicitly Banned)
+**UI:**
 
-Confetti, streak flames/emoji, badge walls, multiple progress bars on home, level-gated features, push notification streak anxiety, XP in persistent header, animated badges, global leaderboards, punitive daily streaks, class XP multipliers, social infrastructure.
+- Quest chip from 17e extends to render up to 3 chips (horizontal scroll if narrow).
+- Tap chip → quest detail sheet (title, description, progress, XP reward). Dismiss-on-complete animation = small green check + `+75 XP` fly-up.
+
+**Acceptance:**
+
+- Monday 03:00 local time (per user timezone), 3 quests auto-generated for the upcoming ISO week.
+- Same quest never assigned two weeks in a row.
+- Improvement/exploration quests respect user history constraints.
+- Quest completion awards XP via `xp_events (source='quest')`.
+- Localization: pt-BR users see Portuguese quest copy.
+- 17e's hardcoded first-week quest is removed; engine takes over.
+
+**Files:**
+
+- Create: `supabase/migrations/0032_weekly_quests.sql`, `0033_weekly_quests_cron.sql`, `supabase/functions/generate-weekly-quests/index.ts`, `assets/quests/quest_pool.json`, `lib/features/gamification/data/quests_repository.dart`, `providers/quests_provider.dart`, `domain/quest_generator.dart`, `models/quest.dart`, `ui/quest_chip_row.dart`, `ui/quest_detail_sheet.dart`
+- Modify: `lib/features/home/ui/home_screen.dart` (replace stub chip with chip row), delete `lib/features/gamification/domain/first_week_quest.dart`
+- l10n: new keys in `lib/l10n/app_en.arb`, `lib/l10n/app_pt.arb`
+
+**Test plan:**
+
+- **Unit:** `test/unit/features/gamification/quest_generator_test.dart` — constraint handling, no-repeat rule, type distribution. `quest_progress_test.dart` — progress evaluation per type.
+- **Widget:** `test/widget/features/gamification/quest_chip_row_test.dart`, `quest_detail_sheet_test.dart`.
+- **E2E:** Extend `specs/quests.spec.ts` — 3-chip layout, detail sheet open/close, completion flow. Add pt-BR locale case. Selectors: `questChipRow`, `questChipN` (N=0/1/2), `questDetailSheet`, `questXpReward`.
+- **Cron QA:** `qa-engineer` documents Monday-morning verification procedure (trigger cron manually against staging, verify inserts).
+
+---
+
+### 18b: Training Stats Panel (radar)
+
+**Goal:** Long-tail stat visualization. Six stats normalized to personal best.
+
+**Stats (each 0–100, normalized per-user):**
+
+- Strength (`#FF6B6B`) — max PR trend.
+- Endurance (`#40C4FF`) — rep volume per session trend.
+- Power (`#FF9F43`) — heavy-set recent frequency.
+- Consistency (`#00E676`) — streak + weekly frequency.
+- Volume (`#9B8DFF`) — total kg trend.
+- Mobility (`#26C6DA`) — movement pattern diversity (unique exercises / month).
+
+**UI:**
+
+- `TrainingStatsPanel` — initially collapsed on profile. Expand reveals hexagonal `CustomPaint` radar chart + 2×3 grid of stat chips. Animates once per mount (600ms ease-out).
+- Each chip tap → brief explanation sheet (stat definition, current value, trend arrow).
+
+**Acceptance:**
+
+- Radar chart geometry correct: 6 equal-angle vertices, filled polygon, concentric guide rings at 25/50/75/100.
+- Stats computed from actual workout data; re-calculated on workout save.
+- Collapsed by default on profile; user must expand.
+- No population-relative comparisons, only personal-best normalization.
+- 60fps animation (profile golden-path jank-free).
+
+**Files:**
+
+- Create: `lib/features/gamification/ui/training_stats_panel.dart`, `stat_radar_painter.dart`, `stat_chip.dart`, `stat_explanation_sheet.dart`, `lib/features/gamification/domain/stat_calculator.dart`, `providers/stats_provider.dart`, `models/training_stats.dart`
+- Modify: `lib/features/profile/ui/profile_screen.dart` (inject collapsed panel)
+
+**Test plan:**
+
+- **Unit:** `test/unit/features/gamification/stat_calculator_test.dart` — one test per stat, boundary cases (new user → 0s; PR user → 100 on Strength).
+- **Widget:** `test/widget/features/gamification/training_stats_panel_test.dart` — collapsed default, expand interaction, 6-axis geometry, no population comparisons present in copy.
+- **E2E:** Extend `specs/profile.spec.ts` — expand panel, verify radar renders, tap stat chip → sheet opens. Selectors: `statsPanelExpand`, `statRadar`, `statChip{Name}`, `statExplanationSheet`.
+
+---
+
+### Anti-Patterns (Explicitly Banned — 25 items)
+
+1. Confetti or particle spam.
+2. Streak flames or emoji (🔥, 💪, 🏆, etc.) — geometric marks only.
+3. Badge walls / grid collections — milestones are a vertical timeline, capped at 20.
+4. Locked badge states ("earn this!") — nothing ever shows locked progress visuals.
+5. Multiple progress bars on home — LVL line only.
+6. Level-gated features — every feature is available at LVL 1.
+7. Push notification streak anxiety — no nudges "don't lose your streak."
+8. XP in persistent header — XP lives on profile and in celebration overlay only.
+9. Animated badges / shimmering collectibles.
+10. Global leaderboards — no population comparisons in v1.
+11. Punitive daily streaks — weeks only, and missing never punishes.
+12. Class XP multipliers — no class system in v1 (deferred to Phase 19).
+13. Social infrastructure — no friends/feeds in v1.
+14. RED color for missed days (week strip neutral grey only).
+15. Loot boxes / pure-chance rewards — all rewards tied to real behavior.
+16. Time-pressure "daily quest resets in 4h" copy — quests are weekly, expire gracefully.
+17. Fake urgency banners ("Only today!") in gamification surfaces.
+18. Population-relative stats ("you're stronger than 80% of users") — personal-best only.
+19. "Paywall tease" framing of gamification — every XP/LVL/quest works on free trial.
+20. Generic Material list views for milestones or quests — must use bespoke typography + chrome.
+21. Hardcoded colors outside `AppColors` — lint-enforced in 17.0.
+22. Overlays that block logging — celebration fires post-save, mid-session chips are non-modal.
+23. Vanilla "Recent workouts" list on home — recap card is bespoke, data-forward.
+24. Features behind purely cosmetic "level requirements."
+25. Any retention mechanic that lies to the user ("LVL 5 unlocks!" when it doesn't).
 
 ---
 
