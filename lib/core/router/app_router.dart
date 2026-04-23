@@ -288,10 +288,10 @@ class _ShellScaffold extends ConsumerWidget {
                 identifier: 'nav-home',
                 child: NavigationDestination(
                   icon: const _PixelNavIcon(
-                    'assets/pixel/nav/home_inactive.png',
+                    assetPath: 'assets/pixel/nav/home_inactive.png',
                   ),
                   selectedIcon: const _PixelNavIcon(
-                    'assets/pixel/nav/home_active.png',
+                    assetPath: 'assets/pixel/nav/home_active.png',
                   ),
                   label: AppLocalizations.of(context).navHome,
                   tooltip: '',
@@ -302,10 +302,10 @@ class _ShellScaffold extends ConsumerWidget {
                 identifier: 'nav-exercises',
                 child: NavigationDestination(
                   icon: const _PixelNavIcon(
-                    'assets/pixel/nav/exercises_inactive.png',
+                    assetPath: 'assets/pixel/nav/exercises_inactive.png',
                   ),
                   selectedIcon: const _PixelNavIcon(
-                    'assets/pixel/nav/exercises_active.png',
+                    assetPath: 'assets/pixel/nav/exercises_active.png',
                   ),
                   label: AppLocalizations.of(context).navExercises,
                   tooltip: '',
@@ -316,10 +316,10 @@ class _ShellScaffold extends ConsumerWidget {
                 identifier: 'nav-routines',
                 child: NavigationDestination(
                   icon: const _PixelNavIcon(
-                    'assets/pixel/nav/routines_inactive.png',
+                    assetPath: 'assets/pixel/nav/routines_inactive.png',
                   ),
                   selectedIcon: const _PixelNavIcon(
-                    'assets/pixel/nav/routines_active.png',
+                    assetPath: 'assets/pixel/nav/routines_active.png',
                   ),
                   label: AppLocalizations.of(context).navRoutines,
                   tooltip: '',
@@ -330,10 +330,10 @@ class _ShellScaffold extends ConsumerWidget {
                 identifier: 'nav-profile',
                 child: NavigationDestination(
                   icon: const _PixelNavIcon(
-                    'assets/pixel/nav/profile_inactive.png',
+                    assetPath: 'assets/pixel/nav/profile_inactive.png',
                   ),
                   selectedIcon: const _PixelNavIcon(
-                    'assets/pixel/nav/profile_active.png',
+                    assetPath: 'assets/pixel/nav/profile_active.png',
                   ),
                   label: AppLocalizations.of(context).navProfile,
                   tooltip: '',
@@ -428,7 +428,7 @@ class _ActiveWorkoutBanner extends ConsumerWidget {
 /// already exposes its own label to the accessibility tree; the icon is
 /// decorative at that layer.
 class _PixelNavIcon extends StatelessWidget {
-  const _PixelNavIcon(this.assetPath);
+  const _PixelNavIcon({required this.assetPath});
 
   final String assetPath;
 

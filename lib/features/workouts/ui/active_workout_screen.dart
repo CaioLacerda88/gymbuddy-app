@@ -550,7 +550,13 @@ class _LoadingOverlayState extends ConsumerState<_LoadingOverlay> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        const ModalBarrier(dismissible: false, color: Colors.black54),
+        // Scrim over the active-workout surface while the overlay loads.
+        // Palette has no near-black token, so we use deepVoid (#0D0319) at
+        // ~54% alpha as the dim-out layer.
+        ModalBarrier(
+          dismissible: false,
+          color: AppColors.deepVoid.withValues(alpha: 0.54),
+        ),
         Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,

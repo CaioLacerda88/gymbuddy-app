@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:repsaga/core/theme/app_theme.dart';
 import 'package:repsaga/shared/widgets/pixel_image.dart';
 
 void main() {
@@ -64,7 +65,7 @@ void main() {
               semanticLabel: 'check',
               width: 24,
               height: 24,
-              color: Color(0xFF00FF00),
+              color: AppColors.emeraldGreen,
             ),
           ),
         ),
@@ -73,7 +74,7 @@ void main() {
       final image = tester.widget<Image>(find.byType(Image));
       expect(image.width, 24);
       expect(image.height, 24);
-      expect(image.color, const Color(0xFF00FF00));
+      expect(image.color, AppColors.emeraldGreen);
     });
 
     testWidgets(

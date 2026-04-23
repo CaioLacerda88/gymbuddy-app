@@ -50,6 +50,8 @@ class PixelPanel extends StatelessWidget {
 
     return DecoratedBox(
       // Outer: 1-px black outline.
+      // True black (#000000) — the 20-token palette has no pure-black token;
+      // deepVoid (#0D0319) is intentionally slightly purple.
       decoration: BoxDecoration(
         border: Border.all(color: Colors.black, width: 1),
       ),
