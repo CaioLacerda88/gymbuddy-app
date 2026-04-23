@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/radii.dart';
 import '../../../../l10n/app_localizations.dart';
 
@@ -41,8 +42,8 @@ class RoutineChip extends StatelessWidget {
 
   final VoidCallback? onTap;
 
-  static const _doneColor = Color(0xFF00E676);
-  static const _cardColor = Color(0xFF232340);
+  static const _doneColor = AppColors.emeraldGreen;
+  static const _cardColor = AppColors.stoneViolet;
 
   @override
   Widget build(BuildContext context) {

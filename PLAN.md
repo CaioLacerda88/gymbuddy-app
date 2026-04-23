@@ -60,7 +60,7 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 16b | Client integration + paywall UI + onboarding rewire | DEFERRED | - |
 | 16c | Hard gate enforcement + router guard + E2E refactor | DEFERRED | - |
 | 16d | Analytics + hardening + launch-readiness checklist | DEFERRED | - |
-| 17.0 | Visual Language Foundation (theme tokens, gradients, hero typography) | NEXT | - |
+| 17.0 | Visual Language Foundation (pixel-art: nav, exercises, splash wired; palette + pixel font) | NEXT | - |
 | 17b | XP & Level System + Retroactive Backfill | TODO | - |
 | 17a | Celebration Overlay + Active Logger Hardening | TODO | - |
 | 17c | Weekly Streak + Comeback Bonus | TODO | - |
@@ -1050,39 +1050,94 @@ Then Phase 18 (Quests engine, Stats radar) extends without reworking foundation.
 
 ### 17.0: Visual Language Foundation
 
-**Goal:** Replace the current flat `#232340` surface with a layered, atmospheric, gym-native visual identity so nothing built after this point looks like a generic AI-assembled fitness app.
+**Goal:** Replace Material iconography + generic dark theme with a pixel-art visual system built on 63 pre-generated PNG assets (see `tasks/mockups/chatgpt-pixel-art-prompt.md` §7 for the full catalog). After 17.0, two seconds of a screenshot must read as "RepSaga, a gym RPG," not "yet another AI-assembled fitness app." 17.0 wires the foundation (palette + pixel font + pixel-art widget primitives + nav/exercises/splash swaps); later sub-phases (17a, 17b, 17c, 17d, 17e, 18a, 18b) consume the rest of the asset library.
 
-**Scope (no feature logic; pure theme):**
+**Scope (foundation + 3 high-visibility surface swaps — no game logic):**
 
-- New file `lib/core/theme/surface_treatments.dart`:
-  - `kSurfaceGradient` — radial gradient, center `Alignment(-0.4, -0.6)`, inner `#1A1B2E`, outer `#0F0F23`. Applied behind every screen body (wrap `Scaffold.body`).
-  - `kAmbientGreenTint` — radial overlay, 6% `#00E676` alpha, top-right, used on workout-active + celebration surfaces only.
-  - `kDepthShadow` — `BoxShadow(blurRadius: 32, offset: Offset(0,16), color: Colors.black.withOpacity(0.4))` for hero cards.
-- New asset `assets/textures/noise_3pct.png` — 256×256 tileable monochrome noise, 3% opacity overlay via `Opacity + Image.asset(repeat: ImageRepeat.repeat)`.
-- Typography extension in `lib/core/theme/app_theme.dart`:
-  - `heroNumeric` — `fontSize: 56, fontWeight: w900, letterSpacing: -2.0, height: 1.0` (for weight/reps in active logger, LVL number on character sheet).
-  - `heroLabel` — `fontSize: 11, fontWeight: w700, letterSpacing: 2.4, height: 1.0` (for ALL-CAPS section labels: "XP EARNED", "NEW RECORD", "STREAK").
-  - `displayMono` — Roboto Mono 600, used for volume/XP totals in stat chips.
-- Token cleanup: every hardcoded color in `lib/features/**` that is not already from `AppColors` gets migrated. Lint rule (grep-based) added to `scripts/check_hardcoded_colors.sh` and wired into `make analyze`.
+#### A. Design tokens (replaces old radial-gradient spec entirely)
+
+- Extend `lib/core/theme/app_theme.dart` → `AppColors` with the **20 locked RepSaga palette tokens**: `deepVoid` (#0D0319), `duskPurple` (#2A0E4A), `stoneViolet` (#3A1466), `arcaneIndigo` (#6A2FA8), `arcanePurple` (#8A3DC1), `glowLavender` (#B36DFF), `ironGrey` (#4A4560), `stoneGrey` (#6A6585), `emberShadow` (#2A1A0F), `bronzeShadow` (#7A4D00), `oldGold` (#D9B864), `questGold` (#FFB800), `hotGold` (#FFD54F), `creamLight` (#FFF1B8), `parchment` (#F3E6C6), `emeraldGreen` (#3EC46D), `skyBlue` (#3BB0E6), `iceBlue` (#7FD1F2), `hazardRed` (#E03A3A), `pureWhite` (#FFFFFF). Existing screen usages that reference `AppColors.primary`/`surface`/etc. get mapped to palette tokens (`primary → arcanePurple`, `surface → duskPurple`, etc.).
+- Scrap all dead radial-gradient tokens from the v1 spec — `kSurfaceGradient`, `kAmbientGreenTint`, `kDepthShadow`, `SurfaceBackground`, `noise_3pct.png` are **not built**. Pixel art is its own atmosphere; gradient tokens are obsolete.
+- Add **Press-Start-2P** (Google Fonts, OFL — ships in the repo under `assets/fonts/press_start_2p/`). Register in `pubspec.yaml` fonts section.
+- Add two `TextStyle`s to `AppTextStyles` using Press-Start-2P:
+  - `pixelHero` — `fontSize: 32, height: 1.0, letterSpacing: 0` (for LVL numbers, "NEW RECORD" overlay text, level-up banners — integer sizes only; Press-Start-2P looks crisp at 8/16/24/32pt, blurry at fractional sizes).
+  - `pixelLabel` — `fontSize: 10, height: 1.0, letterSpacing: 0` (for small chip labels, streak-count badges, XP counters).
+  - Body/title typography stays on the existing Inter/Roboto stack — pixel fonts are unreadable for paragraphs. Press-Start-2P is a *moment* font, not a base font.
+- `scripts/check_hardcoded_colors.sh` (grep-based lint) added and wired into `make analyze`; existing violations in `lib/features/**` migrated to palette tokens.
+
+#### B. Pixel-art widget primitives
+
+- **`lib/shared/widgets/pixel_image.dart`** — thin `Image.asset` wrapper that bakes in `filterQuality: FilterQuality.none` + `fit: BoxFit.contain` + a `semanticLabel` required parameter. Every pixel asset in the app is loaded via this widget; no raw `Image.asset` calls allowed for `assets/pixel/**`. Nearest-neighbor is the whole point of shipping pixel art — using bilinear blurs it.
+- **`lib/shared/widgets/pixel_panel.dart`** — bordered container for celebration overlays + empty states + hero cards. 1-px `#000000` outer outline, 1-px `#8A3DC1` inner sub-outline, `#0D0319`/`#2A0E4A` fill, configurable child. No corner frame asset (CSS-equivalent `Container` decoration handles it — `assets/pixel/frame/panel_corner.png` is skipped).
+
+#### C. Asset registration + model migration
+
+- `pubspec.yaml` asset registration: 11 folders under `assets/pixel/` (branding, nav, ranks, milestones, stats, quests, celebration, micro, story, muscle, equipment) + the new fonts folder. All 63 PNGs load via `PixelImage`.
+- Migrate `MuscleGroup.icon` (returns `IconData`) → `MuscleGroup.iconPath` (returns `String` asset path like `assets/pixel/muscle/chest.png`). Same for `EquipmentType.icon` → `iconPath`. Update every call site (exercise list row, filter chips, create-exercise form).
+
+#### D. Three user-visible surface swaps (17.0 ships these; everything else deferred to later sub-phases)
+
+1. **Splash / launch screen** — swap the current splash graphic for `branding/repsaga_wordmark.png` rendered via `PixelImage`. Background = `deepVoid` (#0D0319).
+2. **Bottom nav bar (5 tabs)** — replace Material icons with the 10 pixel nav PNGs (`nav/home_{active,inactive}.png`, etc.). Active tab shows the aura variant; inactive shows monochrome. 48dp icon size. Label text stays below via current Flutter `BottomNavigationBar`; only the icon swaps.
+3. **Exercise list + filter chips** — replace `Icons.fitness_center` / `Icons.directions_walk` / etc. with the 14 muscle + equipment PNGs via `PixelImage`. 24dp in list rows (left gutter), 20dp in filter chips (leading).
+
+#### E. What 17.0 does NOT touch (explicit deferrals)
+
+- **Nav active-tab aura animation** — pulse/glow animation deferred to polish follow-up; 17.0 ships static active/inactive swap only.
+- **Ranks (7), milestones (6), stats (6), quests (3), celebration (4), micro (8), story (3)** — all 37 remaining assets are **registered** in pubspec so tech-lead can verify loading, but **not wired into UI**. Consumption schedule:
+  - 17a → `celebration/{level_up,pr,comeback,milestone}.png`, `micro/{hp_heart,xp_crystal,check}.png`
+  - 17b → `micro/xp_crystal.png`
+  - 17c → `micro/streak_glyph.png`, `celebration/comeback.png`
+  - 17d → `ranks/*.png` (7), `milestones/*.png` (6), `micro/locked.png`
+  - 17e → `story/*.png` (3), `micro/quest_marker.png`, `micro/empty_tavern.png`
+  - 18a → `quests/*.png` (3), `micro/coin.png`
+  - 18b → `stats/*.png` (6)
+- **Hero-numeric in active logger (heroNumeric 56pt w900)** — deferred to 17a (celebration overlay's home screen). Active logger weight/reps input is NOT retyped in 17.0 — typography change + layout change is 17a's scope.
+- **Old `displayMono` / `heroLabel` styles** — not built; pixel font replaces the role.
 
 **Acceptance:**
 
-- Home, Profile, Active Workout, and Exercise Detail screens all render the new radial gradient background.
-- `grep -r "Color(0x" lib/features` returns 0 hits (all colors go through `AppColors`).
-- Hero numeric typography applied in active logger weight/reps fields and profile LVL badge.
-- Visual diff approved by `ui-ux-critic` — must explicitly state "does not look like a generic AI fitness app."
+- All 63 saved pixel PNGs appear in `assets/pixel/**` and are registered in `pubspec.yaml`. `flutter pub get` succeeds.
+- Press-Start-2P font files ship under `assets/fonts/press_start_2p/` and load (verified by rendering sample text in widget test).
+- `AppColors` exposes all 20 locked palette tokens; `grep -rE "Color\(0x" lib/features/` returns 0 hits; `scripts/check_hardcoded_colors.sh` exits 0; CI invokes it via `make analyze`.
+- `PixelImage` + `PixelPanel` exist with unit/widget tests; `FilterQuality.none` is verified via widget test inspection (mock `Image.asset` and assert filter quality arg).
+- Android app launches → splash shows the wordmark PNG (not the old flutter_launcher_icons default).
+- Bottom nav bar shows pixel active/inactive icons on all 5 tabs; tapping a tab swaps which icon is "active" (aura variant). Visual diff: tap each tab on device → correct active icon renders.
+- Exercise list (scroll the Exercises tab) shows pixel muscle + equipment icons in each row — zero Material icon instances visible. Filter chips at the top use pixel muscle/equipment icons.
+- `MuscleGroup.iconPath` + `EquipmentType.iconPath` return valid asset paths for every enum value; the old `IconData` getters are removed.
+- `make ci` passes end-to-end (format, analyze, test, android-debug-build).
+- `ui-ux-critic` review verdict must explicitly state: **"this is distinctively RepSaga, not generic AI"** (before/after screenshot diff in PR description).
+- All E2E tests still pass after selector impact assessment + targeted updates (nav structure unchanged, but icon-dependent selectors might have shifted).
 
 **Files:**
 
-- Create: `lib/core/theme/surface_treatments.dart`, `assets/textures/noise_3pct.png`, `scripts/check_hardcoded_colors.sh`
-- Modify: `lib/core/theme/app_theme.dart`, `lib/core/theme/app_colors.dart`, every screen scaffold, `pubspec.yaml` (asset registration), `Makefile` (wire color grep into analyze)
+- **Create:**
+  - `lib/shared/widgets/pixel_image.dart`
+  - `lib/shared/widgets/pixel_panel.dart`
+  - `assets/fonts/press_start_2p/PressStart2P-Regular.ttf` (downloaded from Google Fonts, OFL license file included)
+  - `scripts/check_hardcoded_colors.sh`
+  - `test/unit/core/theme/palette_tokens_test.dart`
+  - `test/widget/shared/widgets/pixel_image_test.dart`
+  - `test/widget/shared/widgets/pixel_panel_test.dart`
+- **Modify:**
+  - `lib/core/theme/app_theme.dart` — add 20 palette tokens + 2 pixel text styles + wire Press-Start-2P
+  - `lib/features/exercises/models/exercise.dart` — remove `IconData get icon` from `MuscleGroup` + `EquipmentType`, add `String get iconPath`
+  - `lib/features/exercises/ui/exercise_list_screen.dart` — swap icon render to `PixelImage`
+  - `lib/features/exercises/ui/create_exercise_screen.dart` — same
+  - `lib/features/workouts/ui/widgets/exercise_picker_sheet.dart` — same (if it renders the muscle/equipment icon)
+  - `lib/core/router/app_router.dart` (or wherever bottom nav is configured) — swap Material nav icons for `PixelImage` variants
+  - `lib/features/auth/ui/splash_screen.dart` — render `branding/repsaga_wordmark.png` via `PixelImage`
+  - `pubspec.yaml` — register 11 asset folders + Press-Start-2P font
+  - `Makefile` — wire `scripts/check_hardcoded_colors.sh` into `analyze` target
+  - `test/e2e/helpers/selectors.ts` — update any selectors that depend on Material icon `aria-label`s (exercise list rows, nav tabs, filter chips)
 
 **Test plan:**
 
-- **Unit:** `test/unit/core/theme/surface_treatments_test.dart` — verify gradient stops, tint alpha, shadow values.
-- **Widget:** `test/widget/core/theme/hero_typography_test.dart` — golden-ish style assertions (font size/weight/letterSpacing match spec).
-- **E2E:** No new specs — visual-only change, `qa-engineer` runs selector impact assessment per CLAUDE.md. One `@smoke` visual sanity check added to `specs/home.spec.ts`: assert home Scaffold body has the gradient container descendant (role-based, not CSS).
-- **Manual:** Side-by-side screenshot diff (pre/post) attached to PR description.
+- **Unit:** `palette_tokens_test.dart` asserts each of the 20 palette tokens is the expected hex. `pixel_image_test.dart` asserts the widget forwards `filterQuality: FilterQuality.none` (via a custom test double or by wrapping `Image.asset` verification).
+- **Widget:** `pixel_image_test.dart` renders the widget with a test asset and asserts `semanticLabel` reaches `Image`. `pixel_panel_test.dart` asserts the 1-px double-outline border structure (outer black, inner purple). `exercise_list_pixel_icon_test.dart` asserts the list row uses `PixelImage` for every `MuscleGroup` enum value and that the path resolves (loaded via `AssetImage`).
+- **E2E:** This is a UX flow change (nav icons + exercise list visuals both changed) → per CLAUDE.md, **full E2E suite must pass locally before PR**. Selector impact assessment in `qa-engineer` pass. New `@smoke` assertion in `specs/home.spec.ts`: bottom nav renders 5 icons. New `@smoke` assertion in `specs/exercises.spec.ts`: filter chips render pixel icons (role + name based, no CSS/DOM-style assertion).
+- **Manual:** Before/after screenshot diff attached to the PR description — splash, home nav, exercise list. `ui-ux-critic` review verdict quoted in the PR.
+- **Migration QA:** `qa-engineer` confirms no `IconData` imports remain in `exercise.dart`; confirms pixel icons visible on Android device via `flutter run -d android`.
 
 ---
 

@@ -14,6 +14,7 @@ format:
 
 analyze:
 	dart analyze --fatal-infos
+	bash scripts/check_hardcoded_colors.sh
 
 test:
 	flutter test

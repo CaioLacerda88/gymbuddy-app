@@ -35,6 +35,7 @@ import '../../features/routines/models/routine.dart';
 import '../../features/workouts/ui/workout_history_screen.dart';
 import '../../shared/widgets/legal_doc_screen.dart';
 import '../../shared/widgets/offline_banner.dart';
+import '../../shared/widgets/pixel_image.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -286,7 +287,12 @@ class _ShellScaffold extends ConsumerWidget {
                 container: true,
                 identifier: 'nav-home',
                 child: NavigationDestination(
-                  icon: const Icon(Icons.home),
+                  icon: const _PixelNavIcon(
+                    'assets/pixel/nav/home_inactive.png',
+                  ),
+                  selectedIcon: const _PixelNavIcon(
+                    'assets/pixel/nav/home_active.png',
+                  ),
                   label: AppLocalizations.of(context).navHome,
                   tooltip: '',
                 ),
@@ -295,7 +301,12 @@ class _ShellScaffold extends ConsumerWidget {
                 container: true,
                 identifier: 'nav-exercises',
                 child: NavigationDestination(
-                  icon: const Icon(Icons.fitness_center),
+                  icon: const _PixelNavIcon(
+                    'assets/pixel/nav/exercises_inactive.png',
+                  ),
+                  selectedIcon: const _PixelNavIcon(
+                    'assets/pixel/nav/exercises_active.png',
+                  ),
                   label: AppLocalizations.of(context).navExercises,
                   tooltip: '',
                 ),
@@ -304,7 +315,12 @@ class _ShellScaffold extends ConsumerWidget {
                 container: true,
                 identifier: 'nav-routines',
                 child: NavigationDestination(
-                  icon: const Icon(Icons.calendar_today),
+                  icon: const _PixelNavIcon(
+                    'assets/pixel/nav/routines_inactive.png',
+                  ),
+                  selectedIcon: const _PixelNavIcon(
+                    'assets/pixel/nav/routines_active.png',
+                  ),
                   label: AppLocalizations.of(context).navRoutines,
                   tooltip: '',
                 ),
@@ -313,7 +329,12 @@ class _ShellScaffold extends ConsumerWidget {
                 container: true,
                 identifier: 'nav-profile',
                 child: NavigationDestination(
-                  icon: const Icon(Icons.person),
+                  icon: const _PixelNavIcon(
+                    'assets/pixel/nav/profile_inactive.png',
+                  ),
+                  selectedIcon: const _PixelNavIcon(
+                    'assets/pixel/nav/profile_active.png',
+                  ),
                   label: AppLocalizations.of(context).navProfile,
                   tooltip: '',
                 ),
@@ -398,5 +419,21 @@ class _ActiveWorkoutBanner extends ConsumerWidget {
     final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
     if (d.inHours > 0) return '${d.inHours}:$m:$s';
     return '$m:$s';
+  }
+}
+
+/// Fixed-size pixel nav icon (48dp square) for the bottom NavigationBar.
+///
+/// The semanticLabel is empty because the enclosing `NavigationDestination`
+/// already exposes its own label to the accessibility tree; the icon is
+/// decorative at that layer.
+class _PixelNavIcon extends StatelessWidget {
+  const _PixelNavIcon(this.assetPath);
+
+  final String assetPath;
+
+  @override
+  Widget build(BuildContext context) {
+    return PixelImage(assetPath, semanticLabel: '', width: 48, height: 48);
   }
 }

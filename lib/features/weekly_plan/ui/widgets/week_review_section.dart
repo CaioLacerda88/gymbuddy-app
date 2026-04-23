@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/format/number_format.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/radii.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../data/models/weekly_plan.dart';
@@ -39,7 +40,7 @@ class WeekReviewSection extends StatelessWidget {
   /// Called when user taps NEW WEEK.
   final VoidCallback? onNewWeek;
 
-  static const _primaryGreen = Color(0xFF00E676);
+  static const _primaryGreen = AppColors.emeraldGreen;
 
   @override
   Widget build(BuildContext context) {

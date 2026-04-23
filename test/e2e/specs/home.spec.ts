@@ -388,4 +388,18 @@ test.describe('First workout CTA (P8)', { tag: '@smoke' }, () => {
       timeout: 5_000,
     });
   });
+
+  test('should render all four bottom nav tabs with pixel icons (17.0)', async ({
+    page,
+  }) => {
+    // Phase 17.0 replaced Material IconData with PixelImage in the bottom
+    // NavigationBar. Each tab is wrapped in Semantics(identifier: 'nav-<name>')
+    // and the icon uses semanticLabel:'' (decorative). Assert every tab is
+    // reachable via its identifier — this catches a regression where a pixel
+    // asset path is wrong and the widget throws, collapsing the tab.
+    await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(NAV.exercisesTab)).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator(NAV.routinesTab)).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator(NAV.profileTab)).toBeVisible({ timeout: 5_000 });
+  });
 });

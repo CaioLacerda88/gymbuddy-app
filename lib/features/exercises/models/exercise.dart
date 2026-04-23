@@ -1,5 +1,4 @@
 // ignore_for_file: invalid_annotation_target
-import 'package:flutter/material.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'exercise.freezed.dart';
@@ -16,15 +15,9 @@ enum MuscleGroup {
 
   String get displayName => name[0].toUpperCase() + name.substring(1);
 
-  IconData get icon => switch (this) {
-    chest => Icons.fitness_center,
-    back => Icons.accessibility_new,
-    legs => Icons.directions_walk,
-    shoulders => Icons.expand,
-    arms => Icons.sports_martial_arts,
-    core => Icons.circle_outlined,
-    cardio => Icons.directions_run,
-  };
+  /// Pixel-art icon asset path. Every enum value maps 1:1 to a registered
+  /// PNG in `assets/pixel/muscle/`; see `pubspec.yaml`.
+  String get iconPath => 'assets/pixel/muscle/$name.png';
 
   static MuscleGroup fromString(String value) =>
       values.firstWhere((e) => e.name == value);
@@ -41,15 +34,9 @@ enum EquipmentType {
 
   String get displayName => name[0].toUpperCase() + name.substring(1);
 
-  IconData get icon => switch (this) {
-    barbell => Icons.fitness_center,
-    dumbbell => Icons.fitness_center,
-    cable => Icons.cable,
-    machine => Icons.precision_manufacturing,
-    bodyweight => Icons.self_improvement,
-    bands => Icons.straighten,
-    kettlebell => Icons.sports_gymnastics,
-  };
+  /// Pixel-art icon asset path. Every enum value maps 1:1 to a registered
+  /// PNG in `assets/pixel/equipment/`; see `pubspec.yaml`.
+  String get iconPath => 'assets/pixel/equipment/$name.png';
 
   static EquipmentType fromString(String value) =>
       values.firstWhere((e) => e.name == value);

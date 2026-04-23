@@ -1,38 +1,34 @@
 import 'package:flutter/material.dart';
 
-import '../../../l10n/app_localizations.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/pixel_image.dart';
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Scaffold(
+    return const Scaffold(
+      // Deep-void fill so the wordmark reads against the same background
+      // the rest of the app launches into. Avoids a color flash between
+      // splash and first routed screen.
+      backgroundColor: AppColors.deepVoid,
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.fitness_center,
-              size: 64,
-              color: theme.colorScheme.primary,
+            PixelImage(
+              'assets/pixel/branding/repsaga_wordmark.png',
+              semanticLabel: 'RepSaga',
+              width: 256,
             ),
-            const SizedBox(height: 24),
-            Text(
-              AppLocalizations.of(context).appName,
-              style: theme.textTheme.displayMedium?.copyWith(
-                color: theme.colorScheme.primary,
-              ),
-            ),
-            const SizedBox(height: 32),
+            SizedBox(height: 32),
             SizedBox(
               width: 24,
               height: 24,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: theme.colorScheme.primary,
+                color: AppColors.glowLavender,
               ),
             ),
           ],
