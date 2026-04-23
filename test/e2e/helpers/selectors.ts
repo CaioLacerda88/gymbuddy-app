@@ -634,6 +634,28 @@ export const FIRST_WORKOUT_CTA = {
 } as const;
 
 // ---------------------------------------------------------------------------
+// Gamification intro — SagaIntroOverlay + LVL badge (Phase 17b)
+//
+// SagaIntroOverlay wraps each step in Semantics(identifier: 'saga-intro-step-{n}')
+// and the buttons in Semantics(identifier: 'saga-intro-next' / 'saga-intro-begin').
+// The LVL badge in HomeScreen uses Semantics(identifier: 'lvl-badge').
+// ---------------------------------------------------------------------------
+export const GAMIFICATION = {
+  /** Step 0 content — Semantics(identifier: 'saga-intro-step-0') */
+  step0: '[flt-semantics-identifier="saga-intro-step-0"]',
+  /** Step 1 content — Semantics(identifier: 'saga-intro-step-1') */
+  step1: '[flt-semantics-identifier="saga-intro-step-1"]',
+  /** Step 2 content — Semantics(identifier: 'saga-intro-step-2') */
+  step2: '[flt-semantics-identifier="saga-intro-step-2"]',
+  /** "NEXT" button on steps 0 and 1 — Semantics(identifier: 'saga-intro-next') */
+  nextButton: '[flt-semantics-identifier="saga-intro-next"]',
+  /** "BEGIN" button on step 2 — Semantics(identifier: 'saga-intro-begin') */
+  beginButton: '[flt-semantics-identifier="saga-intro-begin"]',
+  /** LVL badge on HomeScreen — Semantics(identifier: 'lvl-badge') */
+  lvlBadge: '[flt-semantics-identifier="lvl-badge"]',
+} as const;
+
+// ---------------------------------------------------------------------------
 // Localization — pt-BR nav tab accessible names (Phase 15e)
 //
 // Flutter exposes NavigationDestination items as role=tab in the AOM.

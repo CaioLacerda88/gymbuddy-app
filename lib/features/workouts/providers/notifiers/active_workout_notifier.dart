@@ -18,6 +18,8 @@ import '../../../analytics/providers/analytics_providers.dart';
 import '../../../auth/providers/auth_providers.dart';
 import '../../../exercises/models/exercise.dart';
 import '../../../exercises/providers/exercise_progress_provider.dart';
+import '../../../gamification/domain/xp_calculator.dart';
+import '../../../gamification/providers/xp_provider.dart';
 import '../../../personal_records/domain/pr_detection_service.dart';
 import '../../../personal_records/providers/pr_providers.dart';
 import '../../../profile/providers/profile_providers.dart';
@@ -828,6 +830,40 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
           name: 'ActiveWorkoutNotifier',
           level: 900,
         );
+      }
+
+      // XP award: compute the per-workout breakdown from the sets + detected
+      // PRs, then call award_xp via the XpNotifier so the home LVL badge and
+      // character sheet re-render with the new total. Only runs when the
+      // workout was saved online — offline replays will re-trigger XP on
+      // successful sync (handled by the offline queue in Phase 14).
+      //
+      // Failure here must NOT fail the workout save. The server is the
+      // source of truth for XP, and any transient error (network blip, RPC
+      // timeout) is recoverable on the next online finish or via the retro
+      // backfill safety net.
+      if (!savedOffline) {
+        try {
+          final prAwards = <XpPrAward>[
+            for (final record in prResult?.newRecords ?? <PersonalRecord>[])
+              XpPrAward(recordType: record.recordType),
+          ];
+          final breakdown = XpCalculator.compute(sets: sets, prs: prAwards);
+          if (breakdown.total > 0) {
+            await ref
+                .read(xpProvider.notifier)
+                .awardForWorkout(
+                  userId: workout.userId,
+                  breakdown: breakdown,
+                  workoutId: workout.id,
+                );
+          }
+        } catch (e) {
+          // XP award failure should NOT fail the workout save. The retro
+          // backfill is an idempotent safety net that will recompute on
+          // next cold start.
+          log('XP award failed: $e', name: 'ActiveWorkoutNotifier', level: 900);
+        }
       }
 
       // Weekly plan: mark matching bucket routine as complete.

@@ -159,4 +159,15 @@ export const TEST_USERS = {
     email: 'e2e-full-ex-detail-sheet@test.local',
     password: 'TestPassword123!',
   },
+
+  // -------------------------------------------------------------------------
+  // Phase 17b — Gamification intro (smoke)
+  // -------------------------------------------------------------------------
+  // sagaIntroUser: fresh user, no workout history, saga intro never dismissed.
+  // Profile row is seeded (display name set) so the router lands on /home, not
+  // /onboarding, where SagaIntroGate wraps the shell and shows the overlay.
+  sagaIntroUser: {
+    email: 'e2e-saga-intro@test.local',
+    password: 'TestPassword123!',
+  },
 } as const;

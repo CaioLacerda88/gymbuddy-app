@@ -1514,5 +1514,42 @@
   "preferences": "PREFERENCES",
   "@preferences": { "description": "Section header: preferences" },
   "language": "Language",
-  "@language": { "description": "Language preference row label" }
+  "@language": { "description": "Language preference row label" },
+
+  "sagaIntroStep1Title": "YOUR TRAINING IS YOUR CHARACTER",
+  "@sagaIntroStep1Title": { "description": "Saga intro overlay, step 1 hero headline" },
+  "sagaIntroStep1Body": "Every set you complete shapes who you become. Lift, track, level up.",
+  "@sagaIntroStep1Body": { "description": "Saga intro overlay, step 1 body copy" },
+  "sagaIntroStep2Title": "XP FROM EVERY SET, PR, QUEST",
+  "@sagaIntroStep2Title": { "description": "Saga intro overlay, step 2 hero headline" },
+  "sagaIntroStep2Body": "Volume, intensity, personal records and weekly quests all grant XP.",
+  "@sagaIntroStep2Body": { "description": "Saga intro overlay, step 2 body copy" },
+  "sagaIntroStep3Title": "LVL {level} — {rank}",
+  "@sagaIntroStep3Title": {
+    "description": "Saga intro overlay, step 3 hero headline with the user's starting level and rank",
+    "placeholders": {
+      "level": { "type": "int", "example": "1" },
+      "rank": { "type": "String", "example": "ROOKIE" }
+    }
+  },
+  "sagaIntroStep3Body": "Your journey begins here. Keep training to climb ranks.",
+  "@sagaIntroStep3Body": { "description": "Saga intro overlay, step 3 body copy" },
+  "sagaIntroNext": "NEXT",
+  "@sagaIntroNext": { "description": "Saga intro overlay primary button, non-final steps" },
+  "sagaIntroBegin": "BEGIN",
+  "@sagaIntroBegin": { "description": "Saga intro overlay primary button, final step (dismisses)" },
+  "sagaRankRookie": "ROOKIE",
+  "@sagaRankRookie": { "description": "Rank name: rookie" },
+  "sagaRankIron": "IRON",
+  "@sagaRankIron": { "description": "Rank name: iron" },
+  "sagaRankCopper": "COPPER",
+  "@sagaRankCopper": { "description": "Rank name: copper" },
+  "sagaRankSilver": "SILVER",
+  "@sagaRankSilver": { "description": "Rank name: silver" },
+  "sagaRankGold": "GOLD",
+  "@sagaRankGold": { "description": "Rank name: gold" },
+  "sagaRankPlatinum": "PLATINUM",
+  "@sagaRankPlatinum": { "description": "Rank name: platinum" },
+  "sagaRankDiamond": "DIAMOND",
+  "@sagaRankDiamond": { "description": "Rank name: diamond" }
 }

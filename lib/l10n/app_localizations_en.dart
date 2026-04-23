@@ -1866,4 +1866,54 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get language => 'Language';
+
+  @override
+  String get sagaIntroStep1Title => 'YOUR TRAINING IS YOUR CHARACTER';
+
+  @override
+  String get sagaIntroStep1Body =>
+      'Every set you complete shapes who you become. Lift, track, level up.';
+
+  @override
+  String get sagaIntroStep2Title => 'XP FROM EVERY SET, PR, QUEST';
+
+  @override
+  String get sagaIntroStep2Body =>
+      'Volume, intensity, personal records and weekly quests all grant XP.';
+
+  @override
+  String sagaIntroStep3Title(int level, String rank) {
+    return 'LVL $level — $rank';
+  }
+
+  @override
+  String get sagaIntroStep3Body =>
+      'Your journey begins here. Keep training to climb ranks.';
+
+  @override
+  String get sagaIntroNext => 'NEXT';
+
+  @override
+  String get sagaIntroBegin => 'BEGIN';
+
+  @override
+  String get sagaRankRookie => 'ROOKIE';
+
+  @override
+  String get sagaRankIron => 'IRON';
+
+  @override
+  String get sagaRankCopper => 'COPPER';
+
+  @override
+  String get sagaRankSilver => 'SILVER';
+
+  @override
+  String get sagaRankGold => 'GOLD';
+
+  @override
+  String get sagaRankPlatinum => 'PLATINUM';
+
+  @override
+  String get sagaRankDiamond => 'DIAMOND';
 }
