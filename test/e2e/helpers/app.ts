@@ -13,8 +13,8 @@
  *   flutter run -d chrome --web-port 4200
  */
 
-import { Page } from '@playwright/test';
-import { NAV, PROFILE } from './selectors';
+import { Page, expect } from '@playwright/test';
+import { GAMIFICATION, NAV, PROFILE } from './selectors';
 
 /**
  * Wait for the Flutter app to finish its initial load.
@@ -308,6 +308,35 @@ export async function setLocale(
     .locator(PROFILE.languagePickerSheet)
     .first()
     .waitFor({ state: 'detached', timeout: 10_000 });
+}
+
+/**
+ * Walk the SagaIntroOverlay through its three steps and dismiss it.
+ *
+ * The overlay appears on first home load for users who haven't yet seen it
+ * (gated by Hive `saga_intro_seen` flag). This helper mirrors the real user
+ * flow: wait for step 0 → NEXT → step 1 → NEXT → step 2 → BEGIN → gone.
+ *
+ * Extracted so gamification specs don't duplicate the sequence. The
+ * timeouts match the original inline flow — the initial 20s wait
+ * accommodates retro_backfill_xp resolving on first login.
+ */
+export async function dismissSagaIntroOverlay(page: Page): Promise<void> {
+  await expect(page.locator(GAMIFICATION.step0)).toBeVisible({
+    timeout: 20_000,
+  });
+  await page.locator(GAMIFICATION.nextButton).click();
+  await expect(page.locator(GAMIFICATION.step1)).toBeVisible({
+    timeout: 5_000,
+  });
+  await page.locator(GAMIFICATION.nextButton).click();
+  await expect(page.locator(GAMIFICATION.step2)).toBeVisible({
+    timeout: 5_000,
+  });
+  await page.locator(GAMIFICATION.beginButton).click();
+  await expect(page.locator(GAMIFICATION.step0)).not.toBeVisible({
+    timeout: 5_000,
+  });
 }
 
 /**

@@ -21,7 +21,7 @@
 
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth';
-import { waitForAppReady } from '../helpers/app';
+import { dismissSagaIntroOverlay, waitForAppReady } from '../helpers/app';
 import { NAV, GAMIFICATION } from '../helpers/selectors';
 import { TEST_USERS } from '../fixtures/test-users';
 
@@ -103,31 +103,13 @@ test.describe('Gamification intro', { tag: '@smoke' }, () => {
   test('should not re-show overlay after dismissal on page reload', async ({
     page,
   }) => {
-    // Complete the intro flow first (mirrors test 1 but more terse).
     await login(
       page,
       TEST_USERS.sagaIntroUser.email,
       TEST_USERS.sagaIntroUser.password,
     );
 
-    // Wait for overlay to appear, dismiss it.
-    await expect(page.locator(GAMIFICATION.step0)).toBeVisible({
-      timeout: 20_000,
-    });
-    await page.locator(GAMIFICATION.nextButton).click();
-    await expect(page.locator(GAMIFICATION.step1)).toBeVisible({
-      timeout: 5_000,
-    });
-    await page.locator(GAMIFICATION.nextButton).click();
-    await expect(page.locator(GAMIFICATION.step2)).toBeVisible({
-      timeout: 5_000,
-    });
-    await page.locator(GAMIFICATION.beginButton).click();
-
-    // Confirm overlay is gone after dismissal.
-    await expect(page.locator(GAMIFICATION.step0)).not.toBeVisible({
-      timeout: 5_000,
-    });
+    await dismissSagaIntroOverlay(page);
 
     // Reload the page — Hive (IndexedDB) persists within the same browser
     // context, so `saga_intro_seen` remains true.
@@ -169,21 +151,7 @@ test.describe('Gamification intro', { tag: '@smoke' }, () => {
       TEST_USERS.sagaIntroUser.password,
     );
 
-    // Wait for the overlay (fresh context → Hive empty → overlay appears).
-    await expect(page.locator(GAMIFICATION.step0)).toBeVisible({
-      timeout: 20_000,
-    });
-
-    // Dismiss the overlay.
-    await page.locator(GAMIFICATION.nextButton).click();
-    await expect(page.locator(GAMIFICATION.step1)).toBeVisible({
-      timeout: 5_000,
-    });
-    await page.locator(GAMIFICATION.nextButton).click();
-    await expect(page.locator(GAMIFICATION.step2)).toBeVisible({
-      timeout: 5_000,
-    });
-    await page.locator(GAMIFICATION.beginButton).click();
+    await dismissSagaIntroOverlay(page);
 
     // LVL badge must be present on HomeScreen.
     await expect(page.locator(GAMIFICATION.lvlBadge)).toBeVisible({

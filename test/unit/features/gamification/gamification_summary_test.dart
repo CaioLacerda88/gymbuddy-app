@@ -14,13 +14,43 @@ import 'package:repsaga/features/gamification/models/xp_state.dart';
 
 void main() {
   group('GamificationSummary.fromTotal', () {
-    test('0 XP → level 1, rookie, xpToNext > 0', () {
+    test('0 XP → level 1, rookie, xpToNext spans full LVL 1→2 gap', () {
       final s = GamificationSummary.fromTotal(0);
       expect(s.currentLevel, 1);
       expect(s.totalXp, 0);
       expect(s.rank, Rank.rookie);
-      expect(s.xpToNext, greaterThan(0));
       expect(s.xpIntoLevel, 0);
+      // LVL 1→2 gap must be the full xpForLevel(2) - xpForLevel(1), not
+      // xpForLevel(2) - totalXp, otherwise the progress-bar denominator
+      // shrinks as users earn XP inside the [0, xpForLevel(1)) band.
+      expect(s.xpToNext, xpForLevel(2) - xpForLevel(1));
+    });
+
+    test(
+      'partial LVL 1 XP holds xpIntoLevel=0 and full gap as denominator',
+      () {
+        // totalXp=150 is below xpForLevel(1)=300 but levelFromTotalXp still
+        // returns LVL 1 (fresh users live in this band). xpIntoLevel stays
+        // at 0 and xpToNext stays at the full LVL 1→2 gap.
+        final s = GamificationSummary.fromTotal(150);
+        expect(s.currentLevel, 1);
+        expect(s.xpIntoLevel, 0);
+        expect(s.xpToNext, xpForLevel(2) - xpForLevel(1));
+      },
+    );
+
+    test('xpIntoLevel + xpToNext is stable across a level band', () {
+      // Once a user crosses xpForLevel(1), the sum must equal the gap
+      // between LVL 1 and LVL 2 thresholds, regardless of totalXp.
+      final gap = xpForLevel(2) - xpForLevel(1);
+      for (final xp in [
+        xpForLevel(1),
+        xpForLevel(1) + 100,
+        xpForLevel(2) - 1,
+      ]) {
+        final s = GamificationSummary.fromTotal(xp);
+        expect(s.xpIntoLevel + s.xpToNext, gap, reason: 'at totalXp=$xp');
+      }
     });
 
     test('totalXp at exactly LVL 2 threshold → level 2', () {

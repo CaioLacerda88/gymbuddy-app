@@ -43,13 +43,17 @@ abstract class GamificationSummary with _$GamificationSummary {
     final nextThreshold = level >= 100
         ? currentThreshold
         : xpForLevel(level + 1);
-    final xpIntoLevel = totalXp - currentThreshold;
-    final xpToNext = level >= 100 ? 0 : (nextThreshold - totalXp);
+    // `levelFromTotalXp` returns LVL 1 even when totalXp < xpForLevel(1)
+    // (fresh users start at LVL 1 with 0 XP). Clamp the base to the current
+    // threshold so xpIntoLevel stays non-negative and xpToNext remains a
+    // stable denominator for the progress bar — otherwise the gap would
+    // shrink as the user earns XP inside the [0, xpForLevel(1)) band.
+    final xpBase = totalXp < currentThreshold ? currentThreshold : totalXp;
     return GamificationSummary(
       totalXp: totalXp,
       currentLevel: level,
-      xpIntoLevel: xpIntoLevel < 0 ? 0 : xpIntoLevel,
-      xpToNext: xpToNext < 0 ? 0 : xpToNext,
+      xpIntoLevel: xpBase - currentThreshold,
+      xpToNext: level >= 100 ? 0 : nextThreshold - xpBase,
       rank: rankFromTotalXp(totalXp),
     );
   }

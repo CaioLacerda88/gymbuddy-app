@@ -225,9 +225,11 @@ BEGIN
   END LOOP;
 
   -- Roll up the user_xp row from the ledger. We recompute total_xp from
-  -- scratch rather than incrementing because this function is idempotent —
-  -- re-running it against an already-seeded user must leave total_xp
-  -- unchanged, not compound.
+  -- scratch rather than incrementing so the retro portion is idempotent:
+  -- re-running this function against an already-seeded user never
+  -- double-counts historical workouts. (Live xp_events accrued since the
+  -- first run remain in the sum, so total_xp after a re-run = retro XP +
+  -- any post-retro events, which is the intended behavior.)
   --
   -- Level and rank are NOT recomputed server-side; the client reads
   -- total_xp and derives them via XpCalculator/kRankThresholds. A

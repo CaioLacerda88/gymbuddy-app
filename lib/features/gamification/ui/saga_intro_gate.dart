@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -83,7 +85,10 @@ class _SagaIntroGateState extends ConsumerState<SagaIntroGate> {
   }
 
   void _dismiss(String userId) {
+    // In-memory flag closes the race so the overlay can't re-mount while
+    // the Hive write is in flight; the unawaited persist is durable once
+    // flush() lands in markSagaIntroSeenForUser.
     setState(() => _dismissedThisSession = true);
-    markSagaIntroSeenForUser(userId);
+    unawaited(markSagaIntroSeenForUser(userId));
   }
 }

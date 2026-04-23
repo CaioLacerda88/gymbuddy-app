@@ -157,9 +157,9 @@ int xpForLevel(int level) {
 
 /// Precomputed `xpForLevel(n)` for `n` in 1..100.
 ///
-/// Precomputation is more about call-site clarity than speed — a build-time
-/// constant list lets callers iterate thresholds without re-running `pow`
-/// on every frame. The curve itself never changes at runtime.
+/// Precomputation is more about call-site clarity than speed — an immutable
+/// list populated once at startup lets callers iterate thresholds without
+/// re-running `pow` on every frame. The curve itself never changes at runtime.
 final List<int> kXpCurve = List<int>.unmodifiable(
   List<int>.generate(kMaxLevel, (i) => _computeThreshold(i + 1)),
 );
