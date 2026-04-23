@@ -61,7 +61,7 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 16c | Hard gate enforcement + router guard + E2E refactor | DEFERRED | - |
 | 16d | Analytics + hardening + launch-readiness checklist | DEFERRED | - |
 | 17.0 | Visual Language Foundation (pixel-art: nav, exercises, splash wired; palette + pixel font) | DONE | #101 |
-| 17b | XP & Level System + Retroactive Backfill | TODO | - |
+| 17b | XP & Level System + Retroactive Backfill | DONE | #103 |
 | 17a | Celebration Overlay + Active Logger Hardening | TODO | - |
 | 17c | Weekly Streak + Comeback Bonus | TODO | - |
 | 17d | Character Sheet + Milestone Signal | TODO | - |
@@ -1060,70 +1060,13 @@ Replaced Material iconography + flat dark theme with a pixel-art visual system o
 
 ---
 
-### 17b: XP & Level System + Retroactive Backfill
+### 17b: XP & Level System + Retroactive Backfill — DONE (PR #103, merged 2026-04-23)
 
-**Goal:** Ship the data layer that every later sub-phase reads. No UI yet beyond a first-run intro overlay.
-
-**Data model:**
-
-- Migration `supabase/migrations/0028_user_xp.sql`:
-  ```sql
-  create table public.user_xp (
-    user_id uuid primary key references auth.users(id) on delete cascade,
-    total_xp bigint not null default 0,
-    current_level int not null default 1,
-    rank text not null default 'rookie',
-    last_xp_event_id uuid,
-    updated_at timestamptz not null default now()
-  );
-  -- RLS: owner SELECT only; writes happen via `award_xp` RPC (SECURITY DEFINER).
-  create table public.xp_events (
-    id uuid primary key default gen_random_uuid(),
-    user_id uuid not null references auth.users(id) on delete cascade,
-    workout_id uuid references public.workouts(id) on delete cascade,
-    amount int not null check (amount > 0),
-    source text not null check (source in ('workout','pr','quest','comeback','milestone','retro')),
-    breakdown jsonb not null,
-    created_at timestamptz not null default now()
-  );
-  create index on public.xp_events (user_id, created_at desc);
-  ```
-- Migration `0029_retroactive_xp.sql`: SQL procedure `retro_backfill_xp(user_id uuid)` that iterates every completed workout, applies the formula, writes `xp_events (source='retro')`, and updates `user_xp`. Idempotent — rerunnable without duplicating events.
-
-**Domain logic:**
-
-- `XpCalculator.compute(workout, prs)` returns `XpBreakdown{ base, volume, intensity, pr, quest, comeback, total }`.
-- **Formula:** `base(50) + volume(floor(totalKg/500)) + intensity(sum((rpe-5)*10) for rpe>5) + pr(100 heavy / 50 rep) + quest(75) + comeback(x2 multiplier, applied last)`.
-- **Level curve:** `xpForLevel(n) = floor(300 * pow(n, 1.3))`. Precomputed into `kXpCurve` const list for levels 1..100.
-- **Ranks:** Rookie(0) → Iron(2_500) → Copper(10_000) → Silver(25_000) → Gold(60_000) → Platinum(125_000) → Diamond(250_000).
-
-**UI (minimal, first-run only):**
-
-- `SagaIntroOverlay` — one-time full-screen explainer, shown after first retro-backfill completes. Three screens: "Your training is your character" → "XP from every set, PR, quest" → "LVL N — Rank". Dismissible with "Begin". `user_prefs.saga_intro_seen = true` on dismiss.
-
-**Providers:**
-
-- `xpProvider` (AsyncNotifier) — exposes `GamificationSummary{ totalXp, currentLevel, xpIntoLevel, xpToNext, rank }`. Watched by 17d, 17e, 16b (paywall).
-
-**Acceptance:**
-
-- Existing users: after app update, on next launch, `retro_backfill_xp(my_uid)` runs once, inserts N `xp_events` rows with `source='retro'`, `user_xp.total_xp` matches the sum of all breakdowns. Idempotency verified by running twice → same result.
-- `XpCalculator.compute` returns expected breakdown for 12 test-factory workouts (golden file).
-- Level curve is monotonic strictly increasing; LVL 8 ≈ 3,800 XP (achievable in 2–3 sessions with 1 PR).
-- `xpProvider` emits updated state within 500ms of a workout save.
-- First-time user sees `SagaIntroOverlay` exactly once.
-
-**Files:**
-
-- Create: `supabase/migrations/0028_user_xp.sql`, `supabase/migrations/0029_retroactive_xp.sql`, `lib/features/gamification/` (new feature folder: `domain/xp_calculator.dart`, `data/xp_repository.dart`, `providers/xp_provider.dart`, `models/xp_state.dart`, `models/xp_breakdown.dart`, `ui/saga_intro_overlay.dart`)
-- Modify: `lib/features/workouts/data/workouts_repository.dart` (on successful save_workout → enqueue XP award)
-
-**Test plan:**
-
-- **Unit:** `test/unit/features/gamification/xp_calculator_test.dart` — 20+ cases covering base, volume floor, RPE edge (rpe=5 → 0, rpe=10 → 50), PR combinations, comeback multiplier ordering. `test/unit/features/gamification/level_curve_test.dart` — monotonicity, boundary values at LVL 1, 8, 50. `test/unit/features/gamification/xp_repository_test.dart` — mocked Supabase, retro-backfill idempotency.
-- **Widget:** `test/widget/features/gamification/saga_intro_overlay_test.dart` — 3-step navigation, dismiss sets pref, second-launch does not render.
-- **E2E:** New spec `test/e2e/specs/gamification-intro.spec.ts` (tagged `@smoke`) — fresh user completes onboarding, reaches home, sees SagaIntroOverlay, taps through 3 steps, lands on home with LVL 1 placeholder visible. `helpers/selectors.ts` gets `sagaIntroNext`, `sagaIntroBegin`, `lvlBadge`. New test user `sagaIntroUser`.
-- **Migration QA:** `qa-engineer` runs `supabase db push` against a local branch with seed data, confirms retro-backfill populates correctly, then reruns to confirm idempotency. Documented in PR description.
+- **Data layer shipped:** migrations `00028_user_xp.sql` (tables `user_xp`+`xp_events`, RLS owner-read, `award_xp` RPC `SECURITY DEFINER`) and `00029_retroactive_xp.sql` (`retro_backfill_xp(uuid)` idempotent procedure). Both applied to hosted Supabase post-merge.
+- **Domain:** `XpCalculator` implements the base/volume/intensity/PR/quest/comeback formula; `xpForLevel(n) = floor(300 * pow(n, 1.3))` precomputed to `kXpCurve[1..100]`; 7 ranks Rookie→Diamond. `xpProvider` AsyncNotifier emits `GamificationSummary` with optimistic update on `awardForWorkout`. Workout save wires XP award in `active_workout_notifier.finishWorkout()` (post-PR detection, online only — retro is the offline safety net).
+- **UI:** pixel-art `SagaIntroOverlay` (3 screens, Begin-to-dismiss, `PixelImage`+`PixelPanel` framed, no Material chrome). `SagaIntroGate` wraps authenticated ShellRoute — runs retro backfill once per user, renders overlay when unseen, persists `saga_intro_seen` via Hive helpers. Minimal `_LvlBadge` placeholder wired on HomeScreen for E2E; full styling lands in 17e.
+- **Tests:** 1544/1544 passing. Unit (62 cases: xp_calculator, level_curve, xp_repository, gamification_summary). Widget (saga_intro_overlay 9 cases, saga_intro_gate 5 cases, lvl_badge). E2E `specs/gamification-intro.spec.ts` (@smoke, 3 tests covering first-run overlay, no re-show on reload, LVL badge visible). `login()` helper auto-dismisses overlay for downstream tests via `dismissSagaIntro` option.
+- **Key decisions / gotchas:** XP award lives in notifier (not repo) because PR detection already runs there. Hive `saga_intro_seen` is per-user keyed, persists across reloads in same browser context. `testWidgets` + `Hive.box.put` requires `tester.runAsync` wrappers — documented in `feedback_hive_testwidgets.md` memory.
 
 ---
 
