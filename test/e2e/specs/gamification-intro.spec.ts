@@ -45,6 +45,7 @@ test.describe('Gamification intro', { tag: '@smoke' }, () => {
       page,
       TEST_USERS.sagaIntroUser.email,
       TEST_USERS.sagaIntroUser.password,
+      { dismissSagaIntro: false },
     );
 
     // The SagaIntroGate kicks retro_backfill_xp in a post-frame callback and
@@ -107,6 +108,7 @@ test.describe('Gamification intro', { tag: '@smoke' }, () => {
       page,
       TEST_USERS.sagaIntroUser.email,
       TEST_USERS.sagaIntroUser.password,
+      { dismissSagaIntro: false },
     );
 
     await dismissSagaIntroOverlay(page);
@@ -149,6 +151,7 @@ test.describe('Gamification intro', { tag: '@smoke' }, () => {
       page,
       TEST_USERS.sagaIntroUser.email,
       TEST_USERS.sagaIntroUser.password,
+      { dismissSagaIntro: false },
     );
 
     await dismissSagaIntroOverlay(page);

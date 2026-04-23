@@ -9,20 +9,31 @@
  */
 
 import { Page, expect } from '@playwright/test';
-import { AUTH, NAV } from './selectors';
-import { waitForAppReady, flutterFill } from './app';
+import { AUTH, GAMIFICATION, NAV } from './selectors';
+import { dismissSagaIntroOverlay, waitForAppReady, flutterFill } from './app';
 
 /**
  * Log in with email and password.
  *
  * Navigates to the base URL, waits for the login screen, fills credentials,
  * submits, then waits until the home shell (bottom nav) is visible.
+ *
+ * Every fresh browser context lands on the SagaIntroGate, which paints a
+ * 3-step intro overlay on top of the shell the first time any user signs
+ * in on that device. Unless a test is specifically exercising that flow
+ * (see gamification-intro.spec.ts), the helper dismisses the overlay so
+ * downstream clicks aren't swallowed by the Stack overlay.
+ *
+ * Pass `{ dismissSagaIntro: false }` to keep the overlay mounted.
  */
 export async function login(
   page: Page,
   email: string,
   password: string,
+  options: { dismissSagaIntro?: boolean } = {},
 ): Promise<void> {
+  const { dismissSagaIntro = true } = options;
+
   await page.goto('/');
   await waitForAppReady(page);
 
@@ -36,6 +47,21 @@ export async function login(
   // After successful login, the router redirects to /home and the shell nav
   // becomes visible. We wait for any bottom nav tab as confirmation.
   await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 20_000 });
+
+  if (dismissSagaIntro) {
+    // SagaIntroGate only paints the overlay once xpProvider resolves and the
+    // retro-backfill Hive flag is set. On a cold login that can take a few
+    // seconds; on a warm session it never appears. Probe for step 0 with a
+    // bounded wait and skip silently if the overlay isn't part of the flow.
+    try {
+      await page
+        .locator(GAMIFICATION.step0)
+        .waitFor({ state: 'visible', timeout: 15_000 });
+    } catch {
+      return;
+    }
+    await dismissSagaIntroOverlay(page);
+  }
 }
 
 /**
