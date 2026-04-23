@@ -10,6 +10,7 @@ import '../../../core/utils/enum_l10n.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/exercise_image.dart';
 import '../../../shared/widgets/exercise_info_sections.dart';
+import '../../../shared/widgets/pixel_image.dart';
 import '../models/active_workout_state.dart';
 import '../models/exercise_set.dart';
 import '../models/weight_unit.dart';
@@ -549,7 +550,13 @@ class _LoadingOverlayState extends ConsumerState<_LoadingOverlay> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        const ModalBarrier(dismissible: false, color: Colors.black54),
+        // Scrim over the active-workout surface while the overlay loads.
+        // Palette has no near-black token, so we use deepVoid (#0D0319) at
+        // ~54% alpha as the dim-out layer.
+        ModalBarrier(
+          dismissible: false,
+          color: AppColors.deepVoid.withValues(alpha: 0.54),
+        ),
         Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1208,11 +1215,11 @@ class _ExerciseDetailSheet extends ConsumerWidget {
                     runSpacing: 8,
                     children: [
                       _SheetChip(
-                        icon: exercise.muscleGroup.icon,
+                        iconPath: exercise.muscleGroup.iconPath,
                         label: exercise.muscleGroup.localizedName(l10n),
                       ),
                       _SheetChip(
-                        icon: exercise.equipmentType.icon,
+                        iconPath: exercise.equipmentType.iconPath,
                         label: exercise.equipmentType.localizedName(l10n),
                       ),
                     ],
@@ -1232,7 +1239,7 @@ class _ExerciseDetailSheet extends ConsumerWidget {
                                   Expanded(
                                     child: ExerciseImage(
                                       imageUrl: exercise.imageStartUrl,
-                                      fallbackIcon: exercise.muscleGroup.icon,
+                                      fallbackIcon: Icons.fitness_center,
                                       height: 136,
                                       borderRadius: BorderRadius.circular(12),
                                     ),
@@ -1258,7 +1265,7 @@ class _ExerciseDetailSheet extends ConsumerWidget {
                                   Expanded(
                                     child: ExerciseImage(
                                       imageUrl: exercise.imageEndUrl,
-                                      fallbackIcon: exercise.muscleGroup.icon,
+                                      fallbackIcon: Icons.fitness_center,
                                       height: 136,
                                       borderRadius: BorderRadius.circular(12),
                                     ),
@@ -1298,9 +1305,9 @@ class _ExerciseDetailSheet extends ConsumerWidget {
 }
 
 class _SheetChip extends StatelessWidget {
-  const _SheetChip({required this.icon, required this.label});
+  const _SheetChip({required this.iconPath, required this.label});
 
-  final IconData icon;
+  final String iconPath;
   final String label;
 
   @override
@@ -1316,7 +1323,7 @@ class _SheetChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 18, color: theme.colorScheme.onSurface),
+          PixelImage(iconPath, semanticLabel: '', width: 24, height: 24),
           const SizedBox(width: 6),
           Text(
             label,

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/device/platform_info.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/radii.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../analytics/data/analytics_repository.dart';
@@ -608,7 +609,7 @@ class _RoutineRow extends StatelessWidget {
           color: theme.colorScheme.error,
           borderRadius: BorderRadius.circular(kRadiusMd),
         ),
-        child: const Icon(Icons.delete, color: Colors.white),
+        child: const Icon(Icons.delete, color: AppColors.pureWhite),
       ),
       child: content,
     );

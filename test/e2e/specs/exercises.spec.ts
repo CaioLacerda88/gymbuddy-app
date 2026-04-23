@@ -209,6 +209,32 @@ test.describe('Exercises', { tag: '@smoke' }, () => {
     ).toHaveAttribute('aria-current', 'true');
   });
 
+  test('should render muscle group and equipment filter chips with pixel icons (17.0)', async ({
+    page,
+  }) => {
+    // Phase 17.0 replaced Material icons with PixelImage in the filter chips.
+    // The icon inside each chip uses semanticLabel:'' (decorative) so it does
+    // not appear in the AOM. Instead we assert the enclosing chip identifiers
+    // are present — a widget-build error caused by a bad pixel asset path would
+    // prevent these chips from rendering at all.
+    //
+    // Muscle group chips (all 7 + "All").
+    await expect(page.locator(EXERCISE_LIST.allMuscleGroupFilter)).toBeVisible();
+    for (const group of ['chest', 'back', 'legs', 'shoulders', 'arms', 'core', 'cardio']) {
+      await expect(
+        page.locator(EXERCISE_LIST.muscleGroupFilter(group)),
+      ).toBeVisible({ timeout: 5_000 });
+    }
+
+    // Equipment type chips (all 7). These are off-screen on narrow viewports
+    // so we scroll the filter row into view before asserting.
+    for (const equip of ['barbell', 'dumbbell', 'cable', 'machine', 'bodyweight', 'bands', 'kettlebell']) {
+      await expect(
+        page.locator(EXERCISE_LIST.equipmentFilter(equip)),
+      ).toBeVisible({ timeout: 5_000 });
+    }
+  });
+
   // --- From exercise-library.smoke.spec.ts ---
 
   test('should render heading and filter controls', async ({

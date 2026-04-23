@@ -8,6 +8,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/enum_l10n.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/async_value_builder.dart';
+import '../../../shared/widgets/pixel_image.dart';
 import '../models/exercise.dart';
 import '../providers/exercise_providers.dart';
 
@@ -137,7 +138,9 @@ class _MuscleGroupSelector extends ConsumerWidget {
           children: [
             _MuscleGroupButton(
               label: l10n.all,
-              icon: Icons.grid_view_rounded,
+              // "All" is a UI meta-filter with no matching pixel asset; a
+              // Material icon is the correct affordance here.
+              icon: const Icon(Icons.grid_view_rounded, size: 24, weight: 600),
               isSelected: selected == null,
               onTap: () {
                 ref.read(selectedMuscleGroupProvider.notifier).state = null;
@@ -147,7 +150,12 @@ class _MuscleGroupSelector extends ConsumerWidget {
             ...MuscleGroup.values.map(
               (group) => _MuscleGroupButton(
                 label: group.localizedName(l10n),
-                icon: group.icon,
+                icon: PixelImage(
+                  group.iconPath,
+                  semanticLabel: '',
+                  width: 24,
+                  height: 24,
+                ),
                 isSelected: selected == group,
                 onTap: () {
                   ref.read(selectedMuscleGroupProvider.notifier).state = group;
@@ -172,7 +180,10 @@ class _MuscleGroupButton extends StatelessWidget {
   });
 
   final String label;
-  final IconData icon;
+
+  /// Pre-sized 24dp icon widget. Accepts either a Material [Icon] (for the
+  /// "All" meta-filter) or a [PixelImage] (for real muscle groups).
+  final Widget icon;
   final bool isSelected;
   final VoidCallback onTap;
   final ThemeData theme;
@@ -211,11 +222,18 @@ class _MuscleGroupButton extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    icon,
-                    color: isSelected ? primary : theme.colorScheme.onSurface,
-                    size: 24,
-                    weight: 600,
+                  SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: IconTheme(
+                      data: IconThemeData(
+                        color: isSelected
+                            ? primary
+                            : theme.colorScheme.onSurface,
+                        size: 24,
+                      ),
+                      child: icon,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -290,6 +308,12 @@ class _EquipmentFilter extends ConsumerWidget {
                 label: '$typeName equipment filter',
                 selected: isSelected,
                 child: FilterChip(
+                  avatar: PixelImage(
+                    type.iconPath,
+                    semanticLabel: '',
+                    width: 20,
+                    height: 20,
+                  ),
                   label: Text(typeName),
                   selected: isSelected,
                   onSelected: (val) {
@@ -399,13 +423,13 @@ class _ExerciseCard extends StatelessWidget {
                                   label: exercise.muscleGroup.localizedName(
                                     l10n,
                                   ),
-                                  icon: exercise.muscleGroup.icon,
+                                  iconPath: exercise.muscleGroup.iconPath,
                                 ),
                                 _InfoChip(
                                   label: exercise.equipmentType.localizedName(
                                     l10n,
                                   ),
-                                  icon: exercise.equipmentType.icon,
+                                  iconPath: exercise.equipmentType.iconPath,
                                 ),
                               ],
                             );
@@ -430,10 +454,10 @@ class _ExerciseCard extends StatelessWidget {
 }
 
 class _InfoChip extends StatelessWidget {
-  const _InfoChip({required this.label, required this.icon});
+  const _InfoChip({required this.label, required this.iconPath});
 
   final String label;
-  final IconData icon;
+  final String iconPath;
 
   @override
   Widget build(BuildContext context) {
@@ -448,7 +472,7 @@ class _InfoChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: theme.colorScheme.onSurface),
+          PixelImage(iconPath, semanticLabel: '', width: 24, height: 24),
           const SizedBox(width: 4),
           Text(
             label,

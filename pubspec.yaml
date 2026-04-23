@@ -56,6 +56,21 @@ flutter:
     - .env
     - assets/icons/
     - assets/legal/
+    - assets/pixel/branding/
+    - assets/pixel/nav/
+    - assets/pixel/ranks/
+    - assets/pixel/milestones/
+    - assets/pixel/stats/
+    - assets/pixel/quests/
+    - assets/pixel/celebration/
+    - assets/pixel/micro/
+    - assets/pixel/story/
+    - assets/pixel/muscle/
+    - assets/pixel/equipment/
+  fonts:
+    - family: PressStart2P
+      fonts:
+        - asset: assets/fonts/press_start_2p/PressStart2P-Regular.ttf
 
 flutter_launcher_icons:
   image_path: "assets/icon/icon.png"

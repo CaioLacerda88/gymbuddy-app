@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/app_theme.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../providers/notifiers/rest_timer_notifier.dart';
 
@@ -49,7 +50,10 @@ class _RestTimerOverlayState extends ConsumerState<RestTimerOverlay> {
       // Tap outside the controls to dismiss (UX-U09).
       onTap: () => ref.read(restTimerProvider.notifier).stop(),
       child: Material(
-        color: Colors.black87,
+        // Full-screen rest-timer scrim. Palette has no near-black token, so
+        // we use deepVoid (#0D0319) at ~87% alpha — dark enough to dim the
+        // underlying workout screen without being fully opaque.
+        color: AppColors.deepVoid.withValues(alpha: 0.87),
         child: SafeArea(
           child: Center(
             child: Column(
@@ -120,7 +124,9 @@ class _RestTimerOverlayState extends ConsumerState<RestTimerOverlay> {
                                 .adjustTime(-30),
                             style: TextButton.styleFrom(
                               foregroundColor: theme.colorScheme.onSurface,
-                              backgroundColor: Colors.white12,
+                              backgroundColor: AppColors.pureWhite.withValues(
+                                alpha: 0.12,
+                              ),
                               textStyle: theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.w700,
                               ),
@@ -173,7 +179,9 @@ class _RestTimerOverlayState extends ConsumerState<RestTimerOverlay> {
                                 .adjustTime(30),
                             style: TextButton.styleFrom(
                               foregroundColor: theme.colorScheme.onSurface,
-                              backgroundColor: Colors.white12,
+                              backgroundColor: AppColors.pureWhite.withValues(
+                                alpha: 0.12,
+                              ),
                               textStyle: theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.w700,
                               ),

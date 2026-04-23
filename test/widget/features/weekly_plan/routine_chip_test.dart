@@ -48,18 +48,22 @@ void main() {
       expect(find.byIcon(Icons.check), findsOneWidget);
     });
 
-    testWidgets('checkmark icon is green', (tester) async {
+    testWidgets('checkmark icon is emeraldGreen (palette done token)', (
+      tester,
+    ) async {
       await tester.pumpWidget(_chip(state: RoutineChipState.done));
 
       final icon = tester.widget<Icon>(find.byIcon(Icons.check));
-      expect(icon.color, const Color(0xFF00E676));
+      expect(icon.color, AppColors.emeraldGreen);
     });
 
-    testWidgets('Container has a green-tinted background', (tester) async {
+    testWidgets('Container border is emeraldGreen (palette done token)', (
+      tester,
+    ) async {
       await tester.pumpWidget(_chip(state: RoutineChipState.done));
 
       // Done chip is a Container with a decoration — find it by verifying
-      // a BoxDecoration with a green border exists.
+      // a BoxDecoration with an emeraldGreen border exists.
       final containers = tester
           .widgetList<Container>(find.byType(Container))
           .toList();
@@ -69,7 +73,7 @@ void main() {
         if (decoration is BoxDecoration) {
           final border = decoration.border;
           if (border is Border) {
-            return border.top.color == const Color(0xFF00E676);
+            return border.top.color == AppColors.emeraldGreen;
           }
         }
         return false;
@@ -89,15 +93,18 @@ void main() {
   });
 
   group('RoutineChip — next state', () {
-    testWidgets('uses a solid green Material background', (tester) async {
-      await tester.pumpWidget(_chip(state: RoutineChipState.next));
+    testWidgets(
+      'uses a solid emeraldGreen Material background (palette next token)',
+      (tester) async {
+        await tester.pumpWidget(_chip(state: RoutineChipState.next));
 
-      final materials = tester.widgetList<Material>(find.byType(Material));
-      final hasGreenMaterial = materials.any(
-        (m) => m.color == const Color(0xFF00E676),
-      );
-      expect(hasGreenMaterial, isTrue);
-    });
+        final materials = tester.widgetList<Material>(find.byType(Material));
+        final hasGreenMaterial = materials.any(
+          (m) => m.color == AppColors.emeraldGreen,
+        );
+        expect(hasGreenMaterial, isTrue);
+      },
+    );
 
     testWidgets('shows the routine name', (tester) async {
       await tester.pumpWidget(

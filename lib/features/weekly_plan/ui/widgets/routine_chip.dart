@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/radii.dart';
 import '../../../../l10n/app_localizations.dart';
 
@@ -41,8 +42,8 @@ class RoutineChip extends StatelessWidget {
 
   final VoidCallback? onTap;
 
-  static const _doneColor = Color(0xFF00E676);
-  static const _cardColor = Color(0xFF232340);
+  static const _doneColor = AppColors.emeraldGreen;
+  static const _cardColor = AppColors.stoneViolet;
 
   @override
   Widget build(BuildContext context) {
@@ -88,15 +89,19 @@ class RoutineChip extends StatelessWidget {
               Container(
                 width: 22,
                 height: 22,
-                decoration: const BoxDecoration(
-                  color: Colors.black26,
+                decoration: BoxDecoration(
+                  // Sequence-number badge on the emerald-green CTA: a dark
+                  // overlay on top of the green Material. Palette has no
+                  // near-black token, so we use deepVoid (#0D0319) with a
+                  // ~26% alpha to tint the green without a full blackout.
+                  color: AppColors.deepVoid.withValues(alpha: 0.26),
                   shape: BoxShape.circle,
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   '$sequenceNumber',
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color: Colors.black,
+                    color: AppColors.deepVoid,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -110,7 +115,7 @@ class RoutineChip extends StatelessWidget {
                     Text(
                       routineName,
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.black,
+                        color: AppColors.deepVoid,
                         fontWeight: FontWeight.w600,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -122,7 +127,7 @@ class RoutineChip extends StatelessWidget {
                           context,
                         ).exercisesCount(exerciseCount!),
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: Colors.black54,
+                          color: AppColors.deepVoid.withValues(alpha: 0.54),
                           fontSize: 11,
                         ),
                       ),
@@ -148,7 +153,7 @@ class RoutineChip extends StatelessWidget {
           height: 48,
           decoration: BoxDecoration(
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.13),
+              color: AppColors.pureWhite.withValues(alpha: 0.13),
               width: 1,
             ),
             borderRadius: BorderRadius.circular(kRadiusLg),
@@ -161,14 +166,14 @@ class RoutineChip extends StatelessWidget {
                 width: 20,
                 height: 20,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
+                  color: AppColors.pureWhite.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   '$sequenceNumber',
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.55),
+                    color: AppColors.pureWhite.withValues(alpha: 0.55),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -178,7 +183,7 @@ class RoutineChip extends StatelessWidget {
                 child: Text(
                   routineName,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.55),
+                    color: AppColors.pureWhite.withValues(alpha: 0.55),
                     fontWeight: FontWeight.w600,
                   ),
                   overflow: TextOverflow.ellipsis,

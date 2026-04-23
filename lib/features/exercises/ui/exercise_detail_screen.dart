@@ -7,6 +7,7 @@ import '../../../core/utils/enum_l10n.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/exercise_image.dart';
 import '../../../shared/widgets/exercise_info_sections.dart';
+import '../../../shared/widgets/pixel_image.dart';
 import '../../personal_records/models/record_type.dart';
 import '../../personal_records/providers/pr_providers.dart';
 import '../../profile/providers/profile_providers.dart';
@@ -218,11 +219,11 @@ class _ExerciseDetailBody extends ConsumerWidget {
             runSpacing: 8,
             children: [
               _DetailChip(
-                icon: exercise.muscleGroup.icon,
+                iconPath: exercise.muscleGroup.iconPath,
                 label: exercise.muscleGroup.localizedName(l10n),
               ),
               _DetailChip(
-                icon: exercise.equipmentType.icon,
+                iconPath: exercise.equipmentType.iconPath,
                 label: exercise.equipmentType.localizedName(l10n),
               ),
             ],
@@ -286,9 +287,9 @@ class _ExerciseDetailBody extends ConsumerWidget {
 }
 
 class _DetailChip extends StatelessWidget {
-  const _DetailChip({required this.icon, required this.label});
+  const _DetailChip({required this.iconPath, required this.label});
 
-  final IconData icon;
+  final String iconPath;
   final String label;
 
   @override
@@ -304,7 +305,7 @@ class _DetailChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 18, color: theme.colorScheme.onSurface),
+          PixelImage(iconPath, semanticLabel: '', width: 24, height: 24),
           const SizedBox(width: 6),
           Text(
             label,
@@ -343,7 +344,7 @@ class _ExerciseImageRow extends StatelessWidget {
                     child: _TappableImage(
                       imageUrl: exercise.imageStartUrl,
                       label: '${exercise.name} start position',
-                      fallbackIcon: exercise.muscleGroup.icon,
+                      fallbackIcon: Icons.fitness_center,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -361,7 +362,7 @@ class _ExerciseImageRow extends StatelessWidget {
                     child: _TappableImage(
                       imageUrl: exercise.imageEndUrl,
                       label: '${exercise.name} end position',
-                      fallbackIcon: exercise.muscleGroup.icon,
+                      fallbackIcon: Icons.fitness_center,
                     ),
                   ),
                   const SizedBox(height: 4),
