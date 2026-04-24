@@ -4,7 +4,7 @@
 
 **Purpose.** This document is the authoritative reference for all pt-BR translations seeded into `exercise_translations` in Phase 15f. It covers two scopes:
 
-1. **Names** — already shipped via ARB in Phase 15c (PR #86–#91) and refined in PR #109 (Core/Bands as English loanwords). Stage 3 reuses these 150 names verbatim. Names are stable; the glossary documents *why* each convention won so future locales (es-ES, fr-FR) can extend the pattern.
+1. **Names** — already shipped via ARB in Phase 15c (PR #86–#91) and refined in PR #109 (Core/Bands as English loanwords). Stage 3 reuses these 150 names verbatim. Names are stable; the glossary documents _why_ each convention won so future locales (es-ES, fr-FR) can extend the pattern.
 2. **Descriptions + form tips** — net-new content for Stage 3. EN already exists in DB (Phase 12). pt-BR drafts must be generated under the style rules in §5 below.
 
 **User approval is required on §1–§4 before Stage 3 begins.** §5 (style guide) governs Stage 3's AI-drafted descriptions; user reviews the full 150-row seed during Stage 8 staging verification.
@@ -17,87 +17,87 @@ Drawn from the 150 already-shipped names in `lib/l10n/app_pt.arb`. Every Stage 3
 
 ### Equipment
 
-| English | pt-BR | Notes |
-|---|---|---|
-| barbell | barra | "com Barra" suffix when implement is named explicitly |
-| dumbbell | halteres / halter | plural for bilateral, singular for unilateral exercises |
-| cable | cabo | "no Cabo" preposition |
-| machine | máquina | "na Máquina" |
-| bodyweight | livre / corporal / (peso do corpo) | usually implied; "Agachamento Livre" = bodyweight squat |
-| kettlebell | **Kettlebell** | loanword, capitalized |
-| bands / resistance band | **Bands** / faixa | loanword for category, but "com Faixa" when used in name (e.g. "Agachamento com Faixa") |
-| EZ bar | barra W | "Rosca com Barra W" |
-| smith machine | smith | loanword |
+| English                 | pt-BR                              | Notes                                                                                   |
+| ----------------------- | ---------------------------------- | --------------------------------------------------------------------------------------- |
+| barbell                 | barra                              | "com Barra" suffix when implement is named explicitly                                   |
+| dumbbell                | halteres / halter                  | plural for bilateral, singular for unilateral exercises                                 |
+| cable                   | cabo                               | "no Cabo" preposition                                                                   |
+| machine                 | máquina                            | "na Máquina"                                                                            |
+| bodyweight              | livre / corporal / (peso do corpo) | usually implied; "Agachamento Livre" = bodyweight squat                                 |
+| kettlebell              | **Kettlebell**                     | loanword, capitalized                                                                   |
+| bands / resistance band | **Bands** / faixa                  | loanword for category, but "com Faixa" when used in name (e.g. "Agachamento com Faixa") |
+| EZ bar                  | barra W                            | "Rosca com Barra W"                                                                     |
+| smith machine           | smith                              | loanword                                                                                |
 
 ### Movement verbs / patterns
 
-| English | pt-BR | Notes |
-|---|---|---|
-| press (bench) | supino | only for chest press; never for shoulder |
-| press (overhead/shoulder) | desenvolvimento | shoulder press = "Desenvolvimento" |
-| press (technique loanwords) | press | for "Push Press", "Arnold Press", "Landmine Press", "Pallof Press" — kept English |
-| row | remada | "Remada Curvada" (bent-over), "Remada Cavalinho" (T-bar), "Remada Alta" (upright) |
-| pull (lat pulldown) | puxada | "Puxada na Polia Alta" |
-| pull-up | barra fixa | "Barra Fixa Pegada Aberta" (wide-grip), "Barra Fixa Supinada" (chin-up = supinated grip) |
-| squat | agachamento | "Agachamento com Barra", "Agachamento Búlgaro", "Agachamento Livre" (bodyweight) |
-| deadlift | levantamento terra | "Levantamento Terra Romeno" (RDL), "Levantamento Terra Sumo" |
-| lunge | afundo | "Afundo com Halteres", "Afundo Reverso", "Afundo Caminhando" |
-| curl (biceps) | rosca | "Rosca Direta" (straight bar), "Rosca Martelo", "Rosca Scott" (preacher) |
-| extension (triceps) | extensão de tríceps | for cable/dumbbell triceps work |
-| extension (legs) | (none) | leg extension = "Cadeira Extensora" (named by machine) |
-| curl (legs) | (none) | leg curl = "Mesa Flexora" (named by machine) |
-| raise (lateral/front) | elevação | "Elevação Lateral", "Elevação Frontal" |
-| raise (calf) | elevação de panturrilha / panturrilha | both forms in use; prefer "Elevação de Panturrilha" for primary, "Panturrilha Sentado" for variants |
-| fly | crucifixo | "Crucifixo com Halteres", "Crucifixo Invertido" (rear delt), "Crucifixo Inclinado" |
-| crunch | abdominal | "Abdominal Bicicleta", "Abdominal no Cabo", "Abdominal Reverso" |
-| plank | prancha | "Prancha Lateral", "Prancha Sobe e Desce" |
-| dip | mergulho / paralelas | "Mergulho no Banco" (bench dip); "Paralelas" (parallel bar dips, generic) |
-| pushdown | (na polia / na corda) | "Tríceps na Polia" (cable pushdown), "Tríceps na Corda" (rope) |
-| hip thrust | elevação de quadril | "Elevação de Quadril com Barra"; bodyweight = "Elevação de Quadril" |
-| shrug | encolhimento | "Encolhimento com Barra" / "com Halteres" |
-| pullover | pullover | loanword |
-| crossover | crossover | loanword (chest cable work) |
-| pulldown (straight-arm) | puxada com braços estendidos | |
-| good morning | **Good Morning** | loanword |
+| English                     | pt-BR                                 | Notes                                                                                               |
+| --------------------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| press (bench)               | supino                                | only for chest press; never for shoulder                                                            |
+| press (overhead/shoulder)   | desenvolvimento                       | shoulder press = "Desenvolvimento"                                                                  |
+| press (technique loanwords) | press                                 | for "Push Press", "Arnold Press", "Landmine Press", "Pallof Press" — kept English                   |
+| row                         | remada                                | "Remada Curvada" (bent-over), "Remada Cavalinho" (T-bar), "Remada Alta" (upright)                   |
+| pull (lat pulldown)         | puxada                                | "Puxada na Polia Alta"                                                                              |
+| pull-up                     | barra fixa                            | "Barra Fixa Pegada Aberta" (wide-grip), "Barra Fixa Supinada" (chin-up = supinated grip)            |
+| squat                       | agachamento                           | "Agachamento com Barra", "Agachamento Búlgaro", "Agachamento Livre" (bodyweight)                    |
+| deadlift                    | levantamento terra                    | "Levantamento Terra Romeno" (RDL), "Levantamento Terra Sumo"                                        |
+| lunge                       | afundo                                | "Afundo com Halteres", "Afundo Reverso", "Afundo Caminhando"                                        |
+| curl (biceps)               | rosca                                 | "Rosca Direta" (straight bar), "Rosca Martelo", "Rosca Scott" (preacher)                            |
+| extension (triceps)         | extensão de tríceps                   | for cable/dumbbell triceps work                                                                     |
+| extension (legs)            | (none)                                | leg extension = "Cadeira Extensora" (named by machine)                                              |
+| curl (legs)                 | (none)                                | leg curl = "Mesa Flexora" (named by machine)                                                        |
+| raise (lateral/front)       | elevação                              | "Elevação Lateral", "Elevação Frontal"                                                              |
+| raise (calf)                | elevação de panturrilha / panturrilha | both forms in use; prefer "Elevação de Panturrilha" for primary, "Panturrilha Sentado" for variants |
+| fly                         | crucifixo                             | "Crucifixo com Halteres", "Crucifixo Invertido" (rear delt), "Crucifixo Inclinado"                  |
+| crunch                      | abdominal                             | "Abdominal Bicicleta", "Abdominal no Cabo", "Abdominal Reverso"                                     |
+| plank                       | prancha                               | "Prancha Lateral", "Prancha Sobe e Desce"                                                           |
+| dip                         | mergulho / paralelas                  | "Mergulho no Banco" (bench dip); "Paralelas" (parallel bar dips, generic)                           |
+| pushdown                    | (na polia / na corda)                 | "Tríceps na Polia" (cable pushdown), "Tríceps na Corda" (rope)                                      |
+| hip thrust                  | elevação de quadril                   | "Elevação de Quadril com Barra"; bodyweight = "Elevação de Quadril"                                 |
+| shrug                       | encolhimento                          | "Encolhimento com Barra" / "com Halteres"                                                           |
+| pullover                    | pullover                              | loanword                                                                                            |
+| crossover                   | crossover                             | loanword (chest cable work)                                                                         |
+| pulldown (straight-arm)     | puxada com braços estendidos          |                                                                                                     |
+| good morning                | **Good Morning**                      | loanword                                                                                            |
 
 ### Body parts & muscles
 
-| English | pt-BR |
-|---|---|
-| chest | peito |
-| back | costas |
-| legs | pernas |
-| shoulders | ombros |
-| arms | braços |
-| core | **Core** (loanword, per PR #109) |
-| biceps | bíceps |
-| triceps | tríceps |
-| quads | quadríceps |
-| hamstrings | posteriores / isquiotibiais |
-| glutes | glúteos |
-| calves | panturrilhas |
-| lats | dorsais / latíssimo |
-| traps | trapézio |
-| delts | deltoides |
-| pecs | peitorais |
-| abs | abdômen / abdominais |
+| English    | pt-BR                            |
+| ---------- | -------------------------------- |
+| chest      | peito                            |
+| back       | costas                           |
+| legs       | pernas                           |
+| shoulders  | ombros                           |
+| arms       | braços                           |
+| core       | **core** (loanword, per PR #109) |
+| biceps     | bíceps                           |
+| triceps    | tríceps                          |
+| quads      | quadríceps                       |
+| hamstrings | posteriores / isquiotibiais      |
+| glutes     | glúteos                          |
+| calves     | panturrilhas                     |
+| lats       | dorsais / latíssimo              |
+| traps      | trapézio                         |
+| delts      | deltoides                        |
+| pecs       | peitorais                        |
+| abs        | abdômen / abdominais             |
 
 ### Grip & position modifiers
 
-| English | pt-BR |
-|---|---|
-| close-grip | pegada fechada |
-| wide-grip | pegada aberta |
-| neutral grip | pegada neutra |
-| overhand / pronated | pronada |
-| underhand / supinated | supinada |
-| incline (bench angle up) | inclinado |
-| decline (bench angle down) | declinado |
-| flat | reto |
-| seated | sentado |
-| standing | em pé |
-| single-leg / unilateral | unilateral |
-| reverse | inverso / reverso (verb-dependent — "Rosca Inversa" but "Afundo Reverso") |
+| English                    | pt-BR                                                                     |
+| -------------------------- | ------------------------------------------------------------------------- |
+| close-grip                 | pegada fechada                                                            |
+| wide-grip                  | pegada aberta                                                             |
+| neutral grip               | pegada neutra                                                             |
+| overhand / pronated        | pronada                                                                   |
+| underhand / supinated      | supinada                                                                  |
+| incline (bench angle up)   | inclinado                                                                 |
+| decline (bench angle down) | declinado                                                                 |
+| flat                       | reto                                                                      |
+| seated                     | sentado                                                                   |
+| standing                   | em pé                                                                     |
+| single-leg / unilateral    | unilateral                                                                |
+| reverse                    | inverso / reverso (verb-dependent — "Rosca Inversa" but "Afundo Reverso") |
 
 ---
 
@@ -165,20 +165,21 @@ When the implement defines a fundamentally different exercise (machine variants)
 
 ## 4. Variant-naming patterns
 
-| Variant | English suffix | pt-BR suffix |
-|---|---|---|
-| Incline | Incline X | X Inclinado |
-| Decline | Decline X | X Declinado |
-| Flat (default bench) | (omitted) / Flat X | X Reto |
-| Close-grip | Close-Grip X | X Pegada Fechada |
-| Wide-grip | Wide-Grip X | X Pegada Aberta |
-| Single-leg | Single-Leg X | X Unilateral |
-| Seated | Seated X | X Sentado |
-| Standing | Standing X | X em Pé |
-| Reverse | Reverse X | X Reverso (or Inversa for Rosca) |
-| Side | Side X | X Lateral |
+| Variant              | English suffix     | pt-BR suffix                     |
+| -------------------- | ------------------ | -------------------------------- |
+| Incline              | Incline X          | X Inclinado                      |
+| Decline              | Decline X          | X Declinado                      |
+| Flat (default bench) | (omitted) / Flat X | X Reto                           |
+| Close-grip           | Close-Grip X       | X Pegada Fechada                 |
+| Wide-grip            | Wide-Grip X        | X Pegada Aberta                  |
+| Single-leg           | Single-Leg X       | X Unilateral                     |
+| Seated               | Seated X           | X Sentado                        |
+| Standing             | Standing X         | X em Pé                          |
+| Reverse              | Reverse X          | X Reverso (or Inversa for Rosca) |
+| Side                 | Side X             | X Lateral                        |
 
 Place modifier **after** the head noun in pt-BR (matches Romance language adjective order):
+
 - "Incline Bench Press" → "Supino **Inclinado**" (modifier follows)
 - "Reverse Crunch" → "Abdominal **Reverso**"
 - "Lateral Plank" → "Prancha **Lateral**"
@@ -192,7 +193,7 @@ Place modifier **after** the head noun in pt-BR (matches Romance language adject
 - **Use `você` (informal you), not `o praticante` or `o aluno`.** Gym-context Portuguese is direct.
 - Imperative mood for cues ("Mantenha", "Empurre", "Inspire") — same register as a personal trainer giving cues at the rack.
 - No academic/clinical jargon. Avoid: "execução biomecânica", "padrão motor", "sinergista". Prefer: "movimento", "como fazer", "músculos auxiliares".
-- Reference the EN description as the primary source of truth for *content* — translate intent, not word-for-word. EN says "Lie back on the bench"; pt should say "Deite no banco" not "Deite-se de costas no banco para iniciar".
+- Reference the EN description as the primary source of truth for _content_ — translate intent, not word-for-word. EN says "Lie back on the bench"; pt should say "Deite no banco" not "Deite-se de costas no banco para iniciar".
 
 ### 5.2 Description structure
 
@@ -215,30 +216,30 @@ Length target: 60–140 characters total.
 
 ### 5.4 Vocabulary table for description/form_tips
 
-| EN concept | pt-BR (preferred) | Reject |
-|---|---|---|
-| reps | repetições / reps | "movimentos" |
-| set | série | "round" |
-| weight | carga / peso | (synonyms OK) |
-| rest | descanso | "intervalo" (use only for rest-pause) |
-| range of motion (ROM) | amplitude | "intervalo de movimento" (too literal) |
-| eccentric phase | fase excêntrica | (technical OK) |
-| concentric phase | fase concêntrica | |
-| spotter | parceiro / spotter | both acceptable |
-| failure | falha | |
-| warm-up set | aquecimento | |
-| working set | série de trabalho | |
-| superset | bi-set | "supersérie" (less common in BR gyms) |
-| tempo | tempo / cadência | |
-| breathing | respiração | |
-| brace your core | contraia o core / mantenha o core firme | "tense seu núcleo" |
-| neutral spine | coluna neutra | |
-| hip hinge | dobradiça do quadril / hip hinge | both used; prefer hip hinge for advanced lifters |
-| knees track over toes | joelhos alinhados com os pés | |
-| chest up | peito para cima | |
-| shoulders down and back | ombros para trás e para baixo | |
-| drive through heels | empurre pelos calcanhares | |
-| squeeze | contraia | |
+| EN concept              | pt-BR (preferred)                       | Reject                                           |
+| ----------------------- | --------------------------------------- | ------------------------------------------------ |
+| reps                    | repetições / reps                       | "movimentos"                                     |
+| set                     | série                                   | "round"                                          |
+| weight                  | carga / peso                            | (synonyms OK)                                    |
+| rest                    | descanso                                | "intervalo" (use only for rest-pause)            |
+| range of motion (ROM)   | amplitude                               | "intervalo de movimento" (too literal)           |
+| eccentric phase         | fase excêntrica                         | (technical OK)                                   |
+| concentric phase        | fase concêntrica                        |                                                  |
+| spotter                 | parceiro / spotter                      | both acceptable                                  |
+| failure                 | falha                                   |                                                  |
+| warm-up set             | aquecimento                             |                                                  |
+| working set             | série de trabalho                       |                                                  |
+| superset                | bi-set                                  | "supersérie" (less common in BR gyms)            |
+| tempo                   | tempo / cadência                        |                                                  |
+| breathing               | respiração                              |                                                  |
+| brace your core         | contraia o core / mantenha o core firme | "tense seu núcleo"                               |
+| neutral spine           | coluna neutra                           |                                                  |
+| hip hinge               | padrão de flexão do quadril / hip hinge | both used; prefer hip hinge for advanced lifters |
+| knees track over toes   | joelhos alinhados com os pés            |                                                  |
+| chest up                | peito para cima                         |                                                  |
+| shoulders down and back | ombros para trás e para baixo           |                                                  |
+| drive through heels     | empurre pelos calcanhares               |                                                  |
+| squeeze                 | contraia                                |                                                  |
 
 ### 5.5 Numerical & unit conventions
 
@@ -292,4 +293,4 @@ The implementer of Stage 3 (tech-lead) follows this:
 
 - DRAFT created: 2026-04-24 by orchestrator (Claude / Opus 4.7).
 - pt-BR conventions sourced from: `lib/l10n/app_pt.arb` (Phase 15c, PR #86–#91), PR #109 (loanwords), and Brazilian gym vernacular as established in popular coaching literature (e.g., `Treino Mestre`, `Hipertrofia.org`).
-- **User approval (required before Stage 3):** PENDING.
+- **User approval (required before Stage 3):** APPROVED 2026-04-24 — sections 1–4 confirmed; §5 style guide accepted as guidance for Stage 3 drafting; user reviews full 150-row content during Stage 8 staging skim.

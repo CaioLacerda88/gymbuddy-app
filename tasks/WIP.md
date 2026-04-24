@@ -20,9 +20,9 @@ Active work being done by agents. Each section is removed once the branch is mer
   - [x] Removed redundant `supabase/seed.sql` (now blocked by unique slug index)
   - [x] Spec compliance review pass
   - [x] Code quality review pass (3 fixes applied: deleted_at guard, diagnostic asserts, comment phrasing)
-- [ ] **Stage 2** — pt-BR glossary (human-gated)
-  - [ ] `docs/superpowers/specs/phase15f-pt-glossary.md` drafted
-  - [ ] User approval recorded
+- [x] **Stage 2** — pt-BR glossary (human-gated) ✅
+  - [x] `docs/superpowers/specs/phase15f-pt-glossary.md` drafted (commit 3d80fa7)
+  - [x] User approval recorded 2026-04-24
 - [ ] **Stage 3** — pt-BR seed migration (tech-lead)
   - [ ] `supabase/migrations/00033_seed_exercise_translations_pt.sql` (150 rows)
   - [ ] Reviews pass
