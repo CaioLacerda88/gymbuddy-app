@@ -4,6 +4,63 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ---
 
+## Phase 17.0a — Pixel-Chrome Cleanup (2026-04-23)
+
+**Branch:** `feature/phase17.0a-pixel-chrome-cleanup`
+**Source:** ui-ux-critic SHIP verdict on PR #101 flagged three items as out-of-scope for 17.0 but required before 17a.
+**Dependency:** §17.0 (DONE, PR #101) — palette + `PixelImage` ready to consume.
+**Unblocks:** §17a (Celebration Overlay) and §17b visual polish; shipping as its own small PR keeps 17a's scope pure to celebration UX.
+
+### Pre-implementation review (2026-04-23)
+
+- **product-owner verdict:** Full radii=0 sweep. No chamfer compromise on cards/buttons/inputs/FABs. The retention risk is half-measures ("looks like a theme job that wasn't finished"), not commitment. Apply without apology.
+- **ui-ux-critic verdict:**
+  - Banner: use `assets/pixel/equipment/dumbbell.png`, NOT `exercises_active.png` — latter collides with nav state (same asset rendered twice when user is on Exercises tab).
+  - Chevron: Text '›' styled with `pixelLabel` wins over CustomPainter at small sizes (painter anti-aliases into mud without integer-scale pipeline).
+  - Empty state split: `empty_tavern.png` for pristine "no exercises yet"; `quest_marker.png` for filtered "no search matches" (locked.png would imply gated content — wrong semantic).
+  - Add `BottomSheetThemeData` + `SnackBarThemeData` to the sweep — Material defaults (4px SnackBar, floating-pill sheet) would leak through otherwise. 2px chamfer for these two ONLY; rest is 0.
+
+### Acceptance checklist
+
+- [ ] **`_ActiveWorkoutBanner`** (`lib/core/router/app_router.dart:386,411`):
+  - Replace `Icon(Icons.fitness_center, size: 20)` with `PixelImage('assets/pixel/equipment/dumbbell.png', size: 20)` (nearest-neighbor; no nav collision)
+  - Replace `Icon(Icons.chevron_right, ...)` with `Text('›', style: AppTextStyles.pixelLabel.copyWith(color: theme.colorScheme.onPrimary, fontSize: 16))` — adjust fontSize to match 24px chevron visual weight
+- [ ] **`_EmptyState`** (`lib/features/exercises/ui/exercise_list_screen.dart:513`):
+  - Replace the 48dp Material icon branching with split pixel assets:
+    - `hasFilters == true` → `PixelImage('assets/pixel/micro/quest_marker.png', size: 64)`
+    - `hasFilters == false` → `PixelImage('assets/pixel/micro/empty_tavern.png', size: 64)`
+  - Keep semantic identifiers (`exercise-list-empty-filtered` / `exercise-list-empty-no-filter`) — E2E depends on them
+- [ ] **Theme borderRadius → pixel-sharp** (`lib/core/theme/app_theme.dart` + `lib/core/theme/radii.dart`):
+  - `kRadiusSm/Md/Lg/Xl` in `radii.dart` → all `0.0` (auto-propagates to ~40 call sites across profile, weekly_plan, home, personal_records, shared/widgets)
+  - Inline `BorderRadius.circular(16)` in `_cardTheme` → `BorderRadius.zero`
+  - Inline `BorderRadius.circular(12)` in `_elevatedButtonTheme` → `BorderRadius.zero`
+  - 4× inline `BorderRadius.circular(12)` in `_inputDecorationTheme` → `BorderRadius.zero`
+  - Add `floatingActionButtonTheme: const FloatingActionButtonThemeData(shape: RoundedRectangleBorder())` to force square FABs
+  - **NEW per UI/UX review:** Add `bottomSheetTheme: BottomSheetThemeData(shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(2))))` — 2px chamfer on top corners only
+  - **NEW per UI/UX review:** Add `snackBarTheme: SnackBarThemeData(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)))` — 2px chamfer so SnackBar reads as floating element, not status-bar overlay
+- [ ] Widget/unit tests green — any golden tests that asserted rounded radii need re-baselining
+- [ ] E2E unaffected — no selector/text changes, visual-only change per CLAUDE.md convention
+- [ ] Manual smoke in Chrome: scan Home/Exercises/Routines/Profile — all cards/buttons/inputs pixel-sharp; SnackBar + modal sheet have 2px chamfer; no stray roundness elsewhere
+
+### Out of scope (tracked, not in this PR)
+
+- [ ] **Asset regen** — `exercises_inactive.png` white halo, `cardio` muscle icon (full-gold outlier), `rank_up` crown collision, streak_7/first_pr sparkles. These are PNG-retouch/regen tasks for the asset pipeline and need a designer or asset-regen prompt — NOT code. File separate tracking note after this PR lands.
+
+### Verification gate (before PR)
+
+- `make ci` → format + gen + analyze + test + android-debug-build (all pass)
+- Manual: `flutter run -d chrome` → visit every tab, confirm no rounded corners, confirm banner + empty state render correctly
+
+### Pipeline
+
+1. product-owner — check that pixel-sharp across the entire app doesn't hurt readability/trust for non-pixel-curious users; 1-paragraph verdict (read-only, parallel)
+2. ui-ux-critic — verify the chosen replacements hit the pixel aesthetic; flag anything else they want bundled into this sweep (read-only, parallel)
+3. tech-lead — implement the 3 items + radii audit; re-run `make ci`; open PR (foreground, Opus)
+4. Verification gate + manual smoke
+5. Open PR → reviewer → ship
+
+---
+
 ## Phase 16 — Subscription Monetization — PARKED (2026-04-22)
 
 **Why parked:** Phase 16 keeps hitting external blockers (Brazilian merchant account, Play Console → upload signed AAB required before subscription product can be created, license-tester account setup). Phase 17 gamification is fully internal code work with no external gates and produces the retention moat that makes Phase 16's paywall pitch compelling. Decision: ship Phase 17 (Gamification) before resuming 16b/c/d.

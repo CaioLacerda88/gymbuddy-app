@@ -503,16 +503,27 @@ class _EmptyState extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
 
+    // Split the icon by empty-state semantics:
+    //   - filtered (no search matches) → quest_marker (a marker pointing at
+    //     nothing)
+    //   - pristine (no exercises created yet) → empty_tavern (a quiet, not-
+    //     yet-populated starting scene)
+    // The pixel sprites carry their own palette; no tint is applied.
+    final emptyStateAsset = hasFilters
+        ? 'assets/pixel/micro/quest_marker.png'
+        : 'assets/pixel/micro/empty_tavern.png';
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              hasFilters ? Icons.search_off_rounded : Icons.fitness_center,
-              size: 48,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+            PixelImage(
+              emptyStateAsset,
+              semanticLabel: '',
+              width: 64,
+              height: 64,
             ),
             const SizedBox(height: 16),
             Semantics(

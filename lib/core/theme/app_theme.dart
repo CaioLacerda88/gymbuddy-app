@@ -117,6 +117,30 @@ class AppTheme {
       elevatedButtonTheme: _elevatedButtonTheme,
       inputDecorationTheme: _inputDecorationTheme,
       segmentedButtonTheme: _segmentedButtonTheme,
+      // Material's default FAB is a circle. Pixel-art rejects circles:
+      // a RoundedRectangleBorder with the default zero-radius produces the
+      // square silhouette the rest of the theme converges on.
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        shape: RoundedRectangleBorder(),
+      ),
+      // 2px chamfer on the top corners only. A fully sharp top edge against
+      // a rounded scrim reads as a clip artifact rather than a modal
+      // surface; 2px is the smallest value that still signals "overlay".
+      bottomSheetTheme: const BottomSheetThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(2)),
+        ),
+      ),
+      // Floating behavior + 2px chamfer so the SnackBar reads as feedback
+      // that's been dropped on top of the scene, not a bar fused to the
+      // status row. Behavior is explicit here; anything that overrides it
+      // per-call-site is doing so intentionally.
+      snackBarTheme: const SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(2)),
+        ),
+      ),
       appBarTheme: const AppBarThemeData(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -148,11 +172,11 @@ class AppTheme {
     ),
   );
 
-  static final _cardTheme = CardThemeData(
+  static const _cardTheme = CardThemeData(
     color: _cardColor,
     elevation: 0,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+    margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
   );
 
   static final _elevatedButtonTheme = ElevatedButtonThemeData(
@@ -161,7 +185,7 @@ class AppTheme {
       foregroundColor: AppColors.pureWhite,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
     ),
   );
 
@@ -202,25 +226,25 @@ class AppTheme {
     ),
   );
 
-  static final _inputDecorationTheme = InputDecorationThemeData(
+  static const _inputDecorationTheme = InputDecorationThemeData(
     filled: true,
     fillColor: _cardColor,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.zero,
       borderSide: BorderSide.none,
     ),
     focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: _primaryColor, width: 2),
+      borderRadius: BorderRadius.zero,
+      borderSide: BorderSide(color: _primaryColor, width: 2),
     ),
     errorBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: _errorColor, width: 1),
+      borderRadius: BorderRadius.zero,
+      borderSide: BorderSide(color: _errorColor, width: 1),
     ),
     focusedErrorBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: _errorColor, width: 2),
+      borderRadius: BorderRadius.zero,
+      borderSide: BorderSide(color: _errorColor, width: 2),
     ),
   );
 }

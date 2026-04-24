@@ -8,6 +8,7 @@ import '../connectivity/connectivity_provider.dart';
 import '../local_storage/cache_refresh_provider.dart';
 import '../offline/sync_service.dart';
 import '../observability/sentry_init.dart' show sanitizeRouteName;
+import '../theme/app_theme.dart';
 import '../../features/auth/providers/auth_providers.dart';
 import '../../features/auth/providers/onboarding_provider.dart';
 import '../../features/auth/providers/signup_state_provider.dart';
@@ -382,10 +383,14 @@ class _ActiveWorkoutBanner extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
-              Icon(
-                Icons.fitness_center,
-                color: theme.colorScheme.onPrimary,
-                size: 20,
+              // Dumbbell (not the exercises-nav icon) so the banner never
+              // collides visually with the bottom-nav state when the user is
+              // already on the Exercises tab.
+              const PixelImage(
+                'assets/pixel/equipment/dumbbell.png',
+                semanticLabel: '',
+                width: 20,
+                height: 20,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -408,7 +413,18 @@ class _ActiveWorkoutBanner extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Icon(Icons.chevron_right, color: theme.colorScheme.onPrimary),
+              // Pixel-style chevron: a Unicode '›' rendered in Press-Start-2P
+              // beats a CustomPainter at small sizes because the painter
+              // anti-aliases into mud without an integer-scale pipeline. The
+              // 16pt size was picked empirically to match the visual weight
+              // of the original 24px Material chevron.
+              Text(
+                '›',
+                style: AppTextStyles.pixelLabel.copyWith(
+                  color: theme.colorScheme.onPrimary,
+                  fontSize: 16,
+                ),
+              ),
             ],
           ),
         ),
