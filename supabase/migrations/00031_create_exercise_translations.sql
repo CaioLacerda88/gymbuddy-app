@@ -62,9 +62,9 @@ CREATE POLICY exercise_translations_select_defaults
     )
   );
 
--- SELECT — user-created exercises readable only by their owner. No
--- soft-delete guard here because owners may still want to read their own
--- deleted rows (mirrors the base `exercises` policy in 00001).
+-- SELECT — user-created exercises readable only by their owner.
+-- Mirrors `exercises_select_own` parent visibility — soft-deleted custom
+-- exercises do not leak translations.
 CREATE POLICY exercise_translations_select_own
   ON exercise_translations
   FOR SELECT
@@ -74,6 +74,7 @@ CREATE POLICY exercise_translations_select_own
       SELECT 1 FROM exercises e
       WHERE e.id = exercise_translations.exercise_id
         AND e.user_id = auth.uid()
+        AND e.deleted_at IS NULL
     )
   );
 

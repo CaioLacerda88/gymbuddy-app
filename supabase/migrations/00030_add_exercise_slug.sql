@@ -259,22 +259,39 @@ BEGIN
 END
 $$;
 
--- 2C. BLOCK B — backfill user-created rows with the regex form. These rows
---     are not part of the i18n JOIN, so byte-exact parity with Dart is
---     best-effort. In practice user-created rows only exist in dev/test
---     databases at this stage; production has none yet. Once Stage 6's
---     `create_exercise` RPC is the only insert path, callers will supply
---     the slug explicitly and this branch becomes dead code.
+-- 2C. BLOCK B — regex-based fallback for non-default rows (user-created
+--     exercises). The regex is byte-for-byte equivalent to Dart
+--     `exerciseSlug()` and the trigger added below. Per spec §9, regex is
+--     acceptable here because user customs only need a unique-enough slug
+--     for their own row; the byte-exact constraint is specifically for
+--     default-row JOIN parity in 00033. Once Stage 6's `create_exercise`
+--     RPC is the only insert path, callers will supply the slug explicitly
+--     and this branch becomes dead code.
 UPDATE exercises
 SET slug = trim(both '_' from regexp_replace(lower(name), '[^a-z0-9]+', '_', 'g'))
 WHERE is_default = false;
 
 -- 3. Hard assert no NULL/empty slugs survived — fail loudly if anything
---    slipped through (e.g. user row with all-punctuation name).
+--    slipped through (e.g. user row with all-punctuation name). Report
+--    total count + a sample of offending names so on-call recovery is
+--    possible without manual diagnosis.
 DO $$
+DECLARE
+  bad_count INT;
+  sample_names TEXT;
 BEGIN
-  IF EXISTS (SELECT 1 FROM exercises WHERE slug IS NULL OR slug = '') THEN
-    RAISE EXCEPTION 'slug backfill incomplete: found NULL or empty slug';
+  SELECT COUNT(*) INTO bad_count
+    FROM exercises
+    WHERE slug IS NULL OR slug = '';
+  IF bad_count > 0 THEN
+    SELECT string_agg(name, ', ') INTO sample_names
+      FROM (
+        SELECT name FROM exercises
+        WHERE slug IS NULL OR slug = ''
+        LIMIT 5
+      ) sub;
+    RAISE EXCEPTION 'slug backfill incomplete: % rows with NULL/empty slug. Sample: %',
+      bad_count, sample_names;
   END IF;
 END
 $$;
