@@ -1,19 +1,25 @@
-/// Smoke-tests every [AppIcons] constant so a malformed SVG string fails CI
-/// instead of throwing at app launch. Also verifies the shared renderer
-/// applies size + color uniformly at the three canonical scales (24 dp nav,
-/// 40 dp inline-reward, 64 dp hero).
+/// Smoke-tests every [AppIcons] constant so a typo'd asset path (or missing
+/// asset registration in `pubspec.yaml`) fails CI instead of throwing at app
+/// launch. Also verifies the shared renderer applies size + color uniformly
+/// at the three canonical scales (24 dp nav, 40 dp inline-reward, 64 dp hero)
+/// and that the IconTheme-fallback + semantics contracts are intact.
+///
+/// Phase 17.0e migrated these icons from inline `<svg>` strings to
+/// `SvgPicture.asset` backed by the v3-silhouette Game-Icons pack. The
+/// public API (`AppIcons.home`, `AppIcons.render(...)`) is unchanged — only
+/// the string *value* moved from raw XML to `assets/icons/v3-silhouette/*.svg`.
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:repsaga/core/theme/app_icons.dart';
 import 'package:repsaga/core/theme/app_theme.dart';
 
 void main() {
-  // Each entry asserts: (1) the constant parses as valid SVG, (2)
-  // `AppIcons.render` produces an `SvgPicture` whose color filter is srcIn
-  // with the requested color.
+  // Each entry asserts: (1) the constant is a well-formed asset path under
+  // the v3-silhouette pack, (2) `AppIcons.render` produces an `SvgPicture`
+  // whose color filter is srcIn with the requested color.
   final icons = <String, String>{
     'home': AppIcons.home,
     'lift': AppIcons.lift,
@@ -37,15 +43,17 @@ void main() {
     'close': AppIcons.close,
   };
 
-  group('AppIcons constants — well-formed SVG', () {
+  group('AppIcons constants — v3-silhouette asset paths', () {
     for (final entry in icons.entries) {
-      test('${entry.key} is a non-empty <svg> string with a viewBox', () {
-        final svg = entry.value;
-        expect(svg, isNotEmpty);
-        expect(svg, startsWith('<svg'));
-        expect(svg, contains('viewBox="0 0 48 48"'));
-        expect(svg.trim(), endsWith('</svg>'));
-      });
+      test(
+        '${entry.key} is an asset path under assets/icons/v3-silhouette/',
+        () {
+          final path = entry.value;
+          expect(path, isNotEmpty);
+          expect(path, startsWith('assets/icons/v3-silhouette/'));
+          expect(path, endsWith('.svg'));
+        },
+      );
     }
   });
 

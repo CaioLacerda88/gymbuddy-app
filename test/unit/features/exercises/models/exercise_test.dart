@@ -27,24 +27,26 @@ void main() {
       );
     });
 
-    // §17.0d — enum migrated from IconData to String svgIcon
-    test('svgIcon returns a non-empty SVG string for every value', () {
+    // §17.0d — enum migrated from IconData to String svgIcon.
+    // §17.0e — svgIcon is now a v3-silhouette asset path, no longer inline XML.
+    test('svgIcon returns a v3-silhouette asset path for every value', () {
       for (final group in MuscleGroup.values) {
-        final svg = group.svgIcon;
+        final path = group.svgIcon;
         expect(
-          svg,
+          path,
           isNotEmpty,
           reason: '${group.name}.svgIcon must not be empty',
         );
         expect(
-          svg,
-          startsWith('<svg'),
-          reason: '${group.name}.svgIcon must start with <svg',
+          path,
+          startsWith('assets/icons/v3-silhouette/'),
+          reason:
+              '${group.name}.svgIcon must resolve to the v3-silhouette pack',
         );
         expect(
-          svg,
-          contains('currentColor'),
-          reason: '${group.name}.svgIcon must use currentColor for recoloring',
+          path,
+          endsWith('.svg'),
+          reason: '${group.name}.svgIcon must point at a .svg asset',
         );
       }
     });
@@ -71,24 +73,25 @@ void main() {
       );
     });
 
-    // §17.0d — enum migrated from IconData to String svgIcon
-    test('svgIcon returns a non-empty SVG string for every value', () {
+    // §17.0d — enum migrated from IconData to String svgIcon.
+    // §17.0e — svgIcon is now a v3-silhouette asset path, no longer inline XML.
+    test('svgIcon returns a v3-silhouette asset path for every value', () {
       for (final type in EquipmentType.values) {
-        final svg = type.svgIcon;
+        final path = type.svgIcon;
         expect(
-          svg,
+          path,
           isNotEmpty,
           reason: '${type.name}.svgIcon must not be empty',
         );
         expect(
-          svg,
-          startsWith('<svg'),
-          reason: '${type.name}.svgIcon must start with <svg',
+          path,
+          startsWith('assets/icons/v3-silhouette/'),
+          reason: '${type.name}.svgIcon must resolve to the v3-silhouette pack',
         );
         expect(
-          svg,
-          contains('currentColor'),
-          reason: '${type.name}.svgIcon must use currentColor for recoloring',
+          path,
+          endsWith('.svg'),
+          reason: '${type.name}.svgIcon must point at a .svg asset',
         );
       }
     });

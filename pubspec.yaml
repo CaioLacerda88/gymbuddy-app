@@ -57,6 +57,7 @@ flutter:
     - .env
     - assets/app_icon/
     - assets/icons/
+    - assets/icons/v3-silhouette/
     - assets/legal/
     # Bundled Rajdhani (display) + Inter (body) TTFs. google_fonts picks these
     # up via its asset-manifest lookup (lib/src/google_fonts_base.dart) and

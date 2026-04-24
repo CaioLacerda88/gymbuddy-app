@@ -23,16 +23,17 @@ void main() {
     'kettlebell': AppEquipmentIcons.kettlebell,
   };
 
-  group('AppEquipmentIcons constants — well-formed SVG', () {
+  group('AppEquipmentIcons constants — v3-silhouette asset paths', () {
     for (final entry in icons.entries) {
-      test('${entry.key} is a non-empty <svg> string with a viewBox', () {
-        final svg = entry.value;
-        expect(svg, isNotEmpty);
-        expect(svg, startsWith('<svg'));
-        expect(svg, contains('viewBox="0 0 48 48"'));
-        expect(svg, contains('currentColor'));
-        expect(svg.trim(), endsWith('</svg>'));
-      });
+      test(
+        '${entry.key} is an asset path under assets/icons/v3-silhouette/',
+        () {
+          final path = entry.value;
+          expect(path, isNotEmpty);
+          expect(path, startsWith('assets/icons/v3-silhouette/'));
+          expect(path, endsWith('.svg'));
+        },
+      );
     }
   });
 
@@ -101,19 +102,21 @@ void main() {
       expect(EquipmentType.kettlebell.svgIcon, AppEquipmentIcons.kettlebell);
     });
 
-    test('every enum value returns a non-empty svg string', () {
+    test('every enum value points at a v3-silhouette asset path', () {
       for (final type in EquipmentType.values) {
         expect(type.svgIcon, isNotEmpty);
-        expect(type.svgIcon, startsWith('<svg'));
+        expect(type.svgIcon, startsWith('assets/icons/v3-silhouette/'));
+        expect(type.svgIcon, endsWith('.svg'));
       }
     });
   });
 
   group('MuscleGroup.svgIcon — enum-to-glyph wiring', () {
-    test('every muscle group returns a non-empty svg string', () {
+    test('every muscle group points at a v3-silhouette asset path', () {
       for (final group in MuscleGroup.values) {
         expect(group.svgIcon, isNotEmpty);
-        expect(group.svgIcon, startsWith('<svg'));
+        expect(group.svgIcon, startsWith('assets/icons/v3-silhouette/'));
+        expect(group.svgIcon, endsWith('.svg'));
       }
     });
   });
