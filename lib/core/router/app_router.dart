@@ -5,6 +5,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../connectivity/connectivity_provider.dart';
+import '../theme/app_icons.dart';
 import '../local_storage/cache_refresh_provider.dart';
 import '../offline/sync_service.dart';
 import '../observability/sentry_init.dart' show sanitizeRouteName;
@@ -36,7 +37,6 @@ import '../../features/routines/models/routine.dart';
 import '../../features/workouts/ui/workout_history_screen.dart';
 import '../../shared/widgets/legal_doc_screen.dart';
 import '../../shared/widgets/offline_banner.dart';
-import '../theme/app_icons.dart';
 import '../theme/app_theme.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -379,8 +379,8 @@ class _ActiveWorkoutBanner extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
-              Icon(
-                Icons.fitness_center,
+              AppIcons.render(
+                AppIcons.lift,
                 color: theme.colorScheme.onPrimary,
                 size: 20,
               ),

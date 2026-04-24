@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/exceptions/app_exception.dart';
+import '../../../core/theme/app_icons.dart';
 import '../../../core/utils/enum_l10n.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/exercise_image.dart';
@@ -218,11 +219,11 @@ class _ExerciseDetailBody extends ConsumerWidget {
             runSpacing: 8,
             children: [
               _DetailChip(
-                icon: exercise.muscleGroup.icon,
+                svgIcon: exercise.muscleGroup.svgIcon,
                 label: exercise.muscleGroup.localizedName(l10n),
               ),
               _DetailChip(
-                icon: exercise.equipmentType.icon,
+                svgIcon: exercise.equipmentType.svgIcon,
                 label: exercise.equipmentType.localizedName(l10n),
               ),
             ],
@@ -286,9 +287,11 @@ class _ExerciseDetailBody extends ConsumerWidget {
 }
 
 class _DetailChip extends StatelessWidget {
-  const _DetailChip({required this.icon, required this.label});
+  const _DetailChip({required this.svgIcon, required this.label});
 
-  final IconData icon;
+  /// Inline-SVG glyph string from [AppMuscleIcons] / [AppEquipmentIcons] (or
+  /// the reused [AppIcons.lift] for barbell).
+  final String svgIcon;
   final String label;
 
   @override
@@ -304,8 +307,8 @@ class _DetailChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
+          AppIcons.render(
+            svgIcon,
             size: 18,
             color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
           ),
@@ -398,12 +401,25 @@ class _PRSection extends ConsumerWidget {
     };
   }
 
-  IconData _iconForType(RecordType type) {
-    return switch (type) {
-      RecordType.maxWeight => Icons.fitness_center,
-      RecordType.maxReps => Icons.repeat,
-      RecordType.maxVolume => Icons.bar_chart,
-    };
+  /// Renders a 18dp glyph for the given [RecordType] in the current primary
+  /// color. `maxWeight` uses the Arcane [AppIcons.lift] signature glyph; the
+  /// other two types still use Material icons until we ship repeat/bar-chart
+  /// equivalents.
+  // TODO(icon-set-v2): add AppIcons.repeat + AppIcons.barChart and drop the
+  // Material icon fallback below.
+  Widget _iconForType(RecordType type, Color color) {
+    if (type == RecordType.maxWeight) {
+      return AppIcons.render(AppIcons.lift, size: 18, color: color);
+    }
+    return Icon(
+      switch (type) {
+        RecordType.maxReps => Icons.repeat,
+        RecordType.maxVolume => Icons.bar_chart,
+        RecordType.maxWeight => Icons.fitness_center, // unreachable
+      },
+      size: 18,
+      color: color,
+    );
   }
 
   @override
@@ -445,11 +461,7 @@ class _PRSection extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(
                   children: [
-                    Icon(
-                      _iconForType(r.recordType),
-                      size: 18,
-                      color: theme.colorScheme.primary,
-                    ),
+                    _iconForType(r.recordType, theme.colorScheme.primary),
                     const SizedBox(width: 8),
                     Text(
                       r.recordType.localizedName(l10n),

@@ -1,8 +1,8 @@
-/// Widget tests for RoutineChip — three visual states.
+/// Widget tests for RoutineChip — three visual states (Arcane §17.0d palette).
 ///
-/// Done: green background + checkmark, no name text visible as primary content.
-/// Next: solid green Material, tappable, fires onTap callback.
-/// Remaining: ghosted appearance, sequence number visible.
+/// Done: success-green tint + border + checkmark, no name text.
+/// Next: solid primaryViolet Material CTA, tappable, fires onTap callback.
+/// Remaining: ghosted appearance, sequence number + name at reduced opacity.
 library;
 
 import 'package:flutter/material.dart';
@@ -48,7 +48,7 @@ void main() {
       expect(find.byIcon(Icons.check), findsOneWidget);
     });
 
-    testWidgets('checkmark icon is success green (palette done token)', (
+    testWidgets('checkmark icon is success green (palette done accent)', (
       tester,
     ) async {
       await tester.pumpWidget(_chip(state: RoutineChipState.done));
@@ -57,7 +57,7 @@ void main() {
       expect(icon.color, AppColors.success);
     });
 
-    testWidgets('Container border is success green (palette done token)', (
+    testWidgets('Container border is success green (palette done accent)', (
       tester,
     ) async {
       await tester.pumpWidget(_chip(state: RoutineChipState.done));
@@ -94,17 +94,28 @@ void main() {
 
   group('RoutineChip — next state', () {
     testWidgets(
-      'uses a solid success-green Material background (palette next token)',
+      'uses a solid primaryViolet Material background (Arcane CTA token)',
       (tester) async {
         await tester.pumpWidget(_chip(state: RoutineChipState.next));
 
         final materials = tester.widgetList<Material>(find.byType(Material));
-        final hasGreenMaterial = materials.any(
-          (m) => m.color == AppColors.success,
+        final hasVioletMaterial = materials.any(
+          (m) => m.color == AppColors.primaryViolet,
         );
-        expect(hasGreenMaterial, isTrue);
+        expect(hasVioletMaterial, isTrue);
       },
     );
+
+    testWidgets('does NOT use success-green as the CTA fill '
+        '(regression-guard for BUG: 17.0c green-bucket chip)', (tester) async {
+      await tester.pumpWidget(_chip(state: RoutineChipState.next));
+
+      final materials = tester.widgetList<Material>(find.byType(Material));
+      final hasGreenMaterial = materials.any(
+        (m) => m.color == AppColors.success,
+      );
+      expect(hasGreenMaterial, isFalse);
+    });
 
     testWidgets('shows the routine name', (tester) async {
       await tester.pumpWidget(
@@ -171,6 +182,19 @@ void main() {
   });
 
   group('RoutineChip — remaining state', () {
+    testWidgets('uses surface2 Material background (ghosted, not CTA violet)', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_chip(state: RoutineChipState.remaining));
+
+      // Remaining chip uses AppColors.surface2 as the card background so it
+      // reads as de-emphasised relative to the solid-violet next chip. A
+      // violet background here would imply it's a CTA, which it is not.
+      final materials = tester.widgetList<Material>(find.byType(Material));
+      final hasSurface2 = materials.any((m) => m.color == AppColors.surface2);
+      expect(hasSurface2, isTrue);
+    });
+
     testWidgets('shows the sequence number', (tester) async {
       await tester.pumpWidget(
         _chip(state: RoutineChipState.remaining, sequence: 3),

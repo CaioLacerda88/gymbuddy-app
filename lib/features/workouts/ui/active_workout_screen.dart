@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../../../core/theme/app_icons.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/enum_l10n.dart';
 import '../../../l10n/app_localizations.dart';
@@ -386,7 +387,7 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
           label: l10n.discardWorkout,
           child: IconButton(
             onPressed: _onBackPressed,
-            icon: const Icon(Icons.close),
+            icon: AppIcons.render(AppIcons.close, size: 24),
             tooltip: l10n.discardWorkout,
           ),
         ),
@@ -429,8 +430,8 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
                         style: theme.textTheme.titleMedium,
                       ),
                       const SizedBox(width: 4),
-                      Icon(
-                        Icons.edit,
+                      AppIcons.render(
+                        AppIcons.edit,
                         size: 14,
                         color: theme.colorScheme.onSurface.withValues(
                           alpha: 0.4,
@@ -631,8 +632,8 @@ class _EmptyWorkoutBody extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.fitness_center,
+            AppIcons.render(
+              AppIcons.lift,
               size: 64,
               color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
             ),
@@ -1213,11 +1214,11 @@ class _ExerciseDetailSheet extends ConsumerWidget {
                     runSpacing: 8,
                     children: [
                       _SheetChip(
-                        icon: exercise.muscleGroup.icon,
+                        svgIcon: exercise.muscleGroup.svgIcon,
                         label: exercise.muscleGroup.localizedName(l10n),
                       ),
                       _SheetChip(
-                        icon: exercise.equipmentType.icon,
+                        svgIcon: exercise.equipmentType.svgIcon,
                         label: exercise.equipmentType.localizedName(l10n),
                       ),
                     ],
@@ -1303,9 +1304,11 @@ class _ExerciseDetailSheet extends ConsumerWidget {
 }
 
 class _SheetChip extends StatelessWidget {
-  const _SheetChip({required this.icon, required this.label});
+  const _SheetChip({required this.svgIcon, required this.label});
 
-  final IconData icon;
+  /// Inline-SVG glyph string from [AppMuscleIcons] / [AppEquipmentIcons] (or
+  /// the reused [AppIcons.lift] for barbell).
+  final String svgIcon;
   final String label;
 
   @override
@@ -1321,8 +1324,8 @@ class _SheetChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
+          AppIcons.render(
+            svgIcon,
             size: 18,
             color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
           ),
@@ -1358,12 +1361,25 @@ class _SheetPRSection extends StatelessWidget {
     };
   }
 
-  IconData _iconForType(RecordType type) {
-    return switch (type) {
-      RecordType.maxWeight => Icons.fitness_center,
-      RecordType.maxReps => Icons.repeat,
-      RecordType.maxVolume => Icons.bar_chart,
-    };
+  /// Renders a 18dp glyph for the given [RecordType] in the current primary
+  /// color. `maxWeight` uses the Arcane [AppIcons.lift] signature glyph; the
+  /// other two types still use Material icons until we ship repeat/bar-chart
+  /// equivalents.
+  // TODO(icon-set-v2): add AppIcons.repeat + AppIcons.barChart and drop the
+  // Material icon fallback below.
+  Widget _iconForType(RecordType type, Color color) {
+    if (type == RecordType.maxWeight) {
+      return AppIcons.render(AppIcons.lift, size: 18, color: color);
+    }
+    return Icon(
+      switch (type) {
+        RecordType.maxReps => Icons.repeat,
+        RecordType.maxVolume => Icons.bar_chart,
+        RecordType.maxWeight => Icons.fitness_center, // unreachable
+      },
+      size: 18,
+      color: color,
+    );
   }
 
   @override
@@ -1403,11 +1419,7 @@ class _SheetPRSection extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(
                   children: [
-                    Icon(
-                      _iconForType(r.recordType),
-                      size: 18,
-                      color: theme.colorScheme.primary,
-                    ),
+                    _iconForType(r.recordType, theme.colorScheme.primary),
                     const SizedBox(width: 8),
                     Text(
                       r.recordType.localizedName(l10n),

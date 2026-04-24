@@ -1,6 +1,9 @@
 // ignore_for_file: invalid_annotation_target
-import 'package:flutter/material.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+
+import '../../../core/theme/app_equipment_icons.dart';
+import '../../../core/theme/app_icons.dart';
+import '../../../core/theme/app_muscle_icons.dart';
 
 part 'exercise.freezed.dart';
 part 'exercise.g.dart';
@@ -18,20 +21,20 @@ enum MuscleGroup {
 
   String get displayName => name[0].toUpperCase() + name.substring(1);
 
-  /// Material icon surfaced alongside the muscle-group label across the app
-  /// (filter chips, exercise detail sheet, active-workout preview sheet).
+  /// Inline-SVG glyph surfaced alongside the muscle-group label across the
+  /// app (filter chips, exercise detail sheet, active-workout preview sheet).
   ///
   /// These are structural enum metadata — a new muscle group ships with its
-  /// icon in the same commit as the enum value, so the pairing is enforced
-  /// at compile time.
-  IconData get icon => switch (this) {
-    MuscleGroup.chest => Icons.accessibility_new_rounded,
-    MuscleGroup.back => Icons.airline_seat_flat_rounded,
-    MuscleGroup.legs => Icons.directions_run_rounded,
-    MuscleGroup.shoulders => Icons.unfold_more_rounded,
-    MuscleGroup.arms => Icons.sports_martial_arts_rounded,
-    MuscleGroup.core => Icons.center_focus_strong_rounded,
-    MuscleGroup.cardio => Icons.favorite_rounded,
+  /// glyph in the same commit as the enum value, so the pairing is enforced
+  /// at compile time. Render via `AppIcons.render(group.svgIcon, ...)`.
+  String get svgIcon => switch (this) {
+    MuscleGroup.chest => AppMuscleIcons.chest,
+    MuscleGroup.back => AppMuscleIcons.back,
+    MuscleGroup.legs => AppMuscleIcons.legs,
+    MuscleGroup.shoulders => AppMuscleIcons.shoulders,
+    MuscleGroup.arms => AppMuscleIcons.arms,
+    MuscleGroup.core => AppMuscleIcons.core,
+    MuscleGroup.cardio => AppMuscleIcons.cardio,
   };
 
   static MuscleGroup fromString(String value) =>
@@ -50,16 +53,20 @@ enum EquipmentType {
 
   String get displayName => name[0].toUpperCase() + name.substring(1);
 
-  /// Material icon surfaced alongside the equipment-type label across the app.
-  /// See [MuscleGroup.icon] for the same rationale.
-  IconData get icon => switch (this) {
-    EquipmentType.barbell => Icons.fitness_center_rounded,
-    EquipmentType.dumbbell => Icons.sports_gymnastics_rounded,
-    EquipmentType.cable => Icons.cable_rounded,
-    EquipmentType.machine => Icons.precision_manufacturing_rounded,
-    EquipmentType.bodyweight => Icons.self_improvement_rounded,
-    EquipmentType.bands => Icons.linear_scale_rounded,
-    EquipmentType.kettlebell => Icons.sports_rounded,
+  /// Inline-SVG glyph surfaced alongside the equipment-type label across the
+  /// app. See [MuscleGroup.svgIcon] for the same rationale.
+  ///
+  /// [EquipmentType.barbell] reuses `AppIcons.lift` — that asymmetric-plate
+  /// barbell is the app's signature glyph; shipping a second barbell would
+  /// fork visual vocabulary for zero benefit.
+  String get svgIcon => switch (this) {
+    EquipmentType.barbell => AppIcons.lift,
+    EquipmentType.dumbbell => AppEquipmentIcons.dumbbell,
+    EquipmentType.cable => AppEquipmentIcons.cable,
+    EquipmentType.machine => AppEquipmentIcons.machine,
+    EquipmentType.bodyweight => AppEquipmentIcons.bodyweight,
+    EquipmentType.bands => AppEquipmentIcons.bands,
+    EquipmentType.kettlebell => AppEquipmentIcons.kettlebell,
   };
 
   static EquipmentType fromString(String value) =>

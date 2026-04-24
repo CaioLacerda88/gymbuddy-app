@@ -31,6 +31,10 @@ void main() {
     testWidgets('toggles to sign up mode', (tester) async {
       await tester.pumpWidget(buildTestWidget());
 
+      // The Arcane brand sigil (96dp) + form pushes the signup toggle below
+      // the default 800x600 test viewport, so scroll it into view first.
+      await tester.ensureVisible(find.text("Don't have an account? Sign up"));
+      await tester.pump();
       await tester.tap(find.text("Don't have an account? Sign up"));
       await tester.pump();
 
@@ -41,9 +45,13 @@ void main() {
     testWidgets('toggles back to login mode', (tester) async {
       await tester.pumpWidget(buildTestWidget());
 
+      await tester.ensureVisible(find.text("Don't have an account? Sign up"));
+      await tester.pump();
       await tester.tap(find.text("Don't have an account? Sign up"));
       await tester.pump();
 
+      await tester.ensureVisible(find.text('Already have an account? Log in'));
+      await tester.pump();
       await tester.tap(find.text('Already have an account? Log in'));
       await tester.pump();
 
@@ -132,6 +140,46 @@ void main() {
       expect(find.text('RepSaga'), findsOneWidget);
     });
 
+    testWidgets(
+      'renders the Arcane brand sigil (not a generic dumbbell icon)',
+      (tester) async {
+        await tester.pumpWidget(buildTestWidget());
+
+        // The login hero must render the launcher-icon foreground asset so
+        // the first frame matches the phone launcher the user just tapped.
+        // Regression: the pre-17.0d build shipped `Icon(Icons.fitness_center)`.
+        final imageFinder = find.byWidgetPredicate(
+          (widget) =>
+              widget is Image &&
+              widget.image is AssetImage &&
+              (widget.image as AssetImage).assetName ==
+                  'assets/app_icon/arcane_sigil_foreground.png',
+        );
+        expect(imageFinder, findsOneWidget);
+      },
+    );
+
+    testWidgets('brand sigil is 96dp on the login hero (size spec §17.0d)', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildTestWidget());
+
+      // §17.0d spec: login hero sigil is 96dp (up from the 48dp Material
+      // icon it replaces). A smaller size would look unbalanced against the
+      // 32dp displayMedium wordmark below.
+      final image = tester.widget<Image>(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Image &&
+              widget.image is AssetImage &&
+              (widget.image as AssetImage).assetName ==
+                  'assets/app_icon/arcane_sigil_foreground.png',
+        ),
+      );
+      expect(image.width, 96.0);
+      expect(image.height, 96.0);
+    });
+
     testWidgets('shows forgot password link in login mode', (tester) async {
       await tester.pumpWidget(buildTestWidget());
 
@@ -141,6 +189,8 @@ void main() {
     testWidgets('hides forgot password in signup mode', (tester) async {
       await tester.pumpWidget(buildTestWidget());
 
+      await tester.ensureVisible(find.text("Don't have an account? Sign up"));
+      await tester.pump();
       await tester.tap(find.text("Don't have an account? Sign up"));
       await tester.pump();
 
@@ -195,6 +245,8 @@ void main() {
       await tester.enterText(find.byType(TextFormField).last, 'mySecret123');
 
       // Switch to sign-up mode.
+      await tester.ensureVisible(find.text("Don't have an account? Sign up"));
+      await tester.pump();
       await tester.tap(find.text("Don't have an account? Sign up"));
       await tester.pump();
 
@@ -214,11 +266,17 @@ void main() {
         await tester.pumpWidget(buildTestWidget());
 
         // Navigate to sign-up mode and enter a password.
+        await tester.ensureVisible(find.text("Don't have an account? Sign up"));
+        await tester.pump();
         await tester.tap(find.text("Don't have an account? Sign up"));
         await tester.pump();
         await tester.enterText(find.byType(TextFormField).last, 'signupPass');
 
         // Switch back to login mode.
+        await tester.ensureVisible(
+          find.text('Already have an account? Log in'),
+        );
+        await tester.pump();
         await tester.tap(find.text('Already have an account? Log in'));
         await tester.pump();
 

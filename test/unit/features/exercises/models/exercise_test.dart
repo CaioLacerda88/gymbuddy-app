@@ -3,6 +3,8 @@ import 'package:repsaga/features/exercises/models/exercise.dart';
 
 import '../../../../fixtures/test_factories.dart';
 
+// ignore_for_file: lines_longer_than_80_chars
+
 void main() {
   group('MuscleGroup', () {
     test('displayName capitalizes first letter for all values', () {
@@ -23,6 +25,28 @@ void main() {
         () => MuscleGroup.fromString('invalid'),
         throwsA(isA<StateError>()),
       );
+    });
+
+    // §17.0d — enum migrated from IconData to String svgIcon
+    test('svgIcon returns a non-empty SVG string for every value', () {
+      for (final group in MuscleGroup.values) {
+        final svg = group.svgIcon;
+        expect(
+          svg,
+          isNotEmpty,
+          reason: '${group.name}.svgIcon must not be empty',
+        );
+        expect(
+          svg,
+          startsWith('<svg'),
+          reason: '${group.name}.svgIcon must start with <svg',
+        );
+        expect(
+          svg,
+          contains('currentColor'),
+          reason: '${group.name}.svgIcon must use currentColor for recoloring',
+        );
+      }
     });
   });
 
@@ -45,6 +69,28 @@ void main() {
         () => EquipmentType.fromString('invalid'),
         throwsA(isA<StateError>()),
       );
+    });
+
+    // §17.0d — enum migrated from IconData to String svgIcon
+    test('svgIcon returns a non-empty SVG string for every value', () {
+      for (final type in EquipmentType.values) {
+        final svg = type.svgIcon;
+        expect(
+          svg,
+          isNotEmpty,
+          reason: '${type.name}.svgIcon must not be empty',
+        );
+        expect(
+          svg,
+          startsWith('<svg'),
+          reason: '${type.name}.svgIcon must start with <svg',
+        );
+        expect(
+          svg,
+          contains('currentColor'),
+          reason: '${type.name}.svgIcon must use currentColor for recoloring',
+        );
+      }
     });
   });
 
