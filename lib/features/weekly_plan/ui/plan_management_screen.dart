@@ -609,7 +609,7 @@ class _RoutineRow extends StatelessWidget {
           color: theme.colorScheme.error,
           borderRadius: BorderRadius.circular(kRadiusMd),
         ),
-        child: const Icon(Icons.delete, color: AppColors.pureWhite),
+        child: const Icon(Icons.delete, color: AppColors.textCream),
       ),
       child: content,
     );

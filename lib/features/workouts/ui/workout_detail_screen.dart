@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/format/number_format.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/workout_formatters.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/reward_accent.dart';
 import '../../personal_records/providers/pr_providers.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../data/workout_repository.dart';
@@ -314,11 +314,7 @@ class _ReadOnlySetRow extends StatelessWidget {
           SizedBox(
             width: 40,
             child: isPR
-                ? const Icon(
-                    Icons.emoji_events,
-                    size: 18,
-                    color: AppTheme.prBadgeColor,
-                  )
+                ? const RewardAccent(child: Icon(Icons.emoji_events, size: 18))
                 : Text(
                     '${set.setNumber}.',
                     style: textStyle?.copyWith(

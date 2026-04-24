@@ -1,34 +1,47 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_icons.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../shared/widgets/pixel_image.dart';
 
+/// Launch surface shown while auth state resolves.
+///
+/// Renders the Rajdhani "REPSAGA" wordmark on the abyss-violet background
+/// so there is no color flash between the native launch screen and the
+/// first routed screen. The sigil above the wordmark is a placeholder
+/// using the hero-silhouette `AppIcons.hero` until the user-supplied app
+/// icon lands (Stage 6 of the Arcane migration).
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      // Deep-void fill so the wordmark reads against the same background
-      // the rest of the app launches into. Avoids a color flash between
-      // splash and first routed screen.
-      backgroundColor: AppColors.deepVoid,
+    return Scaffold(
+      backgroundColor: AppColors.abyss,
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            PixelImage(
-              'assets/pixel/branding/repsaga_wordmark.png',
-              semanticLabel: 'RepSaga',
-              width: 256,
+            AppIcons.render(
+              AppIcons.hero,
+              color: AppColors.hotViolet,
+              size: 96,
             ),
-            SizedBox(height: 32),
-            SizedBox(
+            const SizedBox(height: 24),
+            Text(
+              'REPSAGA',
+              style: AppTextStyles.display.copyWith(
+                fontSize: 40,
+                letterSpacing: 0.08 * 40,
+                color: AppColors.textCream,
+              ),
+            ),
+            const SizedBox(height: 32),
+            const SizedBox(
               width: 24,
               height: 24,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: AppColors.glowLavender,
+                color: AppColors.hotViolet,
               ),
             ),
           ],

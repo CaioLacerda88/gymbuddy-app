@@ -8,7 +8,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/enum_l10n.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/async_value_builder.dart';
-import '../../../shared/widgets/pixel_image.dart';
 import '../models/exercise.dart';
 import '../providers/exercise_providers.dart';
 
@@ -150,12 +149,7 @@ class _MuscleGroupSelector extends ConsumerWidget {
             ...MuscleGroup.values.map(
               (group) => _MuscleGroupButton(
                 label: group.localizedName(l10n),
-                icon: PixelImage(
-                  group.iconPath,
-                  semanticLabel: '',
-                  width: 24,
-                  height: 24,
-                ),
+                icon: Icon(group.icon, size: 24),
                 isSelected: selected == group,
                 onTap: () {
                   ref.read(selectedMuscleGroupProvider.notifier).state = group;
@@ -181,8 +175,9 @@ class _MuscleGroupButton extends StatelessWidget {
 
   final String label;
 
-  /// Pre-sized 24dp icon widget. Accepts either a Material [Icon] (for the
-  /// "All" meta-filter) or a [PixelImage] (for real muscle groups).
+  /// Pre-sized 24dp icon widget. Always a Material [Icon] — the "All"
+  /// meta-filter uses `Icons.grid_view_rounded`; real muscle groups use
+  /// their `MuscleGroup.icon`.
   final Widget icon;
   final bool isSelected;
   final VoidCallback onTap;
@@ -308,12 +303,7 @@ class _EquipmentFilter extends ConsumerWidget {
                 label: '$typeName equipment filter',
                 selected: isSelected,
                 child: FilterChip(
-                  avatar: PixelImage(
-                    type.iconPath,
-                    semanticLabel: '',
-                    width: 20,
-                    height: 20,
-                  ),
+                  avatar: Icon(type.icon, size: 18),
                   label: Text(typeName),
                   selected: isSelected,
                   onSelected: (val) {
@@ -423,13 +413,13 @@ class _ExerciseCard extends StatelessWidget {
                                   label: exercise.muscleGroup.localizedName(
                                     l10n,
                                   ),
-                                  iconPath: exercise.muscleGroup.iconPath,
+                                  icon: exercise.muscleGroup.icon,
                                 ),
                                 _InfoChip(
                                   label: exercise.equipmentType.localizedName(
                                     l10n,
                                   ),
-                                  iconPath: exercise.equipmentType.iconPath,
+                                  icon: exercise.equipmentType.icon,
                                 ),
                               ],
                             );
@@ -454,10 +444,10 @@ class _ExerciseCard extends StatelessWidget {
 }
 
 class _InfoChip extends StatelessWidget {
-  const _InfoChip({required this.label, required this.iconPath});
+  const _InfoChip({required this.label, required this.icon});
 
   final String label;
-  final String iconPath;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -472,8 +462,12 @@ class _InfoChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          PixelImage(iconPath, semanticLabel: '', width: 24, height: 24),
-          const SizedBox(width: 4),
+          Icon(
+            icon,
+            size: 16,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+          ),
+          const SizedBox(width: 6),
           Text(
             label,
             style: theme.textTheme.bodyMedium?.copyWith(
@@ -510,9 +504,11 @@ class _EmptyState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              hasFilters ? Icons.search_off_rounded : Icons.fitness_center,
-              size: 48,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              hasFilters
+                  ? Icons.search_off_rounded
+                  : Icons.fitness_center_rounded,
+              size: 64,
+              color: AppColors.textDim,
             ),
             const SizedBox(height: 16),
             Semantics(

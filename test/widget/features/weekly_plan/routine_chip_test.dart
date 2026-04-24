@@ -48,22 +48,22 @@ void main() {
       expect(find.byIcon(Icons.check), findsOneWidget);
     });
 
-    testWidgets('checkmark icon is emeraldGreen (palette done token)', (
+    testWidgets('checkmark icon is success green (palette done token)', (
       tester,
     ) async {
       await tester.pumpWidget(_chip(state: RoutineChipState.done));
 
       final icon = tester.widget<Icon>(find.byIcon(Icons.check));
-      expect(icon.color, AppColors.emeraldGreen);
+      expect(icon.color, AppColors.success);
     });
 
-    testWidgets('Container border is emeraldGreen (palette done token)', (
+    testWidgets('Container border is success green (palette done token)', (
       tester,
     ) async {
       await tester.pumpWidget(_chip(state: RoutineChipState.done));
 
       // Done chip is a Container with a decoration — find it by verifying
-      // a BoxDecoration with an emeraldGreen border exists.
+      // a BoxDecoration with a success-green border exists.
       final containers = tester
           .widgetList<Container>(find.byType(Container))
           .toList();
@@ -73,7 +73,7 @@ void main() {
         if (decoration is BoxDecoration) {
           final border = decoration.border;
           if (border is Border) {
-            return border.top.color == AppColors.emeraldGreen;
+            return border.top.color == AppColors.success;
           }
         }
         return false;
@@ -94,13 +94,13 @@ void main() {
 
   group('RoutineChip — next state', () {
     testWidgets(
-      'uses a solid emeraldGreen Material background (palette next token)',
+      'uses a solid success-green Material background (palette next token)',
       (tester) async {
         await tester.pumpWidget(_chip(state: RoutineChipState.next));
 
         final materials = tester.widgetList<Material>(find.byType(Material));
         final hasGreenMaterial = materials.any(
-          (m) => m.color == AppColors.emeraldGreen,
+          (m) => m.color == AppColors.success,
         );
         expect(hasGreenMaterial, isTrue);
       },

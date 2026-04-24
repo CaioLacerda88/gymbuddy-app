@@ -23,6 +23,7 @@ dependencies:
   flutter_dotenv: ^6.0.0
   flutter_markdown_plus: ^1.0.3
   flutter_svg: ^2.0.10+1
+  google_fonts: ^6.2.0
   intl: ^0.20.0
   uuid: ^4.5.1
   wakelock_plus: ^1.2.8
@@ -56,21 +57,12 @@ flutter:
     - .env
     - assets/icons/
     - assets/legal/
-    - assets/pixel/branding/
-    - assets/pixel/nav/
-    - assets/pixel/ranks/
-    - assets/pixel/milestones/
-    - assets/pixel/stats/
-    - assets/pixel/quests/
-    - assets/pixel/celebration/
-    - assets/pixel/micro/
-    - assets/pixel/story/
-    - assets/pixel/muscle/
-    - assets/pixel/equipment/
-  fonts:
-    - family: PressStart2P
-      fonts:
-        - asset: assets/fonts/press_start_2p/PressStart2P-Regular.ttf
+    # Bundled Rajdhani (display) + Inter (body) TTFs. google_fonts picks these
+    # up via its asset-manifest lookup (lib/src/google_fonts_base.dart) and
+    # skips the CDN entirely — faster first paint on slow networks and makes
+    # widget tests deterministic (no unhandled-future errors from fetch
+    # attempts inside tester.runAsync blocks).
+    - assets/fonts/
 
 flutter_launcher_icons:
   image_path: "assets/icon/icon.png"

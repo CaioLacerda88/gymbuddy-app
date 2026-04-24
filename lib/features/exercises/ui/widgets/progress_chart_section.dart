@@ -4,8 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/format/date_format.dart';
 import '../../../../core/format/number_format.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../../shared/widgets/reward_accent.dart';
 import '../../../profile/providers/profile_providers.dart';
 import '../../models/progress_point.dart';
 import '../../providers/exercise_progress_provider.dart';
@@ -610,7 +610,7 @@ class _LineChart extends StatelessWidget {
                 if (index == ringAnchorIndex) {
                   return _PrRingPainter(
                     primary: primary,
-                    ringColor: AppTheme.prBadgeColor,
+                    ringColor: RewardAccent.color,
                     innerRadius: ProgressChartSection._prRingInnerRadius,
                     strokeWidth: ProgressChartSection._prRingStroke,
                     outerGap: ProgressChartSection._prRingOuterGap,

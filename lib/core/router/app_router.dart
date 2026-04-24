@@ -36,7 +36,8 @@ import '../../features/routines/models/routine.dart';
 import '../../features/workouts/ui/workout_history_screen.dart';
 import '../../shared/widgets/legal_doc_screen.dart';
 import '../../shared/widgets/offline_banner.dart';
-import '../../shared/widgets/pixel_image.dart';
+import '../theme/app_icons.dart';
+import '../theme/app_theme.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -289,11 +290,10 @@ class _ShellScaffold extends ConsumerWidget {
                 container: true,
                 identifier: 'nav-home',
                 child: NavigationDestination(
-                  icon: const _PixelNavIcon(
-                    assetPath: 'assets/pixel/nav/home_inactive.png',
-                  ),
-                  selectedIcon: const _PixelNavIcon(
-                    assetPath: 'assets/pixel/nav/home_active.png',
+                  icon: const _NavIcon(svg: AppIcons.home),
+                  selectedIcon: const _NavIcon(
+                    svg: AppIcons.home,
+                    color: AppColors.hotViolet,
                   ),
                   label: AppLocalizations.of(context).navHome,
                   tooltip: '',
@@ -303,11 +303,10 @@ class _ShellScaffold extends ConsumerWidget {
                 container: true,
                 identifier: 'nav-exercises',
                 child: NavigationDestination(
-                  icon: const _PixelNavIcon(
-                    assetPath: 'assets/pixel/nav/exercises_inactive.png',
-                  ),
-                  selectedIcon: const _PixelNavIcon(
-                    assetPath: 'assets/pixel/nav/exercises_active.png',
+                  icon: const _NavIcon(svg: AppIcons.lift),
+                  selectedIcon: const _NavIcon(
+                    svg: AppIcons.lift,
+                    color: AppColors.hotViolet,
                   ),
                   label: AppLocalizations.of(context).navExercises,
                   tooltip: '',
@@ -317,11 +316,10 @@ class _ShellScaffold extends ConsumerWidget {
                 container: true,
                 identifier: 'nav-routines',
                 child: NavigationDestination(
-                  icon: const _PixelNavIcon(
-                    assetPath: 'assets/pixel/nav/routines_inactive.png',
-                  ),
-                  selectedIcon: const _PixelNavIcon(
-                    assetPath: 'assets/pixel/nav/routines_active.png',
+                  icon: const _NavIcon(svg: AppIcons.plan),
+                  selectedIcon: const _NavIcon(
+                    svg: AppIcons.plan,
+                    color: AppColors.hotViolet,
                   ),
                   label: AppLocalizations.of(context).navRoutines,
                   tooltip: '',
@@ -331,11 +329,10 @@ class _ShellScaffold extends ConsumerWidget {
                 container: true,
                 identifier: 'nav-profile',
                 child: NavigationDestination(
-                  icon: const _PixelNavIcon(
-                    assetPath: 'assets/pixel/nav/profile_inactive.png',
-                  ),
-                  selectedIcon: const _PixelNavIcon(
-                    assetPath: 'assets/pixel/nav/profile_active.png',
+                  icon: const _NavIcon(svg: AppIcons.hero),
+                  selectedIcon: const _NavIcon(
+                    svg: AppIcons.hero,
+                    color: AppColors.hotViolet,
                   ),
                   label: AppLocalizations.of(context).navProfile,
                   tooltip: '',
@@ -424,18 +421,18 @@ class _ActiveWorkoutBanner extends ConsumerWidget {
   }
 }
 
-/// Fixed-size pixel nav icon (48dp square) for the bottom NavigationBar.
+/// Fixed-size SVG nav icon (24dp) for the bottom NavigationBar.
 ///
-/// The semanticLabel is empty because the enclosing `NavigationDestination`
-/// already exposes its own label to the accessibility tree; the icon is
-/// decorative at that layer.
-class _PixelNavIcon extends StatelessWidget {
-  const _PixelNavIcon({required this.assetPath});
+/// The icon is decorative at this layer; the enclosing `NavigationDestination`
+/// already exposes its own label to the accessibility tree.
+class _NavIcon extends StatelessWidget {
+  const _NavIcon({required this.svg, this.color = AppColors.textDim});
 
-  final String assetPath;
+  final String svg;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    return PixelImage(assetPath, semanticLabel: '', width: 48, height: 48);
+    return AppIcons.render(svg, color: color, size: 24);
   }
 }

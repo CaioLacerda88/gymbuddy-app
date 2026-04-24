@@ -50,10 +50,9 @@ class _RestTimerOverlayState extends ConsumerState<RestTimerOverlay> {
       // Tap outside the controls to dismiss (UX-U09).
       onTap: () => ref.read(restTimerProvider.notifier).stop(),
       child: Material(
-        // Full-screen rest-timer scrim. Palette has no near-black token, so
-        // we use deepVoid (#0D0319) at ~87% alpha — dark enough to dim the
-        // underlying workout screen without being fully opaque.
-        color: AppColors.deepVoid.withValues(alpha: 0.87),
+        // Full-screen rest-timer scrim. abyss (#0D0319) at ~87% alpha — dark
+        // enough to dim the underlying workout screen without being fully opaque.
+        color: AppColors.abyss.withValues(alpha: 0.87),
         child: SafeArea(
           child: Center(
             child: Column(
@@ -124,7 +123,7 @@ class _RestTimerOverlayState extends ConsumerState<RestTimerOverlay> {
                                 .adjustTime(-30),
                             style: TextButton.styleFrom(
                               foregroundColor: theme.colorScheme.onSurface,
-                              backgroundColor: AppColors.pureWhite.withValues(
+                              backgroundColor: AppColors.textCream.withValues(
                                 alpha: 0.12,
                               ),
                               textStyle: theme.textTheme.titleMedium?.copyWith(
@@ -179,7 +178,7 @@ class _RestTimerOverlayState extends ConsumerState<RestTimerOverlay> {
                                 .adjustTime(30),
                             style: TextButton.styleFrom(
                               foregroundColor: theme.colorScheme.onSurface,
-                              backgroundColor: AppColors.pureWhite.withValues(
+                              backgroundColor: AppColors.textCream.withValues(
                                 alpha: 0.12,
                               ),
                               textStyle: theme.textTheme.titleMedium?.copyWith(
