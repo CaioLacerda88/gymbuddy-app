@@ -4,6 +4,82 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ---
 
+## Phase 15f — Exercise Content Localization
+
+**Branch:** `feature/phase15f-exercise-content-localization`
+**Spec:** `docs/superpowers/specs/2026-04-24-exercise-content-localization-design.md`
+**Plan:** PLAN.md → "Phase 15f: Exercise Content Localization"
+**Approach:** Subagent-Driven execution (two-stage review per stage: spec compliance → code quality)
+
+### Stage tracker
+
+- [ ] **Stage 1** — Foundation migrations (tech-lead)
+  - [ ] `supabase/migrations/00030_add_exercise_slug.sql`
+  - [ ] `supabase/migrations/00031_create_exercise_translations.sql`
+  - [ ] `supabase/migrations/00032_backfill_exercise_translations_en.sql`
+  - [ ] Spec compliance review pass
+  - [ ] Code quality review pass
+- [ ] **Stage 2** — pt-BR glossary (human-gated)
+  - [ ] `docs/superpowers/specs/phase15f-pt-glossary.md` drafted
+  - [ ] User approval recorded
+- [ ] **Stage 3** — pt-BR seed migration (tech-lead)
+  - [ ] `supabase/migrations/00033_seed_exercise_translations_pt.sql` (94 rows)
+  - [ ] Reviews pass
+- [ ] **Stage 4** — RPCs + column drop (tech-lead)
+  - [ ] `supabase/migrations/00034_drop_exercise_name_columns_and_add_rpcs.sql`
+  - [ ] `scripts/emergency_rollback_15f.sql`
+  - [ ] Reviews pass
+- [ ] **Stage 5** — CI translation coverage (tech-lead)
+  - [ ] `scripts/check_exercise_translation_coverage.sh` + fixtures
+  - [ ] `scripts/verify_prod_translation_invariants.sh`
+  - [ ] CLAUDE.md section updated
+  - [ ] Reviews pass
+- [ ] **Stage 6** — Data layer refactor (tech-lead)
+  - [ ] `test/fixtures/rpc_fakes.dart`
+  - [ ] `ExerciseRepository` rewrite + unit tests
+  - [ ] `WorkoutRepository` two-query merge + unit tests
+  - [ ] `PRRepository` two-query merge + unit tests
+  - [ ] `RoutineRepository` two-query merge + unit tests
+  - [ ] Locale-keyed Hive cache + `LocaleNotifier.setLocale` cache-clear
+  - [ ] `exercise_l10n.dart` dead code deletion
+  - [ ] `exerciseName_*` ARB key deletion + `flutter gen-l10n`
+  - [ ] Reviews pass
+- [ ] **Stage 7** — Widget + E2E (qa-engineer)
+  - [ ] `EXERCISE_NAMES` map in `test/e2e/fixtures/test-exercises.ts`
+  - [ ] 4 new pt test users + slug-based global-setup seeds
+  - [ ] 14 E2E scenarios A1-G2
+  - [ ] Widget tests with localeProvider overrides
+  - [ ] Full E2E suite green (145+)
+- [ ] **Stage 8** — Staging verify + review + merge
+  - [ ] Migrations applied to staging
+  - [ ] Invariant queries zero; outputs in PR body
+  - [ ] Full E2E on staging
+  - [ ] Human pt-BR reviewer skim of 94 rows
+  - [ ] Rollback script dry-run on staging clone
+  - [ ] Reviewer agent pass
+  - [ ] Squash-merge
+- [ ] **Stage 9** — Prod cut-over
+  - [ ] `npx supabase db push` to hosted
+  - [ ] Invariant queries zero on prod
+  - [ ] Manual locale smoke passes
+  - [ ] Condense Phase 15f in PLAN.md
+  - [ ] Update progress table (15f DONE)
+  - [ ] Remove this WIP section
+
+### Quality gates
+
+Each of Stages 1, 3, 4, 5, 6 goes through:
+1. Implementer (tech-lead) reports DONE
+2. Spec compliance review (reviewer agent)
+3. Fix + re-review if gaps
+4. Code quality review (reviewer agent)
+5. Fix + re-review if issues
+6. Mark stage complete
+
+Stage 7 goes through qa-engineer's own test gates + reviewer pass.
+
+---
+
 ## Phase 16 — Subscription Monetization — PARKED (2026-04-22)
 
 **Why parked:** Phase 16 keeps hitting external blockers (Brazilian merchant account, Play Console → upload signed AAB required before subscription product can be created, license-tester account setup). Phase 17 gamification is fully internal code work with no external gates and produces the retention moat that makes Phase 16's paywall pitch compelling. Decision: ship Phase 17 (Gamification) before resuming 16b/c/d.
