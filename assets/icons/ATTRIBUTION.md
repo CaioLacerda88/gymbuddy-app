@@ -1,70 +1,47 @@
 # Icon pack attribution
 
-RepSaga's candidate icon set is assembled from four open-source icon libraries
-via the [Iconify](https://iconify.design/) CDN. All licenses permit commercial
-use. Game-Icons.net requires attribution in our credits screen; the others
-don't, but we credit them anyway out of courtesy.
+RepSaga ships a single icon pack: **v3-silhouette** (`assets/icons/v3-silhouette/`),
+assembled from two open-source libraries via the [Iconify](https://iconify.design/)
+CDN during authoring. All licenses permit commercial use.
 
-## Sources
+## Sources actually shipped
 
-### Game-Icons.net — CC BY 3.0
+### Game-Icons.net — CC BY 3.0 (attribution required)
 - Site: https://game-icons.net/
 - License: [Creative Commons Attribution 3.0](https://creativecommons.org/licenses/by/3.0/)
-- Artists used: **Lorc** (back-pain, magnifying-glass, muscle-up, quill-ink,
-  strong, cog, heart-plus, scroll-unfurled, cancel, rope-coil,
-  finish-line/related, progression, crystal-shine, flame, house, body-balance)
-  and **Delapouite** (abdominal-armor, chest, check-mark, funnel, leg,
-  shoulder-armor, trash-can, weight, weight-lifting-up)
-- **Credit line (goes in app About / Credits):**
+- Artists: **Lorc** (back-pain, magnifying-glass, quill-ink, cog, heart-plus,
+  scroll-unfurled, cancel, rope-coil, progression, crystal-shine, flame,
+  house, spring, spawn-node, checkered-flag, acrobatic, pulley-hook) and
+  **Delapouite** (abdominal-armor, breastplate, check-mark, funnel, leg,
+  shoulder-armor, trash-can, weight, weight-lifting-up, strong, muscle-up)
+- Used for 32 of 33 icons.
+- **Credit line (shipped via `LicenseRegistry.addLicense` in `lib/main.dart`;
+  surfaces through `showLicensePage`):**
   > Some icons from game-icons.net, by Lorc and Delapouite, licensed under
   > CC BY 3.0.
 
-### Tabler Icons — MIT
-- Site: https://tabler.io/icons
-- License: [MIT](https://github.com/tabler/tabler-icons/blob/main/LICENSE)
-- Attribution not required but encouraged. Consistent outline set,
-  used as our v1-line base.
-
-### Phosphor Icons — MIT
-- Site: https://phosphoricons.com/
-- License: [MIT](https://github.com/phosphor-icons/homepage/blob/master/LICENSE)
-- Bold weight used for v2-bold. MIT, no attribution required.
-
-### Material Design Icons (MDI) — Apache 2.0
+### Material Design Icons (MDI) — Apache 2.0 (no attribution required)
 - Site: https://pictogrammers.com/library/mdi/
 - License: [Apache 2.0](https://github.com/Templarian/MaterialDesign/blob/master/LICENSE)
-- Used for gym equipment (dumbbell, kettlebell, rowing machine) and body
-  anatomy (arm-flex, stomach) where Tabler/Phosphor have no match.
-
-### Solar Icons — CC BY 4.0
-- Site: https://solar-icons.com/
-- License: [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/)
-- Used as Phosphor Bold fallback for body/treadmill concepts.
-
-### Healthicons — MIT
-- Site: https://healthicons.org/
-- License: [MIT](https://github.com/resolvetosavelives/healthicons/blob/main/LICENSE)
-- Used for anatomical icons (leg, arm/shoulder) not covered by UI-oriented
-  libraries.
+- Used for 1 icon: `kettlebell` — Game-Icons has no kettlebell in its vocabulary.
 
 ## How attribution ships in the app
 
-When we pick a winner pack and integrate, the About / Credits screen will
-include the Game-Icons.net attribution line verbatim. The MIT/Apache licenses
-don't require in-app credit but we'll keep the full attribution list in
-`ATTRIBUTION.md` shipped with source.
+The Game-Icons credit line is registered at app startup via
+`LicenseRegistry.addLicense(...)` in `lib/main.dart`. Flutter's standard
+`showLicensePage(context)` enumerates every registered license (including
+all transitive MIT / Apache / BSD entries from our package tree) and surfaces
+them in a scrollable list. When a profile / about menu lands, linking to
+`showLicensePage` satisfies the CC BY 3.0 in-app credit requirement.
 
-## Why these four (+2) libraries
+Per-icon source mapping is documented in `COVERAGE.md` (same directory) for
+future maintainers.
 
-- **Game-Icons.net** is the only free library with real game/fantasy/weapon/
-  anatomy silhouette vocabulary. Irreplaceable for muscle icons and the
-  Arcane Ascent thematic voice.
-- **Tabler + Phosphor** provide the cleanest consistent UI utility sets
-  (plus, check, x, filter, search, settings) in line and bold weights.
-- **MDI** fills gym equipment gaps (dumbbell, kettlebell) that neither
-  Tabler nor Phosphor have.
-- **Solar + Healthicons** are gap-fillers for the ~5 icons where the above
-  four don't cover.
+## Packs evaluated but not adopted
 
-No single library covered all 33 concepts on its own. Pack mixing is
-unavoidable at our scope; we minimized it and documented every source.
+During the authoring phase (2026-04-24), candidate icons were also fetched
+from Tabler, Phosphor, Solar, and Healthicons for a three-version comparison.
+None of those shipped. The v3-silhouette pack was chosen for its stylistic
+cohesion (82% from a single artist pair on Game-Icons). Previous iterations
+of this document described that exploration; this version reflects what the
+app actually ships.

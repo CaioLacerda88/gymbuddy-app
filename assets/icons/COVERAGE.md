@@ -59,8 +59,10 @@ Legend:
 - Other body parts (back, legs, shoulders, arms, core, cardio) kept as-is:
   anatomy vocabulary in free icon packs is too sparse; no cohesive alternative
   read as clearly-anatomical without introducing a second style pack just for
-  7 icons. Decision logged 2026-04-24. See `anatomy-audit.html` for the options
-  reviewed.
+  7 icons. Decision logged 2026-04-24. Options reviewed spanned icon-park,
+  healthicons, fluent-emoji-high-contrast, mdi, and solar packs (exploratory
+  HTML audit tooling was deleted with this migration; fresh audits can be
+  regenerated via Iconify API probes if revisiting).
 
 ## Style-consistency risk per version
 

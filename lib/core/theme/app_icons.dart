@@ -107,7 +107,9 @@ class AppIcons {
   /// Pause button (Game-Icons: `pause-button`).
   static const String pause = '$_root/pause.svg';
 
-  /// Play button (Game-Icons: `play-button`) — resume is the same visual.
+  /// Play button (Game-Icons: `play-button`) — ships in a distinct
+  /// `resume.svg` file (byte-identical glyph as `play.svg`) so call sites can
+  /// express intent without relying on aliasing.
   static const String resume = '$_root/resume.svg';
 
   /// Checkered flag (Game-Icons: `checkered-flag`). Finish action.

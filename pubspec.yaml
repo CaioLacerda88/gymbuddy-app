@@ -56,7 +56,10 @@ flutter:
   assets:
     - .env
     - assets/app_icon/
-    - assets/icons/
+    # Google logo used by the Google sign-in button; the v3-silhouette pack
+    # holds every other app icon. ATTRIBUTION.md / COVERAGE.md under
+    # assets/icons/ are documentation — not bundled.
+    - assets/icons/google_logo.svg
     - assets/icons/v3-silhouette/
     - assets/legal/
     # Bundled Rajdhani (display) + Inter (body) TTFs. google_fonts picks these
