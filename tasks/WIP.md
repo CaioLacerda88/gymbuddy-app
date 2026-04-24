@@ -14,9 +14,9 @@ Active work being done by agents. Each section is removed once the branch is mer
 ### Stage tracker
 
 - [ ] **Stage 1** — Foundation migrations (tech-lead)
-  - [ ] `supabase/migrations/00030_add_exercise_slug.sql`
-  - [ ] `supabase/migrations/00031_create_exercise_translations.sql`
-  - [ ] `supabase/migrations/00032_backfill_exercise_translations_en.sql`
+  - [x] `supabase/migrations/00030_add_exercise_slug.sql`
+  - [x] `supabase/migrations/00031_create_exercise_translations.sql`
+  - [x] `supabase/migrations/00032_backfill_exercise_translations_en.sql`
   - [ ] Spec compliance review pass
   - [ ] Code quality review pass
 - [ ] **Stage 2** — pt-BR glossary (human-gated)
