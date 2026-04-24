@@ -219,7 +219,10 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen>
               ),
             ),
           ),
-          // Green flash overlay
+          // TODO(phase17a): wrap flash in RewardAccent — gold PR flash per palette spec
+          // (§17.0c lists the reward color for "PR flash, level-up, streak
+          // milestone"; this primaryViolet flash is the legacy behavior, to
+          // be migrated when the celebration overlay work lands in Phase 17a).
           IgnorePointer(
             child: AnimatedOpacity(
               opacity: _flashOpacity,

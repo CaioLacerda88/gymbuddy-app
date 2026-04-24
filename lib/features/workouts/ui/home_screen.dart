@@ -98,7 +98,7 @@ class _LvlBadge extends ConsumerWidget {
       label: 'LVL $level',
       child: Text(
         'LVL $level',
-        style: AppTextStyles.pixelLabel.copyWith(color: AppColors.hotGold),
+        style: AppTextStyles.label.copyWith(color: AppColors.hotViolet),
       ),
     );
   }

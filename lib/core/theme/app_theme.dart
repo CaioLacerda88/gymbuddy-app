@@ -1,226 +1,356 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-/// Locked RepSaga pixel-art palette (20 tokens).
+import 'radii.dart';
+
+/// Arcane Ascent palette for RepSaga.
 ///
-/// These hex values are the single source of truth for every color in the app.
-/// They were chosen for the pixel-art visual direction (see
-/// `tasks/mockups/chatgpt-pixel-art-prompt.md` §1.3) and must not be
-/// extended or substituted without updating the palette-tokens test.
+/// These tokens are the single source of truth for every color in the app.
+/// They were chosen for the Material Design direction B in
+/// `tasks/mockups/material-saga-comparison-v2.html` and the reward-scarcity
+/// framework documented in `lib/core/theme/README.md`.
 ///
-/// Nothing else in `lib/` should ship a raw `Color(0x…)` — `scripts/check_hardcoded_colors.sh`
-/// enforces this for `lib/features/`.
+/// **Reward scarcity rule.** [heroGold] is rendered ONLY through the
+/// `RewardAccent` widget — it is a variable-ratio reward signal for PRs,
+/// level-ups and streak milestones. `scripts/check_reward_accent.sh` enforces
+/// this in CI.
+///
+/// Nothing else in `lib/` should ship a raw `Color(0x…)` — see
+/// `scripts/check_hardcoded_colors.sh`.
 class AppColors {
   const AppColors._();
 
-  // Background / stone
-  static const deepVoid = Color(0xFF0D0319);
-  static const duskPurple = Color(0xFF2A0E4A);
-  static const stoneViolet = Color(0xFF3A1466);
-  static const arcaneIndigo = Color(0xFF6A2FA8);
-  static const arcanePurple = Color(0xFF8A3DC1);
-  static const glowLavender = Color(0xFFB36DFF);
+  /// Base background. Used for the scaffold on every screen and as the
+  /// splash/launch surface.
+  static const abyss = Color(0xFF0D0319);
 
-  // Metal / chrome
-  static const ironGrey = Color(0xFF4A4560);
-  static const stoneGrey = Color(0xFF6A6585);
+  /// Default card / sheet surface. One step above [abyss].
+  static const surface = Color(0xFF1A0F2E);
 
-  // Leather / ember
-  static const emberShadow = Color(0xFF2A1A0F);
-  static const bronzeShadow = Color(0xFF7A4D00);
+  /// Elevated surface — input fields, secondary chips, resting-state buttons.
+  /// Two steps above [abyss]; one above [surface].
+  static const surface2 = Color(0xFF241640);
 
-  // Gold family (hero / reward)
-  static const oldGold = Color(0xFFD9B864);
-  static const questGold = Color(0xFFFFB800);
-  static const hotGold = Color(0xFFFFD54F);
-  static const creamLight = Color(0xFFFFF1B8);
-  static const parchment = Color(0xFFF3E6C6);
+  /// Primary brand violet. Structural accent — primary buttons, tab indicator,
+  /// FAB gradient start, section dividers when a color beat is needed.
+  static const primaryViolet = Color(0xFF6A2FA8);
 
-  // Stat accents
-  static const emeraldGreen = Color(0xFF3EC46D);
-  static const skyBlue = Color(0xFF3BB0E6);
-  static const iceBlue = Color(0xFF7FD1F2);
-  static const hazardRed = Color(0xFFE03A3A);
+  /// Daily / interactive violet. Active nav tint, hyperlinks, secondary CTAs,
+  /// selected chip stroke. Reads brighter than [primaryViolet] on [abyss].
+  static const hotViolet = Color(0xFFB36DFF);
 
-  // Utility
-  static const pureWhite = Color(0xFFFFFFFF);
+  /// **REWARD-ONLY** gold — PR flash, level-up burst, streak milestone badge.
+  /// Rendered only through the `RewardAccent` widget; see
+  /// `scripts/check_reward_accent.sh`.
+  static const heroGold = Color(0xFFFFB800);
+
+  /// Primary text — reads as off-white on [abyss] without looking surgical.
+  static const textCream = Color(0xFFEEE7FA);
+
+  /// Secondary text — captions, metadata, disabled labels.
+  static const textDim = Color(0xFF9C8DB8);
+
+  /// Positive delta / success state. Distinct from [heroGold] so a green
+  /// ✓ chip never competes visually with a reward flash.
+  static const success = Color(0xFF62C46D);
+
+  /// Warning — intentionally in the warm-yellow family but different from
+  /// [heroGold] so a caution banner is not mistaken for a PR.
+  static const warning = Color(0xFFFFB84D);
+
+  /// Error / destructive action.
+  static const error = Color(0xFFFF6B6B);
+
+  /// Hairline for dividers and card borders. A low-alpha violet so borders
+  /// feel like they belong to the palette rather than gray plate.
+  static const hair = Color(0x24B36DFF); // rgba(179,109,255,0.14)
 }
 
-/// Typography tokens that sit on top of the Material `TextTheme`.
+/// Typography tokens for the app, layered on top of the Material `TextTheme`.
 ///
-/// Body/title copy stays on the default stack (Inter/Roboto) — Press-Start-2P
-/// is unreadable for paragraphs. The pixel styles are *moment* styles for
-/// LVL numbers, "NEW RECORD" banners, and small chip labels.
+/// Two families: Rajdhani (display/headline/numeric) and Inter (title/body/
+/// label). Rajdhani is a condensed humanist sans that scans fast under gym
+/// fatigue at 18+ dp; Inter covers paragraph readability below 16 dp.
+///
+/// See `lib/core/theme/README.md` for the reward-scarcity rule and the
+/// "one display, one body, one numeric" typographic rhythm.
 class AppTextStyles {
   const AppTextStyles._();
 
-  /// Press-Start-2P 32pt — hero numerals + celebration banner copy.
-  ///
-  /// Press-Start-2P looks crisp at integer sizes (8/16/24/32pt) and blurry at
-  /// fractional ones. Keep to the multiples.
-  static const pixelHero = TextStyle(
-    fontFamily: 'PressStart2P',
+  /// Rajdhani 700 — hero copy, splash wordmark, primary CTA.
+  static TextStyle get display => GoogleFonts.rajdhani(
     fontSize: 32,
-    height: 1.0,
-    letterSpacing: 0,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0.04 * 32,
+    height: 1.1,
+    color: AppColors.textCream,
   );
 
-  /// Press-Start-2P 10pt — small chip labels, streak-count badges, XP counters.
-  static const pixelLabel = TextStyle(
-    fontFamily: 'PressStart2P',
-    fontSize: 10,
-    height: 1.0,
-    letterSpacing: 0,
+  /// Rajdhani 600 — card titles, overlay titles, section headers.
+  static TextStyle get headline => GoogleFonts.rajdhani(
+    fontSize: 24,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.02 * 24,
+    height: 1.2,
+    color: AppColors.textCream,
+  );
+
+  /// Inter 600 — list-item titles, routine names, card sub-titles.
+  static TextStyle get title => GoogleFonts.inter(
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    height: 1.3,
+    color: AppColors.textCream,
+  );
+
+  /// Inter 400 — paragraph copy, descriptions.
+  static TextStyle get body => GoogleFonts.inter(
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    height: 1.5,
+    color: AppColors.textCream,
+  );
+
+  /// Inter 400 — small meta, captions.
+  static TextStyle get bodySmall => GoogleFonts.inter(
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    height: 1.5,
+    color: AppColors.textDim,
+  );
+
+  /// Inter 600 uppercase with +0.12em tracking — chips, tabs, metadata rails.
+  static TextStyle get label => GoogleFonts.inter(
+    fontSize: 11,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.12 * 11,
+    height: 1.2,
+    color: AppColors.textCream,
+  );
+
+  /// Rajdhani 700 tabular — XP counts, level numbers, weight/rep numerals.
+  static TextStyle get numeric => GoogleFonts.rajdhani(
+    fontSize: 20,
+    fontWeight: FontWeight.w700,
+    fontFeatures: const [FontFeature.tabularFigures()],
+    height: 1.1,
+    color: AppColors.textCream,
   );
 }
 
+/// App-wide Material 3 theme.
+///
+/// Seeded from [AppColors.primaryViolet] with explicit overrides for
+/// surface/onSurface so dark-mode text stays on the [AppColors.textCream]
+/// off-white instead of Material's default pure white.
 class AppTheme {
   const AppTheme._();
 
-  // Role → palette mapping. `AppTheme.primaryGradient` /
-  // `destructiveGradient` / `prBadgeColor` remain the public API; they are
-  // now assembled from palette tokens.
-  static const _primaryColor = AppColors.arcanePurple;
-  static const _surfaceColor = AppColors.duskPurple;
-  static const _backgroundColor = AppColors.deepVoid;
-  static const _cardColor = AppColors.stoneViolet;
-  static const _errorColor = AppColors.hazardRed;
-
+  /// Primary brand gradient. Used for the "Create" FAB, the start-workout
+  /// CTA and a few other primary-intent surfaces. Anything else that needs a
+  /// solid primary should read [AppColors.primaryViolet] directly.
   static const primaryGradient = LinearGradient(
-    colors: [AppColors.arcanePurple, AppColors.arcaneIndigo],
+    colors: [AppColors.primaryViolet, AppColors.hotViolet],
   );
 
+  /// Destructive gradient — delete routines / wipe data. Reads red without
+  /// leaking [heroGold] into the scarcity budget.
   static const destructiveGradient = LinearGradient(
-    colors: [AppColors.hazardRed, AppColors.bronzeShadow],
+    colors: [AppColors.error, Color(0xFF8A2F2F)],
   );
-
-  /// Color for personal record badges (trophy icons on workout detail).
-  static const prBadgeColor = AppColors.hotGold;
 
   static ThemeData get dark {
-    const colorScheme = ColorScheme.dark(
-      primary: _primaryColor,
-      onPrimary: AppColors.pureWhite,
-      secondary: AppColors.glowLavender,
-      onSecondary: AppColors.deepVoid,
-      surface: _surfaceColor,
-      onSurface: AppColors.pureWhite,
-      error: _errorColor,
-      onError: AppColors.pureWhite,
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: AppColors.primaryViolet,
+      brightness: Brightness.dark,
+      primary: AppColors.primaryViolet,
+      onPrimary: AppColors.textCream,
+      secondary: AppColors.hotViolet,
+      onSecondary: AppColors.abyss,
+      surface: AppColors.surface,
+      onSurface: AppColors.textCream,
+      surfaceContainerHighest: AppColors.surface2,
+      error: AppColors.error,
+      onError: AppColors.textCream,
+      outline: AppColors.hair,
     );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: _backgroundColor,
+      scaffoldBackgroundColor: AppColors.abyss,
       textTheme: _textTheme,
       cardTheme: _cardTheme,
       elevatedButtonTheme: _elevatedButtonTheme,
+      outlinedButtonTheme: _outlinedButtonTheme,
+      filledButtonTheme: _filledButtonTheme,
       inputDecorationTheme: _inputDecorationTheme,
       segmentedButtonTheme: _segmentedButtonTheme,
-      appBarTheme: const AppBarThemeData(
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(kRadiusLg)),
+        ),
+      ),
+      snackBarTheme: const SnackBarThemeData(
+        backgroundColor: AppColors.surface2,
+        contentTextStyle: TextStyle(color: AppColors.textCream),
+        behavior: SnackBarBehavior.floating,
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: AppColors.primaryViolet,
+        foregroundColor: AppColors.textCream,
+      ),
+      appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        foregroundColor: AppColors.textCream,
       ),
+      dividerTheme: const DividerThemeData(color: AppColors.hair, thickness: 1),
     );
   }
 
-  static const _textTheme = TextTheme(
-    displayLarge: TextStyle(
-      fontSize: 48,
-      fontWeight: FontWeight.w900,
-      letterSpacing: -1.5,
-    ),
-    displayMedium: TextStyle(
-      fontSize: 36,
-      fontWeight: FontWeight.w800,
-      letterSpacing: -0.5,
-    ),
-    headlineLarge: TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
-    headlineMedium: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
-    titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-    titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-    bodyLarge: TextStyle(fontSize: 16),
-    bodyMedium: TextStyle(fontSize: 14),
-    labelLarge: TextStyle(
-      fontSize: 14,
-      fontWeight: FontWeight.w700,
-      letterSpacing: 1.2,
-    ),
+  static TextTheme get _textTheme => TextTheme(
+    displayLarge: AppTextStyles.display.copyWith(fontSize: 40),
+    displayMedium: AppTextStyles.display.copyWith(fontSize: 32),
+    displaySmall: AppTextStyles.display.copyWith(fontSize: 24),
+    headlineLarge: AppTextStyles.headline.copyWith(fontSize: 28),
+    headlineMedium: AppTextStyles.headline,
+    headlineSmall: AppTextStyles.headline.copyWith(fontSize: 20),
+    titleLarge: AppTextStyles.title.copyWith(fontSize: 20),
+    titleMedium: AppTextStyles.title,
+    titleSmall: AppTextStyles.title.copyWith(fontSize: 14),
+    bodyLarge: AppTextStyles.body.copyWith(fontSize: 16),
+    bodyMedium: AppTextStyles.body,
+    bodySmall: AppTextStyles.bodySmall,
+    labelLarge: AppTextStyles.label.copyWith(fontSize: 13),
+    labelMedium: AppTextStyles.label,
+    labelSmall: AppTextStyles.label.copyWith(fontSize: 10),
   );
 
-  static final _cardTheme = CardThemeData(
-    color: _cardColor,
+  static CardThemeData get _cardTheme => CardThemeData(
+    color: AppColors.surface,
     elevation: 0,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    surfaceTintColor: Colors.transparent,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(kRadiusMd),
+      side: const BorderSide(color: AppColors.hair),
+    ),
     margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
   );
 
-  static final _elevatedButtonTheme = ElevatedButtonThemeData(
-    style: ElevatedButton.styleFrom(
-      backgroundColor: _primaryColor,
-      foregroundColor: AppColors.pureWhite,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  static ElevatedButtonThemeData get _elevatedButtonTheme =>
+      ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primaryViolet,
+          foregroundColor: AppColors.textCream,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          textStyle: AppTextStyles.label.copyWith(fontSize: 13),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(kRadiusSm + 2), // 10
+          ),
+        ),
+      );
+
+  static OutlinedButtonThemeData get _outlinedButtonTheme =>
+      OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.hotViolet,
+          side: const BorderSide(color: AppColors.hotViolet),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          textStyle: AppTextStyles.label.copyWith(fontSize: 13),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(kRadiusSm + 2),
+          ),
+        ),
+      );
+
+  static FilledButtonThemeData get _filledButtonTheme => FilledButtonThemeData(
+    style: FilledButton.styleFrom(
+      backgroundColor: AppColors.primaryViolet,
+      foregroundColor: AppColors.textCream,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+      textStyle: AppTextStyles.label.copyWith(fontSize: 13),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(kRadiusSm + 2),
+      ),
     ),
   );
 
   /// Dark-surface tuning for Material 3 `SegmentedButton`.
   ///
-  /// The M3 default renders underpowered on our dusk-purple surface: the
+  /// M3's default renders underpowered on our deep-violet surface: the
   /// selected container is barely tinted and the unselected label drops to
-  /// ~0.38 alpha, making both states read ghostly. This theme bumps selected
-  /// visibility (primary tint at 0.15, primary foreground, weight 600) and
-  /// lifts unselected foreground to 0.75 alpha so both segments stay legible
-  /// on dark surfaces.
-  static final _segmentedButtonTheme = SegmentedButtonThemeData(
-    style: ButtonStyle(
-      backgroundColor: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) {
-          return _primaryColor.withValues(alpha: 0.15);
-        }
-        return Colors.transparent;
-      }),
-      foregroundColor: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) {
-          return _primaryColor;
-        }
-        return AppColors.pureWhite.withValues(alpha: 0.75);
-      }),
-      textStyle: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) {
-          return const TextStyle(fontWeight: FontWeight.w600);
-        }
-        return const TextStyle(fontWeight: FontWeight.w500);
-      }),
-      side: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) {
-          return BorderSide(color: _primaryColor.withValues(alpha: 0.5));
-        }
-        return BorderSide(color: AppColors.pureWhite.withValues(alpha: 0.15));
-      }),
-    ),
-  );
+  /// ~0.38 alpha. This theme bumps selected visibility (primary tint at 0.15,
+  /// primary foreground, weight 600) and lifts unselected foreground to
+  /// 0.75 alpha so both segments stay legible on dark surfaces.
+  static SegmentedButtonThemeData get _segmentedButtonTheme =>
+      SegmentedButtonThemeData(
+        style: ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return AppColors.primaryViolet.withValues(alpha: 0.15);
+            }
+            return Colors.transparent;
+          }),
+          foregroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return AppColors.hotViolet;
+            }
+            return AppColors.textCream.withValues(alpha: 0.75);
+          }),
+          textStyle: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return AppTextStyles.label.copyWith(fontWeight: FontWeight.w600);
+            }
+            // w600 (SemiBold) is bundled via google_fonts; w500 (Medium) is
+            // not, so with `allowRuntimeFetching = false` Flutter nearest-
+            // matches to w400/w600 unpredictably. Using w600 here gives the
+            // "slightly heavier than body" intent for the unselected label
+            // while matching a bundled weight exactly.
+            return AppTextStyles.label.copyWith(fontWeight: FontWeight.w600);
+          }),
+          side: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return BorderSide(
+                color: AppColors.hotViolet.withValues(alpha: 0.5),
+              );
+            }
+            return const BorderSide(color: AppColors.hair);
+          }),
+        ),
+      );
 
-  static final _inputDecorationTheme = InputDecorationThemeData(
-    filled: true,
-    fillColor: _cardColor,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide.none,
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: _primaryColor, width: 2),
-    ),
-    errorBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: _errorColor, width: 1),
-    ),
-    focusedErrorBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: _errorColor, width: 2),
-    ),
-  );
+  static InputDecorationThemeData get _inputDecorationTheme =>
+      InputDecorationThemeData(
+        filled: true,
+        fillColor: AppColors.surface2,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
+        hintStyle: AppTextStyles.body.copyWith(color: AppColors.textDim),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(kRadiusSm + 2),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(kRadiusSm + 2),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(kRadiusSm + 2),
+          borderSide: const BorderSide(color: AppColors.hotViolet, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(kRadiusSm + 2),
+          borderSide: const BorderSide(color: AppColors.error, width: 1),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(kRadiusSm + 2),
+          borderSide: const BorderSide(color: AppColors.error, width: 2),
+        ),
+      );
 }

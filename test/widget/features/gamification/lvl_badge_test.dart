@@ -1,7 +1,12 @@
-/// Widget tests for the _LvlBadge placeholder added in Phase 17b.
+/// Widget tests for the _LvlBadge placeholder added in Phase 17b
+/// (retained through the Phase 17.0c Arcane Ascent material migration).
 ///
 /// The badge is a minimal ConsumerWidget inside HomeScreen that watches
-/// xpProvider and renders "LVL {n}" using pixelLabel / hotGold.
+/// xpProvider and renders "LVL {n}" using `AppTextStyles.label` tinted
+/// with `AppColors.hotViolet` — the Arcane structural accent. Gold
+/// (`heroGold` via `RewardAccent`) is reserved for level-up celebration,
+/// PR flashes, and streak milestones.
+///
 /// Full styling and animation land in Phase 17e; these tests verify:
 ///   - LVL 1 renders while xpProvider is loading
 ///   - LVL 1 renders on error

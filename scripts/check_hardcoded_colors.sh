@@ -1,15 +1,19 @@
 #!/usr/bin/env bash
 # Fails if any file under `lib/features/` contains an out-of-palette color.
 #
-# The pixel-art direction (§17.0) locks all color to 20 palette tokens in
-# `AppColors`. Any of the following are considered palette violations:
+# The Arcane Ascent direction (§17.0c) locks all color to the `AppColors`
+# tokens in `lib/core/theme/app_theme.dart`:
+#   abyss, surface, surface2, primaryViolet, hotViolet, heroGold,
+#   textCream, textDim, success, warning, error, hair
+#
+# Any of the following are considered palette violations:
 #
 #   1. Raw `Color(0x…)` literals  — new color leaking in without palette review.
 #   2. `Colors.black` / `Colors.black12…` / `Colors.black87`, i.e. any
-#      `Colors.black*` — `deepVoid` (or a `deepVoid.withValues(alpha:)` overlay)
+#      `Colors.black*` — `AppColors.abyss` (or `abyss.withValues(alpha:)`)
 #      must be used instead. Pure `#000000` is not a palette token.
 #   3. `Colors.white` / `Colors.white10…` / `Colors.white70`, i.e. any
-#      `Colors.white*` — `pureWhite` (or a `pureWhite.withValues(alpha:)`
+#      `Colors.white*` — `AppColors.textCream` (or a `textCream.withValues`
 #      overlay) must be used instead.
 #
 # Explicitly allowed:

@@ -7,7 +7,6 @@ import '../../../core/utils/enum_l10n.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/gradient_button.dart';
-import '../../../shared/widgets/pixel_image.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../models/exercise.dart';
 import '../providers/exercise_providers.dart'
@@ -150,7 +149,7 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
                   selected: _selectedMuscleGroup,
                   onSelected: (v) => setState(() => _selectedMuscleGroup = v),
                   labelFor: (v) => v.localizedName(l10n),
-                  iconPathFor: (v) => v.iconPath,
+                  iconFor: (v) => v.icon,
                   semanticPrefix: l10n.muscleGroupSemanticsPrefix,
                 ),
                 const SizedBox(height: 24),
@@ -161,7 +160,7 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
                   selected: _selectedEquipmentType,
                   onSelected: (v) => setState(() => _selectedEquipmentType = v),
                   labelFor: (v) => v.localizedName(l10n),
-                  iconPathFor: (v) => v.iconPath,
+                  iconFor: (v) => v.icon,
                   semanticPrefix: l10n.equipmentTypeSemanticsPrefix,
                 ),
                 const SizedBox(height: 24),
@@ -215,7 +214,7 @@ class _SelectableGrid<T> extends StatelessWidget {
     required this.selected,
     required this.onSelected,
     required this.labelFor,
-    required this.iconPathFor,
+    required this.iconFor,
     required this.semanticPrefix,
   });
 
@@ -223,7 +222,7 @@ class _SelectableGrid<T> extends StatelessWidget {
   final T? selected;
   final ValueChanged<T> onSelected;
   final String Function(T) labelFor;
-  final String Function(T) iconPathFor;
+  final IconData Function(T) iconFor;
   final String semanticPrefix;
 
   @override
@@ -235,7 +234,7 @@ class _SelectableGrid<T> extends StatelessWidget {
         final isSelected = selected == value;
         return _SelectableCard(
           label: labelFor(value),
-          iconPath: iconPathFor(value),
+          icon: iconFor(value),
           isSelected: isSelected,
           onTap: () => onSelected(value),
           semanticLabel: '$semanticPrefix: ${labelFor(value)}',
@@ -248,14 +247,14 @@ class _SelectableGrid<T> extends StatelessWidget {
 class _SelectableCard extends StatelessWidget {
   const _SelectableCard({
     required this.label,
-    required this.iconPath,
+    required this.icon,
     required this.isSelected,
     required this.onTap,
     required this.semanticLabel,
   });
 
   final String label;
-  final String iconPath;
+  final IconData icon;
   final bool isSelected;
   final VoidCallback onTap;
   final String semanticLabel;
@@ -290,12 +289,16 @@ class _SelectableCard extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                PixelImage(iconPath, semanticLabel: '', width: 24, height: 24),
+                Icon(
+                  icon,
+                  size: 24,
+                  color: isSelected ? primary : theme.colorScheme.onSurface,
+                ),
                 const SizedBox(height: 4),
                 Text(
                   label,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                     color: isSelected ? primary : theme.colorScheme.onSurface,
                   ),
                 ),

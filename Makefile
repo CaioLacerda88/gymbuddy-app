@@ -13,6 +13,7 @@ format:
 	dart format .
 
 analyze:
+	bash scripts/check_reward_accent.sh
 	dart analyze --fatal-infos
 	bash scripts/check_hardcoded_colors.sh
 

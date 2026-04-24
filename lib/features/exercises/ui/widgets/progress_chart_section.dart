@@ -4,11 +4,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/format/date_format.dart';
 import '../../../../core/format/number_format.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../../shared/widgets/reward_accent.dart';
 import '../../../profile/providers/profile_providers.dart';
 import '../../models/progress_point.dart';
 import '../../providers/exercise_progress_provider.dart';
+
+/// PR ring accent color — the hollow gold ring drawn on the all-time-PR
+/// dot. `FlDotPainter` callbacks have no `BuildContext`, so the widget-
+/// tree `RewardAccent.of(context)` lookup is unavailable here; we read
+/// the static alias and carry the opt-out marker on the preceding line.
+// ignore: reward_accent — FlDotPainter has no BuildContext ancestor
+const Color _prRingAccent = RewardAccent.color;
 
 /// Primary metric for the progress chart.
 ///
@@ -610,7 +617,7 @@ class _LineChart extends StatelessWidget {
                 if (index == ringAnchorIndex) {
                   return _PrRingPainter(
                     primary: primary,
-                    ringColor: AppTheme.prBadgeColor,
+                    ringColor: _prRingAccent,
                     innerRadius: ProgressChartSection._prRingInnerRadius,
                     strokeWidth: ProgressChartSection._prRingStroke,
                     outerGap: ProgressChartSection._prRingOuterGap,

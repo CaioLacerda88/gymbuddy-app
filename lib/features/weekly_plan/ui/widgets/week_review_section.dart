@@ -40,7 +40,7 @@ class WeekReviewSection extends StatelessWidget {
   /// Called when user taps NEW WEEK.
   final VoidCallback? onNewWeek;
 
-  static const _primaryGreen = AppColors.emeraldGreen;
+  static const _primaryGreen = AppColors.success;
 
   @override
   Widget build(BuildContext context) {

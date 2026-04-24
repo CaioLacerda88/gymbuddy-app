@@ -1,24 +1,24 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_icons.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/radii.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../shared/widgets/pixel_image.dart';
-import '../../../shared/widgets/pixel_panel.dart';
+import '../../../shared/widgets/reward_accent.dart';
 import '../domain/xp_calculator.dart';
 
-/// First-run, 3-step pixel-art explainer that introduces the gamification
-/// layer (XP, LVL, rank). Pure presentation — the widget calls [onDismiss]
-/// when the user taps "BEGIN" on the final step; the caller owns the
+/// First-run, 3-step explainer that introduces the gamification layer
+/// (XP, LVL, rank). Pure presentation — the widget calls [onDismiss] when
+/// the user taps "BEGIN" on the final step; the caller owns the
 /// Hive-backed `saga_intro_seen` persistence (see `xp_provider.dart`).
 ///
-/// Visual direction (per PLAN §17b + §17.0):
-///   * Full-screen `AppColors.deepVoid` backdrop — no Material Dialog chrome.
-///   * Pixel-art hero image per step (PixelImage, nearest-neighbor).
-///   * Press-Start-2P headline via [AppTextStyles.pixelHero].
-///   * Body copy in [AppTextStyles.pixelLabel] 10pt for the cadence-match
-///     (small, crunchy pixel text against the hero).
-///   * Primary button is a [PixelPanel]-wrapped tap target — no Material
-///     button, no rounded corners.
+/// Visual direction (Arcane Ascent, §17.0c):
+///   * Full-screen [AppColors.abyss] backdrop — no Material Dialog chrome.
+///   * Rajdhani [AppTextStyles.headline] step titles with [AppColors.textCream].
+///   * Inter [AppTextStyles.body] body copy with [AppColors.textDim].
+///   * 80-dp hero SVG per step (hero silhouette / XP bolt / level sigil).
+///   * Primary button is a Material [FilledButton] so it picks up the
+///     primary-violet theme.
 class SagaIntroOverlay extends StatefulWidget {
   const SagaIntroOverlay({
     required this.onDismiss,
@@ -60,11 +60,7 @@ class _SagaIntroOverlayState extends State<SagaIntroOverlay> {
     final isFinalStep = _step == 2;
 
     return Material(
-      // A full-screen Material with our deep-void background keeps the
-      // overlay Ink-response-free (no ripple, no elevation tint). Using
-      // Material over Container lets descendant widgets (like the pixel
-      // button's InkWell) still ripple correctly when present.
-      color: AppColors.deepVoid,
+      color: AppColors.abyss,
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
@@ -115,9 +111,12 @@ class _StepIndicator extends StatelessWidget {
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: Container(
-            width: 16,
+            width: 20,
             height: 4,
-            color: isActive ? AppColors.hotGold : AppColors.ironGrey,
+            decoration: BoxDecoration(
+              color: isActive ? AppColors.hotViolet : AppColors.surface2,
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
         );
       }),
@@ -140,72 +139,79 @@ class _StepContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (title, body, asset, semantic) = switch (step) {
+    final (title, body, icon, semantic) = switch (step) {
       0 => (
         l10n.sagaIntroStep1Title,
         l10n.sagaIntroStep1Body,
-        'assets/pixel/story/your_saga_begins.png',
-        'story illustration',
+        AppIcons.hero,
+        'hero silhouette',
       ),
       1 => (
         l10n.sagaIntroStep2Title,
         l10n.sagaIntroStep2Body,
-        'assets/pixel/micro/xp_crystal.png',
-        'xp crystal',
+        AppIcons.xp,
+        'xp icon',
       ),
       _ => (
         l10n.sagaIntroStep3Title(level, _rankLabel(l10n, rank)),
         l10n.sagaIntroStep3Body,
-        _rankAsset(rank),
+        AppIcons.levelUp,
         '${rank.dbValue} rank',
       ),
     };
 
+    // Step-3 is the "first-week warmth" moment where the scarcity rule
+    // is intentionally relaxed (per PO research). We render the icon in
+    // violet for steps 1-2 and gold on step 3 so onboarding builds
+    // attachment before the app's normal scarcity budget kicks in. On
+    // step 3 we wrap the hero SVG in a [RewardAccent] so the ambient
+    // `IconTheme` paints the icon gold — `AppIcons.render` inherits the
+    // icon color from its ancestor when no explicit `color:` is passed
+    // (same contract as Material's `Icon`). This keeps the reward color
+    // token reference structurally quarantined inside [RewardAccent] and
+    // lets a future descendant (e.g. a "+N XP" text chip) share the
+    // accent without each child plumbing the color through its call site.
+    final isRewardStep = step == 2;
+    final heroIcon = SizedBox(
+      height: 160,
+      child: Center(
+        child: Semantics(
+          label: semantic,
+          child: isRewardStep
+              ? AppIcons.render(icon, size: 96)
+              : AppIcons.render(icon, color: AppColors.hotViolet, size: 96),
+        ),
+      ),
+    );
+
     return Column(
       children: [
-        SizedBox(
-          height: 192,
-          child: Center(
-            child: PixelImage(asset, semanticLabel: semantic, height: 160),
-          ),
-        ),
+        if (isRewardStep) RewardAccent(child: heroIcon) else heroIcon,
         const SizedBox(height: 24),
         Text(
           title,
           textAlign: TextAlign.center,
-          style: AppTextStyles.pixelHero.copyWith(
-            color: AppColors.creamLight,
-            fontSize: 20,
-            // Press-Start-2P with normal line-height renders clipped
-            // ascenders on small headlines; bump to 1.4 for multi-line.
-            height: 1.4,
+          style: AppTextStyles.headline.copyWith(
+            color: AppColors.textCream,
+            fontSize: 28,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
             body,
             textAlign: TextAlign.center,
-            style: AppTextStyles.pixelLabel.copyWith(
-              color: AppColors.glowLavender,
-              height: 1.6,
+            style: AppTextStyles.body.copyWith(
+              color: AppColors.textDim,
+              fontSize: 15,
+              height: 1.5,
             ),
           ),
         ),
       ],
     );
   }
-
-  static String _rankAsset(Rank r) => switch (r) {
-    Rank.rookie => 'assets/pixel/ranks/rookie.png',
-    Rank.iron => 'assets/pixel/ranks/iron.png',
-    Rank.copper => 'assets/pixel/ranks/copper.png',
-    Rank.silver => 'assets/pixel/ranks/silver.png',
-    Rank.gold => 'assets/pixel/ranks/gold.png',
-    Rank.platinum => 'assets/pixel/ranks/platinum.png',
-    Rank.diamond => 'assets/pixel/ranks/diamond.png',
-  };
 
   static String _rankLabel(AppLocalizations l10n, Rank r) => switch (r) {
     Rank.rookie => l10n.sagaRankRookie,
@@ -231,33 +237,26 @@ class _PrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Material button chrome would leak rounded corners + M3 elevation
-    // tint into the pixel-art surface. We use a PixelPanel as the visual
-    // frame and an InkWell for the tap feedback. The InkWell's splash
-    // remains rectangular because PixelPanel clips to the square border.
     return Semantics(
       button: true,
       container: true,
       identifier: identifier,
       label: label,
-      child: InkWell(
-        onTap: onPressed,
-        // Disable the default ripple colour cascade — our palette doesn't
-        // have a "splash" token and the ripple reads pink-ish against
-        // deepVoid otherwise.
-        splashColor: AppColors.arcanePurple,
-        highlightColor: AppColors.stoneViolet,
-        child: PixelPanel(
-          fill: PixelPanelFill.duskPurple,
+      child: FilledButton(
+        onPressed: onPressed,
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.primaryViolet,
+          foregroundColor: AppColors.textCream,
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-          child: Center(
-            child: Text(
-              label,
-              style: AppTextStyles.pixelLabel.copyWith(
-                color: AppColors.hotGold,
-                fontSize: 12,
-              ),
-            ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(kRadiusSm + 2),
+          ),
+        ),
+        child: Text(
+          label,
+          style: AppTextStyles.label.copyWith(
+            color: AppColors.textCream,
+            fontSize: 13,
           ),
         ),
       ),
