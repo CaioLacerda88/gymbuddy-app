@@ -59,10 +59,13 @@ schema_paths = []
 
 [db.seed]
 # If enabled, seeds the database after migrations during a db reset.
-enabled = true
+# Disabled: all default content (exercises, translations, workout templates) is
+# inserted by migrations under supabase/migrations/ — see 00007/00014/00019.
+# Future seed files must be opted in explicitly via sql_paths.
+enabled = false
 # Specifies an ordered list of seed files to load during db reset.
 # Supports glob patterns relative to supabase directory: "./seeds/*.sql"
-sql_paths = ["./seed.sql"]
+sql_paths = []
 
 [db.network_restrictions]
 # Enable management of network restrictions.
