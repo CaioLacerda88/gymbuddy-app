@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +13,22 @@ import 'core/observability/sentry_report.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Register the Game-Icons.net CC BY 3.0 attribution for the v3-silhouette
+  // icon pack (AppIcons / AppMuscleIcons / AppEquipmentIcons). This makes
+  // the credit surface through Flutter's built-in `showLicensePage`, which
+  // satisfies the license's attribution requirement without us shipping a
+  // dedicated credits screen. Registering here (pre-dotenv, pre-Supabase)
+  // is safe because `LicenseRegistry.addLicense` only stores a generator
+  // callback — nothing is enumerated until the license page is opened.
+  LicenseRegistry.addLicense(() async* {
+    yield const LicenseEntryWithLineBreaks(
+      ['Game-Icons.net'],
+      'Some icons from game-icons.net, by Lorc and Delapouite, licensed '
+      'under CC BY 3.0.\n\n'
+      'https://creativecommons.org/licenses/by/3.0/',
+    );
+  });
 
   await dotenv.load();
   await const HiveService().init();

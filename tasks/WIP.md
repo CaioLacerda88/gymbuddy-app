@@ -4,6 +4,39 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ---
 
+## Phase 17.0e — Icon Pack Integration
+
+**Branch:** `feature/step17.0e-icon-pack-integration`
+**Source:** PLAN.md §17.0c Stage 7 follow-up — quality upgrade from hand-drawn inline SVGs to the game-icons.net silhouette pack already curated at `assets/icons/v3-silhouette/`.
+
+### Files to modify / create
+- [x] `lib/core/theme/app_icons.dart` — switch values from inline `<svg>` strings to `assets/icons/v3-silhouette/<name>.svg` paths; rewrite `render()` to use `SvgPicture.asset`
+- [x] `lib/core/theme/app_muscle_icons.dart` — same: asset paths replace inline SVG strings
+- [x] `lib/core/theme/app_equipment_icons.dart` — same
+- [x] `lib/main.dart` — add `LicenseRegistry.addLicense(...)` for Game-Icons CC BY 3.0 credit
+- [x] `pubspec.yaml` — add `- assets/icons/v3-silhouette/` to assets list (existing `assets/icons/` does not recurse)
+- [x] `test/unit/core/theme/app_icons_test.dart` — update SVG string assertions (startsWith `<svg`, `viewBox="0 0 48 48"`) to asset-path assertions (`endsWith '.svg'`, path under `assets/icons/v3-silhouette/`)
+- [x] `test/widget/core/theme/app_muscle_icons_test.dart` — same contract update
+- [x] `test/widget/core/theme/app_equipment_icons_test.dart` — same contract update
+- [x] Delete `assets/icons/v1-line/`, `assets/icons/v2-bold/`, `assets/icons/_candidates/`, `assets/icons/_anatomy_probe/`, `assets/icons/audit.html`, `assets/icons/anatomy-audit.html`, `assets/icons/preview.html`
+- [x] Delete `tools/build_preview.sh`, `tools/build_muscle_audit.sh`, `tools/build_anatomy_audit.sh`, `tools/download_icons.sh`, `tools/patch_icons.sh`
+
+### Acceptance criteria
+- [x] All 33 `AppIcons`/`AppMuscleIcons`/`AppEquipmentIcons` constants keep their names — values change from inline-SVG to asset paths
+- [x] `AppIcons.render(svg, color: ..., size: ..., semanticsLabel: ..., excludeFromSemantics: ...)` signature unchanged — call sites keep compiling untouched
+- [x] `SvgPicture.asset` with `ColorFilter.mode(..., srcIn)` preserves tinting behavior (explicit color wins, else inherit `IconTheme.of(context).color`)
+- [x] `excludeFromSemantics ?? (semanticsLabel == null)` default preserved (PR #107 regression guard)
+- [x] Game-Icons CC BY 3.0 attribution visible via Flutter's `showLicensePage`
+- [x] `google_logo.svg` kept (used by Google sign-in button in `login_screen.dart:341`)
+- [x] `make ci` green end-to-end (format + gen + analyze + test + android-debug-build)
+- [x] No visual regressions in nav bar, exercise list chips, active workout screen, splash — verify via `flutter run -d chrome`
+
+### Tests to update
+- Existing SVG-string assertions in the three icon tests now assert asset paths
+- Everything else (size/color filter propagation, IconTheme inheritance, semantics contract, `EquipmentType.barbell` aliasing `AppIcons.lift`) must keep passing unchanged
+
+---
+
 ## Phase 16 — Subscription Monetization — PARKED (2026-04-22)
 
 **Why parked:** Phase 16 keeps hitting external blockers (Brazilian merchant account, Play Console → upload signed AAB required before subscription product can be created, license-tester account setup). Phase 17 gamification is fully internal code work with no external gates and produces the retention moat that makes Phase 16's paywall pitch compelling. Decision: ship Phase 17 (Gamification) before resuming 16b/c/d.
