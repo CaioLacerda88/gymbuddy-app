@@ -863,7 +863,7 @@ Full pt-BR localization with language switcher in profile settings. Official `fl
 
 ## Phase 15f: Exercise Content Localization
 
-> DB-side translations for the 94 default exercises via dedicated `exercise_translations` table (symmetric locale storage) + `slug` semantic identifier + two-query merge at caller layer. Retrofit: 15c's client-side `localizedExerciseName()` helper is never called from `lib/` — UI still shows raw English from the DB column. This phase wires end-to-end localization and drops `exercises.name/description/form_tips` entirely. Single atomic PR.
+> DB-side translations for the 150 default exercises via dedicated `exercise_translations` table (symmetric locale storage) + `slug` semantic identifier + two-query merge at caller layer. Retrofit: 15c's client-side `localizedExerciseName()` helper is never called from `lib/` — UI still shows raw English from the DB column. This phase wires end-to-end localization and drops `exercises.name/description/form_tips` entirely. Single atomic PR.
 
 **Design spec:** `docs/superpowers/specs/2026-04-24-exercise-content-localization-design.md` (full architecture, risk register, rollback SQL, RLS audit steps, fallback cascade rationale).
 
@@ -880,7 +880,7 @@ Full pt-BR localization with language switcher in profile settings. Official `fl
 | D3 | Symmetric storage — EN moves out of `exercises` alongside pt. | No privileged locale. Adding es-ES / fr-FR later is pure data migration. |
 | D4 | `exercises.slug TEXT NOT NULL` semantic key, partial unique on defaults. | Locale-independent identifier for seeding + caller batch lookups. |
 | D5 | Single atomic PR, no feature flag, no staged rollout. | User directive: "no deferral of steps, let's implement everything we need for a clean architecture." |
-| D6 | Hybrid AI-drafted + human-reviewed pt content (glossary-first). | Quality gate before 94 rows commit to DB. |
+| D6 | Hybrid AI-drafted + human-reviewed pt content (glossary-first). | Quality gate before 150 rows commit to DB. |
 | D7 | Ship `fn_update_user_exercise` RPC + repo method; edit UI deferred. | Data layer completes 15f; UI polish is follow-up scope. |
 
 ### Architecture summary (see spec §3 for diagram)
@@ -917,7 +917,7 @@ Files:
 - Create `docs/superpowers/specs/phase15f-pt-glossary.md` — ~30-40 term gym terminology glossary in pt-BR with decision notes (e.g. "Supino" vs "Supino com Barra", "Agachamento" vs "Agachamento Livre", "Remada" conventions, "Cadeira Extensora" vs "Extensão de Pernas", "PR" and "Drop Set" kept English per 15c decision).
 
 Workflow:
-1. Orchestrator: read `supabase/migrations/00007_add_default_exercises.sql` + related seed migrations to extract the 94 default exercise names.
+1. Orchestrator: read `supabase/migrations/00007_seed_default_exercises.sql` + `00014_seed_more_default_exercises.sql` + `00019_seed_more_default_exercises_part2.sql` to extract all 150 default exercise names (61 + 31 + 58).
 2. Orchestrator: draft glossary covering all recurring nouns/verbs (bench, press, row, curl, extension, deadlift, squat, lunge, lateral, barbell, dumbbell, cable, machine, hip hinge, etc.) with chosen pt-BR term + rejected alternatives + rationale.
 3. User reviews glossary and approves or edits. **Hard gate — Stage 3 does not start until user signs off.**
 
@@ -932,15 +932,15 @@ Files:
 
 Content requirements:
 - Single `INSERT INTO exercise_translations (exercise_id, locale, name, description, form_tips) SELECT e.id, 'pt', v.name, v.description, v.form_tips FROM exercises e JOIN (VALUES (slug, name, description, form_tips), ...) AS v(slug, name, description, form_tips) ON e.slug = v.slug WHERE e.is_default = true;`
-- 94 tuples, one per default exercise. Each row pulls its translation from the approved glossary.
+- 150 tuples, one per default exercise. Each row pulls its translation from the approved glossary.
 - `DO $$ BEGIN IF (SELECT COUNT(*) FROM exercises WHERE is_default = true) != (SELECT COUNT(*) FROM exercise_translations WHERE locale = 'pt') THEN RAISE EXCEPTION 'pt seed incomplete'; END IF; END $$;`
 
 Acceptance:
 - Seed applies cleanly to local Supabase.
 - Invariant query returns 0 defaults missing pt translation.
-- Human skim of 94 rows happens during Stage 7 staging verification (not at this gate).
+- Human skim of 150 rows happens during Stage 7 staging verification (not at this gate).
 
-Pipeline gate: `make ci` green. Commit: `feat(15f): Stage 3 — pt-BR seed for 94 default exercises`.
+Pipeline gate: `make ci` green. Commit: `feat(15f): Stage 3 — pt-BR seed for 150 default exercises`.
 
 ### Stage 4 — RPCs + column drop migration (tech-lead)
 
@@ -1000,7 +1000,7 @@ Files to modify:
 - `lib/core/l10n/locale_provider.dart` — `LocaleNotifier.setLocale` also calls `cacheService.clearBox(HiveService.exerciseCache)` + `routineCache` + `workoutHistoryCache` + `prCache`.
 - `lib/core/local_storage/hive_service.dart` + `cache_service.dart` — accept locale-prefixed keys.
 - `lib/core/l10n/exercise_l10n.dart` — delete `_exerciseNames` map, all `_ex*` getters, `localizedExerciseName()`. Keep `exerciseSlug()` + `localizedRoutineName()` + `_routineNames`.
-- `lib/l10n/app_en.arb` + `lib/l10n/app_pt.arb` — delete all `exerciseName_*` keys (~94 × 2 = 188 keys). Run `flutter gen-l10n`.
+- `lib/l10n/app_en.arb` + `lib/l10n/app_pt.arb` — delete all `exerciseName_*` keys (~150 × 2 = 300 keys). Run `flutter gen-l10n`.
 
 Test files to rework (add or rewrite; each must exercise new contracts):
 - `test/fixtures/test_factories.dart` — `TestExerciseFactory.create` gains `slug` field default.
@@ -1091,7 +1091,7 @@ Full procedure in spec §16. Summary: `scripts/emergency_rollback_15f.sql` resto
 | Risk | Mitigation |
 |------|------------|
 | Two-query merge p95 latency regression on history/PRs | Profile on staging during Stage 7; if > 1s revisit per-screen RPC (escape hatch). Expected: +20-40ms, acceptable. |
-| pt seed quality errors slip past auto-draft | Glossary Stage 2 is human-gated; 94-row human skim is a mandatory Stage 8 gate. |
+| pt seed quality errors slip past auto-draft | Glossary Stage 2 is human-gated; 150-row human skim is a mandatory Stage 8 gate. |
 | RLS misconfig exposes other users' customs | Explicit policies in 00031 + E2E G1 test + psql `EXPLAIN` audit in staging. |
 
 ### Effort Estimate

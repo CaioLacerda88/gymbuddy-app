@@ -2,7 +2,7 @@
 
 **Status:** design — awaiting user review
 **Date:** 2026-04-24
-**Scope:** localize exercise `name`, `description`, `form_tips` for the 94 default exercises in pt-BR, with a schema that scales to 3-5+ languages.
+**Scope:** localize exercise `name`, `description`, `form_tips` for the 150 default exercises in pt-BR, with a schema that scales to 3-5+ languages.
 **Ship:** single atomic PR; no staged rollout.
 
 ---
@@ -11,7 +11,7 @@
 
 Exercise content (`exercises.name`, `description`, `form_tips`) ships in English only. The 15c/e Dart helper `localizedExerciseName()` exists but is never called from `lib/`; the UI renders the raw English DB column. pt-BR users see English exercise names on the list, detail, active-workout, history, and PR screens.
 
-Goal: end-to-end localization of the 94 default exercises without hard-coding locale into the schema, so adding es-ES / fr-FR later is a data migration, not a refactor.
+Goal: end-to-end localization of the 150 default exercises without hard-coding locale into the schema, so adding es-ES / fr-FR later is a data migration, not a refactor.
 
 ## 2. Locked decisions (from brainstorming)
 
@@ -22,7 +22,7 @@ Goal: end-to-end localization of the 94 default exercises without hard-coding lo
 | D3 | Storage: **symmetric** (Option B). EN lives in `exercise_translations` alongside pt; `exercises.name/description/form_tips` columns are dropped. | No locale is privileged. Adding locales never means "add a sibling column." |
 | D4 | Add `exercises.slug TEXT NOT NULL` — locale-independent semantic identifier. | Stable key for seeding, matching, and future locale additions; decouples migrations from display text. |
 | D5 | Single atomic PR. No phased rollout. No feature flag. | User directive: "no deferral of steps, let's implement everything we need for a clean architecture." |
-| D6 | Translation workflow: hybrid AI-drafted + human review (glossary-first pass, then full seed review). | Quality over quick fixes; 94 rows × ~30s skim = ~45 min human QA budget. |
+| D6 | Translation workflow: hybrid AI-drafted + human review (glossary-first pass, then full seed review). | Quality over quick fixes; 150 rows × ~30s skim = ~75 min human QA budget. |
 | D7 | Unit of reuse for `Exercise` shape: keep the existing Freezed model; server-side RPC returns the same fields (name/description/form_tips), just resolved via fallback cascade. | Zero UI changes needed below the repository layer. |
 
 ## 3. Architecture overview
@@ -69,7 +69,7 @@ Goal: end-to-end localization of the 94 default exercises without hard-coding lo
 | 00030 | `add_exercise_slug.sql` | Add `exercises.slug TEXT` nullable → per-row UPDATE backfill from hardcoded name→slug map (matches `exerciseSlug()` in `lib/core/l10n/exercise_l10n.dart`) → hard assert no NULL → `SET NOT NULL` → partial unique index on defaults only + general lookup index. |
 | 00031 | `create_exercise_translations.sql` | Create `exercise_translations` table (PK `(exercise_id, locale)`, CHECK `locale IN ('en','pt')`, CHECK length bounds on name/description/form_tips, FK `ON DELETE CASCADE`). Enable RLS + five policies (§5). Add `touch_updated_at` trigger. Index on `locale`. |
 | 00032 | `backfill_exercise_translations_en.sql` | `INSERT ... SELECT` copies every `exercises.name/description/form_tips` into `exercise_translations` as `'en'` (covers defaults AND user-created rows). Hard assert `COUNT(exercises) = COUNT(translations WHERE locale='en')`. |
-| 00033 | `seed_exercise_translations_pt.sql` | `INSERT ... SELECT` from `VALUES (slug, name, description, form_tips), ...` JOINed on `exercises.slug` for all 94 defaults with `locale = 'pt'`. Hard assert pt count equals default count. |
+| 00033 | `seed_exercise_translations_pt.sql` | `INSERT ... SELECT` from `VALUES (slug, name, description, form_tips), ...` JOINed on `exercises.slug` for all 150 defaults with `locale = 'pt'`. Hard assert pt count equals default count. |
 | 00034 | `drop_exercise_name_columns_and_add_rpcs.sql` | Create `pg_trgm` extension, all four RPCs (§6), trigram index on `exercise_translations.name`, drop old `exercises_name_idx`, drop columns `name/description/form_tips` from `exercises`, replace the user-created unique-name constraint with an RPC-level check. |
 
 **Why five files not one:**
@@ -155,7 +155,7 @@ All `SECURITY INVOKER` — RPCs rely on row-level policies, not definer privileg
 ### 7.5 Dead code to remove in this PR
 - `lib/core/l10n/exercise_l10n.dart`: delete `_exerciseNames` map, all `_ex*` getters, and `localizedExerciseName()` (grep-confirmed no callers in `lib/`).
 - **Keep:** `exerciseSlug()` (tests + slug derivation docs) and `localizedRoutineName()` + `_routineNames` (routines stay ARB-localized — out of 15f scope).
-- `lib/l10n/app_en.arb` + `app_pt.arb`: delete all `exerciseName_*` keys (~94 × 2 = 188 keys).
+- `lib/l10n/app_en.arb` + `app_pt.arb`: delete all `exerciseName_*` keys (~150 × 2 = 300 keys).
 - `flutter gen-l10n` must run clean afterward.
 
 ### 7.6 Freezed `Exercise` model
@@ -176,7 +176,7 @@ Unchanged. RPC returns the same shape; the model doesn't care whether the fields
 
 - **Format:** snake_case, ASCII `[a-z0-9_]+`. Derivation: `lowercase → replace /[^a-z0-9]+/ with '_' → strip edge underscores`. Matches `exerciseSlug()` in `exercise_l10n.dart:9` byte-for-byte (both Dart and SQL).
 - **Uniqueness:** partial unique index `WHERE is_default = true`. User-created rows collide freely (duplicate-name prevention happens in `fn_insert_user_exercise` at the translations level per user).
-- **Backfill for 94 defaults:** explicit per-row `UPDATE` in 00030 using a hardcoded map matching `_exerciseNames` keys. Not `regexp_replace` — we need byte-exact parity for the pt seed JOIN in 00033.
+- **Backfill for 150 defaults:** explicit per-row `UPDATE` in 00030 using a hardcoded map matching `_exerciseNames` keys. Not `regexp_replace` — we need byte-exact parity for the pt seed JOIN in 00033.
 
 ## 10. User-created exercise flow (post-15f)
 
@@ -280,7 +280,7 @@ All must hold before merge:
 5. **Performance:** exercise list first paint <300ms p50; workout history first paint <600ms p50 (two-query merge acceptable).
 6. **Staging verification:** six-step procedure (§15) executed; outputs pasted in PR body.
 7. **Rollback script:** dry-run succeeded against staging.
-8. **Translation QA:** pt-BR reviewer (human) skimmed all 94 rows on staging. Sign-off in PR body.
+8. **Translation QA:** pt-BR reviewer (human) skimmed all 150 rows on staging. Sign-off in PR body.
 9. **Reviewer + QA agent gates passed** per CLAUDE.md pipeline.
 
 ## 15. Staging verification procedure (mandatory pre-merge)
@@ -338,7 +338,7 @@ Single-PR ship → single rollback procedure.
 |---|---|---|---|
 | Two-query merge adds perceived latency to history/PR screens | Med | Med | Profile on hosted Supabase during PR review; +20-40ms expected; revisit only if p95 > 1s. |
 | N+1 regression from refactor | Low | High | Batch via `getExercisesByIds`; explicit unit test "exactly one batch call per invocation." |
-| pt seed quality (AI-drafted phrasing errors) | Med | Med | Hybrid glossary-first workflow + mandatory 94-row human skim before merge. |
+| pt seed quality (AI-drafted phrasing errors) | Med | Med | Hybrid glossary-first workflow + mandatory 150-row human skim before merge. |
 | Single-PR blast radius on regression | Med | High | Conscious tradeoff vs phased rollout. Mitigated by staging verification + rollback dry-run + 24h on-call window. |
 | RLS misconfiguration exposing other users' customs | Low | High | Explicit policies § 5; E2E G1 test; psql `EXPLAIN` audit in staging. |
 
