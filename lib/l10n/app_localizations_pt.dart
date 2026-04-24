@@ -176,7 +176,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get muscleGroupArms => 'Braços';
 
   @override
-  String get muscleGroupCore => 'Núcleo';
+  String get muscleGroupCore => 'Core';
 
   @override
   String get muscleGroupCardio => 'Cardio';
@@ -197,7 +197,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get equipmentBodyweight => 'Peso Corporal';
 
   @override
-  String get equipmentBands => 'Faixas Elásticas';
+  String get equipmentBands => 'Bands';
 
   @override
   String get equipmentKettlebell => 'Kettlebell';
