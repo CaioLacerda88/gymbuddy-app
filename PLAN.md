@@ -62,6 +62,7 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 16d | Analytics + hardening + launch-readiness checklist | DEFERRED | - |
 | 17.0 | Visual Language Foundation (pixel-art — SUPERSEDED by 17.0c) | SUPERSEDED | #101 |
 | 17.0c | Arcane Ascent Material Migration (teardown pixel, rebuild Material Design + app icon + 17.0d polish) | DONE | #105, #106, #107 |
+| 17.0e | Icon Pack Integration (migrate inline SVGs → v3-silhouette asset pack, CC BY 3.0 attribution) | DONE | #108 |
 | 17b | XP & Level System + Retroactive Backfill | DONE | #103 |
 | 17a | Celebration Overlay + Active Logger Hardening | TODO | - |
 | 17c | Weekly Streak + Comeback Bonus | TODO | - |
