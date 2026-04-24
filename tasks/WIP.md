@@ -4,6 +4,118 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ---
 
+## Phase 17.0c — Arcane Ascent Material Migration (2026-04-23)
+
+**Branch:** `feature/phase17.0c-material-migration`
+**Source:** PLAN.md §17.0c. Direction B of `tasks/mockups/material-saga-comparison-v2.html` — Arcane Ascent.
+**Supersedes:** PR #104 (closed 2026-04-23) + pixel-art visual layer from PR #101.
+**Retains:** Phase 17b XP data layer (PR #103) — only `SagaIntroOverlay` reskins.
+
+### Visual direction (locked)
+
+- **Palette:** `abyss #0D0319` → `surface #1A0F2E` → `surface2 #241640` → `primaryViolet #6A2FA8` → `hotViolet #B36DFF` daily → `heroGold #FFB800` **reward-only** → `textCream #EEE7FA`
+- **Typography:** Rajdhani 700 display / Inter 400-600 body, via `google_fonts` package. PressStart2P retired. Cinzel/Cormorant rejected.
+- **Icons:** inline-SVG `AppIcons` class, ~20 icons. Lift icon = side-view barbell with asymmetric plates (no circles, no dumbbell).
+- **Reward scarcity:** `RewardAccent` widget is the ONLY place allowed to emit heroGold. Enforced by `scripts/check_reward_accent.sh` in `make analyze`.
+
+### Acceptance checklist
+
+**Stage 1 — Pixel teardown**
+
+- [ ] `rm -rf assets/pixel/` (63 PNGs, 11 folders)
+- [ ] `rm -rf assets/fonts/press_start_2p/`
+- [ ] Delete `lib/shared/widgets/pixel_image.dart`, `pixel_panel.dart` + their tests under `test/widget/shared/`
+- [ ] Remove pubspec.yaml pixel asset directives (`assets/pixel/**`) and PressStart2P font block
+- [ ] Strip `AppTextStyles.pixelHero`, `pixelLabel`, `pixelNumeric` from `lib/core/theme/app_theme.dart`
+- [ ] Strip pixel-specific `AppColors` tokens (deepVoid, arcanePurple, hotGold, parchmentCream, ironGrey, leafGreen, hazardRed, etc.). Rename `hotGold` → `heroGold` if retained; otherwise delete.
+- [ ] Revert `MuscleGroup.iconPath` / `EquipmentType.iconPath` → `IconData` (Material icons) in `lib/features/exercises/models/exercise.dart`
+- [ ] Update `scripts/check_hardcoded_colors.sh` allowlist to Arcane palette tokens
+- [ ] Delete obsolete mockup artifacts: `tasks/mockups/chatgpt-pixel-art-prompt.md`, `audit_assets.py`, `crop_to_main_blob.py`, `asset_audit_report.json`
+
+**Stage 2 — Arcane theme foundation**
+
+- [ ] Add `google_fonts: ^6.2.0` to `pubspec.yaml`
+- [ ] Rewrite `AppColors` with Arcane palette — each token has dartdoc; `heroGold` explicitly marked "use only via RewardAccent"
+- [ ] Rewrite `AppTextStyles`: `display`, `headline`, `title`, `body`, `bodySmall`, `label`, `numeric` via `GoogleFonts.rajdhani(...)` / `GoogleFonts.inter(...)`
+- [ ] Rewrite `AppTheme.dark()`:
+  - `ColorScheme.fromSeed(seedColor: primaryViolet, brightness: dark, primary: primaryViolet, secondary: hotViolet, surface: surface, onSurface: textCream)`
+  - Restore sensible radii (cards 12, buttons 10, inputs 10). Undo pixel-sharp 0.
+  - Restore bottomSheetTheme / snackBarTheme / floatingActionButtonTheme to Material-normal
+  - `appBarTheme`, `cardTheme`, `elevatedButtonTheme`, `outlinedButtonTheme`, `inputDecorationTheme` pick up new palette + typography
+- [ ] `lib/core/theme/radii.dart` → restore meaningful values (sm 4, md 8, lg 12, xl 16)
+- [ ] Update/create `lib/core/theme/README.md` documenting reward-scarcity rule
+
+**Stage 3 — Icon system**
+
+- [ ] Create `lib/core/theme/app_icons.dart` — static class with SVG-string constants
+- [ ] Icons: `home, lift, plan, stats, hero, xp, levelUp, streak, check, add, edit, delete, filter, search, settings, play, pause, resume, finish, close`
+- [ ] **Lift icon:** side-view barbell — 2px horizontal bar, asymmetric rectangle plates (taller-inner, shorter-outer). Monoline stroke default; filled variant for active nav.
+- [ ] Each accessor returns `SvgPicture.string` with `color` + `size` params (uses existing `flutter_svg` dep)
+- [ ] Test: `test/unit/core/theme/app_icons_test.dart` — each icon renders at 24/40/64
+
+**Stage 4 — Reward scarcity enforcement**
+
+- [ ] Create `lib/shared/widgets/reward_accent.dart` — `RewardAccent({required Widget child})`; only widget referencing `AppColors.heroGold`
+- [ ] Create `scripts/check_reward_accent.sh` — greps `heroGold|0xFFFFB800|0xFFFFC107|0xFFFFD54F` outside `reward_accent.dart` + theme token file. Exits 1 on violation.
+- [ ] Wire into `Makefile` `analyze` target
+- [ ] Test: `test/widget/shared/reward_accent_test.dart`
+
+**Stage 5 — Migration (every pixel-bound surface)**
+
+- [ ] `_ActiveWorkoutBanner` (`lib/core/router/app_router.dart`) → Material `Icon(Icons.fitness_center_rounded)` + `Icon(Icons.chevron_right)` with Arcane theme
+- [ ] `lib/features/auth/ui/splash_screen.dart` → Rajdhani "REPSAGA" wordmark + new app icon (placeholder `AppIcons.hero` at 96px until icon lands)
+- [ ] `_EmptyState` in `exercise_list_screen.dart` → `Icons.search_off_rounded` (filtered) / `Icons.fitness_center_rounded` (pristine) at 64dp `textDim`
+- [ ] `_LvlBadge` in `home_screen.dart` → `AppTextStyles.label.copyWith(color: AppColors.hotViolet)`. No RewardAccent wrapping yet (17e adds the gain animation)
+- [ ] `lib/features/gamification/ui/saga_intro_overlay.dart` (3 screens) → reskin: Material surfaces, `AppTextStyles.headline`, `AppIcons.hero/lift/xp` @ 80px. Keep 3-screen flow + dismiss button + Hive gate logic untouched.
+- [ ] Nav tabs in `app_router.dart` → `AppIcons.home/lift/plan/stats/hero` (monoline idle / filled active)
+- [ ] Every `Image.asset('assets/pixel/...')` and `PixelImage(...)` call site swept
+
+**Stage 6 — App icon (orchestrator parallel; user pick)**
+
+- [ ] Write `tasks/mockups/app-icon-prompt-arcane.md` — single ChatGPT prompt. Includes: 1024² target, abyss `#0D0319` flat background plate, violet→gold sigil motif (hooded silhouette or ascending arcane sigil), safe-zone 68%, 3-variant request, explicit anti-pixel-art language, Material-compatible
+- [ ] User runs prompt, picks winner, drops PNG to `assets/app_icon/arcane_sigil_1024.png` + `arcane_sigil_foreground.png` (transparent fg)
+- [ ] Update `flutter_launcher_icons` config in pubspec.yaml to new paths
+- [ ] `dart run flutter_launcher_icons` → regen launcher icons
+- [ ] Commit generated launcher icons
+
+**Stage 7 — Tests**
+
+- [ ] Delete: `palette_tokens_test.dart`, `pixel_image_test.dart`, `pixel_panel_test.dart`, `exercise_list_pixel_icon_test.dart`
+- [ ] Add: `arcane_theme_test.dart`, `app_icons_test.dart`, `reward_accent_test.dart`
+- [ ] Update: `saga_intro_overlay_test.dart` for Material widgets
+- [ ] Update: any widget test asserting old pixel asset paths or pixel text styles
+- [ ] E2E: full suite regression. Nav icon swap + visual-only; selectors unchanged. Update asset-path selectors if any lingered.
+
+### Verification gate (before PR)
+
+- `make ci` green
+- `grep -r "assets/pixel" lib/ test/` → zero
+- `grep -r "PressStart2P" lib/ test/` → zero
+- `grep -rE "heroGold|0xFFFFB800" lib/ --include='*.dart' | grep -v "reward_accent.dart|app_colors.dart|app_theme.dart"` → zero
+- `flutter run -d chrome` manual pass: every tab/modal/CTA; zero asset-not-found; heroGold appears only via `RewardAccent`
+- E2E full suite green
+
+### Pipeline
+
+1. [x] Close PR #104 (2026-04-23)
+2. [x] Create branch + write PLAN.md §17.0c + WIP.md (this commit)
+3. `tech-lead` — stages 1→5 in order (foreground, Opus). `make ci` after each stage. Report at stage boundaries.
+4. Orchestrator parallel: write `app-icon-prompt-arcane.md`; user gens + picks + drops
+5. Orchestrator integrates app icon (stage 6) once user delivers
+6. `qa-engineer` — coverage gate + full E2E regression (flow-change territory: nav icons change)
+7. `reviewer` — quality pass
+8. Verification gate → PR → merge
+9. Close WIP section, condense §17.0c in PLAN.md
+
+### Out of scope (explicit)
+
+- Phase 17a celebration overlay — still TODO; its asset refs re-spec at sub-phase start
+- Phase 17c/d/e — asset refs re-spec at sub-phase start
+- Marketing / store screenshots — separate follow-up
+- LVL badge gain animation — lives in 17e
+
+---
+
 ## Phase 16 — Subscription Monetization — PARKED (2026-04-22)
 
 **Why parked:** Phase 16 keeps hitting external blockers (Brazilian merchant account, Play Console → upload signed AAB required before subscription product can be created, license-tester account setup). Phase 17 gamification is fully internal code work with no external gates and produces the retention moat that makes Phase 16's paywall pitch compelling. Decision: ship Phase 17 (Gamification) before resuming 16b/c/d.

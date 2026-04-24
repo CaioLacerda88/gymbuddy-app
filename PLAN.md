@@ -60,7 +60,8 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 16b | Client integration + paywall UI + onboarding rewire | DEFERRED | - |
 | 16c | Hard gate enforcement + router guard + E2E refactor | DEFERRED | - |
 | 16d | Analytics + hardening + launch-readiness checklist | DEFERRED | - |
-| 17.0 | Visual Language Foundation (pixel-art: nav, exercises, splash wired; palette + pixel font) | DONE | #101 |
+| 17.0 | Visual Language Foundation (pixel-art — SUPERSEDED by 17.0c) | SUPERSEDED | #101 |
+| 17.0c | Arcane Ascent Material Migration (teardown pixel, rebuild Material Design) | IN PROGRESS | - |
 | 17b | XP & Level System + Retroactive Backfill | DONE | #103 |
 | 17a | Celebration Overlay + Active Logger Hardening | TODO | - |
 | 17c | Weekly Streak + Comeback Bonus | TODO | - |
@@ -1048,15 +1049,123 @@ Then Phase 18 (Quests engine, Stats radar) extends without reworking foundation.
 
 ---
 
-### 17.0: Visual Language Foundation — DONE (PR #101, merged 2026-04-23)
+### 17.0: Visual Language Foundation — SUPERSEDED (PR #101, merged 2026-04-23; torn down in 17.0c 2026-04-23)
 
-Replaced Material iconography + flat dark theme with a pixel-art visual system on 3 user-visible surfaces (splash wordmark, bottom nav 4 tabs @ 48dp, exercise list + filter chips). Foundation only — later sub-phases consume the rest of the 63-asset library on the consumption schedule below.
+Pixel-art visual system shipped in PR #101 (3 days on main). Post-ship evaluation surfaced unsolvable issues with AI-gen pixel asset quality (invader blobs, black scatter, palette drift, fused frames) and the aesthetic itself polarized users who didn't self-identify as retro-game-literate. **Verdict:** full rollback + rebuild on Material Design with the "Arcane Ascent" direction. See §17.0c for the replacement spec.
 
-- **What shipped:** 20 locked palette tokens on `AppColors` (deepVoid → hazardRed); Press-Start-2P font with `pixelHero`/`pixelLabel` moment-font styles; `PixelImage` chokepoint widget (bakes `FilterQuality.none` + required `semanticLabel`); `PixelPanel` double-outline primitive; `MuscleGroup`/`EquipmentType` migrated from `IconData icon` → `String iconPath`; `scripts/check_hardcoded_colors.sh` lint expanded to `Colors.black*`/`Colors.white*` and wired into `make analyze`. See PR #101 and `tasks/mockups/chatgpt-pixel-art-prompt.md` for the full asset brief.
-- **Key files:** `lib/shared/widgets/pixel_{image,panel}.dart`, `lib/core/theme/app_theme.dart`, `lib/features/exercises/models/exercise.dart`, `lib/core/router/app_router.dart`, `lib/features/auth/ui/splash_screen.dart`, `lib/features/exercises/ui/{exercise_list,create_exercise,exercise_detail}_screen.dart`, `assets/pixel/**` (63 PNGs in 11 folders), `assets/fonts/press_start_2p/`, `scripts/check_hardcoded_colors.sh`, `Makefile`, `pubspec.yaml`.
-- **Tests:** 1468 total passing. New: `palette_tokens_test.dart`, `pixel_image_test.dart`, `pixel_panel_test.dart`, `exercise_list_pixel_icon_test.dart`, 2 new `@smoke` E2E assertions on bottom nav + exercise filter chips.
-- **Asset-consumption schedule for later sub-phases** (37 assets registered in pubspec, not yet wired): 17a → `celebration/{level_up,pr,comeback,milestone}` + `micro/{hp_heart,xp_crystal,check}`; 17b → `micro/xp_crystal`; 17c → `micro/streak_glyph` + `celebration/comeback`; 17d → `ranks/*` (7) + `milestones/*` (6) + `micro/locked`; 17e → `story/*` (3) + `micro/{quest_marker,empty_tavern}`; 18a → `quests/*` (3) + `micro/coin`; 18b → `stats/*` (6).
-- **Follow-ups carried into 17a** (ui-ux-critic SHIP verdict, 3 IMPORTANT items — tracked as task #5): swap `_ActiveWorkoutBanner` Material icons to PixelImage; swap `_EmptyState` Material icons on exercise list to `micro/empty_tavern.png`; flatten card/button/chip `borderRadius` from 16/12/8 to 0 theme-wide. Asset regen candidates (lower priority): `rank_up` crown glyph collision (blocker for 17d), `exercises_inactive.png` white halo, streak_7/first_pr missing sparkles.
+What was in PR #101 (for git history): 20 palette tokens on `AppColors`, Press-Start-2P font, `PixelImage`/`PixelPanel` widgets, `MuscleGroup`/`EquipmentType` migrated to `String iconPath`, `scripts/check_hardcoded_colors.sh` lint. 1468 tests. All of this is being torn down in 17.0c.
+
+---
+
+### 17.0c: Arcane Ascent Material Migration — IN PROGRESS (2026-04-23)
+
+> Full Material Design rebuild. Preserves brand equity (purple base, gold reward) and XP data layer (PR #103); replaces render style from AI-gen pixel-art PNGs to hand-crafted inline-SVG Material icons. Direction picked from `tasks/mockups/material-saga-comparison-v2.html` — **B: Arcane Ascent**.
+
+**Why this phase exists**
+
+- Pixel-art PR #101 had three failure modes we could not engineer around: AI-gen asset quality (invader blobs, black scatter, fused frames — see obsolete `tasks/mockups/chatgpt-pixel-art-prompt.md`), user polarization (fantasy/retro literacy cost), and scaling friction (every new feature = new AI-gen asset batch).
+- Material + Arcane keeps the brand signal (arcane violet, hero gold, "saga" vocabulary) without the pixel-art tax.
+- Reward-color scarcity framework (PO research): bright gold reserved for PR moments and level-ups ONLY. Daily UI uses muted violet. Identity-reinforcement drives 3-month retention more than stimulant saturation.
+
+**Arcane Ascent palette (locked)**
+
+| Token | Hex | Usage |
+|-------|-----|-------|
+| `abyss` | `#0D0319` | Base background |
+| `surface` | `#1A0F2E` | Cards, sheets |
+| `surface2` | `#241640` | Elevated surfaces, input fields |
+| `primaryViolet` | `#6A2FA8` | Primary buttons, structural accents |
+| `hotViolet` | `#B36DFF` | Daily CTAs, active nav, links |
+| `heroGold` | `#FFB800` | **REWARD-ONLY** — PR flash, level-up, streak milestone. Rendered via `RewardAccent` widget only. |
+| `textCream` | `#EEE7FA` | Primary text |
+| `textDim` | `#9C8DB8` | Secondary text, captions |
+| `success` | `#62C46D` | Positive deltas |
+| `warning` | `#FFB84D` | Warnings (distinct from heroGold) |
+| `error` | `#FF6B6B` | Errors, destructive |
+| `hair` | `rgba(179,109,255,0.14)` | Dividers, card borders |
+
+**Typography (via `google_fonts` package)**
+
+- **Display (Rajdhani 700)** — LVL badges, section headers, CTAs, hero copy
+- **Headline (Rajdhani 600)** — card titles, overlay titles
+- **Title (Inter 600)** — list items, routine names
+- **Body (Inter 400/500)** — paragraph copy, descriptions
+- **Label (Inter 600 uppercase, +0.12em tracking)** — chips, tabs, metadata
+- **Numeric (Rajdhani 700 tabular)** — XP counts, level numbers, weights
+
+`PressStart2P` is fully retired (no easter-egg reservation). `Cinzel`, `Cormorant` explicitly rejected (fail fatigue-state reading below 15px per PO research).
+
+**Icon system (`lib/core/theme/app_icons.dart`)**
+
+- Static class exposing ~20 inline-SVG icons via `flutter_svg` `SvgPicture.string`
+- Primary: `home, lift, plan, stats, hero, xp, levelUp, streak, check, add, edit, delete, filter, search, settings, play, pause, resume, finish, close`
+- **Lift icon rule:** side-view barbell with asymmetric rectangle plates (2-3 stacked per side). No circles. No dumbbell ambiguity. Replaces the badly-drawn v1 lift icon flagged by UI/UX review.
+- Monoline stroke default; active-nav variants use filled `primaryViolet` with `heroGold` dot accent only when the state is reward-bearing.
+
+**Reward scarcity enforcement**
+
+- `RewardAccent` widget is the ONLY thing in the codebase allowed to emit `heroGold`.
+- `scripts/check_reward_accent.sh` — grep gate on `heroGold`/`0xFFFFB800`/`0xFFFFC107` (close neighbors) outside `reward_accent.dart`. Fails `make analyze` on violation.
+- Rule documented in `lib/core/theme/README.md` + file-level dartdoc on `AppColors.heroGold`.
+
+**App icon (single AI prompt)**
+
+- `tasks/mockups/app-icon-prompt-arcane.md` — ONE detailed prompt for ChatGPT image-gen
+- Output: 1024² PNG, transparent foreground + `#0D0319` flat background plate
+- Motif: centered Arcane sigil — hooded silhouette OR ascending sigil — violet stroke with heroGold center glow
+- Material-compatible: safe zone 68%, no pixel-art vocabulary in the prompt
+- Foreground export at 17% safe padding for Android adaptive icon; `flutter_launcher_icons` config updated
+- Prompt asks for 3 candidate variations so user can pick winner
+
+**Teardown scope (delete, don't revert)**
+
+- `assets/pixel/` — 63 PNGs, 11 folders
+- `assets/fonts/press_start_2p/`
+- `lib/shared/widgets/pixel_{image,panel}.dart` + tests
+- `AppTextStyles.pixel*`, `AppColors.hotGold` (renamed to `heroGold` if semantically equivalent, deleted otherwise)
+- `MuscleGroup.iconPath` / `EquipmentType.iconPath` → revert to `IconData` (Material icons, since they're structural enum metadata)
+- pubspec.yaml pixel asset directives + PressStart2P font block
+- `tasks/mockups/chatgpt-pixel-art-prompt.md`, `audit_assets.py`, `crop_to_main_blob.py`, `asset_audit_report.json`
+
+**Migration scope (every pixel-bound surface re-skins)**
+
+- `_ActiveWorkoutBanner` (`app_router.dart`) — Material icon + new theme
+- `splash_screen.dart` — Rajdhani wordmark + new app icon
+- `exercise_list_screen.dart` empty state — Material icon
+- `_LvlBadge` (home) — Rajdhani + `hotViolet` default, wrapped in `RewardAccent` only on XP-gain animation
+- `SagaIntroOverlay` — 3 screens reskinned: Material cards + Rajdhani headlines + AppIcons. Hive-backed gate logic (PR #103) unchanged.
+- Nav tabs, exercise filter chips — consume `AppIcons`
+- Every `Image.asset('assets/pixel/...')` call site
+
+**Tests**
+
+- Delete: `palette_tokens_test.dart`, `pixel_image_test.dart`, `pixel_panel_test.dart`, `exercise_list_pixel_icon_test.dart`
+- Add: `arcane_theme_test.dart` (palette + typography), `app_icons_test.dart` (each icon renders at expected size/color), `reward_accent_test.dart` (heroGold reachable only through this widget)
+- Update: `saga_intro_overlay_test.dart` for Material widgets
+- E2E: full suite regression. Navigation/selectors untouched; visual-only change. Asset-path selector updates only.
+
+**Impact on later sub-phases (17a/c/d/e, 18a/b)**
+
+The asset-consumption schedule defined in obsolete §17.0 is void. Each sub-phase will consume `AppIcons` and SVG assets specified inline when implemented. Ranks/milestones/story beats that previously referenced pixel PNGs will re-spec as Material illustrations or SVG composites at their sub-phase start. No sub-phase is blocked today.
+
+**Acceptance criteria**
+
+1. `grep -r "assets/pixel" lib/ test/` returns zero; `grep -r "PressStart2P" lib/ test/` returns zero
+2. `grep -r "heroGold\|0xFFFFB800" lib/ --include='*.dart' | grep -v reward_accent.dart` returns zero
+3. `make ci` green (format + gen + analyze + test + android-debug-build)
+4. Manual Chrome smoke: every tab, every modal, every CTA — no asset-not-found warnings, no font fallback warnings
+5. App icon prompt file committed; 3 variants generated and best picked; `flutter_launcher_icons` regenerated
+6. E2E full suite green
+
+**Pipeline**
+
+1. ✅ Close PR #104 + create branch (done, this commit)
+2. ✅ Write PLAN.md §17.0c + tasks/WIP.md (done, this commit)
+3. **Dispatch `tech-lead`** (foreground, Opus) — executes stages 1→5: teardown → theme → icons → RewardAccent → migration, running `make ci` after each stage
+4. Parallel: write app icon prompt; user runs in ChatGPT; user picks winner
+5. `qa-engineer` — coverage gate + full E2E regression
+6. `reviewer` — quality pass
+7. Verification gate → PR → merge
 
 ---
 
