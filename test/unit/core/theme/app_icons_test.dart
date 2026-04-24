@@ -159,6 +159,59 @@ void main() {
         expect(find.bySemanticsLabel('start workout'), findsOneWidget);
       },
     );
+
+    // Regression: decorative icons (no semanticsLabel) must NOT contribute
+    // a semantic node. SvgPicture otherwise injects an `img` role that
+    // disrupts ancestor Semantics merging — this broke AppBar.title's
+    // implicit `header: true` wrapper and caused the
+    // `role=heading[name*="Workout —"]` E2E selector to fail on web.
+    testWidgets(
+      'omits semantics node for decorative icons (no semanticsLabel)',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: AppIcons.render(
+                  AppIcons.edit,
+                  color: AppColors.hotViolet,
+                  size: 14,
+                ),
+              ),
+            ),
+          ),
+        );
+
+        final picture = tester.widget<SvgPicture>(find.byType(SvgPicture));
+        expect(
+          picture.excludeFromSemantics,
+          isTrue,
+          reason: 'Decorative icons must not inject an img semantic node.',
+        );
+      },
+    );
+
+    testWidgets('keeps semantics node when semanticsLabel is provided', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: AppIcons.render(
+                AppIcons.lift,
+                color: AppColors.hotViolet,
+                size: 24,
+                semanticsLabel: 'start workout',
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final picture = tester.widget<SvgPicture>(find.byType(SvgPicture));
+      expect(picture.excludeFromSemantics, isFalse);
+    });
   });
 
   // Guards the IconTheme-fallback contract: when a caller omits `color:`,

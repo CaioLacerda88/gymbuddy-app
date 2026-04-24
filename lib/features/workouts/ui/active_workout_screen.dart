@@ -1362,7 +1362,6 @@ class _SheetPRSection extends StatelessWidget {
     };
   }
 
-  /// Renders a 18dp glyph for the given [RecordType] in the current primary
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
