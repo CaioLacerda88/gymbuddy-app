@@ -13,17 +13,18 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ### Stage tracker
 
-- [ ] **Stage 1** — Foundation migrations (tech-lead)
-  - [x] `supabase/migrations/00030_add_exercise_slug.sql`
-  - [x] `supabase/migrations/00031_create_exercise_translations.sql`
+- [x] **Stage 1** — Foundation migrations (tech-lead) ✅
+  - [x] `supabase/migrations/00030_add_exercise_slug.sql` (slug + 150 hardcoded UPDATEs + defensive INSERT trigger)
+  - [x] `supabase/migrations/00031_create_exercise_translations.sql` (table + 5 RLS policies + soft-delete guard)
   - [x] `supabase/migrations/00032_backfill_exercise_translations_en.sql`
-  - [ ] Spec compliance review pass
-  - [ ] Code quality review pass
+  - [x] Removed redundant `supabase/seed.sql` (now blocked by unique slug index)
+  - [x] Spec compliance review pass
+  - [x] Code quality review pass (3 fixes applied: deleted_at guard, diagnostic asserts, comment phrasing)
 - [ ] **Stage 2** — pt-BR glossary (human-gated)
   - [ ] `docs/superpowers/specs/phase15f-pt-glossary.md` drafted
   - [ ] User approval recorded
 - [ ] **Stage 3** — pt-BR seed migration (tech-lead)
-  - [ ] `supabase/migrations/00033_seed_exercise_translations_pt.sql` (94 rows)
+  - [ ] `supabase/migrations/00033_seed_exercise_translations_pt.sql` (150 rows)
   - [ ] Reviews pass
 - [ ] **Stage 4** — RPCs + column drop (tech-lead)
   - [ ] `supabase/migrations/00034_drop_exercise_name_columns_and_add_rpcs.sql`
