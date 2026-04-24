@@ -61,7 +61,7 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 16c | Hard gate enforcement + router guard + E2E refactor | DEFERRED | - |
 | 16d | Analytics + hardening + launch-readiness checklist | DEFERRED | - |
 | 17.0 | Visual Language Foundation (pixel-art — SUPERSEDED by 17.0c) | SUPERSEDED | #101 |
-| 17.0c | Arcane Ascent Material Migration (teardown pixel, rebuild Material Design) | DONE | #105 |
+| 17.0c | Arcane Ascent Material Migration (teardown pixel, rebuild Material Design + app icon + 17.0d polish) | DONE | #105, #106, #107 |
 | 17b | XP & Level System + Retroactive Backfill | DONE | #103 |
 | 17a | Celebration Overlay + Active Logger Hardening | TODO | - |
 | 17c | Weekly Streak + Comeback Bonus | TODO | - |
@@ -1065,6 +1065,7 @@ What was in PR #101 (for git history): 20 palette tokens on `AppColors`, Press-S
 - **Tests:** 1663 passing (+121 net: `arcane_theme_test`, `app_icons_test` at 24/40/64 dp with IconTheme fallback, `reward_accent_test`, `nav_icon_wiring_test`). `dart analyze --fatal-infos` clean. Both gate scripts clean. E2E full suite green (25m33s — selectors unchanged; visual-only migration held).
 - **Stage 6 app icon** shipped in PR #106 (2026-04-24): user picked variant 3 (rune + barbell composite with four-point hero-gold star core). Full plate at `assets/app_icon/arcane_sigil_1024.png` (iOS / Play Store / web) + chroma-keyed transparent foreground at `assets/app_icon/arcane_sigil_foreground.png` for Android adaptive (66% safe zone). `flutter_launcher_icons` regenerated with `adaptive_icon_background: "#0D0319"` + web manifest colors swapped to Arcane (`#0D0319` / `#B36DFF`). Installed to Galaxy S25 Ultra for on-device verification.
 - **Impact on later sub-phases:** Pixel asset-consumption schedule in obsolete §17.0 is void. 17a (PR celebration) already has a `TODO(phase17a)` annotation in `pr_celebration_screen.dart` flagging the `RewardAccent` flash migration. 17c/d/e consume `AppIcons` and SVGs at sub-phase start.
+- **Stage 7 (17.0d polish)** shipped in PR #107 (2026-04-24): 13 Material icons migrated to monoline SVGs — 7 new `MuscleGroup` glyphs (`app_muscle_icons.dart`), 6 new `EquipmentType` glyphs (`app_equipment_icons.dart`; barbell reuses `AppIcons.lift` intentionally), plus nav + editor chrome (`close`, `edit`, `levelUp` trophy). PR celebration flash switched from violet → hero gold (scarcity rule enforced via `RewardAccent`). `AppIcons.render` now defaults `excludeFromSemantics = (semanticsLabel == null)` to match Material `Icon` — fixed an AppBar `header` regression that broke the `role=heading[name*="Workout —"]` E2E selector on web. 1744 tests passing.
 
 ---
 
