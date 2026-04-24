@@ -305,7 +305,12 @@ class AppTheme {
             if (states.contains(WidgetState.selected)) {
               return AppTextStyles.label.copyWith(fontWeight: FontWeight.w600);
             }
-            return AppTextStyles.label.copyWith(fontWeight: FontWeight.w500);
+            // w600 (SemiBold) is bundled via google_fonts; w500 (Medium) is
+            // not, so with `allowRuntimeFetching = false` Flutter nearest-
+            // matches to w400/w600 unpredictably. Using w600 here gives the
+            // "slightly heavier than body" intent for the unselected label
+            // while matching a bundled weight exactly.
+            return AppTextStyles.label.copyWith(fontWeight: FontWeight.w600);
           }),
           side: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.selected)) {

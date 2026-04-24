@@ -211,18 +211,44 @@ class AppIcons {
   /// `currentColor`, which `flutter_svg` resolves via a srcIn color filter.
   /// This means a single asset recolors for every state (idle/active/reward)
   /// without shipping multiple variants.
+  ///
+  /// When [color] is omitted, the renderer reads from
+  /// `IconTheme.of(context).color`, falling back to a plain black if the
+  /// ancestor `IconTheme` doesn't set a color. This lets callers wrap an
+  /// `AppIcons.render` subtree in a `RewardAccent` (or any other
+  /// `IconTheme.merge`) and have the SVG inherit the ambient icon color
+  /// without plumbing it through the call site — the same contract as the
+  /// Material `Icon` widget. Passing [color] explicitly still wins.
+  ///
+  /// A [Builder] is used when [color] is null so the inherited `IconTheme`
+  /// is resolved from a context that actually sits under the theme — not
+  /// the context that called [render].
   static Widget render(
     String svg, {
-    required Color color,
+    Color? color,
     double size = 24,
     String? semanticsLabel,
   }) {
-    return SvgPicture.string(
-      svg,
-      width: size,
-      height: size,
-      colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-      semanticsLabel: semanticsLabel,
+    if (color != null) {
+      return SvgPicture.string(
+        svg,
+        width: size,
+        height: size,
+        colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+        semanticsLabel: semanticsLabel,
+      );
+    }
+    return Builder(
+      builder: (context) {
+        final resolved = IconTheme.of(context).color ?? const Color(0xFF000000);
+        return SvgPicture.string(
+          svg,
+          width: size,
+          height: size,
+          colorFilter: ColorFilter.mode(resolved, BlendMode.srcIn),
+          semanticsLabel: semanticsLabel,
+        );
+      },
     );
   }
 }

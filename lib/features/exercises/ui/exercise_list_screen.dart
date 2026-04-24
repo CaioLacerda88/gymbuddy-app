@@ -234,7 +234,10 @@ class _MuscleGroupButton extends StatelessWidget {
                   Text(
                     label,
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
+                      // Inter-Medium (w500) isn't bundled; google_fonts would
+                      // nearest-match to w400/w600 with runtime fetching off.
+                      // Use w600 (bundled SemiBold) to render deterministically.
+                      fontWeight: FontWeight.w600,
                       color: isSelected ? primary : theme.colorScheme.onSurface,
                     ),
                   ),
@@ -471,7 +474,7 @@ class _InfoChip extends StatelessWidget {
           Text(
             label,
             style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
               fontSize: 13,
             ),
           ),
@@ -521,7 +524,7 @@ class _EmptyState extends StatelessWidget {
                     ? l10n.noExercisesMatchFilters
                     : l10n.yourExercisesWillAppear,
                 style: theme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
                 ),
                 textAlign: TextAlign.center,
               ),

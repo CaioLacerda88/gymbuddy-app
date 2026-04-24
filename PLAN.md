@@ -1100,7 +1100,7 @@ What was in PR #101 (for git history): 20 palette tokens on `AppColors`, Press-S
 - Static class exposing ~20 inline-SVG icons via `flutter_svg` `SvgPicture.string`
 - Primary: `home, lift, plan, stats, hero, xp, levelUp, streak, check, add, edit, delete, filter, search, settings, play, pause, resume, finish, close`
 - **Lift icon rule:** side-view barbell with asymmetric rectangle plates (2-3 stacked per side). No circles. No dumbbell ambiguity. Replaces the badly-drawn v1 lift icon flagged by UI/UX review.
-- Monoline stroke default; active-nav variants use filled `primaryViolet` with `heroGold` dot accent only when the state is reward-bearing.
+- Monoline stroke default; active-nav variants use filled `hotViolet` (matches the palette table above) with `heroGold` dot accent only when the state is reward-bearing.
 
 **Reward scarcity enforcement**
 

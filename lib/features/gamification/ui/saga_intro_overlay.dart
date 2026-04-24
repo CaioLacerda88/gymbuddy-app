@@ -163,22 +163,30 @@ class _StepContent extends StatelessWidget {
     // Step-3 is the "first-week warmth" moment where the scarcity rule
     // is intentionally relaxed (per PO research). We render the icon in
     // violet for steps 1-2 and gold on step 3 so onboarding builds
-    // attachment before the app's normal scarcity budget kicks in. The
-    // step-3 gold is read from `RewardAccent.color` to keep the gold
-    // reference quarantined to the reward-accent module.
-    final iconColor = step == 2 ? RewardAccent.color : AppColors.hotViolet;
+    // attachment before the app's normal scarcity budget kicks in. On
+    // step 3 we wrap the hero SVG in a [RewardAccent] so the ambient
+    // `IconTheme` paints the icon gold — `AppIcons.render` inherits the
+    // icon color from its ancestor when no explicit `color:` is passed
+    // (same contract as Material's `Icon`). This keeps the reward color
+    // token reference structurally quarantined inside [RewardAccent] and
+    // lets a future descendant (e.g. a "+N XP" text chip) share the
+    // accent without each child plumbing the color through its call site.
+    final isRewardStep = step == 2;
+    final heroIcon = SizedBox(
+      height: 160,
+      child: Center(
+        child: Semantics(
+          label: semantic,
+          child: isRewardStep
+              ? AppIcons.render(icon, size: 96)
+              : AppIcons.render(icon, color: AppColors.hotViolet, size: 96),
+        ),
+      ),
+    );
 
     return Column(
       children: [
-        SizedBox(
-          height: 160,
-          child: Center(
-            child: Semantics(
-              label: semantic,
-              child: AppIcons.render(icon, color: iconColor, size: 96),
-            ),
-          ),
-        ),
+        if (isRewardStep) RewardAccent(child: heroIcon) else heroIcon,
         const SizedBox(height: 24),
         Text(
           title,

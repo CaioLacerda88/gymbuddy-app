@@ -196,7 +196,7 @@ class _ActionRow extends StatelessWidget {
                     Text(
                       _label(l10n),
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     Text(

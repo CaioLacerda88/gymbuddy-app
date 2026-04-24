@@ -10,6 +10,13 @@ import '../../../profile/providers/profile_providers.dart';
 import '../../models/progress_point.dart';
 import '../../providers/exercise_progress_provider.dart';
 
+/// PR ring accent color — the hollow gold ring drawn on the all-time-PR
+/// dot. `FlDotPainter` callbacks have no `BuildContext`, so the widget-
+/// tree `RewardAccent.of(context)` lookup is unavailable here; we read
+/// the static alias and carry the opt-out marker on the preceding line.
+// ignore: reward_accent — FlDotPainter has no BuildContext ancestor
+const Color _prRingAccent = RewardAccent.color;
+
 /// Primary metric for the progress chart.
 ///
 /// `e1RM` is the default — an Epley-normalized view that stays honest through
@@ -610,7 +617,7 @@ class _LineChart extends StatelessWidget {
                 if (index == ringAnchorIndex) {
                   return _PrRingPainter(
                     primary: primary,
-                    ringColor: RewardAccent.color,
+                    ringColor: _prRingAccent,
                     innerRadius: ProgressChartSection._prRingInnerRadius,
                     strokeWidth: ProgressChartSection._prRingStroke,
                     outerGap: ProgressChartSection._prRingOuterGap,

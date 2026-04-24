@@ -160,4 +160,59 @@ void main() {
       },
     );
   });
+
+  // Guards the IconTheme-fallback contract: when a caller omits `color:`,
+  // the renderer must read from the ambient `IconTheme`. This is the path
+  // `RewardAccent` relies on to paint descendant SVGs gold without the
+  // child needing to reference `AppColors.heroGold` directly. If this test
+  // breaks, the reward-scarcity quarantine is leaking.
+  group('AppIcons.render — IconTheme inheritance', () {
+    testWidgets(
+      'inherits color from ancestor IconTheme when color: is omitted',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: IconTheme(
+                data: const IconThemeData(color: AppColors.heroGold),
+                child: Center(child: AppIcons.render(AppIcons.lift, size: 24)),
+              ),
+            ),
+          ),
+        );
+
+        final picture = tester.widget<SvgPicture>(find.byType(SvgPicture));
+        expect(
+          picture.colorFilter,
+          const ColorFilter.mode(AppColors.heroGold, BlendMode.srcIn),
+        );
+      },
+    );
+
+    testWidgets('explicit color: overrides ancestor IconTheme', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: IconTheme(
+              data: const IconThemeData(color: AppColors.heroGold),
+              child: Center(
+                child: AppIcons.render(
+                  AppIcons.lift,
+                  color: AppColors.hotViolet,
+                  size: 24,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // The explicit `hotViolet` must win over the ancestor `heroGold`.
+      final picture = tester.widget<SvgPicture>(find.byType(SvgPicture));
+      expect(
+        picture.colorFilter,
+        const ColorFilter.mode(AppColors.hotViolet, BlendMode.srcIn),
+      );
+    });
+  });
 }
