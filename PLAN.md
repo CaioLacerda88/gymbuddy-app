@@ -54,7 +54,8 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 15c | Portuguese Translations + Exercise Content | DONE | #88 |
 | 15d | Language Picker UI + Persistence | DONE | #89 |
 | 15e | QA + E2E + Overflow Polish | DONE | #91 |
-| 15 | Portuguese (Brazil) Localization | DONE | #86–#91 |
+| 15f | Exercise Content Localization (DB-side translations + slug) | TODO | - |
+| 15 | Portuguese (Brazil) Localization | IN PROGRESS | #86–#91 (15f pending) |
 | 16 | Subscription Monetization (GPB + trial-to-paywall) | PARKED | #93, #99 |
 | 16a | Backend: schema + Edge Functions + Play Console draft | DONE | #93 |
 | 16b | Client integration + paywall UI + onboarding rewire | DEFERRED | - |
@@ -857,6 +858,256 @@ Full pt-BR localization with language switcher in profile settings. Official `fl
 | 15d: Language picker UI | 1-2 |
 | 15e: QA + E2E + polish | 2-3 |
 | **Total** | **~2.5-3 weeks** |
+
+---
+
+## Phase 15f: Exercise Content Localization
+
+> DB-side translations for the 94 default exercises via dedicated `exercise_translations` table (symmetric locale storage) + `slug` semantic identifier + two-query merge at caller layer. Retrofit: 15c's client-side `localizedExerciseName()` helper is never called from `lib/` — UI still shows raw English from the DB column. This phase wires end-to-end localization and drops `exercises.name/description/form_tips` entirely. Single atomic PR.
+
+**Design spec:** `docs/superpowers/specs/2026-04-24-exercise-content-localization-design.md` (full architecture, risk register, rollback SQL, RLS audit steps, fallback cascade rationale).
+
+**Branch:** `feature/phase15f-exercise-content-localization`
+
+**Pipeline:** tech-lead implements Stages 1-6, qa-engineer gates Stage 7 (E2E + staging verify), reviewer gates Stage 8, single squash-merge, orchestrator handles Stage 9 (apply prod migrations + condense).
+
+### Locked decisions (brainstormed 2026-04-24)
+
+| # | Decision | Why |
+|---|---|---|
+| D1 | Scope: `is_default = true` only. User-created rows stay monolingual. | Defaults are shared public content; customs are private single-language. |
+| D2 | Dedicated `exercise_translations` table (not sibling columns, not JSONB). | Industry-standard i18n pattern; scales to N locales. |
+| D3 | Symmetric storage — EN moves out of `exercises` alongside pt. | No privileged locale. Adding es-ES / fr-FR later is pure data migration. |
+| D4 | `exercises.slug TEXT NOT NULL` semantic key, partial unique on defaults. | Locale-independent identifier for seeding + caller batch lookups. |
+| D5 | Single atomic PR, no feature flag, no staged rollout. | User directive: "no deferral of steps, let's implement everything we need for a clean architecture." |
+| D6 | Hybrid AI-drafted + human-reviewed pt content (glossary-first). | Quality gate before 94 rows commit to DB. |
+| D7 | Ship `fn_update_user_exercise` RPC + repo method; edit UI deferred. | Data layer completes 15f; UI polish is follow-up scope. |
+
+### Architecture summary (see spec §3 for diagram)
+
+- **4 RPCs** replace all embedded selects: `fn_exercises_localized` (read, batch via `p_ids`), `fn_search_exercises_localized`, `fn_insert_user_exercise`, `fn_update_user_exercise`.
+- **Fallback cascade** in reads: `translation[p_locale]` → `translation['en']` → any.
+- **Two-query merge** at `WorkoutRepository` / `PRRepository` / `RoutineRepository`: primary fetch → collect distinct `exercise_id`s → `ExerciseRepository.getExercisesByIds(ids, locale)` → zip in Dart.
+- **Locale as repository method parameter**, never read from provider internally. Providers pass `ref.watch(localeProvider).languageCode` down.
+- **Hive cache keys gain locale prefix**: `exerciseCache`, `routineCache`, `workoutHistoryCache`, `prCache`. `LocaleNotifier.setLocale` clears those four boxes.
+
+### Stage 1 — Foundation migrations (tech-lead)
+
+Files:
+- Create `supabase/migrations/00030_add_exercise_slug.sql`
+- Create `supabase/migrations/00031_create_exercise_translations.sql`
+- Create `supabase/migrations/00032_backfill_exercise_translations_en.sql`
+
+Content requirements:
+- **00030:** `ALTER TABLE exercises ADD COLUMN slug TEXT` (nullable) → hardcoded per-row `UPDATE exercises SET slug = '<snake_case_slug>' WHERE id = '<uuid>'` for every default (matching `_exerciseNames` keys in `lib/core/l10n/exercise_l10n.dart` byte-for-byte) → `lower(regexp_replace(name, '[^a-zA-Z0-9]+', '_', 'g'))` fallback for any user-created → `DO $$ IF NULL THEN RAISE $$` assertion → `ALTER COLUMN slug SET NOT NULL` → `CREATE UNIQUE INDEX exercises_slug_unique_default ... WHERE is_default = true` + general `exercises_slug_idx`.
+- **00031:** `CREATE TABLE exercise_translations (exercise_id UUID NOT NULL REFERENCES exercises(id) ON DELETE CASCADE, locale TEXT NOT NULL CHECK (locale IN ('en','pt')), name TEXT NOT NULL CHECK (char_length BETWEEN 1 AND 120), description TEXT CHECK (char_length ≤ 2000), form_tips TEXT CHECK (char_length ≤ 2000), created_at/updated_at, PRIMARY KEY (exercise_id, locale))`. `BEFORE UPDATE` trigger → `touch_updated_at()` helper. `ENABLE ROW LEVEL SECURITY`. Five policies per spec §5: `select_defaults`, `select_own`, `insert_own`, `update_own`, `delete_own` — all `SECURITY INVOKER`. Index on `locale`.
+- **00032:** `INSERT INTO exercise_translations (exercise_id, locale, name, description, form_tips) SELECT id, 'en', name, description, form_tips FROM exercises WHERE is_default = true` then same for `is_default = false`. Hard-assert count parity with `DO $$ IF ... THEN RAISE $$`.
+
+Acceptance:
+- `npx supabase start` clean; migrations apply in sequence without error.
+- Invariant queries return 0 for nulls/missing translations post-apply.
+- `make test` still green (no Dart changes yet; existing tests unaffected because `exercises` still has name/description/form_tips after this stage).
+- **Do NOT apply to hosted Supabase yet** — Stages 4-6 cut over the Dart code; applying mid-phase would break prod reads.
+
+Pipeline gate: `make ci` + CI green. Commit message: `feat(15f): Stage 1 — slug + exercise_translations table + EN backfill migrations`.
+
+### Stage 2 — pt-BR glossary (human-gated)
+
+Files:
+- Create `docs/superpowers/specs/phase15f-pt-glossary.md` — ~30-40 term gym terminology glossary in pt-BR with decision notes (e.g. "Supino" vs "Supino com Barra", "Agachamento" vs "Agachamento Livre", "Remada" conventions, "Cadeira Extensora" vs "Extensão de Pernas", "PR" and "Drop Set" kept English per 15c decision).
+
+Workflow:
+1. Orchestrator: read `supabase/migrations/00007_add_default_exercises.sql` + related seed migrations to extract the 94 default exercise names.
+2. Orchestrator: draft glossary covering all recurring nouns/verbs (bench, press, row, curl, extension, deadlift, squat, lunge, lateral, barbell, dumbbell, cable, machine, hip hinge, etc.) with chosen pt-BR term + rejected alternatives + rationale.
+3. User reviews glossary and approves or edits. **Hard gate — Stage 3 does not start until user signs off.**
+
+Acceptance:
+- Glossary committed to the branch.
+- User approval recorded in PR description or glossary doc header.
+
+### Stage 3 — pt-BR seed migration (tech-lead, uses glossary)
+
+Files:
+- Create `supabase/migrations/00033_seed_exercise_translations_pt.sql`
+
+Content requirements:
+- Single `INSERT INTO exercise_translations (exercise_id, locale, name, description, form_tips) SELECT e.id, 'pt', v.name, v.description, v.form_tips FROM exercises e JOIN (VALUES (slug, name, description, form_tips), ...) AS v(slug, name, description, form_tips) ON e.slug = v.slug WHERE e.is_default = true;`
+- 94 tuples, one per default exercise. Each row pulls its translation from the approved glossary.
+- `DO $$ BEGIN IF (SELECT COUNT(*) FROM exercises WHERE is_default = true) != (SELECT COUNT(*) FROM exercise_translations WHERE locale = 'pt') THEN RAISE EXCEPTION 'pt seed incomplete'; END IF; END $$;`
+
+Acceptance:
+- Seed applies cleanly to local Supabase.
+- Invariant query returns 0 defaults missing pt translation.
+- Human skim of 94 rows happens during Stage 7 staging verification (not at this gate).
+
+Pipeline gate: `make ci` green. Commit: `feat(15f): Stage 3 — pt-BR seed for 94 default exercises`.
+
+### Stage 4 — RPCs + column drop migration (tech-lead)
+
+Files:
+- Create `supabase/migrations/00034_drop_exercise_name_columns_and_add_rpcs.sql`
+- Create `scripts/emergency_rollback_15f.sql` (rollback SQL from spec §16)
+
+Content requirements — 00034 in exact order:
+1. `CREATE EXTENSION IF NOT EXISTS pg_trgm;`
+2. `CREATE OR REPLACE FUNCTION fn_exercises_localized(p_locale TEXT, p_user_id UUID, p_muscle_group TEXT DEFAULT NULL, p_equipment_type TEXT DEFAULT NULL, p_ids UUID[] DEFAULT NULL, p_order TEXT DEFAULT 'name') RETURNS TABLE(...)` per spec §6.1. Hard cap `array_length(p_ids, 1) <= 500`.
+3. `CREATE OR REPLACE FUNCTION fn_search_exercises_localized(...)` per spec §6.2.
+4. `CREATE OR REPLACE FUNCTION fn_insert_user_exercise(...)` per spec §6.3. Auth check + duplicate check raising SQLSTATE 23505.
+5. `CREATE OR REPLACE FUNCTION fn_update_user_exercise(...)` per spec §6.4. Updates the single existing translation row; preserves its locale.
+6. `DROP INDEX IF EXISTS exercises_name_idx;`
+7. `CREATE INDEX exercise_translations_name_trgm_idx ON exercise_translations USING gin (name gin_trgm_ops);`
+8. `ALTER TABLE exercises DROP COLUMN name, DROP COLUMN description, DROP COLUMN form_tips;`
+9. Drop the existing `(user_id, name)` unique constraint (if present from 15a); duplicate prevention now lives in `fn_insert_user_exercise`.
+
+Acceptance:
+- All 4 RPCs callable: `SELECT * FROM fn_exercises_localized('en', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', NULL, NULL, NULL, 'name') LIMIT 5;` returns rows with resolved `name`.
+- `SELECT column_name FROM information_schema.columns WHERE table_name = 'exercises' AND column_name IN ('name','description','form_tips')` returns 0 rows.
+- Rollback script dry-run against local Supabase (fully restores EN columns from translations, drops all 15f objects).
+
+Pipeline gate: `make ci` + local e2e smoke (Playwright fails here — expected, to be fixed Stages 6-7). Commit: `feat(15f): Stage 4 — RPCs + column drop + trigram search index + rollback script`.
+
+### Stage 5 — CI infrastructure (tech-lead)
+
+Files:
+- Modify `scripts/check_exercise_content_pairing.sh` → rename + rewrite as `scripts/check_exercise_translation_coverage.sh`
+- Create `scripts/fixtures/fixture_pt_missing.sql` (expected-fail test case)
+- Create `scripts/fixtures/fixture_complete.sql` (expected-pass test case)
+- Create `scripts/verify_prod_translation_invariants.sh` (manual psql healthcheck)
+- Modify `.github/workflows/*.yml` if the pairing check is referenced by filename
+- Modify `CLAUDE.md` — update the "Exercise content pairing rule" section
+
+New invariant for coverage check: every INSERT into `exercises (is_default = true)` in a PR must be paired with INSERTs into `exercise_translations` for BOTH `'en'` AND `'pt'` of the same slug.
+
+Acceptance:
+- `bash scripts/check_exercise_translation_coverage.sh scripts/fixtures/fixture_complete.sql` exits 0.
+- `bash scripts/check_exercise_translation_coverage.sh scripts/fixtures/fixture_pt_missing.sql` exits non-zero with clear error listing uncovered slug(s).
+- `make ci` green.
+- CLAUDE.md section matches new script name.
+
+Pipeline gate: CI green. Commit: `feat(15f): Stage 5 — translation coverage check replaces pairing check`.
+
+### Stage 6 — Data layer refactor (tech-lead, single large dispatch)
+
+Files to create:
+- `test/fixtures/rpc_fakes.dart` — reusable `FakeRpcClient` modeled on `test/unit/features/gamification/xp_repository_test.dart:35-70`
+
+Files to modify:
+- `lib/features/exercises/data/exercise_repository.dart` — full rewrite: RPC-based `getExercises/searchExercises/getExerciseById/recentExercises/createExercise`, new `updateExercise` + `getExercisesByIds`, all methods take `locale` param. Map SQLSTATE 23505 → `ValidationException('duplicate')`.
+- `lib/features/exercises/providers/exercise_providers.dart` — providers watch `localeProvider` and pass locale to repo.
+- `lib/features/workouts/data/workout_repository.dart` — inject `ExerciseRepository` dep; refactor `getWorkoutHistory` + `getWorkoutDetail` to two-query merge; change `buildExerciseSummary(workoutExercises, exerciseNamesById)` and `parseWorkoutDetail(data, {exercisesById})` signatures; update cache shape (raw workouts + `Map<String,String>` sidecar).
+- `lib/features/personal_records/data/pr_repository.dart` — inject `ExerciseRepository` dep; refactor `getRecordsWithExercises` + `getRecentRecordsWithExercises` to two-query merge; preserve `'Unknown Exercise'` fallback.
+- `lib/features/routines/data/routine_repository.dart` — inject `ExerciseRepository` dep; refactor `_fetchExerciseMap` to use `getExercisesByIds`; locale-keyed cache.
+- `lib/core/l10n/locale_provider.dart` — `LocaleNotifier.setLocale` also calls `cacheService.clearBox(HiveService.exerciseCache)` + `routineCache` + `workoutHistoryCache` + `prCache`.
+- `lib/core/local_storage/hive_service.dart` + `cache_service.dart` — accept locale-prefixed keys.
+- `lib/core/l10n/exercise_l10n.dart` — delete `_exerciseNames` map, all `_ex*` getters, `localizedExerciseName()`. Keep `exerciseSlug()` + `localizedRoutineName()` + `_routineNames`.
+- `lib/l10n/app_en.arb` + `lib/l10n/app_pt.arb` — delete all `exerciseName_*` keys (~94 × 2 = 188 keys). Run `flutter gen-l10n`.
+
+Test files to rework (add or rewrite; each must exercise new contracts):
+- `test/fixtures/test_factories.dart` — `TestExerciseFactory.create` gains `slug` field default.
+- `test/unit/features/exercises/data/exercise_repository_test.dart` — replace builder-chain fake with `FakeRpcClient`; add per-method tests verifying RPC name + params; SQLSTATE 23505 → ValidationException; `getExercisesByIds([])` short-circuits.
+- `test/unit/features/exercises/data/exercise_repository_cache_test.dart` — locale-keyed cache tests.
+- `test/unit/features/exercises/providers/exercise_list_provider_test.dart`, `exercise_by_id_provider_test.dart` — locale overrides.
+- `test/unit/features/workouts/data/workout_repository_test.dart` — two-query merge tests + new `buildExerciseSummary` signature + missing-exercise fallback.
+- `test/unit/features/workouts/data/workout_repository_cache_test.dart` — new cache shape.
+- `test/unit/features/personal_records/data/pr_repository_test.dart` + `_cache_test.dart` — two-query merge + `'Unknown Exercise'` fallback.
+- `test/unit/features/routines/data/routine_repository_test.dart` + `_cache_test.dart` — `getExercisesByIds` mock; locale-keyed cache.
+- `test/unit/core/l10n/exercise_l10n_test.dart` — delete `localizedExerciseName` group; keep `exerciseSlug` + routine groups.
+- **N+1 guard unit test** (new): `WorkoutRepository.getWorkoutHistory` calls `getExercisesByIds` exactly once regardless of workout count.
+
+Acceptance:
+- `make analyze` — 0 warnings/errors/infos.
+- `make test` — all unit tests green, including new N+1 guard.
+- No widget tests run yet (Stage 7 territory).
+- Grep confirms zero callers of `localizedExerciseName` or `_exerciseNames` remain.
+
+Pipeline gate: `make ci` green (sans E2E). Commit: `feat(15f): Stage 6 — data layer refactor (RPC-backed, locale-plumbed, two-query merge)`.
+
+### Stage 7 — Widget + E2E updates (qa-engineer)
+
+Files to modify / create:
+- `test/e2e/fixtures/test-users.ts` — add 4 users: `smokeLocalizationWorkout` (pt), `fullHistoryPt` (pt), `smokeLocalizationRoutines` (pt), `fullPRPt` (pt).
+- `test/e2e/fixtures/test-exercises.ts` — new `EXERCISE_NAMES: Record<slug, { en: string; pt: string }>` map covering every exercise slug referenced by E2E tests.
+- `test/e2e/global-setup.ts` — CRITICAL: switch `seedPRData()` (~line 151) and `seedExerciseProgressData()` (~line 440) from `.eq('name', 'Barbell Bench Press')` to `.eq('slug', 'barbell_bench_press')`. Seed the 4 new users.
+- `test/e2e/specs/exercises.spec.ts` — new scenarios A1 (pt list alphabetized + spot-check 3 names @smoke), A2 (pt detail screen @smoke), A3 (en list), A4 (en detail @smoke), A5 (muscle/equipment filter in pt), B1 (pt search "supino"), B2 (pt user searches "bench" → en fallback), G1 (user-created custom + RLS check), G2 (accented chars round-trip).
+- `test/e2e/specs/workouts.spec.ts` — C1 (pt active workout @smoke), C2 (locale switch mid-workout refresh).
+- `test/e2e/specs/history.spec.ts` (or equivalent) — D1 (pt workout history summary).
+- `test/e2e/specs/routines.spec.ts` — E1 (pt routine create/edit with pt-picker).
+- `test/e2e/specs/prs.spec.ts` (or equivalent) — F1 (pt PR list + detail).
+- Existing E2E specs with hardcoded English exercise names — replace with `EXERCISE_NAMES.slug[user.locale]` lookups.
+- Widget tests:
+  - `test/widget/features/exercises/exercise_list_screen_test.dart` — `localeProvider` override to pt, fake `ExerciseRepository` returns pt names → assert pt names rendered.
+  - `test/widget/features/exercises/exercise_detail_screen_test.dart` — description + form_tips render from resolved Exercise regardless of locale.
+  - `test/widget/features/exercises/create_exercise_screen_test.dart` — on submit with pt locale, repo called with `locale: 'pt'`.
+
+Acceptance:
+- `make test` — all widget tests green.
+- Full Playwright run locally (`FLUTTER_APP_URL= npx playwright test --reporter=list`) — all scenarios pass; count ≥ 145 + new A1–G2.
+- Smoke run (`--grep @smoke`) — A1, A2, A4, C1 included + existing smoke tests pass.
+- No E2E tests skipped or marked `.only`/`.skip`.
+
+Pipeline gate: green E2E locally + `make ci` green. Commit: `test(15f): Stage 7 — widget + E2E coverage for locale-aware exercise content`.
+
+### Stage 8 — Staging verification + review + merge (orchestrator + reviewer)
+
+Staging steps (mandatory, evidence in PR body):
+1. `npx supabase link --project-ref <staging>` (one-time).
+2. `npx supabase db push` against staging.
+3. Run 4 invariant queries (spec §14.1); paste outputs in PR description.
+4. Build web from branch + deploy to preview bucket. Smoke with staging users in both locales.
+5. Run full Playwright suite against staging; record pass count in PR description.
+6. pt-BR reviewer (human) spot-checks ~10 random exercises on staging detail screens; records sign-off in PR body.
+7. Dry-run `scripts/emergency_rollback_15f.sql` against a staging clone; verify reverse path works.
+
+Code review:
+- `reviewer` agent pass — must OK before merge.
+- Any blocker/important finding → back to `tech-lead` → re-run qa-engineer gate from Stage 7.
+
+Merge gate:
+- All 9 acceptance criteria from spec §14 green.
+- CI on PR green (format + analyze + test + android-build + translation-coverage + E2E).
+- Reviewer + qa-engineer + pt reviewer sign-off recorded.
+- Squash-merge, delete branch.
+
+### Stage 9 — Prod cut-over + close WIP (orchestrator)
+
+1. Pull latest main.
+2. `npx supabase db push` against hosted Supabase (applies 00030-00034 sequentially).
+3. Run 4 invariant queries against prod; verify all zero.
+4. Smoke-test prod app in both locales (manual, 3-minute walk-through).
+5. Remove `tasks/WIP.md` Phase 15f section.
+6. Condense this Phase 15f PLAN.md section to 3-5 bullet summary per CLAUDE.md PLAN.md Lifecycle.
+7. Update progress table: `15f` → `DONE | #<PR number>`; `15` → `DONE | #86–#91, #<PR number>`.
+
+### Acceptance (final)
+
+See spec §14. Summary: 4 schema invariants green on prod, `make ci` green, 145+/145+ E2E green, manual locale smoke passes, rollback dry-run succeeded in staging, pt reviewer signed off, reviewer + qa gates cleared.
+
+### Rollback
+
+Full procedure in spec §16. Summary: `scripts/emergency_rollback_15f.sql` restores EN columns via COALESCE-over-translations, drops 15f objects. `git revert <merge-sha>` reverts client. Zero EN data loss. pt translations regenerable from 00033. Worst-case window: 0-30s per session.
+
+### Risks (top 3)
+
+| Risk | Mitigation |
+|------|------------|
+| Two-query merge p95 latency regression on history/PRs | Profile on staging during Stage 7; if > 1s revisit per-screen RPC (escape hatch). Expected: +20-40ms, acceptable. |
+| pt seed quality errors slip past auto-draft | Glossary Stage 2 is human-gated; 94-row human skim is a mandatory Stage 8 gate. |
+| RLS misconfig exposes other users' customs | Explicit policies in 00031 + E2E G1 test + psql `EXPLAIN` audit in staging. |
+
+### Effort Estimate
+
+| Stage | Days |
+|-------|------|
+| 1: Foundation migrations | 0.5 |
+| 2: pt-BR glossary (inc. review loop) | 0.5 |
+| 3: pt-BR seed | 1-2 (AI draft + row-by-row review) |
+| 4: RPCs + column drop | 1 |
+| 5: CI infrastructure | 0.5 |
+| 6: Data layer refactor (4 repositories + tests) | 2-3 |
+| 7: Widget + E2E | 1-2 |
+| 8: Staging verify + review + merge | 0.5-1 |
+| 9: Prod cut-over + close WIP | 0.25 |
+| **Total** | **~7-10 days** |
 
 ---
 
