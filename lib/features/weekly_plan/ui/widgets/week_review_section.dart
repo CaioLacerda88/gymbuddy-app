@@ -40,7 +40,12 @@ class WeekReviewSection extends StatelessWidget {
   /// Called when user taps NEW WEEK.
   final VoidCallback? onNewWeek;
 
-  static const _primaryGreen = AppColors.success;
+  /// Green is reserved for positive completion beats ("WEEK COMPLETE" header
+  /// + the `RoutineChipState.done` accent) — anything green signals "this
+  /// milestone is achieved." The NEW WEEK affordance is a navigation CTA, not
+  /// a completion signal, so it paints in the daily interactive violet.
+  static const _completeHeaderColor = AppColors.success;
+  static const _newWeekLinkColor = AppColors.hotViolet;
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +74,7 @@ class WeekReviewSection extends StatelessWidget {
                   isAllComplete ? l10n.weekComplete : l10n.thisWeek,
                   style: theme.textTheme.labelLarge?.copyWith(
                     color: isAllComplete
-                        ? _primaryGreen
+                        ? _completeHeaderColor
                         : theme.colorScheme.onSurface.withValues(alpha: 0.85),
                     fontWeight: FontWeight.w700,
                   ),
@@ -88,7 +93,7 @@ class WeekReviewSection extends StatelessWidget {
                   child: Text(
                     l10n.newWeekLink,
                     style: theme.textTheme.labelLarge?.copyWith(
-                      color: _primaryGreen,
+                      color: _newWeekLinkColor,
                     ),
                   ),
                 ),

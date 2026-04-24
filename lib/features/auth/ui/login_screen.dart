@@ -177,10 +177,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Icon(
-                    Icons.fitness_center,
-                    size: 48,
-                    color: theme.colorScheme.primary,
+                  // Brand sigil — the Arcane launcher-icon foreground. The
+                  // colored composite (rune + barbell) already carries the
+                  // palette, so no color tint is applied. Sized 96dp for the
+                  // login header, which reads balanced against the 32dp
+                  // displayMedium wordmark below.
+                  Image.asset(
+                    'assets/app_icon/arcane_sigil_foreground.png',
+                    width: 96,
+                    height: 96,
                   ),
                   const SizedBox(height: 16),
                   Text(

@@ -6,10 +6,10 @@ import '../../../../l10n/app_localizations.dart';
 
 /// Visual states for a routine chip in the weekly bucket.
 enum RoutineChipState {
-  /// Completed — green tint, checkmark, collapsed width.
+  /// Completed — success-green tint, checkmark, collapsed width.
   done,
 
-  /// Up next — solid green, primary CTA, taller.
+  /// Up next — solid violet, primary CTA, taller.
   next,
 
   /// Remaining — ghosted, not yet reached in sequence.
@@ -19,8 +19,8 @@ enum RoutineChipState {
 /// A pill-shaped chip representing a routine in the weekly bucket.
 ///
 /// Three states per spec:
-/// - [RoutineChipState.done]: 44dp, green checkmark, no name text
-/// - [RoutineChipState.next]: 60dp, solid green, black text, secondary exercise count line
+/// - [RoutineChipState.done]: 44dp, success-green checkmark, no name text
+/// - [RoutineChipState.next]: 60dp, solid primary violet, Abyss text, secondary exercise count line
 /// - [RoutineChipState.remaining]: 48dp, ghosted, sequence number + name at reduced opacity
 class RoutineChip extends StatelessWidget {
   const RoutineChip({
@@ -42,7 +42,13 @@ class RoutineChip extends StatelessWidget {
 
   final VoidCallback? onTap;
 
-  static const _doneColor = AppColors.success;
+  /// Up-next CTA fill. Violet is the daily interactive color in the Arcane
+  /// palette; gold is quarantined to [RewardAccent] for PRs/level-ups.
+  static const _nextColor = AppColors.primaryViolet;
+
+  /// Done chip tint + border + checkmark. Success green is intentionally
+  /// distinct from the CTA so "completed" never competes with "up next".
+  static const _doneAccent = AppColors.success;
   static const _cardColor = AppColors.surface2;
 
   @override
@@ -59,13 +65,13 @@ class RoutineChip extends StatelessWidget {
       height: 44,
       constraints: const BoxConstraints(minWidth: 44),
       decoration: BoxDecoration(
-        color: _doneColor.withValues(alpha: 0.13),
-        border: Border.all(color: _doneColor, width: 1),
+        color: _doneAccent.withValues(alpha: 0.13),
+        border: Border.all(color: _doneAccent, width: 1),
         borderRadius: BorderRadius.circular(kRadiusLg),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: const Center(
-        child: Icon(Icons.check, color: _doneColor, size: 20),
+        child: Icon(Icons.check, color: _doneAccent, size: 20),
       ),
     );
   }
@@ -75,7 +81,7 @@ class RoutineChip extends StatelessWidget {
     final hasExerciseCount = exerciseCount != null && exerciseCount! > 0;
 
     return Material(
-      color: _doneColor,
+      color: _nextColor,
       borderRadius: BorderRadius.circular(kRadiusLg),
       child: InkWell(
         borderRadius: BorderRadius.circular(kRadiusLg),
@@ -90,9 +96,10 @@ class RoutineChip extends StatelessWidget {
                 width: 22,
                 height: 22,
                 decoration: BoxDecoration(
-                  // Sequence-number badge on the green CTA: a dark overlay on
-                  // top of the green Material. abyss (#0D0319) at ~26% alpha
-                  // tints the green without a full blackout.
+                  // Sequence-number badge on the violet CTA: a dark overlay on
+                  // top of the violet Material. abyss (#0D0319) at ~26% alpha
+                  // tints the violet without a full blackout; contrast verified
+                  // on both primaryViolet and the prior success-green fill.
                   color: AppColors.abyss.withValues(alpha: 0.26),
                   shape: BoxShape.circle,
                 ),

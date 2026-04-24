@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/exceptions/app_exception.dart';
+import '../../../core/theme/app_icons.dart';
 import '../../../core/utils/enum_l10n.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_text_field.dart';
@@ -149,7 +150,7 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
                   selected: _selectedMuscleGroup,
                   onSelected: (v) => setState(() => _selectedMuscleGroup = v),
                   labelFor: (v) => v.localizedName(l10n),
-                  iconFor: (v) => v.icon,
+                  iconFor: (v) => v.svgIcon,
                   semanticPrefix: l10n.muscleGroupSemanticsPrefix,
                 ),
                 const SizedBox(height: 24),
@@ -160,7 +161,7 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
                   selected: _selectedEquipmentType,
                   onSelected: (v) => setState(() => _selectedEquipmentType = v),
                   labelFor: (v) => v.localizedName(l10n),
-                  iconFor: (v) => v.icon,
+                  iconFor: (v) => v.svgIcon,
                   semanticPrefix: l10n.equipmentTypeSemanticsPrefix,
                 ),
                 const SizedBox(height: 24),
@@ -222,7 +223,7 @@ class _SelectableGrid<T> extends StatelessWidget {
   final T? selected;
   final ValueChanged<T> onSelected;
   final String Function(T) labelFor;
-  final IconData Function(T) iconFor;
+  final String Function(T) iconFor;
   final String semanticPrefix;
 
   @override
@@ -254,7 +255,7 @@ class _SelectableCard extends StatelessWidget {
   });
 
   final String label;
-  final IconData icon;
+  final String icon;
   final bool isSelected;
   final VoidCallback onTap;
   final String semanticLabel;
@@ -289,7 +290,7 @@ class _SelectableCard extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
+                AppIcons.render(
                   icon,
                   size: 24,
                   color: isSelected ? primary : theme.colorScheme.onSurface,

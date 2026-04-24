@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_icons.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/enum_l10n.dart';
 import '../../../l10n/app_localizations.dart';
@@ -149,7 +150,7 @@ class _MuscleGroupSelector extends ConsumerWidget {
             ...MuscleGroup.values.map(
               (group) => _MuscleGroupButton(
                 label: group.localizedName(l10n),
-                icon: Icon(group.icon, size: 24),
+                icon: AppIcons.render(group.svgIcon, size: 24),
                 isSelected: selected == group,
                 onTap: () {
                   ref.read(selectedMuscleGroupProvider.notifier).state = group;
@@ -175,9 +176,9 @@ class _MuscleGroupButton extends StatelessWidget {
 
   final String label;
 
-  /// Pre-sized 24dp icon widget. Always a Material [Icon] — the "All"
-  /// meta-filter uses `Icons.grid_view_rounded`; real muscle groups use
-  /// their `MuscleGroup.icon`.
+  /// Pre-sized 24dp icon widget. The "All" meta-filter renders a Material
+  /// [Icon] (`Icons.grid_view_rounded`); real muscle groups render their
+  /// [MuscleGroup.svgIcon] via [AppIcons.render].
   final Widget icon;
   final bool isSelected;
   final VoidCallback onTap;
@@ -306,7 +307,7 @@ class _EquipmentFilter extends ConsumerWidget {
                 label: '$typeName equipment filter',
                 selected: isSelected,
                 child: FilterChip(
-                  avatar: Icon(type.icon, size: 18),
+                  avatar: AppIcons.render(type.svgIcon, size: 18),
                   label: Text(typeName),
                   selected: isSelected,
                   onSelected: (val) {
@@ -416,13 +417,13 @@ class _ExerciseCard extends StatelessWidget {
                                   label: exercise.muscleGroup.localizedName(
                                     l10n,
                                   ),
-                                  icon: exercise.muscleGroup.icon,
+                                  svgIcon: exercise.muscleGroup.svgIcon,
                                 ),
                                 _InfoChip(
                                   label: exercise.equipmentType.localizedName(
                                     l10n,
                                   ),
-                                  icon: exercise.equipmentType.icon,
+                                  svgIcon: exercise.equipmentType.svgIcon,
                                 ),
                               ],
                             );
@@ -447,10 +448,14 @@ class _ExerciseCard extends StatelessWidget {
 }
 
 class _InfoChip extends StatelessWidget {
-  const _InfoChip({required this.label, required this.icon});
+  const _InfoChip({required this.label, required this.svgIcon});
 
   final String label;
-  final IconData icon;
+
+  /// Inline-SVG glyph string from [AppMuscleIcons] / [AppEquipmentIcons] (or
+  /// the reused [AppIcons.lift] for barbell). Rendered via [AppIcons.render]
+  /// so a single asset recolors with the theme.
+  final String svgIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -465,8 +470,8 @@ class _InfoChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
+          AppIcons.render(
+            svgIcon,
             size: 16,
             color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
           ),
@@ -506,10 +511,8 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              hasFilters
-                  ? Icons.search_off_rounded
-                  : Icons.fitness_center_rounded,
+            AppIcons.render(
+              hasFilters ? AppIcons.search : AppIcons.lift,
               size: 64,
               color: AppColors.textDim,
             ),

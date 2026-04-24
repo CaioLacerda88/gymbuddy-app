@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:repsaga/core/theme/app_theme.dart';
 import 'package:repsaga/features/personal_records/providers/pr_providers.dart';
@@ -11,6 +12,7 @@ import 'package:repsaga/features/profile/providers/profile_providers.dart';
 import 'package:repsaga/features/workouts/data/workout_repository.dart';
 import 'package:repsaga/features/workouts/providers/workout_history_providers.dart';
 import 'package:repsaga/features/workouts/ui/workout_detail_screen.dart';
+import 'package:repsaga/shared/widgets/reward_accent.dart';
 
 import '../../../../fixtures/test_factories.dart';
 import '../../../../helpers/test_material_app.dart';
@@ -66,6 +68,15 @@ void main() {
     );
   }
 
+  // The PR badge on a set row is an `AppIcons.levelUp` SVG rendered inside
+  // a `RewardAccent` — it replaces the pre-17.0d `Icon(Icons.emoji_events)`.
+  // Counting `RewardAccent` ancestors is the most stable selector: the glyph
+  // may change (icon-set-v2) but the scarcity-widget wrapper won't.
+  Finder prTrophyFinder() => find.descendant(
+    of: find.byType(RewardAccent),
+    matching: find.byType(SvgPicture),
+  );
+
   group('WorkoutDetailScreen PR badges', () {
     testWidgets('shows trophy icon on PR sets', (tester) async {
       final detail = makeDetail();
@@ -86,7 +97,7 @@ void main() {
       await tester.pump();
 
       // set-1 is a PR: trophy icon should appear
-      expect(find.byIcon(Icons.emoji_events), findsOneWidget);
+      expect(prTrophyFinder(), findsOneWidget);
     });
 
     testWidgets('shows set number text on non-PR sets', (tester) async {
@@ -132,7 +143,7 @@ void main() {
       await tester.pump();
 
       // No PR sets: no trophy icons at all
-      expect(find.byIcon(Icons.emoji_events), findsNothing);
+      expect(prTrophyFinder(), findsNothing);
       // Both set numbers shown
       expect(find.text('1.'), findsOneWidget);
       expect(find.text('2.'), findsOneWidget);
@@ -164,7 +175,7 @@ void main() {
         // Workout content is visible.
         expect(find.text('Bench Press'), findsOneWidget);
         // No trophy icons rendered during loading state.
-        expect(find.byIcon(Icons.emoji_events), findsNothing);
+        expect(prTrophyFinder(), findsNothing);
 
         // Resolve the completer to avoid pending timer assertion.
         completer.complete({'set-1'});
@@ -172,7 +183,7 @@ void main() {
         await tester.pump();
 
         // After resolution, badge appears for set-1.
-        expect(find.byIcon(Icons.emoji_events), findsOneWidget);
+        expect(prTrophyFinder(), findsOneWidget);
       },
     );
 
@@ -194,8 +205,9 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      final iconWidget = tester.widget<Icon>(find.byIcon(Icons.emoji_events));
-      expect(iconWidget.size, 18.0);
+      final trophy = tester.widget<SvgPicture>(prTrophyFinder());
+      expect(trophy.width, 18.0);
+      expect(trophy.height, 18.0);
     });
   });
 

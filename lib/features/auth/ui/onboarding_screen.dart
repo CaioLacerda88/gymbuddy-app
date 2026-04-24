@@ -193,10 +193,13 @@ class _WelcomePage extends StatelessWidget {
             container: true,
             child: Column(
               children: [
-                Icon(
-                  Icons.fitness_center,
-                  size: 80,
-                  color: theme.colorScheme.primary,
+                // Brand sigil — the Arcane launcher-icon foreground. Sized
+                // 128dp for the onboarding hero (one step up from the login
+                // 96dp) since this is the very first frame new users see.
+                Image.asset(
+                  'assets/app_icon/arcane_sigil_foreground.png',
+                  width: 128,
+                  height: 128,
                 ),
                 const SizedBox(height: 32),
                 Semantics(

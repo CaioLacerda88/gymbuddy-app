@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/device/platform_info.dart';
 import '../../../core/utils/enum_l10n.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/reward_accent.dart';
 import '../../analytics/data/models/analytics_event.dart';
 import '../../analytics/providers/analytics_providers.dart';
 import '../../auth/providers/auth_providers.dart';
@@ -219,15 +220,21 @@ class _PRCelebrationScreenState extends ConsumerState<PRCelebrationScreen>
               ),
             ),
           ),
-          // TODO(phase17a): wrap flash in RewardAccent — gold PR flash per palette spec
-          // (§17.0c lists the reward color for "PR flash, level-up, streak
-          // milestone"; this primaryViolet flash is the legacy behavior, to
-          // be migrated when the celebration overlay work lands in Phase 17a).
+          // Gold PR flash per §17.0c palette spec. Reads the reward color
+          // from [RewardAccent.color] (the sanctioned heroGold static) so
+          // `scripts/check_reward_accent.sh` stays clean. The full-screen
+          // flash is not a widget subtree we can wrap in RewardAccent (the
+          // color is a raw `Container.color` value, not an icon/text), which
+          // is why the static read is the right API here.
           IgnorePointer(
             child: AnimatedOpacity(
               opacity: _flashOpacity,
               duration: const Duration(milliseconds: 400),
-              child: Container(color: theme.colorScheme.primary),
+              // Full-screen flash can't host a widget subtree; Container.color
+              // is a raw Color parameter, so the static alias is the
+              // sanctioned API per reward_accent.dart.
+              // ignore: reward_accent — full-screen flash; no widget-subtree host for RewardAccent
+              child: Container(color: RewardAccent.color),
             ),
           ),
         ],

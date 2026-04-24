@@ -48,6 +48,44 @@ void main() {
       expect(find.text('GET STARTED'), findsOneWidget);
     });
 
+    testWidgets('renders the Arcane brand sigil on the welcome page '
+        '(not a generic dumbbell icon)', (tester) async {
+      await tester.pumpWidget(buildTestWidget());
+
+      // Regression: pre-17.0d onboarding shipped `Icon(Icons.fitness_center)`.
+      // The first frame new users see must match the launcher-icon sigil.
+      final imageFinder = find.byWidgetPredicate(
+        (widget) =>
+            widget is Image &&
+            widget.image is AssetImage &&
+            (widget.image as AssetImage).assetName ==
+                'assets/app_icon/arcane_sigil_foreground.png',
+      );
+      expect(imageFinder, findsOneWidget);
+    });
+
+    testWidgets(
+      'brand sigil is 128dp on the onboarding hero (size spec §17.0d)',
+      (tester) async {
+        await tester.pumpWidget(buildTestWidget());
+
+        // §17.0d spec: onboarding hero sigil is 128dp — one step up from the
+        // login 96dp because this is the very first frame new users see, so the
+        // branding statement should read larger.
+        final image = tester.widget<Image>(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget is Image &&
+                widget.image is AssetImage &&
+                (widget.image as AssetImage).assetName ==
+                    'assets/app_icon/arcane_sigil_foreground.png',
+          ),
+        );
+        expect(image.width, 128.0);
+        expect(image.height, 128.0);
+      },
+    );
+
     testWidgets('navigates to profile setup on GET STARTED', (tester) async {
       await tester.pumpWidget(buildTestWidget());
 

@@ -14,6 +14,7 @@ import 'package:repsaga/features/personal_records/models/record_type.dart';
 import 'package:repsaga/features/personal_records/ui/pr_celebration_screen.dart';
 import 'package:repsaga/features/profile/models/profile.dart';
 import 'package:repsaga/features/profile/providers/profile_providers.dart';
+import 'package:repsaga/shared/widgets/reward_accent.dart';
 import 'package:mocktail/mocktail.dart';
 import '../../../../helpers/test_material_app.dart';
 
@@ -152,6 +153,63 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.widgetWithText(ElevatedButton, 'Continue'), findsOneWidget);
+    });
+
+    testWidgets('flash overlay fires in reward-gold, not violet '
+        '(§17.0c reward-scarcity)', (tester) async {
+      // The flash is the full-screen `IgnorePointer > AnimatedOpacity >
+      // Container` overlay at the end of the Stack. We assert the Container's
+      // `color` matches RewardAccent.color (heroGold). Prior behavior flashed
+      // `theme.colorScheme.primary` (violet), which diluted the reward beat.
+      final result = PRDetectionResult(
+        newRecords: [makeRecord(recordType: RecordType.maxWeight, value: 120)],
+        isFirstWorkout: false,
+      );
+
+      await tester.pumpWidget(
+        buildTestWidget(
+          result: result,
+          exerciseNames: {'exercise-001': 'Bench Press'},
+        ),
+      );
+      // One pump to register initState + schedule the post-frame callback.
+      // Do NOT pumpAndSettle here — the flash fades out; we want to inspect
+      // the flash Container while it's still in the tree.
+      await tester.pump();
+
+      // Walk every descendant of the AnimatedOpacity and pick the first
+      // Container that has `color` set (the flash). Its color should be the
+      // RewardAccent gold token, NOT the primary violet.
+      final flashContainers = tester
+          .widgetList<Container>(
+            find.descendant(
+              of: find.byType(AnimatedOpacity),
+              matching: find.byType(Container),
+            ),
+          )
+          .where((c) => c.color != null)
+          .toList();
+
+      expect(
+        flashContainers,
+        isNotEmpty,
+        reason:
+            'Expected at least one colored Container inside the flash '
+            'AnimatedOpacity overlay.',
+      );
+      expect(flashContainers.first.color, RewardAccent.color);
+      // Negative fence: if someone reverts the flash back to the generic
+      // theme primary (violet), this test must fail. Violet is the daily
+      // CTA — gold is quarantined to rare/earned moments like this one.
+      expect(
+        flashContainers.first.color,
+        isNot(equals(AppColors.primaryViolet)),
+        reason: 'PR flash must NOT be the CTA violet — gold only.',
+      );
+
+      // Drain the 300ms haptic-pulse timer that initState schedules so
+      // the test framework does not complain about a pending timer.
+      await tester.pump(const Duration(milliseconds: 400));
     });
 
     testWidgets('mounted guard: no exception when widget removed before '

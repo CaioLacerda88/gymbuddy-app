@@ -223,12 +223,22 @@ class AppIcons {
   /// A [Builder] is used when [color] is null so the inherited `IconTheme`
   /// is resolved from a context that actually sits under the theme — not
   /// the context that called [render].
+  ///
+  /// Decorative icons are excluded from the semantics tree by default —
+  /// `SvgPicture` otherwise injects an `img` role node which can disrupt
+  /// how ancestor [Semantics] wrappers (e.g. `AppBar.title`'s implicit
+  /// `header: true`) merge with sibling text. This matches Material
+  /// [Icon]'s behaviour: no [semanticsLabel] → no semantic node. Pass
+  /// [semanticsLabel] (or explicitly set [excludeFromSemantics] to false)
+  /// for icons that carry meaning on their own.
   static Widget render(
     String svg, {
     Color? color,
     double size = 24,
     String? semanticsLabel,
+    bool? excludeFromSemantics,
   }) {
+    final exclude = excludeFromSemantics ?? (semanticsLabel == null);
     if (color != null) {
       return SvgPicture.string(
         svg,
@@ -236,6 +246,7 @@ class AppIcons {
         height: size,
         colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
         semanticsLabel: semanticsLabel,
+        excludeFromSemantics: exclude,
       );
     }
     return Builder(
@@ -247,6 +258,7 @@ class AppIcons {
           height: size,
           colorFilter: ColorFilter.mode(resolved, BlendMode.srcIn),
           semanticsLabel: semanticsLabel,
+          excludeFromSemantics: exclude,
         );
       },
     );
