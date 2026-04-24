@@ -23,8 +23,13 @@ Active work being done by agents. Each section is removed once the branch is mer
 - [x] **Stage 2** — pt-BR glossary (human-gated) ✅
   - [x] `docs/superpowers/specs/phase15f-pt-glossary.md` drafted (commit 3d80fa7)
   - [x] User approval recorded 2026-04-24
-- [ ] **Stage 3** — pt-BR seed migration (tech-lead)
-  - [ ] `supabase/migrations/00033_seed_exercise_translations_pt.sql` (150 rows)
+- [ ] **Stage 3** — pt-BR seed migration (tech-lead) — IN PROGRESS
+  - [ ] Read EN content sources (00010 + 00020) and ARB names (`app_pt.arb`)
+  - [ ] Draft 150 pt-BR `(name, description, form_tips)` tuples per glossary §1 + §5
+  - [ ] Write `supabase/migrations/00033_seed_exercise_translations_pt.sql`
+  - [ ] Verify locally: `supabase db reset` clean; pt count = 150; spot-check 5 rows
+  - [ ] `dart format . && dart analyze --fatal-infos && flutter test` clean
+  - [ ] Commit `feat(15f): Stage 3 — pt-BR seed for 150 default exercises`
   - [ ] Reviews pass
 - [ ] **Stage 4** — RPCs + column drop (tech-lead)
   - [ ] `supabase/migrations/00034_drop_exercise_name_columns_and_add_rpcs.sql`
