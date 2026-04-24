@@ -59,7 +59,7 @@
   "muscleGroupLegs": "Pernas",
   "muscleGroupShoulders": "Ombros",
   "muscleGroupArms": "Braços",
-  "muscleGroupCore": "Núcleo",
+  "muscleGroupCore": "Core",
   "muscleGroupCardio": "Cardio",
 
   "equipmentBarbell": "Barra",
@@ -67,7 +67,7 @@
   "equipmentCable": "Cabo",
   "equipmentMachine": "Máquina",
   "equipmentBodyweight": "Peso Corporal",
-  "equipmentBands": "Faixas Elásticas",
+  "equipmentBands": "Bands",
   "equipmentKettlebell": "Kettlebell",
 
   "setTypeWorking": "Normal",
