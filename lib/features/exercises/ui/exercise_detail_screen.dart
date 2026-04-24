@@ -10,6 +10,7 @@ import '../../../shared/widgets/exercise_image.dart';
 import '../../../shared/widgets/exercise_info_sections.dart';
 import '../../personal_records/models/record_type.dart';
 import '../../personal_records/providers/pr_providers.dart';
+import '../../personal_records/ui/widgets/pr_type_icon.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../models/exercise.dart';
 import '../providers/exercise_providers.dart'
@@ -401,27 +402,6 @@ class _PRSection extends ConsumerWidget {
     };
   }
 
-  /// Renders a 18dp glyph for the given [RecordType] in the current primary
-  /// color. `maxWeight` uses the Arcane [AppIcons.lift] signature glyph; the
-  /// other two types still use Material icons until we ship repeat/bar-chart
-  /// equivalents.
-  // TODO(icon-set-v2): add AppIcons.repeat + AppIcons.barChart and drop the
-  // Material icon fallback below.
-  Widget _iconForType(RecordType type, Color color) {
-    if (type == RecordType.maxWeight) {
-      return AppIcons.render(AppIcons.lift, size: 18, color: color);
-    }
-    return Icon(
-      switch (type) {
-        RecordType.maxReps => Icons.repeat,
-        RecordType.maxVolume => Icons.bar_chart,
-        RecordType.maxWeight => Icons.fitness_center, // unreachable
-      },
-      size: 18,
-      color: color,
-    );
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
@@ -461,7 +441,10 @@ class _PRSection extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(
                   children: [
-                    _iconForType(r.recordType, theme.colorScheme.primary),
+                    PRTypeIcon(
+                      type: r.recordType,
+                      color: theme.colorScheme.primary,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       r.recordType.localizedName(l10n),

@@ -198,6 +198,14 @@ void main() {
             'AnimatedOpacity overlay.',
       );
       expect(flashContainers.first.color, RewardAccent.color);
+      // Negative fence: if someone reverts the flash back to the generic
+      // theme primary (violet), this test must fail. Violet is the daily
+      // CTA — gold is quarantined to rare/earned moments like this one.
+      expect(
+        flashContainers.first.color,
+        isNot(equals(AppColors.primaryViolet)),
+        reason: 'PR flash must NOT be the CTA violet — gold only.',
+      );
 
       // Drain the 300ms haptic-pulse timer that initState schedules so
       // the test framework does not complain about a pending timer.

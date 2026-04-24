@@ -90,11 +90,11 @@ class AppEquipmentIcons {
       'stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">'
       // Loop outline.
       '<ellipse cx="24" cy="24" rx="18" ry="10"/>'
-      // Inner crease lines (clipped visually by the ellipse; we stop short
-      // of the ellipse edges so the crease reads as an interior ridge, not
-      // an external line).
-      '<path d="M10 20 H38" stroke-width="2"/>'
-      '<path d="M10 28 H38" stroke-width="2"/>'
+      // Inner crease lines. Endpoints kept at x:12..36 so the creases sit
+      // safely inside the ellipse at every render size — pushing closer to
+      // the ellipse edge makes the line appear to overflow at 24dp+.
+      '<path d="M12 20 H36" stroke-width="2"/>'
+      '<path d="M12 28 H36" stroke-width="2"/>'
       '</svg>';
 
   /// Kettlebell — semicircle handle at the top connecting to a rounded

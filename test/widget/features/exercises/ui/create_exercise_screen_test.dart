@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:repsaga/core/theme/app_theme.dart';
 import 'package:repsaga/features/exercises/models/exercise.dart';
@@ -43,6 +44,26 @@ void main() {
       for (final type in EquipmentType.values) {
         expect(find.text(type.displayName), findsWidgets);
       }
+    });
+
+    testWidgets('selectable cards render SvgPicture, not Material Icon', (
+      tester,
+    ) async {
+      // Phase 17.0d migrated _SelectableCard.icon from IconData → String
+      // (AppIcons SVG key). If someone reverts to IconData, the card stops
+      // calling AppIcons.render and the SvgPicture count drops to zero —
+      // this count assertion is the regression fence (both directions).
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      final expected = MuscleGroup.values.length + EquipmentType.values.length;
+      expect(
+        find.byType(SvgPicture),
+        findsNWidgets(expected),
+        reason:
+            'Each muscle group and equipment type card must render via '
+            'AppIcons.render() → SvgPicture, not a Material Icon.',
+      );
     });
 
     testWidgets('validates empty name', (tester) async {
