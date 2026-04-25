@@ -117,7 +117,6 @@ The Brazilian fitness vernacular has absorbed several English terms wholesale. T
 - **Pec Deck** — machine name
 - **JM Press** — eponym
 - **Step-Up** — fitness vernacular
-- **Box Jump** — kept English in pt; "Salto na Caixa" was rejected as too literal
 - **Face Pull** — coaching term
 - **Rack Pull** — coaching term
 - **Good Morning** — exercise name as proper noun

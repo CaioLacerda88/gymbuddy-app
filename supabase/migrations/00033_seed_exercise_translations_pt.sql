@@ -753,7 +753,7 @@ JOIN (VALUES
 
   ('heel_touch',
     'Toque no Calcanhar',
-    'Abdominal curto para oblíquos em que as mãos tocam os calcanhores a partir da posição de joelhos flexionados.',
+    'Abdominal curto para oblíquos em que as mãos tocam os calcanhares a partir da posição de joelhos flexionados.',
     E'Deite de costas com os joelhos flexionados e os pés no chão.\nLevante levemente os ombros do chão.\nEstique a mão para tocar o calcanhar do mesmo lado.\nAlterne os lados em ritmo constante sem soltar os ombros.'),
 
   ('kettlebell_windmill',
