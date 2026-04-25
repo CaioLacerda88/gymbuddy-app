@@ -468,6 +468,156 @@ void main() {
     );
   });
 
+  group('ExerciseDetailScreen Phase 15f locale-resolved content', () {
+    Widget buildPtWidget({required String exerciseId}) {
+      return ProviderScope(
+        overrides: [
+          exerciseRepositoryProvider.overrideWithValue(mockRepo),
+          currentUserIdProvider.overrideWithValue('user-001'),
+          localeProvider.overrideWith(
+            () => _StubLocaleNotifier(const Locale('pt')),
+          ),
+          exercisePRsProvider.overrideWith((ref, _) => Future.value([])),
+        ],
+        child: TestMaterialApp(
+          theme: AppTheme.dark,
+          home: ExerciseDetailScreen(exerciseId: exerciseId),
+        ),
+      );
+    }
+
+    testWidgets(
+      'renders pt description from resolved Exercise when localeProvider is pt',
+      (tester) async {
+        // The Exercise model carries the already-resolved localized text.
+        // The repository (or RPC) resolves the locale server-side; the widget
+        // just renders whatever the repo returns. This test verifies the widget
+        // correctly displays content from the Exercise regardless of locale.
+        final ptExercise = Exercise.fromJson(
+          TestExerciseFactory.create(
+            id: 'exercise-001',
+            name: 'Supino Reto com Barra',
+            slug: 'barbell_bench_press',
+            description:
+                'O rei do empurrar de membros superiores. Trabalha peito, '
+                'deltoide anterior e tríceps com a barra no banco reto.',
+            formTips:
+                'Plante os pés no chão e contraia as escápulas.\n'
+                'Desça a barra até o meio do peito com cotovelos a cerca de 45 graus.',
+          ),
+        );
+
+        when(
+          () => mockRepo.getExerciseById(
+            locale: 'pt',
+            userId: 'user-001',
+            id: 'exercise-001',
+          ),
+        ).thenAnswer((_) async => ptExercise);
+
+        await tester.pumpWidget(buildPtWidget(exerciseId: 'exercise-001'));
+        await pumpAndResolve(tester);
+
+        // The pt name must be visible.
+        expect(find.text('Supino Reto com Barra'), findsOneWidget);
+
+        // The ABOUT section must render with the pt description text.
+        expect(find.text('ABOUT'), findsOneWidget);
+        expect(find.textContaining('O rei do empurrar'), findsOneWidget);
+
+        // The FORM TIPS section must render with pt tips split on newline.
+        expect(find.text('FORM TIPS'), findsOneWidget);
+        expect(
+          find.text('Plante os pés no chão e contraia as escápulas.'),
+          findsOneWidget,
+        );
+        expect(
+          find.text(
+            'Desça a barra até o meio do peito com cotovelos a cerca de 45 graus.',
+          ),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets('repository called with locale:pt when localeProvider is pt', (
+      tester,
+    ) async {
+      final ptExercise = Exercise.fromJson(
+        TestExerciseFactory.create(
+          id: 'exercise-001',
+          name: 'Supino Reto com Barra',
+          slug: 'barbell_bench_press',
+        ),
+      );
+
+      when(
+        () => mockRepo.getExerciseById(
+          locale: 'pt',
+          userId: 'user-001',
+          id: 'exercise-001',
+        ),
+      ).thenAnswer((_) async => ptExercise);
+
+      await tester.pumpWidget(buildPtWidget(exerciseId: 'exercise-001'));
+      await pumpAndResolve(tester);
+
+      // Verify the repo was called with locale:'pt' exactly once.
+      verify(
+        () => mockRepo.getExerciseById(
+          locale: 'pt',
+          userId: 'user-001',
+          id: 'exercise-001',
+        ),
+      ).called(1);
+
+      // It must NOT have been called with locale:'en'.
+      verifyNever(
+        () => mockRepo.getExerciseById(
+          locale: 'en',
+          userId: 'user-001',
+          id: 'exercise-001',
+        ),
+      );
+    });
+
+    testWidgets(
+      'en detail shows en content when localeProvider is en (cross-locale guard)',
+      (tester) async {
+        final enExercise = Exercise.fromJson(
+          TestExerciseFactory.create(
+            id: 'exercise-001',
+            name: 'Barbell Bench Press',
+            slug: 'barbell_bench_press',
+            description: 'The king of upper-body pressing.',
+            formTips:
+                'Plant feet flat on the floor.\nLower the bar to mid-chest.',
+          ),
+        );
+
+        when(
+          () => mockRepo.getExerciseById(
+            locale: 'en',
+            userId: 'user-001',
+            id: 'exercise-001',
+          ),
+        ).thenAnswer((_) async => enExercise);
+
+        // Using the default en buildTestWidget from the outer scope.
+        await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
+        await pumpAndResolve(tester);
+
+        expect(find.text('Barbell Bench Press'), findsOneWidget);
+        expect(
+          find.textContaining('The king of upper-body pressing.'),
+          findsOneWidget,
+        );
+        expect(find.text('FORM TIPS'), findsOneWidget);
+        expect(find.text('Plant feet flat on the floor.'), findsOneWidget);
+      },
+    );
+  });
+
   group('ExerciseDetailScreen P9 hierarchy', () {
     testWidgets('Created <date> line is no longer rendered', (tester) async {
       final exercise = Exercise.fromJson(

@@ -63,6 +63,11 @@ const TEST_USERS = [
   'e2e-smoke-localization-en@test.local',
   // Phase 17b gamification intro — fresh user, saga intro never dismissed
   'e2e-saga-intro@test.local',
+  // Phase 15f localization — pt-BR content tests
+  'e2e-smoke-loc-workout@test.local',
+  'e2e-full-history-pt@test.local',
+  'e2e-smoke-loc-routines@test.local',
+  'e2e-full-pr-pt@test.local',
 ];
 
 /**
@@ -146,11 +151,12 @@ async function seedPRData(
     return;
   }
 
-  // Find "Barbell Bench Press" exercise (limit 1 in case seed.sql ran multiple times)
+  // Find "Barbell Bench Press" exercise by slug (slug column is stable; name
+  // column was dropped in Phase 15f migration 00034).
   const { data: exercises, error: exError } = await supabase
     .from('exercises')
     .select('id')
-    .eq('name', 'Barbell Bench Press')
+    .eq('slug', 'barbell_bench_press')
     .eq('is_default', true)
     .limit(1);
   const exercise = exercises?.[0] ?? null;
@@ -435,11 +441,12 @@ async function seedExerciseProgressData(
     return;
   }
 
-  // Find "Barbell Bench Press" exercise (limit 1 in case seed.sql ran multiple times)
+  // Find "Barbell Bench Press" exercise by slug (slug column is stable; name
+  // column was dropped in Phase 15f migration 00034).
   const { data: exercises, error: exError } = await supabase
     .from('exercises')
     .select('id')
-    .eq('name', 'Barbell Bench Press')
+    .eq('slug', 'barbell_bench_press')
     .eq('is_default', true)
     .limit(1);
   const exercise = exercises?.[0] ?? null;
@@ -909,6 +916,203 @@ async function globalSetup(): Promise<void> {
       );
     }
     await seedMinimalWorkout(supabase, localizationEnUserId);
+  }
+
+  // ── Phase 15f: seed 4 pt-BR locale users ─────────────────────────────
+  // smokeLocalizationWorkout — pt locale, one prior workout (lapsed state)
+  // for active-workout pt name smoke tests (scenario C1).
+  const smokeLocWorkoutUserId = await getUserId(
+    supabase,
+    'e2e-smoke-loc-workout@test.local',
+  );
+  if (smokeLocWorkoutUserId) {
+    // Clean workout data on each run so the state is deterministic.
+    const { data: existingWorkouts } = await supabase
+      .from('workouts')
+      .select('id')
+      .eq('user_id', smokeLocWorkoutUserId);
+    if (existingWorkouts && existingWorkouts.length > 0) {
+      const ids = existingWorkouts.map((w: { id: string }) => w.id);
+      const { data: wxs } = await supabase
+        .from('workout_exercises')
+        .select('id')
+        .in('workout_id', ids);
+      if (wxs && wxs.length > 0) {
+        await supabase
+          .from('sets')
+          .delete()
+          .in('workout_exercise_id', wxs.map((wx: { id: string }) => wx.id));
+      }
+      await supabase.from('workout_exercises').delete().in('workout_id', ids);
+      await supabase.from('workouts').delete().in('id', ids);
+    }
+    await supabase.from('personal_records').delete().eq('user_id', smokeLocWorkoutUserId);
+
+    const { error: ptWorkoutProfileError } = await supabase
+      .from('profiles')
+      .upsert(
+        {
+          id: smokeLocWorkoutUserId,
+          display_name: 'PT Workout User',
+          fitness_level: 'intermediate',
+          locale: 'pt',
+        },
+        { onConflict: 'id' },
+      );
+    if (ptWorkoutProfileError) {
+      console.log(
+        `[global-setup] Warning: could not upsert pt profile for smokeLocalizationWorkout: ${ptWorkoutProfileError.message}`,
+      );
+    } else {
+      console.log('[global-setup] Seeded pt profile for smokeLocalizationWorkout');
+    }
+    await seedMinimalWorkout(supabase, smokeLocWorkoutUserId);
+  }
+
+  // fullHistoryPt — pt locale, 5 prior workouts so history renders entries.
+  const fullHistoryPtUserId = await getUserId(
+    supabase,
+    'e2e-full-history-pt@test.local',
+  );
+  if (fullHistoryPtUserId) {
+    const { error: ptHistoryProfileError } = await supabase
+      .from('profiles')
+      .upsert(
+        {
+          id: fullHistoryPtUserId,
+          display_name: 'PT History User',
+          fitness_level: 'intermediate',
+          locale: 'pt',
+        },
+        { onConflict: 'id' },
+      );
+    if (ptHistoryProfileError) {
+      console.log(
+        `[global-setup] Warning: could not upsert pt profile for fullHistoryPt: ${ptHistoryProfileError.message}`,
+      );
+    } else {
+      console.log('[global-setup] Seeded pt profile for fullHistoryPt');
+    }
+    // Seed 5 workouts so the history screen renders multiple entries.
+    const existingHistoryWorkout = await supabase
+      .from('workouts')
+      .select('id')
+      .eq('user_id', fullHistoryPtUserId)
+      .eq('name', 'E2E PT History Workout 1')
+      .maybeSingle();
+    if (!existingHistoryWorkout.data) {
+      const now = new Date();
+      for (let i = 0; i < 5; i++) {
+        const startedAt = new Date(now.getTime() - (i + 1) * 24 * 60 * 60 * 1000);
+        const finishedAt = new Date(startedAt.getTime() + 60 * 60 * 1000);
+        await supabase.from('workouts').insert({
+          user_id: fullHistoryPtUserId,
+          name: `E2E PT History Workout ${i + 1}`,
+          started_at: startedAt.toISOString(),
+          finished_at: finishedAt.toISOString(),
+          duration_seconds: 3600,
+        });
+      }
+      console.log('[global-setup] Seeded 5 workouts for fullHistoryPt');
+    }
+  }
+
+  // smokeLocalizationRoutines — pt locale, one prior workout (lapsed state)
+  // for routine create/edit pt exercise picker smoke tests (scenario E1).
+  const smokeLocRoutinesUserId = await getUserId(
+    supabase,
+    'e2e-smoke-loc-routines@test.local',
+  );
+  if (smokeLocRoutinesUserId) {
+    // Clean workout data on each run.
+    const { data: existingRRoutineWorkouts } = await supabase
+      .from('workouts')
+      .select('id')
+      .eq('user_id', smokeLocRoutinesUserId);
+    if (existingRRoutineWorkouts && existingRRoutineWorkouts.length > 0) {
+      const ids = existingRRoutineWorkouts.map((w: { id: string }) => w.id);
+      const { data: wxs } = await supabase
+        .from('workout_exercises')
+        .select('id')
+        .in('workout_id', ids);
+      if (wxs && wxs.length > 0) {
+        await supabase
+          .from('sets')
+          .delete()
+          .in('workout_exercise_id', wxs.map((wx: { id: string }) => wx.id));
+      }
+      await supabase.from('workout_exercises').delete().in('workout_id', ids);
+      await supabase.from('workouts').delete().in('id', ids);
+    }
+
+    const { error: ptRoutinesProfileError } = await supabase
+      .from('profiles')
+      .upsert(
+        {
+          id: smokeLocRoutinesUserId,
+          display_name: 'PT Routines User',
+          fitness_level: 'intermediate',
+          locale: 'pt',
+        },
+        { onConflict: 'id' },
+      );
+    if (ptRoutinesProfileError) {
+      console.log(
+        `[global-setup] Warning: could not upsert pt profile for smokeLocalizationRoutines: ${ptRoutinesProfileError.message}`,
+      );
+    } else {
+      console.log('[global-setup] Seeded pt profile for smokeLocalizationRoutines');
+    }
+    await seedMinimalWorkout(supabase, smokeLocRoutinesUserId);
+  }
+
+  // fullPRPt — pt locale, prior PRs seeded via seedPRData.
+  const fullPRPtUserId = await getUserId(
+    supabase,
+    'e2e-full-pr-pt@test.local',
+  );
+  if (fullPRPtUserId) {
+    // Clean workout/PR data on each run.
+    const { data: existingPRWorkouts } = await supabase
+      .from('workouts')
+      .select('id')
+      .eq('user_id', fullPRPtUserId);
+    if (existingPRWorkouts && existingPRWorkouts.length > 0) {
+      const ids = existingPRWorkouts.map((w: { id: string }) => w.id);
+      const { data: wxs } = await supabase
+        .from('workout_exercises')
+        .select('id')
+        .in('workout_id', ids);
+      if (wxs && wxs.length > 0) {
+        await supabase
+          .from('sets')
+          .delete()
+          .in('workout_exercise_id', wxs.map((wx: { id: string }) => wx.id));
+      }
+      await supabase.from('workout_exercises').delete().in('workout_id', ids);
+      await supabase.from('workouts').delete().in('id', ids);
+    }
+    await supabase.from('personal_records').delete().eq('user_id', fullPRPtUserId);
+
+    const { error: ptPRProfileError } = await supabase
+      .from('profiles')
+      .upsert(
+        {
+          id: fullPRPtUserId,
+          display_name: 'PT PR User',
+          fitness_level: 'intermediate',
+          locale: 'pt',
+        },
+        { onConflict: 'id' },
+      );
+    if (ptPRProfileError) {
+      console.log(
+        `[global-setup] Warning: could not upsert pt profile for fullPRPt: ${ptPRProfileError.message}`,
+      );
+    } else {
+      console.log('[global-setup] Seeded pt profile for fullPRPt');
+    }
+    await seedPRData(supabase, fullPRPtUserId);
   }
 
   console.log('[global-setup] Done.');

@@ -170,4 +170,35 @@ export const TEST_USERS = {
     email: 'e2e-saga-intro@test.local',
     password: 'TestPassword123!',
   },
+
+  // -------------------------------------------------------------------------
+  // Phase 15f — Exercise content localization (pt-BR)
+  // -------------------------------------------------------------------------
+  // smokeLocalizationWorkout: pt-BR locale user for active-workout smoke tests.
+  // Profile seeded with locale:'pt', one prior workout so app lands in lapsed
+  // state (not brand-new CTA). Matches smokeLocalization setup pattern.
+  smokeLocalizationWorkout: {
+    email: 'e2e-smoke-loc-workout@test.local',
+    password: 'TestPassword123!',
+  },
+  // fullHistoryPt: pt-BR locale user for workout history regression.
+  // Profile seeded with locale:'pt', 5+ prior workouts so history renders
+  // multiple entries.
+  fullHistoryPt: {
+    email: 'e2e-full-history-pt@test.local',
+    password: 'TestPassword123!',
+  },
+  // smokeLocalizationRoutines: pt-BR locale user for routine create/edit with
+  // pt exercise picker smoke. Profile seeded with locale:'pt', one prior
+  // workout for lapsed state.
+  smokeLocalizationRoutines: {
+    email: 'e2e-smoke-loc-routines@test.local',
+    password: 'TestPassword123!',
+  },
+  // fullPRPt: pt-BR locale user for PR list + detail regression.
+  // Profile seeded with locale:'pt', prior PRs seeded via seedPRData.
+  fullPRPt: {
+    email: 'e2e-full-pr-pt@test.local',
+    password: 'TestPassword123!',
+  },
 } as const;

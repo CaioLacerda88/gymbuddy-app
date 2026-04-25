@@ -677,3 +677,48 @@ export const LOCALIZATION = {
   /** pt-BR nav tab — "Perfil" (Profile) */
   ptNavProfile: 'role=tab[name="Perfil"]',
 } as const;
+
+// ---------------------------------------------------------------------------
+// Exercise localization — locale-keyed exercise card selectors (Phase 15f)
+//
+// Exercise names now come from the exercise_translations table via
+// fn_exercises_localized RPC. Use EXERCISE_NAMES from test-exercises.ts to
+// build locale-aware selectors.
+//
+// For locale-sensitive assertions, prefer:
+//   EXERCISE_LIST.exerciseCard(EXERCISE_NAMES.barbell_bench_press[locale])
+//
+// The selectors below are convenience wrappers for the most common exercises
+// used in E2E localization tests.
+// ---------------------------------------------------------------------------
+export const EXERCISE_LOC = {
+  /**
+   * Exercise card selector for a localized exercise name.
+   * Pass the translated name string (resolved from EXERCISE_NAMES) and the
+   * locale ('en' | 'pt'). The AOM label prefix is locale-sensitive:
+   *   en → "Exercise: {name}"  (app_en.arb exerciseItemSemantics)
+   *   pt → "Exercício: {name}" (app_pt.arb exerciseItemSemantics)
+   */
+  exerciseCard: (translatedName: string, locale: 'en' | 'pt' = 'en') => {
+    const prefix = locale === 'pt' ? 'Exercício' : 'Exercise';
+    return `role=button[name*="${prefix}: ${translatedName}"]`;
+  },
+  /**
+   * Exercise picker "Add <translatedName>" / "Adicionar <translatedName>" button.
+   * Used in workout + routine exercise-picker flows.
+   *   en → "Add {name}"        (app_en.arb addExerciseSemantics)
+   *   pt → "Adicionar {name}"  (app_pt.arb addExerciseSemantics)
+   */
+  addExerciseButton: (translatedName: string, locale: 'en' | 'pt' = 'en') => {
+    const verb = locale === 'pt' ? 'Adicionar' : 'Add';
+    return `role=button[name*="${verb} ${translatedName}"]`;
+  },
+  /**
+   * Active workout exercise group — matches the tap-for-details AOM label.
+   * The prefix follows the same locale rule as exerciseCard.
+   */
+  exerciseDetailTap: (translatedName: string, locale: 'en' | 'pt' = 'en') => {
+    const prefix = locale === 'pt' ? 'Exercício' : 'Exercise';
+    return `role=group[name*="${prefix}: ${translatedName}"]`;
+  },
+} as const;
