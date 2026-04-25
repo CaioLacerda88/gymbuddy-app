@@ -15,6 +15,7 @@ class TestExerciseFactory {
     String? createdAt,
     String? description,
     String? formTips,
+    String? slug,
   }) {
     return {
       'id': id ?? 'exercise-001',
@@ -29,6 +30,10 @@ class TestExerciseFactory {
       'created_at': createdAt ?? '2026-01-01T00:00:00Z',
       'description': description,
       'form_tips': formTips,
+      // Phase 15f: slug is the join key for exercise_translations and is
+      // NOT NULL on the table. Default to a stable value for tests; override
+      // when a test needs a specific slug.
+      'slug': slug ?? 'bench_press',
     };
   }
 }
