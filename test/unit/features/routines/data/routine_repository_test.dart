@@ -169,32 +169,29 @@ void main() {
   });
 
   group('RoutineRepository._resolveExercises / _fetchExerciseMap', () {
-    test(
-      'returns routines with exercise=null when batch RPC returns empty '
-      '(BUG-005: exercises lookup unreachable or empty)',
-      () async {
-        final templateRow = TestRoutineFactory.create(
-          id: 'r-001',
-          exercises: [
-            TestRoutineExerciseFactory.create(exerciseId: 'ex-A'),
-            TestRoutineExerciseFactory.create(exerciseId: 'ex-B'),
-          ],
-        );
+    test('returns routines with exercise=null when batch RPC returns empty '
+        '(BUG-005: exercises lookup unreachable or empty)', () async {
+      final templateRow = TestRoutineFactory.create(
+        id: 'r-001',
+        exercises: [
+          TestRoutineExerciseFactory.create(exerciseId: 'ex-A'),
+          TestRoutineExerciseFactory.create(exerciseId: 'ex-B'),
+        ],
+      );
 
-        // Batch RPC returns nothing — repo must keep RoutineExercise.exercise
-        // null and not throw.
-        final bundle = _makeRepo(templates: [templateRow]);
+      // Batch RPC returns nothing — repo must keep RoutineExercise.exercise
+      // null and not throw.
+      final bundle = _makeRepo(templates: [templateRow]);
 
-        final routines = await bundle.repo.getRoutines(
-          userId: 'user-001',
-          locale: 'en',
-        );
+      final routines = await bundle.repo.getRoutines(
+        userId: 'user-001',
+        locale: 'en',
+      );
 
-        expect(routines, hasLength(1));
-        expect(routines[0].exercises[0].exercise, isNull);
-        expect(routines[0].exercises[1].exercise, isNull);
-      },
-    );
+      expect(routines, hasLength(1));
+      expect(routines[0].exercises[0].exercise, isNull);
+      expect(routines[0].exercises[1].exercise, isNull);
+    });
 
     test(
       'populates exercise references when batch RPC returns matching rows',
@@ -376,13 +373,15 @@ void main() {
 
         await bundle.repo.getRoutines(userId: 'user-xyz', locale: 'pt');
 
-        final captured = verify(
-          () => bundle.mockExerciseRepo.getExercisesByIds(
-            locale: 'pt',
-            userId: 'user-xyz',
-            ids: captureAny(named: 'ids'),
-          ),
-        ).captured.single as List<String>;
+        final captured =
+            verify(
+                  () => bundle.mockExerciseRepo.getExercisesByIds(
+                    locale: 'pt',
+                    userId: 'user-xyz',
+                    ids: captureAny(named: 'ids'),
+                  ),
+                ).captured.single
+                as List<String>;
 
         // IDs are deduped via a Set before forwarding.
         expect(captured.toSet(), {'ex-A', 'ex-B'});

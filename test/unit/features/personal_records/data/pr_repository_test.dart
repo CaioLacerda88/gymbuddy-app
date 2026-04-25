@@ -182,10 +182,7 @@ void main() {
   group('PRRepository.getRecentRecordsWithExercises', () {
     test('returns parsed list with exercise details from batch RPC', () async {
       final rows = <Map<String, dynamic>>[
-        TestPersonalRecordFactory.create(
-          id: 'pr-001',
-          exerciseId: 'ex-1',
-        ),
+        TestPersonalRecordFactory.create(id: 'pr-001', exerciseId: 'ex-1'),
         TestPersonalRecordFactory.create(
           id: 'pr-002',
           exerciseId: 'ex-2',
@@ -206,15 +203,17 @@ void main() {
           userId: 'user-001',
           ids: any(named: 'ids'),
         ),
-      ).thenAnswer((_) async => {
-            'ex-1': _ex(id: 'ex-1', name: 'Bench Press'),
-            'ex-2': _ex(id: 'ex-2', name: 'Squat'),
-            'ex-3': _ex(
-              id: 'ex-3',
-              name: 'Pull-up',
-              equipmentType: EquipmentType.bodyweight,
-            ),
-          });
+      ).thenAnswer(
+        (_) async => {
+          'ex-1': _ex(id: 'ex-1', name: 'Bench Press'),
+          'ex-2': _ex(id: 'ex-2', name: 'Squat'),
+          'ex-3': _ex(
+            id: 'ex-3',
+            name: 'Pull-up',
+            equipmentType: EquipmentType.bodyweight,
+          ),
+        },
+      );
 
       final fakeBuilder = FakePRQueryBuilder(data: rows);
       final repo = PRRepository(
@@ -327,9 +326,7 @@ void main() {
       'falls back to "Unknown Exercise" when exercise is missing from batch',
       () async {
         // PR row references ex-missing, but the batch RPC returns no entry for it.
-        final row = TestPersonalRecordFactory.create(
-          exerciseId: 'ex-missing',
-        );
+        final row = TestPersonalRecordFactory.create(exerciseId: 'ex-missing');
         final fakeBuilder = FakePRQueryBuilder(data: [row]);
         final repo = PRRepository(
           FakeSupabaseClient(fakeBuilder),
@@ -394,10 +391,12 @@ void main() {
             userId: 'user-001',
             ids: any(named: 'ids'),
           ),
-        ).thenAnswer((_) async => {
-              'ex-1': _ex(id: 'ex-1', name: 'A'),
-              'ex-2': _ex(id: 'ex-2', name: 'B'),
-            });
+        ).thenAnswer(
+          (_) async => {
+            'ex-1': _ex(id: 'ex-1', name: 'A'),
+            'ex-2': _ex(id: 'ex-2', name: 'B'),
+          },
+        );
 
         final fakeBuilder = FakePRQueryBuilder(data: rows);
         final repo = PRRepository(
@@ -411,13 +410,15 @@ void main() {
           locale: 'en',
         );
 
-        final captured = verify(
-          () => mockExerciseRepo.getExercisesByIds(
-            locale: 'en',
-            userId: 'user-001',
-            ids: captureAny(named: 'ids'),
-          ),
-        ).captured.single as List<String>;
+        final captured =
+            verify(
+                  () => mockExerciseRepo.getExercisesByIds(
+                    locale: 'en',
+                    userId: 'user-001',
+                    ids: captureAny(named: 'ids'),
+                  ),
+                ).captured.single
+                as List<String>;
 
         expect(captured.toSet(), {'ex-1', 'ex-2'});
       },

@@ -78,10 +78,7 @@ void main() {
         );
         final repo = RoutineRepository(client, cache, mockExerciseRepo);
 
-        final result = await repo.getRoutines(
-          userId: 'user-001',
-          locale: 'en',
-        );
+        final result = await repo.getRoutines(userId: 'user-001', locale: 'en');
 
         expect(result, hasLength(1));
         expect(result[0].name, 'Push Day');
@@ -92,13 +89,8 @@ void main() {
 
     test('cache key is locale-prefixed (`<userId>:<locale>`)', () async {
       // Online fetch with one routine — must write under the locale-prefixed key.
-      final templateRow = TestRoutineFactory.create(
-        id: 'r-1',
-        exercises: [],
-      );
-      final client = FakeSupabaseClient(
-        FakeQueryBuilder(data: [templateRow]),
-      );
+      final templateRow = TestRoutineFactory.create(id: 'r-1', exercises: []);
+      final client = FakeSupabaseClient(FakeQueryBuilder(data: [templateRow]));
       final repo = RoutineRepository(client, cache, mockExerciseRepo);
 
       await repo.getRoutines(userId: 'user-001', locale: 'en');
@@ -162,10 +154,7 @@ void main() {
         );
         final repo = RoutineRepository(client, cache, mockExerciseRepo);
 
-        final result = await repo.getRoutines(
-          userId: 'user-001',
-          locale: 'en',
-        );
+        final result = await repo.getRoutines(userId: 'user-001', locale: 'en');
 
         expect(result, hasLength(1));
         expect(result[0].exercises[0].exercise?.name, 'Squat');
@@ -204,10 +193,7 @@ void main() {
         );
         final repo = RoutineRepository(client, cache, mockExerciseRepo);
 
-        final result = await repo.getRoutines(
-          userId: 'user-001',
-          locale: 'en',
-        );
+        final result = await repo.getRoutines(userId: 'user-001', locale: 'en');
 
         expect(result, hasLength(1));
         expect(result[0].name, 'Empty Routine');
@@ -233,14 +219,13 @@ void main() {
             userId: 'user-001',
             ids: any(named: 'ids'),
           ),
-        ).thenAnswer((_) async => {
-              'ex-w': Exercise.fromJson(
-                TestExerciseFactory.create(
-                  id: 'ex-w',
-                  name: 'Written Exercise',
-                ),
-              ),
-            });
+        ).thenAnswer(
+          (_) async => {
+            'ex-w': Exercise.fromJson(
+              TestExerciseFactory.create(id: 'ex-w', name: 'Written Exercise'),
+            ),
+          },
+        );
 
         // First call: network succeeds — repo writes cache.
         final onlineClient = FakeSupabaseClient(

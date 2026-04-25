@@ -135,10 +135,7 @@ class PRRepository extends BaseRepository {
       })
     >
   >
-  getRecordsWithExercises({
-    required String userId,
-    required String locale,
-  }) {
+  getRecordsWithExercises({required String userId, required String locale}) {
     return mapException(() async {
       final data = await _records
           .select()

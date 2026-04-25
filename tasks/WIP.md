@@ -58,9 +58,11 @@ Active work being done by agents. Each section is removed once the branch is mer
   - [x] `WorkoutRepository` two-query merge + unit tests (commit `c90e0a7`)
   - [x] `PRRepository` two-query merge + unit tests (commit `d0bf630`)
   - [x] `RoutineRepository` two-query merge + unit tests (commit `ca16d6a`)
-  - [x] `LocaleNotifier.setLocale` / `reconcileWithRemote` clear 4 locale-affected caches before state flip + remote sync (6 new tests; full suite 1771 green)
-  - [ ] `exercise_l10n.dart` dead code deletion
-  - [ ] `exerciseName_*` ARB key deletion + `flutter gen-l10n`
+  - [x] `LocaleNotifier.setLocale` / `reconcileWithRemote` clear 4 locale-affected caches before state flip + remote sync (6 new tests; full suite 1771 green; commit `aac4758`)
+  - [x] `exercise_l10n.dart` dead code deletion (deleted `_exerciseNames` map, all 150 `_ex*` getters, `localizedExerciseName()`; kept `exerciseSlug` + routine helpers)
+  - [x] `exerciseName_*` ARB key deletion (300 keys total) + `flutter gen-l10n`; generated AppLocalizations confirms zero `exerciseName_` getters
+  - [x] Step 10 grep invariants: `localizedExerciseName`, `_exerciseNames`, `exerciseName_` all 0 occurrences in `lib/`; `exercises(name` and `exercise:exercises` only in explanatory comments
+  - [x] Final verification gate: `dart format` clean, `dart analyze --fatal-infos` 0 issues across entire repo, `flutter test` 1767/1767 green
   - [ ] Reviews pass
 - [ ] **Stage 7** — Widget + E2E (qa-engineer)
   - [ ] `EXERCISE_NAMES` map in `test/e2e/fixtures/test-exercises.ts`

@@ -76,10 +76,10 @@ void main() {
         );
         when(
           () => mockRepo.getExerciseById(
-        locale: 'en',
-        userId: 'user-001',
-        id: 'exercise-001',
-      ),
+            locale: 'en',
+            userId: 'user-001',
+            id: 'exercise-001',
+          ),
         ).thenAnswer((_) async => exercise);
 
         await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
@@ -101,10 +101,10 @@ void main() {
       );
       when(
         () => mockRepo.getExerciseById(
-        locale: 'en',
-        userId: 'user-001',
-        id: 'exercise-001',
-      ),
+          locale: 'en',
+          userId: 'user-001',
+          id: 'exercise-001',
+        ),
       ).thenAnswer((_) async => exercise);
 
       await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
@@ -123,10 +123,10 @@ void main() {
       );
       when(
         () => mockRepo.getExerciseById(
-        locale: 'en',
-        userId: 'user-001',
-        id: 'exercise-001',
-      ),
+          locale: 'en',
+          userId: 'user-001',
+          id: 'exercise-001',
+        ),
       ).thenAnswer((_) async => exercise);
 
       await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
@@ -143,10 +143,10 @@ void main() {
       final exercise = Exercise.fromJson(TestExerciseFactory.create());
       when(
         () => mockRepo.getExerciseById(
-        locale: 'en',
-        userId: 'user-001',
-        id: 'exercise-001',
-      ),
+          locale: 'en',
+          userId: 'user-001',
+          id: 'exercise-001',
+        ),
       ).thenAnswer((_) async => exercise);
 
       await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
@@ -169,10 +169,10 @@ void main() {
       );
       when(
         () => mockRepo.getExerciseById(
-        locale: 'en',
-        userId: 'user-001',
-        id: 'exercise-001',
-      ),
+          locale: 'en',
+          userId: 'user-001',
+          id: 'exercise-001',
+        ),
       ).thenAnswer((_) async => exercise);
 
       await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
@@ -197,10 +197,10 @@ void main() {
       );
       when(
         () => mockRepo.getExerciseById(
-        locale: 'en',
-        userId: 'user-001',
-        id: 'exercise-001',
-      ),
+          locale: 'en',
+          userId: 'user-001',
+          id: 'exercise-001',
+        ),
       ).thenAnswer((_) async => exercise);
 
       await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
@@ -232,10 +232,10 @@ void main() {
       );
       when(
         () => mockRepo.getExerciseById(
-        locale: 'en',
-        userId: 'user-001',
-        id: 'exercise-001',
-      ),
+          locale: 'en',
+          userId: 'user-001',
+          id: 'exercise-001',
+        ),
       ).thenAnswer((_) async => exercise);
 
       await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
@@ -269,10 +269,10 @@ void main() {
       final completer = Completer<Exercise>();
       when(
         () => mockRepo.getExerciseById(
-        locale: 'en',
-        userId: 'user-001',
-        id: 'exercise-001',
-      ),
+          locale: 'en',
+          userId: 'user-001',
+          id: 'exercise-001',
+        ),
       ).thenAnswer((_) => completer.future);
 
       await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
@@ -290,10 +290,10 @@ void main() {
     ) async {
       when(
         () => mockRepo.getExerciseById(
-        locale: 'en',
-        userId: 'user-001',
-        id: 'exercise-001',
-      ),
+          locale: 'en',
+          userId: 'user-001',
+          id: 'exercise-001',
+        ),
       ).thenAnswer((_) async => throw Exception('Network error'));
 
       await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
@@ -313,10 +313,10 @@ void main() {
       );
       when(
         () => mockRepo.getExerciseById(
-        locale: 'en',
-        userId: 'user-001',
-        id: 'exercise-001',
-      ),
+          locale: 'en',
+          userId: 'user-001',
+          id: 'exercise-001',
+        ),
       ).thenAnswer((_) async => exercise);
 
       await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
@@ -344,10 +344,10 @@ void main() {
       );
       when(
         () => mockRepo.getExerciseById(
-        locale: 'en',
-        userId: 'user-001',
-        id: 'exercise-001',
-      ),
+          locale: 'en',
+          userId: 'user-001',
+          id: 'exercise-001',
+        ),
       ).thenAnswer((_) async => exercise);
 
       await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
@@ -364,10 +364,10 @@ void main() {
       final exercise = Exercise.fromJson(TestExerciseFactory.create());
       when(
         () => mockRepo.getExerciseById(
-        locale: 'en',
-        userId: 'user-001',
-        id: 'exercise-001',
-      ),
+          locale: 'en',
+          userId: 'user-001',
+          id: 'exercise-001',
+        ),
       ).thenAnswer((_) async => exercise);
 
       await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
@@ -386,10 +386,10 @@ void main() {
       );
       when(
         () => mockRepo.getExerciseById(
-        locale: 'en',
-        userId: 'user-001',
-        id: 'exercise-001',
-      ),
+          locale: 'en',
+          userId: 'user-001',
+          id: 'exercise-001',
+        ),
       ).thenAnswer((_) async => exercise);
 
       await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
@@ -406,10 +406,10 @@ void main() {
       final exercise = Exercise.fromJson(TestExerciseFactory.create());
       when(
         () => mockRepo.getExerciseById(
-        locale: 'en',
-        userId: 'user-001',
-        id: 'exercise-001',
-      ),
+          locale: 'en',
+          userId: 'user-001',
+          id: 'exercise-001',
+        ),
       ).thenAnswer((_) async => exercise);
 
       await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
@@ -429,10 +429,10 @@ void main() {
         );
         when(
           () => mockRepo.getExerciseById(
-        locale: 'en',
-        userId: 'user-001',
-        id: 'exercise-001',
-      ),
+            locale: 'en',
+            userId: 'user-001',
+            id: 'exercise-001',
+          ),
         ).thenAnswer((_) async => exercise);
 
         await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
@@ -453,10 +453,10 @@ void main() {
         );
         when(
           () => mockRepo.getExerciseById(
-        locale: 'en',
-        userId: 'user-001',
-        id: 'exercise-001',
-      ),
+            locale: 'en',
+            userId: 'user-001',
+            id: 'exercise-001',
+          ),
         ).thenAnswer((_) async => exercise);
 
         await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
@@ -478,10 +478,10 @@ void main() {
       );
       when(
         () => mockRepo.getExerciseById(
-        locale: 'en',
-        userId: 'user-001',
-        id: 'exercise-001',
-      ),
+          locale: 'en',
+          userId: 'user-001',
+          id: 'exercise-001',
+        ),
       ).thenAnswer((_) async => exercise);
 
       await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
@@ -506,10 +506,10 @@ void main() {
         );
         when(
           () => mockRepo.getExerciseById(
-        locale: 'en',
-        userId: 'user-001',
-        id: 'exercise-001',
-      ),
+            locale: 'en',
+            userId: 'user-001',
+            id: 'exercise-001',
+          ),
         ).thenAnswer((_) async => exercise);
 
         await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
@@ -538,10 +538,10 @@ void main() {
       );
       when(
         () => mockRepo.getExerciseById(
-        locale: 'en',
-        userId: 'user-001',
-        id: 'exercise-001',
-      ),
+          locale: 'en',
+          userId: 'user-001',
+          id: 'exercise-001',
+        ),
       ).thenAnswer((_) async => exercise);
 
       await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
@@ -571,10 +571,10 @@ void main() {
         );
         when(
           () => mockRepo.getExerciseById(
-        locale: 'en',
-        userId: 'user-001',
-        id: 'exercise-001',
-      ),
+            locale: 'en',
+            userId: 'user-001',
+            id: 'exercise-001',
+          ),
         ).thenAnswer((_) async => exercise);
 
         await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
@@ -598,10 +598,10 @@ void main() {
       final exercise = Exercise.fromJson(TestExerciseFactory.create());
       when(
         () => mockRepo.getExerciseById(
-        locale: 'en',
-        userId: 'user-001',
-        id: 'exercise-001',
-      ),
+          locale: 'en',
+          userId: 'user-001',
+          id: 'exercise-001',
+        ),
       ).thenAnswer((_) async => exercise);
 
       await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
@@ -631,10 +631,10 @@ void main() {
         );
         when(
           () => mockRepo.getExerciseById(
-        locale: 'en',
-        userId: 'user-001',
-        id: 'exercise-001',
-      ),
+            locale: 'en',
+            userId: 'user-001',
+            id: 'exercise-001',
+          ),
         ).thenAnswer((_) async => withoutDesc);
 
         await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
@@ -675,10 +675,10 @@ void main() {
         );
         when(
           () => mockRepo.getExerciseById(
-        locale: 'en',
-        userId: 'user-001',
-        id: 'exercise-001',
-      ),
+            locale: 'en',
+            userId: 'user-001',
+            id: 'exercise-001',
+          ),
         ).thenAnswer((_) async => withDesc);
 
         await tester.pumpWidget(buildTestWidget(exerciseId: 'exercise-001'));
