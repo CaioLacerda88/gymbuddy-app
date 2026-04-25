@@ -23,17 +23,19 @@ Active work being done by agents. Each section is removed once the branch is mer
 - [x] **Stage 2** — pt-BR glossary (human-gated) ✅
   - [x] `docs/superpowers/specs/phase15f-pt-glossary.md` drafted (commit 3d80fa7)
   - [x] User approval recorded 2026-04-24
-- [ ] **Stage 3** — pt-BR seed migration (tech-lead) — IN PROGRESS
-  - [ ] Read EN content sources (00010 + 00020) and ARB names (`app_pt.arb`)
-  - [ ] Draft 150 pt-BR `(name, description, form_tips)` tuples per glossary §1 + §5
-  - [ ] Write `supabase/migrations/00033_seed_exercise_translations_pt.sql`
-  - [ ] Verify locally: `supabase db reset` clean; pt count = 150; spot-check 5 rows
-  - [ ] `dart format . && dart analyze --fatal-infos && flutter test` clean
-  - [ ] Commit `feat(15f): Stage 3 — pt-BR seed for 150 default exercises`
-  - [ ] Reviews pass
+- [x] **Stage 3** — pt-BR seed migration (tech-lead) ✅
+  - [x] Read EN content sources (00010 + 00020) and ARB names (`app_pt.arb`)
+  - [x] Draft 150 pt-BR `(name, description, form_tips)` tuples per glossary §1 + §5
+  - [x] Write `supabase/migrations/00033_seed_exercise_translations_pt.sql`
+  - [x] Verify locally: `supabase db reset` clean; pt count = 150; spot-check 5 rows
+  - [x] Spec compliance review pass (Critical box_jump conflict + typo fixed in `a14f424`)
+  - [x] Code quality review pass (Important assert tightening + Nit JOIN reorder fixed in `8b5bd11`)
+  - [x] Commits: `8f6da7c` initial, `a14f424` spec fixes, `8b5bd11` quality fixes
 - [ ] **Stage 4** — RPCs + column drop (tech-lead)
-  - [ ] `supabase/migrations/00034_drop_exercise_name_columns_and_add_rpcs.sql`
-  - [ ] `scripts/emergency_rollback_15f.sql`
+  - [x] `supabase/migrations/00034_drop_exercise_name_columns_and_add_rpcs.sql`
+  - [x] `scripts/emergency_rollback_15f.sql`
+  - [x] Local sanity: db reset clean; 4 RPCs present; 150 default exercises returned; pt/en cascade verified; auth/dup/cap edge cases raise correct SQLSTATEs
+  - [x] Rollback round-trip verified (apply → rollback → re-apply clean; 151 rows restored without NULL)
   - [ ] Reviews pass
 - [ ] **Stage 5** — CI translation coverage (tech-lead)
   - [ ] `scripts/check_exercise_translation_coverage.sh` + fixtures
@@ -60,7 +62,7 @@ Active work being done by agents. Each section is removed once the branch is mer
   - [ ] Migrations applied to staging
   - [ ] Invariant queries zero; outputs in PR body
   - [ ] Full E2E on staging
-  - [ ] Human pt-BR reviewer skim of 94 rows
+  - [ ] Human pt-BR reviewer skim of 150 rows
   - [ ] Rollback script dry-run on staging clone
   - [ ] Reviewer agent pass
   - [ ] Squash-merge
