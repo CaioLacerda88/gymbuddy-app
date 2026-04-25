@@ -39,8 +39,7 @@ BEGIN;
 
 INSERT INTO exercise_translations (exercise_id, locale, name, description, form_tips)
 SELECT e.id, 'pt', v.name, v.description, v.form_tips
-FROM exercises e
-JOIN (VALUES
+FROM (VALUES
 
   -- =========================================================================
   -- CHEST (18) — 9 from 00007 + 3 from 00014 + 6 from 00019
@@ -829,8 +828,7 @@ JOIN (VALUES
     E'Suba com os dois pés firmes e segure as alças móveis.\nEmpurre com as pernas e puxe-empurre com os braços ao mesmo tempo.\nMantenha o tronco ereto — sem se debruçar sobre o painel.\nInverta o sentido de tempos em tempos para alternar os músculos.')
 
 ) AS v(slug, name, description, form_tips)
-ON e.slug = v.slug
-WHERE e.is_default = true;
+JOIN exercises e ON e.slug = v.slug AND e.is_default = true;
 
 -- Hard assert: every default exercise has a pt-BR translation row.
 -- If the count diverges, a slug below is missing or misspelled vs.
@@ -841,8 +839,10 @@ DECLARE
   default_count INT;
 BEGIN
   SELECT COUNT(*) INTO pt_count
-    FROM exercise_translations
-    WHERE locale = 'pt';
+    FROM exercise_translations et
+    JOIN exercises e ON e.id = et.exercise_id
+    WHERE et.locale = 'pt'
+      AND e.is_default = true;
   SELECT COUNT(*) INTO default_count
     FROM exercises
     WHERE is_default = true;
