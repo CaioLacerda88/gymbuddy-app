@@ -57,8 +57,8 @@ Active work being done by agents. Each section is removed once the branch is mer
   - [x] `ExerciseRepository` rewrite + unit tests (commit `35a437e`)
   - [x] `WorkoutRepository` two-query merge + unit tests (commit `c90e0a7`)
   - [x] `PRRepository` two-query merge + unit tests (commit `d0bf630`)
-  - [x] `RoutineRepository` two-query merge + unit tests (uncommitted; tests green, analyze: 0 issues)
-  - [ ] Locale-keyed Hive cache + `LocaleNotifier.setLocale` cache-clear
+  - [x] `RoutineRepository` two-query merge + unit tests (commit `ca16d6a`)
+  - [x] `LocaleNotifier.setLocale` / `reconcileWithRemote` clear 4 locale-affected caches before state flip + remote sync (6 new tests; full suite 1771 green)
   - [ ] `exercise_l10n.dart` dead code deletion
   - [ ] `exerciseName_*` ARB key deletion + `flutter gen-l10n`
   - [ ] Reviews pass

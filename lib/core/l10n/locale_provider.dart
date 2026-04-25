@@ -6,9 +6,21 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../features/auth/providers/auth_providers.dart';
 import '../../features/profile/providers/profile_providers.dart';
+import '../local_storage/cache_service.dart';
 import '../local_storage/hive_service.dart';
 
 const _hiveKey = 'locale';
+
+/// Hive boxes that store locale-dependent data and must be evicted whenever
+/// the user switches locales. Keeping cached pt content visible after a
+/// switch to en (or vice-versa) would corrupt the UX, so we wipe these
+/// boxes synchronously before the new locale propagates to repositories.
+const _localeAffectedBoxes = <String>[
+  HiveService.exerciseCache,
+  HiveService.routineCache,
+  HiveService.prCache,
+  HiveService.workoutHistoryCache,
+];
 
 class LocaleNotifier extends Notifier<Locale> {
   @override
@@ -19,8 +31,20 @@ class LocaleNotifier extends Notifier<Locale> {
   }
 
   Future<void> setLocale(Locale locale) async {
+    if (locale.languageCode == state.languageCode) {
+      // No-op: avoids needless cache wipes when callers re-emit the
+      // current locale (e.g., reconcileWithRemote handing the same value).
+      return;
+    }
+
     final box = Hive.box(HiveService.userPrefs);
     await box.put(_hiveKey, locale.languageCode);
+
+    // Evict locale-affected caches BEFORE flipping state and BEFORE
+    // _syncToRemote so that the next provider rebuild reads from the
+    // network under the new locale instead of stale cached payloads.
+    await _clearLocaleAffectedCaches();
+
     state = locale;
 
     _syncToRemote(locale.languageCode);
@@ -32,7 +56,19 @@ class LocaleNotifier extends Notifier<Locale> {
 
     final box = Hive.box(HiveService.userPrefs);
     await box.put(_hiveKey, remoteCode);
+
+    // Same eviction discipline as setLocale: clear before state flip so
+    // listeners that rebuild on the new locale don't read pre-switch data.
+    await _clearLocaleAffectedCaches();
+
     state = Locale(remoteCode);
+  }
+
+  Future<void> _clearLocaleAffectedCaches() async {
+    final cache = ref.read(cacheServiceProvider);
+    for (final boxName in _localeAffectedBoxes) {
+      await cache.clearBox(boxName);
+    }
   }
 
   void _syncToRemote(String languageCode) {
