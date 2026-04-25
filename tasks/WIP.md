@@ -92,12 +92,17 @@ Active work being done by agents. Each section is removed once the branch is mer
     - **N3 _StubLocaleNotifier duplication** — extracted shared `test/helpers/stub_locale_notifier.dart` consumed by all 6 test files
   - [x] Final verification: `dart format` (1 auto-format), `dart analyze --fatal-infos` (No issues found), `flutter test` (1786/1786 green), full Playwright (183/183)
 - [ ] **Stage 8** — Staging verify + review + merge
-  - [ ] Migrations applied to staging
-  - [ ] Invariant queries zero; outputs in PR body
-  - [ ] Full E2E on staging
-  - [ ] Human pt-BR reviewer skim of 150 rows
-  - [ ] Rollback script dry-run on staging clone
-  - [ ] Reviewer agent pass
+  - [x] Migrations applied to local staging (00030-00034 clean apply)
+  - [x] Invariant queries zero on staging (4/4: orphaned exercises, default missing en, default missing pt, orphaned translations all 0)
+  - [x] Full E2E on staging (smoke 89/89, full 183/183)
+  - [x] Rollback script dry-run on staging (apply → rollback → re-apply → 4 invariants 0/0/0/0)
+  - [x] Code quality review pass — 1 Important + 3 Nits all addressed in `refactor(15f): Stage 8 review fixes`:
+    - **I1 rollback non-idempotent** — original rollback `CREATE OR REPLACE FUNCTION` left the trigger object behind, blocking re-apply on `CREATE TRIGGER`; replaced with `DROP TRIGGER + DROP FUNCTION` matching genuine pre-15f state. Also restored legacy `idx_exercises_unique_name` composite unique index (from 00006) and 3 CHECK constraints (from 00021: name<=100, description<=500, form_tips<=2000) that 00034 STEP D dropped.
+    - **N1 cache key drift** — `exercise_repository.dart:253` `getExercisesByIds` was passing unsorted `ids` to RPC while keying cache on `sortedIds`; aligned to `sortedIds` for both.
+    - **N2 tautological load-gate** — `exercises-localization.spec.ts:53-58` A1's `.or()` fallback always satisfied the broad gate before specific card render; split into broad `role=button[name*="Exercício:"]` wait + specific `EXERCISE_LOC.exerciseCard` post-search assertion.
+    - **N3 PR card AOM merge** — Stage 7 carryover already shipped: `prs-localization.spec.ts` now uses `role=group[name*="..."]` selectors instead of `text=...` (Semantics container merges children into parent label).
+  - [x] Final verification: `dart format` (no changes), `dart analyze --fatal-infos` (No issues found), `flutter test` (1786/1786 green), `flutter build web` (95.6s), Playwright smoke (89/89, 9.6m), Playwright full (183/183, 21.2m), rollback round-trip (apply → rollback → 7 pre-15f invariants pass → re-apply 5 migrations clean → 4 forward invariants 0/0/0/0)
+  - [ ] Human pt-BR reviewer skim of 150 rows (mandatory per spec §14.8)
   - [ ] Squash-merge
 - [ ] **Stage 9** — Prod cut-over
   - [ ] `npx supabase db push` to hosted

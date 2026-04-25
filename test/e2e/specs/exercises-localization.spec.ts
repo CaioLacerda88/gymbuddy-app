@@ -51,10 +51,12 @@ test.describe('Exercise list localization', { tag: '@smoke' }, () => {
     const ptBenchName = EXERCISE_NAMES.barbell_bench_press.pt;
     const enBenchName = EXERCISE_NAMES.barbell_bench_press.en;
 
+    // Broad load-gate: at least one pt-localized exercise card must render.
+    // Specific card assertion comes after the search below — splitting these
+    // avoids a tautological `.or()` where the broad fallback always satisfies
+    // the gate before the specific card has had a chance to load.
     await expect(
-      page.locator(EXERCISE_LOC.exerciseCard(ptBenchName, 'pt')).or(
-        page.locator('role=button[name*="Exercício:"]'),
-      ).first(),
+      page.locator('role=button[name*="Exercício:"]').first(),
     ).toBeVisible({ timeout: 15_000 });
 
     // Search for the pt name of Barbell Bench Press ("Supino" — starts with S,

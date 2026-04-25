@@ -250,7 +250,7 @@ class ExerciseRepository extends BaseRepository {
             'p_user_id': userId,
             'p_muscle_group': null,
             'p_equipment_type': null,
-            'p_ids': ids,
+            'p_ids': sortedIds,
             'p_order': 'name',
           },
         );
