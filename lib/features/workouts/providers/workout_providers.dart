@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/local_storage/cache_service.dart';
+import '../../exercises/providers/exercise_providers.dart';
 import '../data/workout_local_storage.dart';
 import '../data/workout_repository.dart';
 import '../models/exercise_set.dart';
@@ -10,10 +11,14 @@ export 'notifiers/active_workout_notifier.dart';
 export 'notifiers/rest_timer_notifier.dart';
 
 /// Provides the [WorkoutRepository] singleton.
+///
+/// Stage 6: depends on [exerciseRepositoryProvider] so workout reads can
+/// resolve localized exercise names via the batch RPC.
 final workoutRepositoryProvider = Provider<WorkoutRepository>((ref) {
   return WorkoutRepository(
     Supabase.instance.client,
     ref.watch(cacheServiceProvider),
+    ref.watch(exerciseRepositoryProvider),
   );
 });
 

@@ -39,21 +39,23 @@ Active work being done by agents. Each section is removed once the branch is mer
   - [x] Spec compliance review pass (all 4 RPCs match §6 contract; rollback verbatim §16)
   - [x] Code quality review pass (8 findings fixed in `deba93e`: search_path hardening, full-arglist DROP FUNCTION, LATERAL JOIN cascade refactor, CASE-on-NULL enum casts, error message alignment)
   - [x] Commits: `5835474` initial, `deba93e` review fixes
-- [ ] **Stage 5** — CI translation coverage (tech-lead) — IMPLEMENTATION DONE, awaiting reviews
+- [x] **Stage 5** — CI translation coverage (tech-lead) ✅
   - [x] `scripts/check_exercise_translation_coverage.sh` (replaces old pairing check)
   - [x] `scripts/fixtures/fixture_complete.sql` (pass case)
   - [x] `scripts/fixtures/fixture_pt_missing.sql` (fail case)
+  - [x] `scripts/fixtures/fixture_semicolon_in_literal.sql` (adversarial regression: `;` inside string literal)
   - [x] `scripts/verify_prod_translation_invariants.sh` (manual healthcheck — verified PASS against local docker DB)
   - [x] `.github/workflows/ci.yml` job rename + needs: update
   - [x] `CLAUDE.md` rule section updated
   - [x] `git rm scripts/check_exercise_content_pairing.sh`
-  - [x] Self-test passes; real PR diff passes (150 slugs); format + analyze green
-  - [ ] Spec compliance review pass
-  - [ ] Code quality review pass
+  - [x] Self-test passes (3 fixtures); real PR diff passes (150 slugs); format + analyze green
+  - [x] Spec compliance review pass
+  - [x] Code quality review pass (5 findings fixed in `8cbdf97`: quote-aware `has_terminator()` helper, FROM exercises boundary regex, psql stderr capture via mktemp, inserter_files banner gate, adversarial fixture)
+  - [x] Commits: `fb48915` initial, `8cbdf97` review fixes
 - [ ] **Stage 6** — Data layer refactor (tech-lead)
-  - [ ] `test/fixtures/rpc_fakes.dart`
-  - [ ] `ExerciseRepository` rewrite + unit tests
-  - [ ] `WorkoutRepository` two-query merge + unit tests
+  - [x] `test/fixtures/rpc_fakes.dart` (commit `8d5d2a4`)
+  - [x] `ExerciseRepository` rewrite + unit tests (commit `35a437e`)
+  - [x] `WorkoutRepository` two-query merge + unit tests (uncommitted; tests green, analyze clean except expected Step-5 cache_refresh_provider)
   - [ ] `PRRepository` two-query merge + unit tests
   - [ ] `RoutineRepository` two-query merge + unit tests
   - [ ] Locale-keyed Hive cache + `LocaleNotifier.setLocale` cache-clear

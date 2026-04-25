@@ -1,20 +1,31 @@
+// Phase 15f Stage 6: history cache keys are now `'<userId>:<locale>'` and
+// the repo resolves localized exercise names via a follow-up batch RPC on
+// `ExerciseRepository.getExercisesByIds`. Tests stub that with mocktail and
+// pass `locale: 'en'` everywhere unless verifying multi-locale isolation.
+
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hive/hive.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:repsaga/core/local_storage/cache_service.dart';
 import 'package:repsaga/core/local_storage/hive_service.dart';
+import 'package:repsaga/features/exercises/data/exercise_repository.dart';
+import 'package:repsaga/features/exercises/models/exercise.dart';
 import 'package:repsaga/features/workouts/data/workout_repository.dart';
-import 'package:hive/hive.dart';
 
 import '../../../../fixtures/test_factories.dart';
 import '../../../_helpers/fake_supabase.dart';
+
+class _MockExerciseRepository extends Mock implements ExerciseRepository {}
 
 void main() {
   late Directory tempDir;
   late CacheService cache;
   late Box<dynamic> historyBox;
   late Box<dynamic> lastSetsBox;
+  late _MockExerciseRepository mockExerciseRepo;
 
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('workout_cache_test_');
@@ -22,6 +33,16 @@ void main() {
     historyBox = await Hive.openBox<dynamic>(HiveService.workoutHistoryCache);
     lastSetsBox = await Hive.openBox<dynamic>(HiveService.lastSetsCache);
     cache = const CacheService();
+    mockExerciseRepo = _MockExerciseRepository();
+    // Default: batch returns an empty map — fine for tests that only check
+    // workout shape / cache plumbing without asserting on exercise summaries.
+    when(
+      () => mockExerciseRepo.getExercisesByIds(
+        locale: any(named: 'locale'),
+        userId: any(named: 'userId'),
+        ids: any(named: 'ids'),
+      ),
+    ).thenAnswer((_) async => <String, Exercise>{});
   });
 
   tearDown(() async {
@@ -34,23 +55,53 @@ void main() {
     // pass"). Default UI fetches (limit=20) intentionally skip the cache to
     // avoid a small fetch overwriting a richer 50-item cache entry.
 
+    test('cache key is locale-prefixed (`<userId>:<locale>`)', () async {
+      final workoutData = [
+        {
+          ...TestWorkoutFactory.create(id: 'w-1'),
+          'workout_exercises': <dynamic>[],
+        },
+      ];
+      final client = FakeSupabaseClient(FakeQueryBuilder(data: workoutData));
+      final repo = WorkoutRepository(client, cache, mockExerciseRepo);
+
+      await repo.getWorkoutHistory('user-001', locale: 'en', limit: 50);
+
+      // Cache key now includes the locale.
+      expect(
+        historyBox.get('user-001:en'),
+        isNotNull,
+        reason: 'cache key must be `<userId>:<locale>`',
+      );
+      expect(
+        historyBox.get('user-001'),
+        isNull,
+        reason: 'legacy key without locale must not be written',
+      );
+    });
+
     test('cache preserves exerciseSummary through roundtrip', () async {
-      // Pre-populate cache with a workout that has _exercise_summary.
+      // Pre-populate cache with a workout that has _exercise_summary, under
+      // the locale-prefixed key.
       final workoutJson = TestWorkoutFactory.create(
         id: 'w-1',
         name: 'Push Day',
       );
       workoutJson['_exercise_summary'] = 'Bench Press, Squat';
-      await historyBox.put('user-001', jsonEncode([workoutJson]));
+      await historyBox.put('user-001:en', jsonEncode([workoutJson]));
 
       // Create repo with a failing client to force cache read.
       final client = FakeSupabaseClient(
         FakeQueryBuilder(error: Exception('offline')),
       );
-      final repo = WorkoutRepository(client, cache);
+      final repo = WorkoutRepository(client, cache, mockExerciseRepo);
 
       // Must use limit >= 50 to trigger the cache path.
-      final result = await repo.getWorkoutHistory('user-001', limit: 50);
+      final result = await repo.getWorkoutHistory(
+        'user-001',
+        locale: 'en',
+        limit: 50,
+      );
 
       expect(result, hasLength(1));
       expect(result[0].id, 'w-1');
@@ -65,12 +116,12 @@ void main() {
         },
       ];
       final client = FakeSupabaseClient(FakeQueryBuilder(data: workoutData));
-      final repo = WorkoutRepository(client, cache);
+      final repo = WorkoutRepository(client, cache, mockExerciseRepo);
 
       // Default limit (20) — must NOT write to cache.
-      await repo.getWorkoutHistory('user-001');
+      await repo.getWorkoutHistory('user-001', locale: 'en');
 
-      final raw = historyBox.get('user-001');
+      final raw = historyBox.get('user-001:en');
       expect(raw, isNull, reason: 'limit < 50 must not write to cache');
     });
 
@@ -82,40 +133,67 @@ void main() {
         },
       ];
       final client = FakeSupabaseClient(FakeQueryBuilder(data: workoutData));
-      final repo = WorkoutRepository(client, cache);
+      final repo = WorkoutRepository(client, cache, mockExerciseRepo);
 
       // offset > 0 — must NOT cache even with limit >= 50.
-      await repo.getWorkoutHistory('user-001', limit: 50, offset: 5);
+      await repo.getWorkoutHistory(
+        'user-001',
+        locale: 'en',
+        limit: 50,
+        offset: 5,
+      );
 
-      final raw = historyBox.get('user-001');
+      final raw = historyBox.get('user-001:en');
       expect(raw, isNull, reason: 'offset > 0 must not write to cache');
     });
 
     test('network failure returns cached data (limit >= 50)', () async {
       final workoutJson = TestWorkoutFactory.create(id: 'w-cached');
-      await historyBox.put('user-001', jsonEncode([workoutJson]));
+      await historyBox.put('user-001:en', jsonEncode([workoutJson]));
 
       final client = FakeSupabaseClient(
         FakeQueryBuilder(error: Exception('offline')),
       );
-      final repo = WorkoutRepository(client, cache);
+      final repo = WorkoutRepository(client, cache, mockExerciseRepo);
 
       // Must use limit >= 50 to trigger the cache path.
-      final result = await repo.getWorkoutHistory('user-001', limit: 50);
+      final result = await repo.getWorkoutHistory(
+        'user-001',
+        locale: 'en',
+        limit: 50,
+      );
 
       expect(result, hasLength(1));
       expect(result[0].id, 'w-cached');
+    });
+
+    test('en cache does not satisfy pt request', () async {
+      // Seed only the en cache.
+      final workoutJson = TestWorkoutFactory.create(id: 'w-en-only');
+      await historyBox.put('user-001:en', jsonEncode([workoutJson]));
+
+      // Network fails — pt request must NOT pick up en-cached data.
+      final client = FakeSupabaseClient(
+        FakeQueryBuilder(error: Exception('offline')),
+      );
+      final repo = WorkoutRepository(client, cache, mockExerciseRepo);
+
+      await expectLater(
+        repo.getWorkoutHistory('user-001', locale: 'pt', limit: 50),
+        throwsA(isA<Exception>()),
+        reason: 'pt request must not pick up en-cached data',
+      );
     });
 
     test('rethrows when no cache and network fails', () async {
       final client = FakeSupabaseClient(
         FakeQueryBuilder(error: Exception('offline')),
       );
-      final repo = WorkoutRepository(client, cache);
+      final repo = WorkoutRepository(client, cache, mockExerciseRepo);
 
       // With limit >= 50, cache is checked but empty → must rethrow.
       await expectLater(
-        repo.getWorkoutHistory('user-001', limit: 50),
+        repo.getWorkoutHistory('user-001', locale: 'en', limit: 50),
         throwsA(isA<Exception>()),
       );
     });
@@ -126,11 +204,11 @@ void main() {
         final client = FakeSupabaseClient(
           FakeQueryBuilder(error: Exception('offline')),
         );
-        final repo = WorkoutRepository(client, cache);
+        final repo = WorkoutRepository(client, cache, mockExerciseRepo);
 
         // Default limit (20) — cache is bypassed entirely, error always propagates.
         await expectLater(
-          repo.getWorkoutHistory('user-001'),
+          repo.getWorkoutHistory('user-001', locale: 'en'),
           throwsA(isA<Exception>()),
         );
       },
@@ -152,7 +230,8 @@ void main() {
         await WorkoutRepository(
           onlineClient,
           cache,
-        ).getWorkoutHistory('user-001', limit: 50);
+          mockExerciseRepo,
+        ).getWorkoutHistory('user-001', locale: 'en', limit: 50);
 
         // Second call: network fails — must return data from cache written above.
         final offlineClient = FakeSupabaseClient(
@@ -161,7 +240,8 @@ void main() {
         final result = await WorkoutRepository(
           offlineClient,
           cache,
-        ).getWorkoutHistory('user-001', limit: 50);
+          mockExerciseRepo,
+        ).getWorkoutHistory('user-001', locale: 'en', limit: 50);
 
         expect(result, hasLength(1));
         expect(result[0].id, 'w-written');
@@ -190,7 +270,7 @@ void main() {
       final client = FakeSupabaseClient(
         FakeQueryBuilder(error: Exception('offline')),
       );
-      final repo = WorkoutRepository(client, cache);
+      final repo = WorkoutRepository(client, cache, mockExerciseRepo);
 
       final result = await repo.getLastWorkoutSets(['exercise-001']);
 
@@ -210,7 +290,7 @@ void main() {
       final client = FakeSupabaseClient(
         FakeQueryBuilder(error: Exception('offline')),
       );
-      final repo = WorkoutRepository(client, cache);
+      final repo = WorkoutRepository(client, cache, mockExerciseRepo);
 
       final result = await repo.getLastWorkoutSets(['ex-1']);
 
@@ -223,7 +303,7 @@ void main() {
       () async {
         // No cache seeded, no network call expected.
         final client = FakeSupabaseClient(FakeQueryBuilder());
-        final repo = WorkoutRepository(client, cache);
+        final repo = WorkoutRepository(client, cache, mockExerciseRepo);
 
         final result = await repo.getLastWorkoutSets([]);
 
@@ -237,7 +317,7 @@ void main() {
       final client = FakeSupabaseClient(
         FakeQueryBuilder(error: Exception('offline')),
       );
-      final repo = WorkoutRepository(client, cache);
+      final repo = WorkoutRepository(client, cache, mockExerciseRepo);
 
       await expectLater(
         repo.getLastWorkoutSets(['ex-missing']),
@@ -256,7 +336,7 @@ void main() {
       final client = FakeSupabaseClient(
         FakeQueryBuilder(error: Exception('offline')),
       );
-      final repo = WorkoutRepository(client, cache);
+      final repo = WorkoutRepository(client, cache, mockExerciseRepo);
 
       // Pass IDs in reverse order — repo sorts them to build the cache key.
       final result = await repo.getLastWorkoutSets(['ex-2', 'ex-1']);

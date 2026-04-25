@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/l10n/locale_provider.dart';
 import '../../../core/utils/workout_formatters.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../data/workout_repository.dart';
@@ -19,8 +20,13 @@ class WorkoutHistoryNotifier extends AsyncNotifier<List<Workout>> {
     _isLoadingMore = false;
     final userId = ref.read(authRepositoryProvider).currentUser?.id;
     if (userId == null) return [];
+    final locale = ref.watch(localeProvider).languageCode;
     final repo = ref.watch(workoutRepositoryProvider);
-    final workouts = await repo.getWorkoutHistory(userId, limit: _pageSize);
+    final workouts = await repo.getWorkoutHistory(
+      userId,
+      locale: locale,
+      limit: _pageSize,
+    );
     _hasMore = workouts.length >= _pageSize;
     return workouts;
   }
@@ -40,8 +46,10 @@ class WorkoutHistoryNotifier extends AsyncNotifier<List<Workout>> {
     _isLoadingMore = true;
     try {
       final repo = ref.read(workoutRepositoryProvider);
+      final locale = ref.read(localeProvider).languageCode;
       final more = await repo.getWorkoutHistory(
         userId,
+        locale: locale,
         limit: _pageSize,
         offset: current.length,
       );
@@ -99,11 +107,18 @@ final hasAnyWorkoutProvider = Provider<bool>((ref) {
 /// Fetch full workout detail for a specific workout.
 ///
 /// Uses `autoDispose` so the detail is freed when the user navigates away
-/// from the workout detail screen.
+/// from the workout detail screen. Reads the active locale + signed-in
+/// user from providers and forwards both to the repo so exercise names
+/// resolve in the user's language.
 final workoutDetailProvider = FutureProvider.autoDispose
     .family<WorkoutDetail, String>((ref, workoutId) {
       final repo = ref.watch(workoutRepositoryProvider);
-      return repo.getWorkoutDetail(workoutId);
+      final userId = ref.watch(currentUserIdProvider);
+      if (userId == null) {
+        throw StateError('workoutDetailProvider requires a signed-in user');
+      }
+      final locale = ref.watch(localeProvider).languageCode;
+      return repo.getWorkoutDetail(workoutId, userId: userId, locale: locale);
     });
 
 /// Data about the user's most recent completed workout.

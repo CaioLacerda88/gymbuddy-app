@@ -6,9 +6,12 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:repsaga/features/exercises/data/exercise_repository.dart';
 import 'package:repsaga/features/workouts/data/workout_repository.dart';
 
 class _MockSupabaseClient extends Mock implements SupabaseClient {}
+
+class _MockExerciseRepository extends Mock implements ExerciseRepository {}
 
 void main() {
   group('WorkoutRepository cached workout count', () {
@@ -21,7 +24,11 @@ void main() {
       tempDir = await Directory.systemTemp.createTemp('hive_workout_count_');
       Hive.init(tempDir.path);
       await Hive.openBox<dynamic>('user_prefs');
-      repo = WorkoutRepository(_MockSupabaseClient(), cache);
+      repo = WorkoutRepository(
+        _MockSupabaseClient(),
+        cache,
+        _MockExerciseRepository(),
+      );
     });
 
     tearDown(() async {

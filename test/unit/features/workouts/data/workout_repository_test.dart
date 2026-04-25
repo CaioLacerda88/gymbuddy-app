@@ -13,13 +13,18 @@ Map<String, dynamic> _merge(
   return {...base, ...extra};
 }
 
-/// Builds a workout_exercise entry with joined exercise and sets data.
+/// Builds a workout_exercise entry with sets attached.
+///
+/// Phase 15f Stage 6: joined exercise data is no longer embedded in the
+/// query result — the parser resolves it from a separate `exerciseMap`
+/// produced by `ExerciseRepository.getExercisesByIds`. Tests that assert
+/// on `WorkoutExercise.exercise` build the row with `we['exercise_id']`
+/// and pass a matching map as the second arg to `parseWorkoutDetail`.
 Map<String, dynamic> _weEntry({
   required Map<String, dynamic> we,
-  Map<String, dynamic>? exercise,
   List<Map<String, dynamic>> sets = const [],
 }) {
-  return _merge(we, {'exercise': exercise, 'sets': sets});
+  return _merge(we, {'sets': sets});
 }
 
 void main() {
@@ -183,13 +188,19 @@ void main() {
     });
 
     group('joined exercise data', () {
-      test('parses joined exercise data when present', () {
+      // Phase 15f Stage 6: rows carry `exercise_id` only; the parser resolves
+      // [WorkoutExercise.exercise] from the optional `exerciseMap` argument
+      // populated by [ExerciseRepository.getExercisesByIds] in the active locale.
+
+      test('resolves exercise from exerciseMap by exercise_id', () {
         const weId = 'we-001';
-        final exerciseJson = TestExerciseFactory.create(
-          id: 'exercise-001',
-          name: 'Bench Press',
-          muscleGroup: 'chest',
-          equipmentType: 'barbell',
+        final exercise = Exercise.fromJson(
+          TestExerciseFactory.create(
+            id: 'exercise-001',
+            name: 'Bench Press',
+            muscleGroup: 'chest',
+            equipmentType: 'barbell',
+          ),
         );
         final data = _merge(TestWorkoutFactory.create(), {
           'workout_exercises': [
@@ -198,12 +209,13 @@ void main() {
                 id: weId,
                 exerciseId: 'exercise-001',
               ),
-              exercise: exerciseJson,
             ),
           ],
         });
 
-        final result = WorkoutRepository.parseWorkoutDetail(data);
+        final result = WorkoutRepository.parseWorkoutDetail(data, {
+          'exercise-001': exercise,
+        });
 
         expect(result.exercises[0].exercise, isNotNull);
         expect(result.exercises[0].exercise!.id, 'exercise-001');
@@ -211,7 +223,7 @@ void main() {
         expect(result.exercises[0].exercise!.muscleGroup, MuscleGroup.chest);
       });
 
-      test('exercise is null when join data is null', () {
+      test('exercise is null when exerciseMap is empty (default)', () {
         const weId = 'we-001';
         final data = _merge(TestWorkoutFactory.create(), {
           'workout_exercises': [
@@ -220,6 +232,26 @@ void main() {
         });
 
         final result = WorkoutRepository.parseWorkoutDetail(data);
+
+        expect(result.exercises[0].exercise, isNull);
+      });
+
+      test('exercise is null when exercise_id is missing from exerciseMap '
+          '(soft-deleted / foreign-owned)', () {
+        const weId = 'we-001';
+        final data = _merge(TestWorkoutFactory.create(), {
+          'workout_exercises': [
+            _weEntry(
+              we: TestWorkoutExerciseFactory.create(
+                id: weId,
+                exerciseId: 'exercise-missing',
+              ),
+            ),
+          ],
+        });
+
+        // exerciseMap doesn't contain 'exercise-missing'.
+        final result = WorkoutRepository.parseWorkoutDetail(data, const {});
 
         expect(result.exercises[0].exercise, isNull);
       });
@@ -301,32 +333,40 @@ void main() {
   });
 
   group('WorkoutRepository.buildExerciseSummary', () {
-    List<Map<String, dynamic>> makeEntries(List<String> names) {
-      return names
-          .asMap()
-          .entries
-          .map(
-            (e) => {
-              'order': e.key + 1,
-              'exercise': {'name': e.value},
-            },
-          )
-          .toList();
+    /// Phase 15f Stage 6: rows now carry `exercise_id` (not an embedded
+    /// `exercise` join object) and names are resolved via a separate
+    /// `namesById` map produced by [ExerciseRepository.getExercisesByIds].
+
+    /// Builds N rows with sequential exercise_ids ('ex-1', 'ex-2', ...) and
+    /// returns the matching id→name map for [buildExerciseSummary].
+    ({List<Map<String, dynamic>> rows, Map<String, String> namesById})
+    makeEntries(List<String> names) {
+      final rows = <Map<String, dynamic>>[];
+      final namesById = <String, String>{};
+      for (var i = 0; i < names.length; i++) {
+        final id = 'ex-${i + 1}';
+        rows.add({'order': i + 1, 'exercise_id': id});
+        namesById[id] = names[i];
+      }
+      return (rows: rows, namesById: namesById);
     }
 
     test('returns empty string for empty list', () {
-      expect(WorkoutRepository.buildExerciseSummary([]), '');
+      expect(WorkoutRepository.buildExerciseSummary([], const {}), '');
     });
 
     test('returns single name when only one exercise', () {
       final entries = makeEntries(['Bench Press']);
-      expect(WorkoutRepository.buildExerciseSummary(entries), 'Bench Press');
+      expect(
+        WorkoutRepository.buildExerciseSummary(entries.rows, entries.namesById),
+        'Bench Press',
+      );
     });
 
     test('returns comma-separated names for up to 3 exercises', () {
       final entries = makeEntries(['Bench Press', 'Squat', 'Deadlift']);
       expect(
-        WorkoutRepository.buildExerciseSummary(entries),
+        WorkoutRepository.buildExerciseSummary(entries.rows, entries.namesById),
         'Bench Press, Squat, Deadlift',
       );
     });
@@ -340,49 +380,55 @@ void main() {
         'Row',
       ]);
       expect(
-        WorkoutRepository.buildExerciseSummary(entries),
+        WorkoutRepository.buildExerciseSummary(entries.rows, entries.namesById),
         'Bench Press, Squat, Deadlift +2',
       );
     });
 
     test('sorts exercises by order field before naming', () {
       final entries = [
-        {
-          'order': 3,
-          'exercise': const {'name': 'Third'},
-        },
-        {
-          'order': 1,
-          'exercise': const {'name': 'First'},
-        },
-        {
-          'order': 2,
-          'exercise': const {'name': 'Second'},
-        },
+        {'order': 3, 'exercise_id': 'ex-3'},
+        {'order': 1, 'exercise_id': 'ex-1'},
+        {'order': 2, 'exercise_id': 'ex-2'},
       ];
+      const namesById = {'ex-1': 'First', 'ex-2': 'Second', 'ex-3': 'Third'};
       expect(
-        WorkoutRepository.buildExerciseSummary(entries),
+        WorkoutRepository.buildExerciseSummary(entries, namesById),
         'First, Second, Third',
       );
     });
 
-    test('skips entries where exercise join data is null', () {
+    test('skips entries where exercise_id is missing from the names map '
+        '(soft-deleted / foreign-owned)', () {
       final entries = [
-        {'order': 1, 'exercise': null},
-        {
-          'order': 2,
-          'exercise': const {'name': 'Squat'},
-        },
+        {'order': 1, 'exercise_id': 'ex-missing'},
+        {'order': 2, 'exercise_id': 'ex-known'},
       ];
-      expect(WorkoutRepository.buildExerciseSummary(entries), 'Squat');
+      const namesById = {'ex-known': 'Squat'};
+      expect(
+        WorkoutRepository.buildExerciseSummary(entries, namesById),
+        'Squat',
+      );
     });
 
-    test('returns empty string when all exercise join data is null', () {
+    test('skips entries where exercise_id is null', () {
       final entries = [
-        {'order': 1, 'exercise': null},
-        {'order': 2, 'exercise': null},
+        {'order': 1, 'exercise_id': null},
+        {'order': 2, 'exercise_id': 'ex-1'},
       ];
-      expect(WorkoutRepository.buildExerciseSummary(entries), '');
+      const namesById = {'ex-1': 'Squat'};
+      expect(
+        WorkoutRepository.buildExerciseSummary(entries, namesById),
+        'Squat',
+      );
+    });
+
+    test('returns empty string when names map is empty', () {
+      final entries = [
+        {'order': 1, 'exercise_id': 'ex-1'},
+        {'order': 2, 'exercise_id': 'ex-2'},
+      ];
+      expect(WorkoutRepository.buildExerciseSummary(entries, const {}), '');
     });
   });
 }
