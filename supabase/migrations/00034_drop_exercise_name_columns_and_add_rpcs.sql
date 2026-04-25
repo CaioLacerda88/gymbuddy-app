@@ -120,6 +120,7 @@ RETURNS TABLE (
 LANGUAGE plpgsql
 SECURITY INVOKER
 STABLE
+SET search_path = public, pg_temp
 AS $$
 BEGIN
   -- Validate p_order up front so the SELECT body can branch safely.
@@ -135,36 +136,21 @@ BEGIN
       USING ERRCODE = '22023';
   END IF;
 
+  -- Resolution cascade implemented as LEFT JOIN LATERAL: one subquery per
+  -- exercise row resolves all three localized fields (name, description,
+  -- form_tips) at once, instead of running 9 correlated subqueries (3 fields
+  -- x 3 cascade tiers) plus a 10th for ORDER BY. The lateral output is
+  -- referenced both in the projection and ORDER BY, so name resolution is
+  -- computed exactly once per row.
   RETURN QUERY
   SELECT
     e.id,
-    COALESCE(
-      (SELECT t.name FROM exercise_translations t
-       WHERE t.exercise_id = e.id AND t.locale = p_locale),
-      (SELECT t.name FROM exercise_translations t
-       WHERE t.exercise_id = e.id AND t.locale = 'en'),
-      (SELECT t.name FROM exercise_translations t
-       WHERE t.exercise_id = e.id LIMIT 1)
-    ) AS name,
+    resolved.name,
     e.muscle_group,
     e.equipment_type,
     e.is_default,
-    COALESCE(
-      (SELECT t.description FROM exercise_translations t
-       WHERE t.exercise_id = e.id AND t.locale = p_locale),
-      (SELECT t.description FROM exercise_translations t
-       WHERE t.exercise_id = e.id AND t.locale = 'en'),
-      (SELECT t.description FROM exercise_translations t
-       WHERE t.exercise_id = e.id LIMIT 1)
-    ) AS description,
-    COALESCE(
-      (SELECT t.form_tips FROM exercise_translations t
-       WHERE t.exercise_id = e.id AND t.locale = p_locale),
-      (SELECT t.form_tips FROM exercise_translations t
-       WHERE t.exercise_id = e.id AND t.locale = 'en'),
-      (SELECT t.form_tips FROM exercise_translations t
-       WHERE t.exercise_id = e.id LIMIT 1)
-    ) AS form_tips,
+    resolved.description,
+    resolved.form_tips,
     e.image_start_url,
     e.image_end_url,
     e.user_id,
@@ -172,6 +158,24 @@ BEGIN
     e.created_at,
     e.slug
   FROM exercises e
+  LEFT JOIN LATERAL (
+    SELECT
+      COALESCE(t_locale.name,        t_en.name,        t_any.name)        AS name,
+      COALESCE(t_locale.description, t_en.description, t_any.description) AS description,
+      COALESCE(t_locale.form_tips,   t_en.form_tips,   t_any.form_tips)   AS form_tips
+    FROM (SELECT 1) dummy
+    LEFT JOIN exercise_translations t_locale
+      ON t_locale.exercise_id = e.id AND t_locale.locale = p_locale
+    LEFT JOIN exercise_translations t_en
+      ON t_en.exercise_id = e.id AND t_en.locale = 'en'
+    LEFT JOIN exercise_translations t_any
+      ON t_any.exercise_id = e.id
+     AND NOT EXISTS (
+       SELECT 1 FROM exercise_translations t2
+       WHERE t2.exercise_id = e.id AND t2.locale IN (p_locale, 'en')
+     )
+    LIMIT 1
+  ) AS resolved ON TRUE
   WHERE e.deleted_at IS NULL
     AND (e.is_default = true OR e.user_id = p_user_id)
     AND (
@@ -190,17 +194,12 @@ BEGIN
     )
   -- Order: only applied in non-batch mode. In batch mode the caller is
   -- typically rebuilding a Map<id, Exercise> and order is irrelevant.
+  -- Both ORDER BY branches reference lateral output / table columns directly,
+  -- so no additional resolution work is performed here.
   ORDER BY
     CASE WHEN p_order = 'name'
               AND (p_ids IS NULL OR COALESCE(array_length(p_ids, 1), 0) = 0)
-         THEN COALESCE(
-           (SELECT t.name FROM exercise_translations t
-            WHERE t.exercise_id = e.id AND t.locale = p_locale),
-           (SELECT t.name FROM exercise_translations t
-            WHERE t.exercise_id = e.id AND t.locale = 'en'),
-           (SELECT t.name FROM exercise_translations t
-            WHERE t.exercise_id = e.id LIMIT 1)
-         )
+         THEN resolved.name
     END ASC,
     CASE WHEN p_order = 'created_at_desc'
               AND (p_ids IS NULL OR COALESCE(array_length(p_ids, 1), 0) = 0)
@@ -251,8 +250,13 @@ RETURNS TABLE (
 LANGUAGE plpgsql
 SECURITY INVOKER
 STABLE
+SET search_path = public, pg_temp
 AS $$
 BEGIN
+  -- As in fn_exercises_localized: resolve all three localized text columns
+  -- via a single LEFT JOIN LATERAL per matched row, then order by lateral
+  -- output. This replaces 9 correlated subqueries plus an ORDER BY recompute
+  -- with a single subquery per row.
   RETURN QUERY
   WITH matches AS (
     -- One row per exercise — collapse cross-locale duplicates by keeping the
@@ -284,33 +288,12 @@ BEGIN
   )
   SELECT
     m.id,
-    COALESCE(
-      (SELECT t.name FROM exercise_translations t
-       WHERE t.exercise_id = m.id AND t.locale = p_locale),
-      (SELECT t.name FROM exercise_translations t
-       WHERE t.exercise_id = m.id AND t.locale = 'en'),
-      (SELECT t.name FROM exercise_translations t
-       WHERE t.exercise_id = m.id LIMIT 1)
-    ) AS name,
+    resolved.name,
     m.muscle_group,
     m.equipment_type,
     m.is_default,
-    COALESCE(
-      (SELECT t.description FROM exercise_translations t
-       WHERE t.exercise_id = m.id AND t.locale = p_locale),
-      (SELECT t.description FROM exercise_translations t
-       WHERE t.exercise_id = m.id AND t.locale = 'en'),
-      (SELECT t.description FROM exercise_translations t
-       WHERE t.exercise_id = m.id LIMIT 1)
-    ) AS description,
-    COALESCE(
-      (SELECT t.form_tips FROM exercise_translations t
-       WHERE t.exercise_id = m.id AND t.locale = p_locale),
-      (SELECT t.form_tips FROM exercise_translations t
-       WHERE t.exercise_id = m.id AND t.locale = 'en'),
-      (SELECT t.form_tips FROM exercise_translations t
-       WHERE t.exercise_id = m.id LIMIT 1)
-    ) AS form_tips,
+    resolved.description,
+    resolved.form_tips,
     m.image_start_url,
     m.image_end_url,
     m.user_id,
@@ -318,13 +301,27 @@ BEGIN
     m.created_at,
     m.slug
   FROM matches m
+  LEFT JOIN LATERAL (
+    SELECT
+      COALESCE(t_locale.name,        t_en.name,        t_any.name)        AS name,
+      COALESCE(t_locale.description, t_en.description, t_any.description) AS description,
+      COALESCE(t_locale.form_tips,   t_en.form_tips,   t_any.form_tips)   AS form_tips
+    FROM (SELECT 1) dummy
+    LEFT JOIN exercise_translations t_locale
+      ON t_locale.exercise_id = m.id AND t_locale.locale = p_locale
+    LEFT JOIN exercise_translations t_en
+      ON t_en.exercise_id = m.id AND t_en.locale = 'en'
+    LEFT JOIN exercise_translations t_any
+      ON t_any.exercise_id = m.id
+     AND NOT EXISTS (
+       SELECT 1 FROM exercise_translations t2
+       WHERE t2.exercise_id = m.id AND t2.locale IN (p_locale, 'en')
+     )
+    LIMIT 1
+  ) AS resolved ON TRUE
+  -- ORDER BY safe to skip 'any' tier: 00032 guarantees every exercise has an 'en' row.
   ORDER BY m.score DESC,
-           COALESCE(
-             (SELECT t.name FROM exercise_translations t
-              WHERE t.exercise_id = m.id AND t.locale = p_locale),
-             (SELECT t.name FROM exercise_translations t
-              WHERE t.exercise_id = m.id AND t.locale = 'en')
-           ) ASC;
+           resolved.name ASC;
 END;
 $$;
 
@@ -382,6 +379,7 @@ RETURNS TABLE (
 LANGUAGE plpgsql
 SECURITY INVOKER
 VOLATILE
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_new_id    UUID;
@@ -506,6 +504,7 @@ RETURNS TABLE (
 LANGUAGE plpgsql
 SECURITY INVOKER
 VOLATILE
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_owner_id   UUID;
@@ -518,8 +517,11 @@ BEGIN
   FROM exercises e
   WHERE e.id = p_exercise_id;
 
+  -- "Not found" and "found-but-not-owned" both surface as 42501 on purpose:
+  -- leaking existence of another user's row would let a caller probe for
+  -- valid IDs. Message reflects this dual meaning.
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'exercise not found: %', p_exercise_id
+    RAISE EXCEPTION 'exercise not found or not owned by caller: %', p_exercise_id
       USING ERRCODE = '42501';
   END IF;
 
@@ -560,12 +562,14 @@ BEGIN
     END IF;
   END IF;
 
-  -- Update metadata if any changed. COALESCE preserves the existing value
-  -- when the parameter is NULL.
+  -- Update metadata if any changed. CASE form keeps the existing value when
+  -- the parameter is NULL without forcing a NULL-cast through the enum type.
   UPDATE exercises e
   SET
-    muscle_group   = COALESCE(p_muscle_group::muscle_group,   e.muscle_group),
-    equipment_type = COALESCE(p_equipment_type::equipment_type, e.equipment_type)
+    muscle_group   = CASE WHEN p_muscle_group   IS NULL THEN e.muscle_group
+                          ELSE p_muscle_group::muscle_group     END,
+    equipment_type = CASE WHEN p_equipment_type IS NULL THEN e.equipment_type
+                          ELSE p_equipment_type::equipment_type END
   WHERE e.id = p_exercise_id;
 
   -- Update the single translation row in place. Each column updates only if

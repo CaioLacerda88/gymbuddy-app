@@ -21,7 +21,15 @@ UPDATE exercises e SET
   );
 
 ALTER TABLE exercises ALTER COLUMN name SET NOT NULL;
-DROP FUNCTION fn_exercises_localized, fn_search_exercises_localized, fn_insert_user_exercise, fn_update_user_exercise;
+
+-- Drop the four 15f RPCs by full signature so this rollback survives the
+-- introduction of any future overload sharing the same name. Signatures
+-- match the GRANT EXECUTE / CREATE FUNCTION declarations in 00034.
+DROP FUNCTION fn_exercises_localized(TEXT, UUID, TEXT, TEXT, UUID[], TEXT);
+DROP FUNCTION fn_search_exercises_localized(TEXT, TEXT, UUID, TEXT, TEXT);
+DROP FUNCTION fn_insert_user_exercise(UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT);
+DROP FUNCTION fn_update_user_exercise(UUID, TEXT, TEXT, TEXT, TEXT, TEXT);
+
 DROP TABLE exercise_translations CASCADE;
 DROP INDEX exercises_slug_unique_default, exercises_slug_idx;
 ALTER TABLE exercises DROP COLUMN slug;
