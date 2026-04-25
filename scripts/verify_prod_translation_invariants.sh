@@ -37,26 +37,28 @@ if [ -z "${DB_URL}" ]; then
   exit 2
 fi
 
-# Run a count query and return its scalar value (whitespace-trimmed). Quotes
-# the URL so passwords with shell-special chars don't break invocation.
-query_count() {
-  local sql="${1}"
-  # -A: unaligned, -t: tuples-only, -F$'\t': tab field separator, -X: skip psqlrc.
-  psql "${DB_URL}" -A -t -X -c "${sql}" | tr -d '[:space:]'
-}
-
 run_invariant() {
   local label="${1}"
   local sql="${2}"
   local expected="${3}"
-  local actual
-  if ! actual=$(query_count "${sql}" 2>&1); then
+  # Capture stderr to a temp file so connection/auth/syntax errors surface
+  # legibly. Piping stdout through `tr` to trim whitespace would otherwise
+  # swallow them and leave `actual` empty (which compares falsely to "0").
+  local err_file
+  err_file=$(mktemp)
+  local actual_raw
+  # -A: unaligned, -t: tuples-only, -X: skip psqlrc.
+  if ! actual_raw=$(psql "${DB_URL}" -A -t -X -c "${sql}" 2>"${err_file}"); then
     echo "FAIL: ${label}"
-    echo "      query failed:"
-    echo "      ${sql}"
-    echo "      psql output: ${actual}"
+    echo "      ERROR: psql failed:"
+    sed 's/^/        /' "${err_file}"
+    echo "      query: ${sql}"
+    rm -f "${err_file}"
     return 1
   fi
+  rm -f "${err_file}"
+  local actual
+  actual=$(printf '%s' "${actual_raw}" | tr -d '[:space:]')
   if [ "${actual}" = "${expected}" ]; then
     echo "PASS: ${label}  (got ${actual}, expected ${expected})"
     return 0

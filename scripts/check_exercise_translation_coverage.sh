@@ -74,6 +74,26 @@ BEGIN { ins = 0; buf = "" }
 function trim(s) {
   sub(/^[[:space:]]+/, "", s); sub(/[[:space:]]+$/, "", s); return s
 }
+function has_terminator(s,    n, j, c, in_str) {
+  # Return 1 if `s` contains a `;` outside of any single-quoted string
+  # literal — i.e. a real SQL statement terminator. Doubled `''` apostrophes
+  # inside a string are handled (they don't toggle in_str). This is the
+  # state-machine version of the naive `index(s, ";") > 0` check, which
+  # would falsely match semicolons inside literals (e.g. a description
+  # field `'foo; bar'`) and prematurely flush the buffer.
+  n = length(s)
+  in_str = 0
+  for (j = 1; j <= n; j++) {
+    c = substr(s, j, 1)
+    if (c == "\x27") {
+      if (in_str && substr(s, j + 1, 1) == "\x27") { j++; continue }
+      in_str = !in_str
+      continue
+    }
+    if (!in_str && c == ";") return 1
+  }
+  return 0
+}
 function parse_columns(text, positions,    op, cp, list, n, i, parts, name) {
   # text is the full INSERT statement up to (and including) the column-list
   # closing paren. The column list is between the first "(" after "exercises"
@@ -238,7 +258,7 @@ function emit_slug_from_tuple(tup, slug_pos, is_default_pos, file_for_missing,
   }
   if (ins == 1) {
     buf = buf " " line
-    if (index(line, ";") > 0) {
+    if (has_terminator(buf)) {
       # 1. Find slug + is_default column positions from the column list.
       delete positions
       parse_columns(buf, positions)
@@ -309,6 +329,24 @@ read -r -d '' EXTRACT_TRANSLATION_COVERAGE <<'AWK' || true
 BEGIN { ins = 0; buf = "" }
 function trim(s) {
   sub(/^[[:space:]]+/, "", s); sub(/[[:space:]]+$/, "", s); return s
+}
+function has_terminator(s,    n, j, c, in_str) {
+  # Return 1 if `s` contains a `;` outside of any single-quoted string
+  # literal. See EXTRACT_INTRODUCED_SLUGS_FROM_INSERT for rationale: a `;`
+  # inside an `'EN description for B; ...'` literal must NOT trigger the
+  # buffer flush — only a top-level statement terminator does.
+  n = length(s)
+  in_str = 0
+  for (j = 1; j <= n; j++) {
+    c = substr(s, j, 1)
+    if (c == "\x27") {
+      if (in_str && substr(s, j + 1, 1) == "\x27") { j++; continue }
+      in_str = !in_str
+      continue
+    }
+    if (!in_str && c == ";") return 1
+  }
+  return 0
 }
 function emit_explicit_pairs(values_text, locale,    n, j, c, in_str, depth,
                              tup, first_str_done, val) {
@@ -404,7 +442,7 @@ function process_block(text,    locale, m_start, m_len, sel, vstart, vt) {
     vstart = RSTART + RLENGTH
     vt = substr(text, vstart)
     emit_explicit_pairs(vt, locale)
-  } else if (match(text, /FROM[[:space:]]+exercises([[:space:]]+|;|$)/)) {
+  } else if (match(text, /FROM[[:space:]]+exercises([^a-zA-Z_]|$)/)) {
     print "__WILDCARD__\t" locale
   }
 }
@@ -418,7 +456,7 @@ function process_block(text,    locale, m_start, m_len, sel, vstart, vt) {
   }
   if (ins == 1) {
     buf = buf " " line
-    if (index(line, ";") > 0) {
+    if (has_terminator(buf)) {
       process_block(buf)
       ins = 0
       buf = ""
@@ -468,24 +506,29 @@ run_check() {
       local insert_out
       insert_out=$(awk "${EXTRACT_INTRODUCED_SLUGS_FROM_INSERT}" "${f}" || true)
       if [ -n "${insert_out}" ]; then
-        local emitted_any=0
+        # `emitted_real_slug` gates the inserter_files banner — only set when
+        # a non-sentinel slug literal is emitted. Pure sentinel output (a file
+        # that has only `__MISSING_SLUG_COL__` lines) still drives the hard
+        # fail via missing_slug_col, but doesn't add cosmetic noise to the
+        # "introductions in:" list when the script ultimately passes elsewhere.
+        local emitted_real_slug=0
         # Filter sentinel lines (`__MISSING_SLUG_COL__\t<filename>`) into
         # missing_slug_col file; everything else is an introduced slug.
         while IFS= read -r line; do
           [ -z "${line}" ] && continue
-          emitted_any=1
           case "${line}" in
             __MISSING_SLUG_COL__*)
               echo "${f}" >> "${missing_slug_col}"
               ;;
             *)
               echo "${line}" >> "${introduced_slugs}"
+              emitted_real_slug=1
               ;;
           esac
         done <<EOF_INS
 ${insert_out}
 EOF_INS
-        if [ "${emitted_any}" -eq 1 ]; then
+        if [ "${emitted_real_slug}" -eq 1 ]; then
           echo "${f}" >> "${inserter_files}"
         fi
       fi
@@ -652,10 +695,11 @@ run_self_test() {
   script_dir="$(cd "$(dirname "$0")" && pwd)"
   local fixture_complete="${script_dir}/fixtures/fixture_complete.sql"
   local fixture_pt_missing="${script_dir}/fixtures/fixture_pt_missing.sql"
+  local fixture_semicolon="${script_dir}/fixtures/fixture_semicolon_in_literal.sql"
 
-  if [ ! -f "${fixture_complete}" ] || [ ! -f "${fixture_pt_missing}" ]; then
+  if [ ! -f "${fixture_complete}" ] || [ ! -f "${fixture_pt_missing}" ] || [ ! -f "${fixture_semicolon}" ]; then
     echo "FAIL: self-test fixtures missing under ${script_dir}/fixtures/"
-    echo "  expected: fixture_complete.sql + fixture_pt_missing.sql"
+    echo "  expected: fixture_complete.sql + fixture_pt_missing.sql + fixture_semicolon_in_literal.sql"
     return 1
   fi
 
@@ -671,6 +715,17 @@ run_self_test() {
   run_check "${fixture_pt_missing}" "pt-missing fixture" || rc_missing=$?
   echo ""
 
+  echo "Self-test: running coverage check against fixture_semicolon_in_literal.sql"
+  echo "------------------------------------------------------------------"
+  # Regression test for the `index(buf, ';')` fix: a complete-coverage
+  # migration with `;` characters in pt description/tips literals. Must pass
+  # (rc=0) — would have failed under the old `index(line, ";")` check, which
+  # could prematurely cut the buffer when the line carrying the literal also
+  # carried a semicolon character.
+  local rc_semicolon=0
+  run_check "${fixture_semicolon}" "semicolon-in-literal fixture" || rc_semicolon=$?
+  echo ""
+
   if [ "${rc_complete}" -ne 0 ]; then
     echo "Self-test FAILED: complete fixture should have passed (got rc=${rc_complete})."
     return 1
@@ -679,7 +734,13 @@ run_self_test() {
     echo "Self-test FAILED: pt-missing fixture should have failed (got rc=0)."
     return 1
   fi
-  echo "Self-test: complete fixture passed; pt-missing fixture correctly failed."
+  if [ "${rc_semicolon}" -ne 0 ]; then
+    echo "Self-test FAILED: semicolon-in-literal fixture should have passed (got rc=${rc_semicolon})."
+    echo "  This indicates the statement-terminator parser regressed:"
+    echo "  buffer flush must only fire on a top-level (outside-string) ';'."
+    return 1
+  fi
+  echo "Self-test: complete passed; pt-missing failed; semicolon-in-literal passed."
   return 0
 }
 
