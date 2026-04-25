@@ -1,47 +1,40 @@
 // RoutineRepository unit tests.
 //
-// Systematic gaps exposed by the PR-27 regression analysis:
-// - BUG-005: _resolveExercises silently returns unresolved routines when
-//   _fetchExerciseMap returns an empty map (exercises table unreachable or
-//   returns no rows). There were zero mocked-Supabase tests for this class.
-// - No test verified that getLastWorkoutSets returning an empty map is handled
-//   gracefully (tested here at the repository layer via the parsing path).
-//
-// Testing strategy: the same FakeQueryBuilder pattern used in
-// exercise_repository_test.dart — avoids real Supabase, tests mapping + error
-// handling with full control over returned data.
+// Phase 15f Stage 6: exercise resolution now delegates to
+// `ExerciseRepository.getExercisesByIds(locale, userId, ids)`. Tests stub
+// that batch RPC with mocktail and pass `locale: 'en'` everywhere unless
+// verifying multi-locale isolation.
 
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:repsaga/core/exceptions/app_exception.dart';
 import 'package:repsaga/core/local_storage/cache_service.dart';
+import 'package:repsaga/features/exercises/data/exercise_repository.dart';
+import 'package:repsaga/features/exercises/models/exercise.dart';
 import 'package:repsaga/features/routines/data/routine_repository.dart';
 import 'package:repsaga/features/routines/models/routine.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 import '../../../../fixtures/test_factories.dart';
 
+class _MockExerciseRepository extends Mock implements ExerciseRepository {}
+
 // ---------------------------------------------------------------------------
-// Fake Supabase infrastructure (mirrors the pattern in exercise_repository_test.dart)
+// Fake Supabase infrastructure (templates only — exercise reads go through
+// the injected ExerciseRepository mock, not through `_client.from('exercises')`)
 // ---------------------------------------------------------------------------
 
-/// A stubbed SupabaseClient that routes `from(table)` to one of two builders:
-/// one for 'workout_templates', one for 'exercises'.
 class _FakeSupabaseClient extends Fake implements supabase.SupabaseClient {
-  _FakeSupabaseClient({
-    required _FakeQueryBuilder templatesBuilder,
-    required _FakeQueryBuilder exercisesBuilder,
-  }) : _templatesBuilder = templatesBuilder,
-       _exercisesBuilder = exercisesBuilder;
+  _FakeSupabaseClient(this._templatesBuilder);
 
   final _FakeQueryBuilder _templatesBuilder;
-  final _FakeQueryBuilder _exercisesBuilder;
 
   @override
   supabase.SupabaseQueryBuilder from(String table) {
-    if (table == 'exercises') return _exercisesBuilder;
-    return _templatesBuilder;
+    if (table == 'workout_templates') return _templatesBuilder;
+    throw StateError('Unexpected table read: $table');
   }
 }
 
@@ -134,17 +127,36 @@ class _FakeTransformBuilder<T> extends Fake
 // Helpers
 // ---------------------------------------------------------------------------
 
-RoutineRepository _makeRepo({
+class _RepoBundle {
+  _RepoBundle(this.repo, this.mockExerciseRepo);
+  final RoutineRepository repo;
+  final _MockExerciseRepository mockExerciseRepo;
+}
+
+_RepoBundle _makeRepo({
   List<Map<String, dynamic>> templates = const [],
-  List<Map<String, dynamic>> exercises = const [],
+  Map<String, Exercise> exerciseMap = const {},
   Exception? templatesError,
-  Exception? exercisesError,
 }) {
   final client = _FakeSupabaseClient(
-    templatesBuilder: _FakeQueryBuilder(data: templates, error: templatesError),
-    exercisesBuilder: _FakeQueryBuilder(data: exercises, error: exercisesError),
+    _FakeQueryBuilder(data: templates, error: templatesError),
   );
-  return RoutineRepository(client, const CacheService());
+  final mockExerciseRepo = _MockExerciseRepository();
+  when(
+    () => mockExerciseRepo.getExercisesByIds(
+      locale: any(named: 'locale'),
+      userId: any(named: 'userId'),
+      ids: any(named: 'ids'),
+    ),
+  ).thenAnswer((_) async => exerciseMap);
+  return _RepoBundle(
+    RoutineRepository(client, const CacheService(), mockExerciseRepo),
+    mockExerciseRepo,
+  );
+}
+
+Exercise _ex({required String id, String name = 'Bench Press'}) {
+  return Exercise.fromJson(TestExerciseFactory.create(id: id, name: name));
 }
 
 // ---------------------------------------------------------------------------
@@ -152,12 +164,15 @@ RoutineRepository _makeRepo({
 // ---------------------------------------------------------------------------
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(<String>[]);
+  });
+
   group('RoutineRepository._resolveExercises / _fetchExerciseMap', () {
     test(
-      'returns routines with exercise=null when exercise fetch returns empty '
-      '(BUG-005: exercises table unreachable or empty)',
+      'returns routines with exercise=null when batch RPC returns empty '
+      '(BUG-005: exercises lookup unreachable or empty)',
       () async {
-        // Template with two exercises referenced by ID.
         final templateRow = TestRoutineFactory.create(
           id: 'r-001',
           exercises: [
@@ -166,31 +181,24 @@ void main() {
           ],
         );
 
-        // exercises table returns nothing (simulates unreachable or empty).
-        final repo = _makeRepo(
-          templates: [templateRow],
-          exercises: [], // empty — _fetchExerciseMap returns {}
+        // Batch RPC returns nothing — repo must keep RoutineExercise.exercise
+        // null and not throw.
+        final bundle = _makeRepo(templates: [templateRow]);
+
+        final routines = await bundle.repo.getRoutines(
+          userId: 'user-001',
+          locale: 'en',
         );
 
-        final routines = await repo.getRoutines('user-001');
-
         expect(routines, hasLength(1));
-        // BUG-005 scenario: exercises should have null exercise references
-        // because the exercise map was empty. This verifies the behavior
-        // documented in the regression: routines come back unresolved.
         expect(routines[0].exercises[0].exercise, isNull);
         expect(routines[0].exercises[1].exercise, isNull);
       },
     );
 
     test(
-      'populates exercise references when exercises table returns matching rows',
+      'populates exercise references when batch RPC returns matching rows',
       () async {
-        final exerciseRow = TestExerciseFactory.create(
-          id: 'ex-bench',
-          name: 'Bench Press',
-          equipmentType: 'barbell',
-        );
         final templateRow = TestRoutineFactory.create(
           id: 'r-001',
           exercises: [
@@ -198,46 +206,49 @@ void main() {
           ],
         );
 
-        final repo = _makeRepo(
+        final bundle = _makeRepo(
           templates: [templateRow],
-          exercises: [exerciseRow],
+          exerciseMap: {'ex-bench': _ex(id: 'ex-bench', name: 'Bench Press')},
         );
 
-        final routines = await repo.getRoutines('user-001');
+        final routines = await bundle.repo.getRoutines(
+          userId: 'user-001',
+          locale: 'en',
+        );
 
         expect(routines[0].exercises[0].exercise, isNotNull);
         expect(routines[0].exercises[0].exercise!.name, 'Bench Press');
       },
     );
 
-    test('returns empty list immediately when routine has no exercises '
-        '(does not call exercises table)', () async {
-      // Template with no exercises — ids set is empty, so _fetchExerciseMap
-      // early-returns {} without querying. This is the intended fast path.
+    test('skips the batch RPC entirely when routine has no exercises '
+        '(fast path)', () async {
       final templateRow = TestRoutineFactory.create(
         id: 'r-empty',
-        exercises: [], // no exercises
+        exercises: [],
       );
 
-      final repo = _makeRepo(
-        templates: [templateRow],
-        exercises: [], // should not be queried
-      );
+      final bundle = _makeRepo(templates: [templateRow]);
 
-      final routines = await repo.getRoutines('user-001');
+      final routines = await bundle.repo.getRoutines(
+        userId: 'user-001',
+        locale: 'en',
+      );
 
       expect(routines, hasLength(1));
       expect(routines[0].exercises, isEmpty);
+      verifyNever(
+        () => bundle.mockExerciseRepo.getExercisesByIds(
+          locale: any(named: 'locale'),
+          userId: any(named: 'userId'),
+          ids: any(named: 'ids'),
+        ),
+      );
     });
 
     test(
       'partial resolution: exercises present for some IDs but not others',
       () async {
-        // Only ex-A resolves; ex-B has no matching row.
-        final exerciseRow = TestExerciseFactory.create(
-          id: 'ex-A',
-          name: 'Squat',
-        );
         final templateRow = TestRoutineFactory.create(
           exercises: [
             TestRoutineExerciseFactory.create(exerciseId: 'ex-A'),
@@ -245,19 +256,22 @@ void main() {
           ],
         );
 
-        final repo = _makeRepo(
+        final bundle = _makeRepo(
           templates: [templateRow],
-          exercises: [exerciseRow], // only ex-A in DB
+          exerciseMap: {'ex-A': _ex(id: 'ex-A', name: 'Squat')},
         );
 
-        final routines = await repo.getRoutines('user-001');
+        final routines = await bundle.repo.getRoutines(
+          userId: 'user-001',
+          locale: 'en',
+        );
 
         expect(routines[0].exercises[0].exercise?.name, 'Squat');
         expect(
           routines[0].exercises[1].exercise,
           isNull,
           reason:
-              'ex-B has no matching row in exercises table — should be null, '
+              'ex-B has no entry in the batch RPC result — should be null, '
               'not throw',
         );
       },
@@ -271,9 +285,12 @@ void main() {
         exercises: [],
       );
 
-      final repo = _makeRepo(templates: [templateRow]);
+      final bundle = _makeRepo(templates: [templateRow]);
 
-      final routines = await repo.getRoutines('user-001');
+      final routines = await bundle.repo.getRoutines(
+        userId: 'user-001',
+        locale: 'en',
+      );
 
       expect(routines, hasLength(1));
       expect(routines[0].id, 'r-abc');
@@ -284,9 +301,12 @@ void main() {
     test(
       'getRoutines returns empty list when templates table returns no rows',
       () async {
-        final repo = _makeRepo(templates: []);
+        final bundle = _makeRepo(templates: []);
 
-        final routines = await repo.getRoutines('user-001');
+        final routines = await bundle.repo.getRoutines(
+          userId: 'user-001',
+          locale: 'en',
+        );
 
         expect(routines, isEmpty);
       },
@@ -297,10 +317,10 @@ void main() {
         message: 'relation "workout_templates" does not exist',
         code: '42P01',
       );
-      final repo = _makeRepo(templatesError: supabaseError);
+      final bundle = _makeRepo(templatesError: supabaseError);
 
       expect(
-        () => repo.getRoutines('user-001'),
+        () => bundle.repo.getRoutines(userId: 'user-001', locale: 'en'),
         throwsA(isA<AppException>()),
         reason:
             'A PostgrestException from Supabase must be wrapped by '
@@ -311,9 +331,6 @@ void main() {
     test(
       'multiple routines each get their exercises resolved independently',
       () async {
-        final exA = TestExerciseFactory.create(id: 'ex-A', name: 'Bench Press');
-        final exB = TestExerciseFactory.create(id: 'ex-B', name: 'Squat');
-
         final template1 = TestRoutineFactory.create(
           id: 'r-001',
           name: 'Push',
@@ -325,16 +342,50 @@ void main() {
           exercises: [TestRoutineExerciseFactory.create(exerciseId: 'ex-B')],
         );
 
-        final repo = _makeRepo(
+        final bundle = _makeRepo(
           templates: [template1, template2],
-          exercises: [exA, exB],
+          exerciseMap: {
+            'ex-A': _ex(id: 'ex-A', name: 'Bench Press'),
+            'ex-B': _ex(id: 'ex-B', name: 'Squat'),
+          },
         );
 
-        final routines = await repo.getRoutines('user-001');
+        final routines = await bundle.repo.getRoutines(
+          userId: 'user-001',
+          locale: 'en',
+        );
 
         expect(routines, hasLength(2));
         expect(routines[0].exercises[0].exercise?.name, 'Bench Press');
         expect(routines[1].exercises[0].exercise?.name, 'Squat');
+      },
+    );
+
+    test(
+      'forwards locale and userId to ExerciseRepository.getExercisesByIds',
+      () async {
+        final templateRow = TestRoutineFactory.create(
+          exercises: [
+            TestRoutineExerciseFactory.create(exerciseId: 'ex-A'),
+            TestRoutineExerciseFactory.create(exerciseId: 'ex-A'),
+            TestRoutineExerciseFactory.create(exerciseId: 'ex-B'),
+          ],
+        );
+
+        final bundle = _makeRepo(templates: [templateRow]);
+
+        await bundle.repo.getRoutines(userId: 'user-xyz', locale: 'pt');
+
+        final captured = verify(
+          () => bundle.mockExerciseRepo.getExercisesByIds(
+            locale: 'pt',
+            userId: 'user-xyz',
+            ids: captureAny(named: 'ids'),
+          ),
+        ).captured.single as List<String>;
+
+        // IDs are deduped via a Set before forwarding.
+        expect(captured.toSet(), {'ex-A', 'ex-B'});
       },
     );
   });
