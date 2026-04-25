@@ -3,14 +3,29 @@ import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import '../../../core/data/base_repository.dart';
 import '../../../core/local_storage/cache_service.dart';
 import '../../../core/local_storage/hive_service.dart';
+import '../../exercises/data/exercise_repository.dart';
 import '../../exercises/models/exercise.dart';
 import '../models/personal_record.dart';
 
+/// Repository for personal record reads and writes.
+///
+/// **Phase 15f Stage 6 contract:**
+/// `getRecordsWithExercises` and `getRecentRecordsWithExercises` no longer use
+/// the embedded `exercises(name, equipment_type)` select (the `name` column
+/// was dropped in migration 00034). Instead they use a two-step flow:
+///   1. fetch personal_records rows alone,
+///   2. collect distinct `exercise_id`s and call
+///      `ExerciseRepository.getExercisesByIds(locale, userId, ids)` —
+///      one batch RPC, N+1 safe.
+///
+/// Missing exercises (soft-deleted or foreign-owned) silently fall back to
+/// `'Unknown Exercise'` + `EquipmentType.barbell` so the UI never crashes.
 class PRRepository extends BaseRepository {
-  const PRRepository(this._client, this._cache);
+  const PRRepository(this._client, this._cache, this._exerciseRepo);
 
   final supabase.SupabaseClient _client;
   final CacheService _cache;
+  final ExerciseRepository _exerciseRepo;
 
   supabase.SupabaseQueryBuilder get _records =>
       _client.from('personal_records');
@@ -107,9 +122,10 @@ class PRRepository extends BaseRepository {
     }
   }
 
-  /// Fetch all personal records for a user with exercise details (name, equipment).
+  /// Fetch all personal records for a user with exercise details
+  /// (name, equipment), localized for [locale].
   ///
-  /// Uses a Supabase join to include exercise info in one query.
+  /// Two queries: PRs alone, then a batch RPC for the exercises referenced.
   Future<
     List<
       ({
@@ -119,20 +135,28 @@ class PRRepository extends BaseRepository {
       })
     >
   >
-  getRecordsWithExercises(String userId) {
+  getRecordsWithExercises({
+    required String userId,
+    required String locale,
+  }) {
     return mapException(() async {
       final data = await _records
-          .select('*, exercises(name, equipment_type)')
+          .select()
           .eq('user_id', userId)
           .order('achieved_at', ascending: false);
 
-      return data.map(_parseRecordWithExercise).toList();
+      return _attachExercises(
+        rows: data.cast<Map<String, dynamic>>(),
+        userId: userId,
+        locale: locale,
+      );
     });
   }
 
-  /// Fetch the most recent personal records for a user with exercise details.
+  /// Fetch the most recent personal records for a user with exercise details,
+  /// localized for [locale].
   ///
-  /// Uses a Supabase join with a server-side LIMIT to avoid over-fetching.
+  /// Server-side LIMIT applied to the PR query before the batch lookup.
   Future<
     List<
       ({
@@ -142,40 +166,71 @@ class PRRepository extends BaseRepository {
       })
     >
   >
-  getRecentRecordsWithExercises(String userId, {int limit = 3}) {
+  getRecentRecordsWithExercises({
+    required String userId,
+    required String locale,
+    int limit = 3,
+  }) {
     return mapException(() async {
       final data = await _records
-          .select('*, exercises(name, equipment_type)')
+          .select()
           .eq('user_id', userId)
           .order('achieved_at', ascending: false)
           .limit(limit);
 
-      return data.map(_parseRecordWithExercise).toList();
+      return _attachExercises(
+        rows: data.cast<Map<String, dynamic>>(),
+        userId: userId,
+        locale: locale,
+      );
     });
   }
 
-  /// Parse a row with joined exercise data into a typed record.
-  static ({
-    PersonalRecord record,
-    String exerciseName,
-    EquipmentType equipmentType,
-  })
-  _parseRecordWithExercise(Map<String, dynamic> row) {
-    final exerciseData = row['exercises'] as Map<String, dynamic>?;
-    final exerciseName =
-        (exerciseData?['name'] as String?) ?? 'Unknown Exercise';
-    final equipmentType = EquipmentType.fromString(
-      (exerciseData?['equipment_type'] as String?) ?? 'barbell',
-    );
+  /// Resolve `exercise_id` references on a page of PR rows by batch-fetching
+  /// the localized exercises and attaching `(name, equipmentType)` to each.
+  ///
+  /// Missing exercises (soft-deleted, foreign-owned, or visible to the RPC's
+  /// visibility predicate but not in the result map for any reason) fall back
+  /// to `'Unknown Exercise'` + `EquipmentType.barbell`. Callers must not crash
+  /// on absent keys.
+  Future<
+    List<
+      ({
+        PersonalRecord record,
+        String exerciseName,
+        EquipmentType equipmentType,
+      })
+    >
+  >
+  _attachExercises({
+    required List<Map<String, dynamic>> rows,
+    required String userId,
+    required String locale,
+  }) async {
+    if (rows.isEmpty) return const [];
 
-    final recordRow = Map<String, dynamic>.from(row)..remove('exercises');
-    final record = PersonalRecord.fromJson(recordRow);
+    final exerciseIds = <String>{
+      for (final row in rows)
+        if (row['exercise_id'] != null) row['exercise_id'] as String,
+    }.toList();
 
-    return (
-      record: record,
-      exerciseName: exerciseName,
-      equipmentType: equipmentType,
-    );
+    final exerciseMap = exerciseIds.isEmpty
+        ? const <String, Exercise>{}
+        : await _exerciseRepo.getExercisesByIds(
+            locale: locale,
+            userId: userId,
+            ids: exerciseIds,
+          );
+
+    return rows.map((row) {
+      final record = PersonalRecord.fromJson(row);
+      final ex = exerciseMap[record.exerciseId];
+      return (
+        record: record,
+        exerciseName: ex?.name ?? 'Unknown Exercise',
+        equipmentType: ex?.equipmentType ?? EquipmentType.barbell,
+      );
+    }).toList();
   }
 
   /// Fetch personal records that were achieved in a specific workout.

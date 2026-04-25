@@ -2,25 +2,31 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hive/hive.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:repsaga/core/local_storage/cache_service.dart';
 import 'package:repsaga/core/local_storage/hive_service.dart';
+import 'package:repsaga/features/exercises/data/exercise_repository.dart';
 import 'package:repsaga/features/personal_records/data/pr_repository.dart';
 import 'package:repsaga/features/personal_records/models/record_type.dart';
-import 'package:hive/hive.dart';
 
 import '../../../../fixtures/test_factories.dart';
 import '../../../_helpers/fake_supabase.dart';
+
+class _MockExerciseRepository extends Mock implements ExerciseRepository {}
 
 void main() {
   late Directory tempDir;
   late CacheService cache;
   late Box<dynamic> prBox;
+  late _MockExerciseRepository mockExerciseRepo;
 
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('pr_cache_test_');
     Hive.init(tempDir.path);
     prBox = await Hive.openBox<dynamic>(HiveService.prCache);
     cache = const CacheService();
+    mockExerciseRepo = _MockExerciseRepository();
   });
 
   tearDown(() async {
@@ -50,7 +56,7 @@ void main() {
       final client = FakeSupabaseClient(
         FakeQueryBuilder(error: Exception('offline')),
       );
-      final repo = PRRepository(client, cache);
+      final repo = PRRepository(client, cache, mockExerciseRepo);
 
       final result = await repo.getRecordsForUser('user-001');
 
@@ -64,7 +70,7 @@ void main() {
       final client = FakeSupabaseClient(
         FakeQueryBuilder(error: Exception('offline')),
       );
-      final repo = PRRepository(client, cache);
+      final repo = PRRepository(client, cache, mockExerciseRepo);
 
       await expectLater(
         repo.getRecordsForUser('user-001'),
@@ -100,7 +106,7 @@ void main() {
       final client = FakeSupabaseClient(
         FakeQueryBuilder(error: Exception('offline')),
       );
-      final repo = PRRepository(client, cache);
+      final repo = PRRepository(client, cache, mockExerciseRepo);
 
       // Pass IDs in reverse order — the repo sorts them to build the key.
       final result = await repo.getRecordsForExercises(['ex-2', 'ex-1']);
@@ -115,7 +121,7 @@ void main() {
       'returns empty map for empty exercise IDs (no cache interaction)',
       () async {
         final client = FakeSupabaseClient(FakeQueryBuilder());
-        final repo = PRRepository(client, cache);
+        final repo = PRRepository(client, cache, mockExerciseRepo);
 
         final result = await repo.getRecordsForExercises([]);
 
@@ -129,7 +135,7 @@ void main() {
       final client = FakeSupabaseClient(
         FakeQueryBuilder(error: Exception('offline')),
       );
-      final repo = PRRepository(client, cache);
+      final repo = PRRepository(client, cache, mockExerciseRepo);
 
       await expectLater(
         repo.getRecordsForExercises(['ex-missing']),
@@ -153,7 +159,7 @@ void main() {
       final client = FakeSupabaseClient(
         FakeQueryBuilder(error: Exception('offline')),
       );
-      final repo = PRRepository(client, cache);
+      final repo = PRRepository(client, cache, mockExerciseRepo);
 
       final result = await repo.getRecordsForExercises(['ex-only']);
 
@@ -175,7 +181,11 @@ void main() {
         final onlineClient = FakeSupabaseClient(
           FakeQueryBuilder(data: [prRow]),
         );
-        await PRRepository(onlineClient, cache).getRecordsForUser('user-001');
+        await PRRepository(
+          onlineClient,
+          cache,
+          mockExerciseRepo,
+        ).getRecordsForUser('user-001');
 
         // Second call: network fails — must return data from cache written above.
         final offlineClient = FakeSupabaseClient(
@@ -184,6 +194,7 @@ void main() {
         final result = await PRRepository(
           offlineClient,
           cache,
+          mockExerciseRepo,
         ).getRecordsForUser('user-001');
 
         expect(result, hasLength(1));

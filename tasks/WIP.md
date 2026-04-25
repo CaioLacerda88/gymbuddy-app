@@ -55,8 +55,8 @@ Active work being done by agents. Each section is removed once the branch is mer
 - [ ] **Stage 6** — Data layer refactor (tech-lead)
   - [x] `test/fixtures/rpc_fakes.dart` (commit `8d5d2a4`)
   - [x] `ExerciseRepository` rewrite + unit tests (commit `35a437e`)
-  - [x] `WorkoutRepository` two-query merge + unit tests (uncommitted; tests green, analyze clean except expected Step-5 cache_refresh_provider)
-  - [ ] `PRRepository` two-query merge + unit tests
+  - [x] `WorkoutRepository` two-query merge + unit tests (commit `c90e0a7`)
+  - [x] `PRRepository` two-query merge + unit tests (uncommitted; tests green, analyze clean except expected Step-5 cache_refresh_provider)
   - [ ] `RoutineRepository` two-query merge + unit tests
   - [ ] Locale-keyed Hive cache + `LocaleNotifier.setLocale` cache-clear
   - [ ] `exercise_l10n.dart` dead code deletion

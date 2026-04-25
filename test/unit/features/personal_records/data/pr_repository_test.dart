@@ -1,13 +1,17 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:repsaga/core/local_storage/cache_service.dart';
+import 'package:repsaga/features/exercises/data/exercise_repository.dart';
 import 'package:repsaga/features/exercises/models/exercise.dart';
 import 'package:repsaga/features/personal_records/data/pr_repository.dart';
 import 'package:repsaga/features/personal_records/models/personal_record.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 import '../../../../fixtures/test_factories.dart';
+
+class _MockExerciseRepository extends Mock implements ExerciseRepository {}
 
 // ---------------------------------------------------------------------------
 // Fake Supabase infrastructure
@@ -44,7 +48,7 @@ class FakePRQueryBuilder extends Fake implements supabase.SupabaseQueryBuilder {
 
   @override
   FakePRFilterBuilder select([String columns = '*']) {
-    calledMethods.add('select');
+    calledMethods.add('select:$columns');
     return FakePRFilterBuilder(this);
   }
 
@@ -138,29 +142,18 @@ class FakePRTransformBuilder<T> extends Fake
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Builds a row as Supabase would return it: PR fields plus an embedded
-/// `exercises` map with name and equipment_type.
-Map<String, dynamic> _prRowWithExercise({
-  String id = 'pr-001',
-  String userId = 'user-001',
-  String exerciseId = 'exercise-001',
-  String recordType = 'max_weight',
-  double value = 100.0,
-  String achievedAt = '2026-01-01T10:30:00Z',
-  String exerciseName = 'Bench Press',
-  String equipmentType = 'barbell',
+Exercise _ex({
+  String id = 'exercise-001',
+  String name = 'Bench Press',
+  EquipmentType equipmentType = EquipmentType.barbell,
 }) {
-  return {
-    ...TestPersonalRecordFactory.create(
+  return Exercise.fromJson(
+    TestExerciseFactory.create(
       id: id,
-      userId: userId,
-      exerciseId: exerciseId,
-      recordType: recordType,
-      value: value,
-      achievedAt: achievedAt,
+      name: name,
+      equipmentType: equipmentType.name,
     ),
-    'exercises': {'name': exerciseName, 'equipment_type': equipmentType},
-  };
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -168,37 +161,72 @@ Map<String, dynamic> _prRowWithExercise({
 // ---------------------------------------------------------------------------
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(<String>[]);
+  });
+
+  late _MockExerciseRepository mockExerciseRepo;
+
+  setUp(() {
+    mockExerciseRepo = _MockExerciseRepository();
+    // Default: empty exercise map. Individual tests override this.
+    when(
+      () => mockExerciseRepo.getExercisesByIds(
+        locale: any(named: 'locale'),
+        userId: any(named: 'userId'),
+        ids: any(named: 'ids'),
+      ),
+    ).thenAnswer((_) async => <String, Exercise>{});
+  });
+
   group('PRRepository.getRecentRecordsWithExercises', () {
-    test('returns parsed list with exercise details', () async {
-      final rows = [
-        _prRowWithExercise(
+    test('returns parsed list with exercise details from batch RPC', () async {
+      final rows = <Map<String, dynamic>>[
+        TestPersonalRecordFactory.create(
           id: 'pr-001',
-          exerciseName: 'Bench Press',
-          equipmentType: 'barbell',
+          exerciseId: 'ex-1',
         ),
-        _prRowWithExercise(
+        TestPersonalRecordFactory.create(
           id: 'pr-002',
-          exerciseName: 'Squat',
-          equipmentType: 'barbell',
+          exerciseId: 'ex-2',
           recordType: 'max_volume',
           value: 5000.0,
         ),
-        _prRowWithExercise(
+        TestPersonalRecordFactory.create(
           id: 'pr-003',
-          exerciseName: 'Pull-up',
-          equipmentType: 'bodyweight',
+          exerciseId: 'ex-3',
           recordType: 'max_reps',
           value: 20.0,
         ),
       ];
 
+      when(
+        () => mockExerciseRepo.getExercisesByIds(
+          locale: 'en',
+          userId: 'user-001',
+          ids: any(named: 'ids'),
+        ),
+      ).thenAnswer((_) async => {
+            'ex-1': _ex(id: 'ex-1', name: 'Bench Press'),
+            'ex-2': _ex(id: 'ex-2', name: 'Squat'),
+            'ex-3': _ex(
+              id: 'ex-3',
+              name: 'Pull-up',
+              equipmentType: EquipmentType.bodyweight,
+            ),
+          });
+
       final fakeBuilder = FakePRQueryBuilder(data: rows);
       final repo = PRRepository(
         FakeSupabaseClient(fakeBuilder),
         const CacheService(),
+        mockExerciseRepo,
       );
 
-      final result = await repo.getRecentRecordsWithExercises('user-001');
+      final result = await repo.getRecentRecordsWithExercises(
+        userId: 'user-001',
+        locale: 'en',
+      );
 
       expect(result, hasLength(3));
 
@@ -219,9 +247,13 @@ void main() {
       final repo = PRRepository(
         FakeSupabaseClient(fakeBuilder),
         const CacheService(),
+        mockExerciseRepo,
       );
 
-      await repo.getRecentRecordsWithExercises('user-001');
+      await repo.getRecentRecordsWithExercises(
+        userId: 'user-001',
+        locale: 'en',
+      );
 
       expect(fakeBuilder.calledMethods, contains('limit:3'));
     });
@@ -231,9 +263,14 @@ void main() {
       final repo = PRRepository(
         FakeSupabaseClient(fakeBuilder),
         const CacheService(),
+        mockExerciseRepo,
       );
 
-      await repo.getRecentRecordsWithExercises('user-001', limit: 5);
+      await repo.getRecentRecordsWithExercises(
+        userId: 'user-001',
+        locale: 'en',
+        limit: 5,
+      );
 
       expect(fakeBuilder.calledMethods, contains('limit:5'));
     });
@@ -243,9 +280,13 @@ void main() {
       final repo = PRRepository(
         FakeSupabaseClient(fakeBuilder),
         const CacheService(),
+        mockExerciseRepo,
       );
 
-      await repo.getRecentRecordsWithExercises('user-abc');
+      await repo.getRecentRecordsWithExercises(
+        userId: 'user-abc',
+        locale: 'en',
+      );
 
       expect(fakeBuilder.calledMethods, contains('eq:user_id=user-abc'));
     });
@@ -255,9 +296,13 @@ void main() {
       final repo = PRRepository(
         FakeSupabaseClient(fakeBuilder),
         const CacheService(),
+        mockExerciseRepo,
       );
 
-      await repo.getRecentRecordsWithExercises('user-001');
+      await repo.getRecentRecordsWithExercises(
+        userId: 'user-001',
+        locale: 'en',
+      );
 
       expect(fakeBuilder.calledMethods, contains('order:achieved_at'));
     });
@@ -267,35 +312,62 @@ void main() {
       final repo = PRRepository(
         FakeSupabaseClient(fakeBuilder),
         const CacheService(),
+        mockExerciseRepo,
       );
 
-      final result = await repo.getRecentRecordsWithExercises('user-001');
+      final result = await repo.getRecentRecordsWithExercises(
+        userId: 'user-001',
+        locale: 'en',
+      );
 
       expect(result, isEmpty);
     });
 
-    test('uses Unknown Exercise when exercises data is null', () async {
-      final row = {...TestPersonalRecordFactory.create(), 'exercises': null};
+    test(
+      'falls back to "Unknown Exercise" when exercise is missing from batch',
+      () async {
+        // PR row references ex-missing, but the batch RPC returns no entry for it.
+        final row = TestPersonalRecordFactory.create(
+          exerciseId: 'ex-missing',
+        );
+        final fakeBuilder = FakePRQueryBuilder(data: [row]);
+        final repo = PRRepository(
+          FakeSupabaseClient(fakeBuilder),
+          const CacheService(),
+          mockExerciseRepo,
+        );
+
+        final result = await repo.getRecentRecordsWithExercises(
+          userId: 'user-001',
+          locale: 'en',
+        );
+
+        expect(result[0].exerciseName, 'Unknown Exercise');
+        expect(result[0].equipmentType, EquipmentType.barbell);
+      },
+    );
+
+    test('return type is List of named record tuples', () async {
+      final row = TestPersonalRecordFactory.create(exerciseId: 'ex-1');
+      when(
+        () => mockExerciseRepo.getExercisesByIds(
+          locale: 'en',
+          userId: 'user-001',
+          ids: any(named: 'ids'),
+        ),
+      ).thenAnswer((_) async => {'ex-1': _ex(id: 'ex-1')});
+
       final fakeBuilder = FakePRQueryBuilder(data: [row]);
       final repo = PRRepository(
         FakeSupabaseClient(fakeBuilder),
         const CacheService(),
+        mockExerciseRepo,
       );
 
-      final result = await repo.getRecentRecordsWithExercises('user-001');
-
-      expect(result[0].exerciseName, 'Unknown Exercise');
-      expect(result[0].equipmentType, EquipmentType.barbell);
-    });
-
-    test('return type is List of named record tuples', () async {
-      final fakeBuilder = FakePRQueryBuilder(data: [_prRowWithExercise()]);
-      final repo = PRRepository(
-        FakeSupabaseClient(fakeBuilder),
-        const CacheService(),
+      final result = await repo.getRecentRecordsWithExercises(
+        userId: 'user-001',
+        locale: 'en',
       );
-
-      final result = await repo.getRecentRecordsWithExercises('user-001');
 
       // Verify the structural type: each element carries record, exerciseName,
       // and equipmentType fields.
@@ -303,6 +375,74 @@ void main() {
       expect(item.record, isA<PersonalRecord>());
       expect(item.exerciseName, isA<String>());
       expect(item.equipmentType, isA<EquipmentType>());
+    });
+
+    test(
+      'collects distinct exercise IDs from page rows for the batch lookup',
+      () async {
+        // Two rows reference ex-1, one references ex-2 — batch should be called
+        // with the deduped set.
+        final rows = <Map<String, dynamic>>[
+          TestPersonalRecordFactory.create(id: 'pr-1', exerciseId: 'ex-1'),
+          TestPersonalRecordFactory.create(id: 'pr-2', exerciseId: 'ex-2'),
+          TestPersonalRecordFactory.create(id: 'pr-3', exerciseId: 'ex-1'),
+        ];
+
+        when(
+          () => mockExerciseRepo.getExercisesByIds(
+            locale: 'en',
+            userId: 'user-001',
+            ids: any(named: 'ids'),
+          ),
+        ).thenAnswer((_) async => {
+              'ex-1': _ex(id: 'ex-1', name: 'A'),
+              'ex-2': _ex(id: 'ex-2', name: 'B'),
+            });
+
+        final fakeBuilder = FakePRQueryBuilder(data: rows);
+        final repo = PRRepository(
+          FakeSupabaseClient(fakeBuilder),
+          const CacheService(),
+          mockExerciseRepo,
+        );
+
+        await repo.getRecentRecordsWithExercises(
+          userId: 'user-001',
+          locale: 'en',
+        );
+
+        final captured = verify(
+          () => mockExerciseRepo.getExercisesByIds(
+            locale: 'en',
+            userId: 'user-001',
+            ids: captureAny(named: 'ids'),
+          ),
+        ).captured.single as List<String>;
+
+        expect(captured.toSet(), {'ex-1', 'ex-2'});
+      },
+    );
+
+    test('skips exercise lookup entirely when no rows are returned', () async {
+      final fakeBuilder = FakePRQueryBuilder(data: []);
+      final repo = PRRepository(
+        FakeSupabaseClient(fakeBuilder),
+        const CacheService(),
+        mockExerciseRepo,
+      );
+
+      await repo.getRecentRecordsWithExercises(
+        userId: 'user-001',
+        locale: 'en',
+      );
+
+      verifyNever(
+        () => mockExerciseRepo.getExercisesByIds(
+          locale: any(named: 'locale'),
+          userId: any(named: 'userId'),
+          ids: any(named: 'ids'),
+        ),
+      );
     });
   });
 
@@ -343,6 +483,7 @@ void main() {
           'personal_records': prBuilder,
         }),
         const CacheService(),
+        mockExerciseRepo,
       );
 
       final result = await repo.getPRsForWorkout(workoutId, userId);
@@ -367,6 +508,7 @@ void main() {
           'personal_records': prBuilder,
         }),
         const CacheService(),
+        mockExerciseRepo,
       );
 
       final result = await repo.getPRsForWorkout(workoutId, userId);
@@ -392,6 +534,7 @@ void main() {
           'personal_records': prBuilder,
         }),
         const CacheService(),
+        mockExerciseRepo,
       );
 
       final result = await repo.getPRsForWorkout(workoutId, userId);
@@ -414,6 +557,7 @@ void main() {
           'personal_records': prBuilder,
         }),
         const CacheService(),
+        mockExerciseRepo,
       );
 
       await repo.getPRsForWorkout(workoutId, userId);
@@ -435,6 +579,7 @@ void main() {
           'personal_records': prBuilder,
         }),
         const CacheService(),
+        mockExerciseRepo,
       );
 
       await repo.getPRsForWorkout(workoutId, 'user-001');
