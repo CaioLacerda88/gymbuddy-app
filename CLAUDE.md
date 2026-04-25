@@ -35,11 +35,13 @@ flutter run -d chrome        # run on Chrome (for Playwright e2e)
 - Commit format: `feat|fix|refactor|test|docs|ci|chore(scope): description`
 - Scopes: `auth`, `exercises`, `workouts`, `progress`, `profile`, `core`, `theme`, `ci`
 
-### Exercise content pairing rule
+### Exercise content translation coverage rule
 
-Any migration that inserts `is_default = true` exercises MUST be paired with a migration that populates `description` and `form_tips` for every inserted row (either the same file or a sibling migration in the same PR). No default exercise ships with NULL content.
+Post-Phase-15f, exercise display text (`name`, `description`, `form_tips`) lives in `exercise_translations` keyed by `(exercise_id, locale)` — never on `exercises` itself. Any migration that inserts a default exercise (`is_default = true`) MUST be paired with INSERT INTO `exercise_translations` rows for **both `'en'` and `'pt'`** for every new slug — either in the same migration file or in a sibling migration in the same PR. No default exercise ships without full en+pt coverage.
 
-CI enforces this via `scripts/check_exercise_content_pairing.sh`. Violation fails the pipeline.
+Default-exercise INSERTs MUST include the `slug` column in their column list with a literal slug value per tuple — slug is the join key for translations and is `NOT NULL` on the table.
+
+CI enforces this via `scripts/check_exercise_translation_coverage.sh` (recognizes both the canonical `(VALUES (slug, ...)) JOIN exercises e ON e.slug = v.slug` pattern and the implicit `SELECT ... FROM exercises e` backfill pattern). Violation fails the pipeline. See `docs/superpowers/specs/2026-04-24-exercise-content-localization-design.md` §13 for the full contract.
 
 ## Testing
 
