@@ -139,6 +139,71 @@ test.describe('Exercises', { tag: '@smoke' }, () => {
     expect(hasCards || hasEmpty).toBe(true);
   });
 
+  // ---------------------------------------------------------------------------
+  // fix/exercise-filter-autodispose regression guard
+  //
+  // Root cause: searchQueryProvider was app-scoped (not .autoDispose). After
+  // the fix, all filter StateProviders are .autoDispose so they reset when the
+  // ExerciseListScreen widget is unmounted (i.e., when the user navigates away).
+  //
+  // Regression scenario: type "bench" → navigate away → come back → filter
+  // persists (list is still filtered to bench results) but the TextField shows
+  // empty, so the user cannot clear it. This test catches that regression.
+  // ---------------------------------------------------------------------------
+  test('should clear search filter when navigating away and back', async ({ page }) => {
+    // Step 1: Wait for the full exercise list to load and capture total card count.
+    // Flutter's virtualized list only renders viewport items, so count() reflects
+    // what's currently rendered. A full unfiltered load produces more cards than
+    // a "bench"-filtered load — this count delta is the regression signal.
+    const allCards = page.locator('role=button[name*="Exercise:"]');
+    await expect(allCards.first()).toBeVisible({ timeout: 10_000 });
+    await page.waitForTimeout(500); // allow list to fully render before counting
+    const unfiltered = await allCards.count();
+
+    // Step 2: Type "bench" — filters down to bench-related exercises only.
+    await flutterFill(page, EXERCISE_LIST.searchInput, 'bench');
+    await page.waitForTimeout(800);
+
+    // Step 3: Assert filtered state — Deadlift is NOT a bench exercise.
+    // "Deadlift" is always in the seed data and never matches "bench".
+    await expect(
+      page.locator(EXERCISE_LIST.exerciseCard(SEED_EXERCISES.deadlift)),
+    ).not.toBeVisible({ timeout: 5_000 });
+
+    // Verify at least one matching card IS visible (confirms the filter fired).
+    const benchCard = page.locator('role=button[name*="Bench"]');
+    await expect(benchCard.first()).toBeVisible({ timeout: 5_000 });
+    const filteredCount = await allCards.count();
+
+    // Step 4: Navigate away to a different tab.
+    await navigateToTab(page, 'Routines');
+
+    // Step 5: Navigate back to Exercises.
+    await navigateToTab(page, 'Exercises');
+
+    // Step 6 — REGRESSION CHECK: card count must recover to the pre-filter level.
+    //
+    // If the .autoDispose fix is absent, filteredExerciseListProvider still
+    // holds the stale "bench" query and the list remains filtered (same small
+    // card count) even though the search field now appears empty.
+    //
+    // Wait for the list to settle, then assert count > filteredCount.
+    // The virtualized list re-renders from scratch on mount so the count should
+    // match (or exceed, if the user has custom exercises) the pre-filter level.
+    await expect(allCards.first()).toBeVisible({ timeout: 10_000 });
+    await page.waitForTimeout(500); // allow full render
+    const restoredCount = await allCards.count();
+    expect(restoredCount).toBeGreaterThan(filteredCount);
+    expect(restoredCount).toBeGreaterThanOrEqual(unfiltered);
+
+    // Step 7: Assert the search field is empty.
+    // The underlying native <input> proxy (matched by aria-label) holds the
+    // actual TextEditingController value. An empty value here confirms that the
+    // TextEditingController was reset when the widget rebuilt after navigation.
+    const searchInput = page.locator('input[aria-label*="Search exercises"]');
+    await expect(searchInput).toHaveValue('', { timeout: 5_000 });
+  });
+
   test('should delete custom exercise and remove it from the list (QA-003)', async ({
     page,
   }) => {
