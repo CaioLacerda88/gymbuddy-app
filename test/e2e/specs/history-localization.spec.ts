@@ -3,18 +3,21 @@
  * Phase 15f: exercise names in workout history resolved from exercise_translations.
  *
  * Scenarios:
- *   D1 — pt user sees workout summary in pt (comma-separated pt names)
+ *   D1 — pt user sees workout summary in pt (exerciseSummary line shows pt name)
  */
 
 import { test, expect } from '@playwright/test';
 import { navigateToTab } from '../helpers/app';
 import { login } from '../helpers/auth';
-import { HISTORY } from '../helpers/selectors';
+import { HISTORY, HOME } from '../helpers/selectors';
 import { TEST_USERS } from '../fixtures/test-users';
+import { EXERCISE_NAMES } from '../fixtures/test-exercises';
 
 // =============================================================================
 // FULL: Workout history pt locale (D1)
-// Uses fullHistoryPt user (pt locale, 5 seeded workouts)
+// Uses fullHistoryPt user (pt locale, 5 seeded workouts; the most recent has
+// a barbell_bench_press workout_exercise so its exerciseSummary renders the
+// pt-localized name "Supino Reto com Barra").
 // =============================================================================
 
 test.describe('Workout history pt locale', () => {
@@ -26,57 +29,44 @@ test.describe('Workout history pt locale', () => {
     );
   });
 
-  // D1: pt user sees workout summary in pt (comma-separated pt names).
-  test('should render workout history screen for pt user without crashing (D1)', async ({
+  // D1: pt user sees the pt-localized exercise name in the most recent
+  // workout's summary line on the history screen.
+  test('should show pt-localized exercise name in workout summary on history screen for pt user (D1)', async ({
     page,
   }) => {
-    // Navigate to the history tab.
-    // The history tab is accessible from the Home screen or via navigation.
-    // Try navigating to the home screen first, then to history.
+    const ptBenchName = EXERCISE_NAMES.barbell_bench_press.pt;
+    const enBenchName = EXERCISE_NAMES.barbell_bench_press.en;
+
+    // Navigate to Home and wait for it to render.
     await navigateToTab(page, 'Home');
+    await expect(page.locator(HOME.statusLine)).toBeVisible({
+      timeout: 15_000,
+    });
+
+    // Click the last-session line to enter history. The seed guarantees a
+    // last session exists for this user (most recent workout has an exercise),
+    // so we hard-fail if the line is missing — this is the only in-app entry
+    // point to the history screen.
+    await expect(page.locator(HOME.lastSessionLine)).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.locator(HOME.lastSessionLine).click();
+
+    // The history screen heading must be visible (route /home/history).
+    await expect(page.locator(HISTORY.heading)).toBeVisible({
+      timeout: 10_000,
+    });
+
+    // Hard assertion (D1's primary contract): the most recent workout's
+    // exerciseSummary line must render the pt-localized exercise name.
+    // The summary is the bodySmall Text below the workout title.
     await expect(
-      page.locator('[flt-semantics-identifier="home-status-line"]'),
-    ).toBeVisible({ timeout: 15_000 });
+      page.locator(`text=${ptBenchName}`).first(),
+    ).toBeVisible({ timeout: 10_000 });
 
-    // Navigate to workout history via the last session line or the profile/home links.
-    // Try the home-last-session link first.
-    const lastSessionLine = page.locator('[flt-semantics-identifier="home-last-session"]');
-    const hasLastSession = await lastSessionLine
-      .isVisible({ timeout: 5_000 })
-      .catch(() => false);
-
-    if (hasLastSession) {
-      await lastSessionLine.click();
-    } else {
-      // Fallback: navigate directly to history via URL if available.
-      await page.goto('/home/history');
-      await page.waitForTimeout(2_000);
-    }
-
-    // The history screen heading must be visible.
-    // In pt locale the heading may be "Histórico" or similar.
-    const historyHeading = page.locator(HISTORY.heading);
-    const hasHeading = await historyHeading
-      .isVisible({ timeout: 10_000 })
-      .catch(() => false);
-
-    if (hasHeading) {
-      await expect(historyHeading).toBeVisible({ timeout: 5_000 });
-    }
-
-    // The history screen must render without crashing — at a minimum it must
-    // show either a list of workouts or the empty state message.
-    const emptyState = page.locator(HISTORY.emptyState);
-    const workoutEntries = page.locator('role=button[name*="Workout"]').first();
-
-    const hasEmpty = await emptyState.isVisible({ timeout: 5_000 }).catch(() => false);
-    const hasEntries = await workoutEntries.isVisible({ timeout: 5_000 }).catch(() => false);
-
-    // D1 assertion: the history screen renders (no crash) and shows content.
-    // Either workout entries or the empty state must be present.
-    expect(
-      hasEmpty || hasEntries || hasHeading,
-      'History screen must render without crashing for pt user',
-    ).toBe(true);
+    // Hard assertion: the en name must NOT leak into the pt user's history.
+    await expect(
+      page.locator(`text=${enBenchName}`),
+    ).not.toBeVisible({ timeout: 3_000 });
   });
 });

@@ -52,7 +52,7 @@ Active work being done by agents. Each section is removed once the branch is mer
   - [x] Spec compliance review pass
   - [x] Code quality review pass (5 findings fixed in `8cbdf97`: quote-aware `has_terminator()` helper, FROM exercises boundary regex, psql stderr capture via mktemp, inserter_files banner gate, adversarial fixture)
   - [x] Commits: `fb48915` initial, `8cbdf97` review fixes
-- [ ] **Stage 6** — Data layer refactor (tech-lead)
+- [x] **Stage 6** — Data layer refactor (tech-lead) ✅
   - [x] `test/fixtures/rpc_fakes.dart` (commit `8d5d2a4`)
   - [x] `ExerciseRepository` rewrite + unit tests (commit `35a437e`)
   - [x] `WorkoutRepository` two-query merge + unit tests (commit `c90e0a7`)
@@ -74,12 +74,23 @@ Active work being done by agents. Each section is removed once the branch is mer
     - Finding 3 (Nit) — deleted `_parseRoutineRow` passthrough static helper; inlined `Routine.fromJson` at all four call sites (`getRoutines` tear-off, `getRoutine`/`createRoutine`/`updateRoutine` direct calls)
     - Finding 4 (Nit) — `exercise_repository_test.dart:178` tightened `throwsA(isA<Object>())` (matched anything) to `throwsA(isA<NetworkException>())`; `StateError` from `getExerciseById` falls through `ErrorMapper.mapException` to the unmapped-default `NetworkException` branch
     - Format + analyze --fatal-infos clean; full suite 1779/1779 green
-- [ ] **Stage 7** — Widget + E2E (qa-engineer)
-  - [ ] `EXERCISE_NAMES` map in `test/e2e/fixtures/test-exercises.ts`
-  - [ ] 4 new pt test users + slug-based global-setup seeds
-  - [ ] 14 E2E scenarios A1-G2
-  - [ ] Widget tests with localeProvider overrides
-  - [ ] Full E2E suite green (145+)
+- [x] **Stage 7** — Widget + E2E (qa-engineer) ✅
+  - [x] `EXERCISE_NAMES` map in `test/e2e/fixtures/test-exercises.ts`
+  - [x] 4 new pt test users + slug-based global-setup seeds (`fullExercisesPt`, `fullRoutinesPt`, `fullHistoryPt`, `fullPRPt`, `fullWorkoutPt`)
+  - [x] 14 E2E scenarios A1-G2 across `exercises-localization`, `routines-localization`, `workouts-localization`, `history-localization`, `prs-localization` spec files
+  - [x] Widget tests with localeProvider overrides (shared helper `test/helpers/stub_locale_notifier.dart` consumed by 6 widget/unit test files)
+  - [x] Full E2E suite green: smoke 89/89 + full 183/183
+  - [x] Spec compliance review pass — all gaps fixed
+  - [x] Code quality review pass — Blockers/Importants/Nits all addressed in `refactor(15f): Stage 7 review fixes`:
+    - **B1 cross-locale tautologies** — split `expect(hasA || hasB).toBe(true)` into two hard `toBeVisible`/`not.toBeVisible` assertions on pt vs en names (exercises-localization B2)
+    - **B2 RLS not actually verified** — switched G1 to dual `browser.newContext()` so the en user is a real second session, not the same context relogged in
+    - **B3/B5 PR-card AOM-merge bug** — root cause: `_ExerciseRecordCard` wraps content in `Semantics(container: true)`, merging child Text widgets into the parent group's accessibility label. `text=...` finds no DOM node; the pt name is only readable via `role=group[name*=...]`. Added `PR_DISPLAY.exerciseRecordCardByName(name)` selector helper and switched F1 positive + negative assertions to role-based matching (positive becomes a real check; negative no longer false-positive against an empty selector)
+    - **D1/I3 missing seed** — fullHistoryPt's most recent workout now seeds workout_exercise + set for `barbell_bench_press` so `exerciseSummary` line renders the pt name; D1 now hard-asserts pt name visibility
+    - **I1 conditional-fallback removal** — routines-localization picker test now hard-fails if pt add button isn't visible (no fallback branch)
+    - **I4 timing flake** — `create_exercise_screen_test.dart` swapped `pump() + pump(Duration(ms:100))` for `pumpAndSettle()` after CREATE button tap
+    - **N1/N2/N5 magic strings** — added locale-aware section header helpers (`aboutSectionText`, `formTipsSectionText`); removed all raw `flt-semantics-identifier="..."` strings from spec files
+    - **N3 _StubLocaleNotifier duplication** — extracted shared `test/helpers/stub_locale_notifier.dart` consumed by all 6 test files
+  - [x] Final verification: `dart format` (1 auto-format), `dart analyze --fatal-infos` (No issues found), `flutter test` (1786/1786 green), full Playwright (183/183)
 - [ ] **Stage 8** — Staging verify + review + merge
   - [ ] Migrations applied to staging
   - [ ] Invariant queries zero; outputs in PR body

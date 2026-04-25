@@ -17,18 +17,10 @@ import 'package:repsaga/shared/widgets/exercise_image.dart';
 import 'package:repsaga/shared/widgets/exercise_info_sections.dart';
 
 import '../../../../fixtures/test_factories.dart';
+import '../../../../helpers/stub_locale_notifier.dart';
 import '../../../../helpers/test_material_app.dart';
 
 class MockExerciseRepository extends Mock implements ExerciseRepository {}
-
-/// Test-only LocaleNotifier that returns a fixed locale without touching Hive.
-class _StubLocaleNotifier extends LocaleNotifier {
-  _StubLocaleNotifier(this._locale);
-  final Locale _locale;
-
-  @override
-  Locale build() => _locale;
-}
 
 void main() {
   late MockExerciseRepository mockRepo;
@@ -43,7 +35,7 @@ void main() {
         exerciseRepositoryProvider.overrideWithValue(mockRepo),
         currentUserIdProvider.overrideWithValue('user-001'),
         localeProvider.overrideWith(
-          () => _StubLocaleNotifier(const Locale('en')),
+          () => StubLocaleNotifier(const Locale('en')),
         ),
         // Prevent PR section from touching real Supabase.
         exercisePRsProvider.overrideWith((ref, _) => Future.value([])),
@@ -475,7 +467,7 @@ void main() {
           exerciseRepositoryProvider.overrideWithValue(mockRepo),
           currentUserIdProvider.overrideWithValue('user-001'),
           localeProvider.overrideWith(
-            () => _StubLocaleNotifier(const Locale('pt')),
+            () => StubLocaleNotifier(const Locale('pt')),
           ),
           exercisePRsProvider.overrideWith((ref, _) => Future.value([])),
         ],

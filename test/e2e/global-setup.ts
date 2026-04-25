@@ -994,6 +994,9 @@ async function globalSetup(): Promise<void> {
       console.log('[global-setup] Seeded pt profile for fullHistoryPt');
     }
     // Seed 5 workouts so the history screen renders multiple entries.
+    // Workout #1 (the most recent) gets a workout_exercise + set pointing at
+    // barbell_bench_press so its exerciseSummary renders the pt-localized
+    // name ("Supino Reto com Barra"). D1 asserts that name on the card.
     const existingHistoryWorkout = await supabase
       .from('workouts')
       .select('id')
@@ -1001,19 +1004,61 @@ async function globalSetup(): Promise<void> {
       .eq('name', 'E2E PT History Workout 1')
       .maybeSingle();
     if (!existingHistoryWorkout.data) {
+      // Look up barbell_bench_press by slug (slug is stable; name column was
+      // dropped from exercises in Phase 15f migration 00034).
+      const { data: ptBenchExercises } = await supabase
+        .from('exercises')
+        .select('id')
+        .eq('slug', 'barbell_bench_press')
+        .eq('is_default', true)
+        .limit(1);
+      const ptBenchExercise = ptBenchExercises?.[0] ?? null;
+
       const now = new Date();
       for (let i = 0; i < 5; i++) {
         const startedAt = new Date(now.getTime() - (i + 1) * 24 * 60 * 60 * 1000);
         const finishedAt = new Date(startedAt.getTime() + 60 * 60 * 1000);
-        await supabase.from('workouts').insert({
-          user_id: fullHistoryPtUserId,
-          name: `E2E PT History Workout ${i + 1}`,
-          started_at: startedAt.toISOString(),
-          finished_at: finishedAt.toISOString(),
-          duration_seconds: 3600,
-        });
+        const { data: workout, error: wError } = await supabase
+          .from('workouts')
+          .insert({
+            user_id: fullHistoryPtUserId,
+            name: `E2E PT History Workout ${i + 1}`,
+            started_at: startedAt.toISOString(),
+            finished_at: finishedAt.toISOString(),
+            duration_seconds: 3600,
+          })
+          .select('id')
+          .single();
+
+        // Attach a barbell_bench_press exercise + completed set on the most
+        // recent workout (i === 0). The history screen renders this as the
+        // pt exercise name in the workout summary line.
+        if (i === 0 && workout && !wError && ptBenchExercise) {
+          const { data: wx } = await supabase
+            .from('workout_exercises')
+            .insert({
+              workout_id: workout.id,
+              exercise_id: ptBenchExercise.id,
+              order: 0,
+            })
+            .select('id')
+            .single();
+
+          if (wx) {
+            await supabase.from('sets').insert({
+              workout_exercise_id: wx.id,
+              set_number: 1,
+              reps: 5,
+              weight: 80,
+              set_type: 'working',
+              is_completed: true,
+            });
+          }
+        }
       }
-      console.log('[global-setup] Seeded 5 workouts for fullHistoryPt');
+      console.log(
+        '[global-setup] Seeded 5 workouts for fullHistoryPt (most recent has barbell_bench_press)',
+      );
     }
   }
 

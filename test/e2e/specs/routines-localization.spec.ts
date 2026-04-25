@@ -7,13 +7,14 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { navigateToTab } from '../helpers/app';
+import { flutterFill, navigateToTab } from '../helpers/app';
 import { login } from '../helpers/auth';
 import {
   ROUTINE,
   CREATE_ROUTINE,
   ROUTINE_MANAGEMENT,
   EXERCISE_PICKER,
+  EXERCISE_LOC,
 } from '../helpers/selectors';
 import { TEST_USERS } from '../fixtures/test-users';
 import { EXERCISE_NAMES } from '../fixtures/test-exercises';
@@ -38,6 +39,7 @@ test.describe('Routine localization pt locale', () => {
     page,
   }) => {
     const routineName = `Rotina PT ${Date.now()}`;
+    const ptBenchName = EXERCISE_NAMES.barbell_bench_press.pt;
 
     // Open the create routine screen.
     await page.click(ROUTINE_MANAGEMENT.createIconButton);
@@ -52,54 +54,28 @@ test.describe('Routine localization pt locale', () => {
 
     // Open the exercise picker.
     await page.click(CREATE_ROUTINE.addExerciseButton);
-    await expect(
-      page.locator('[flt-semantics-identifier="exercise-picker-search"]'),
-    ).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator(EXERCISE_PICKER.searchInput)).toBeVisible({
+      timeout: 10_000,
+    });
 
-    // The pt bench press name must appear in the exercise picker.
-    const ptBenchName = EXERCISE_NAMES.barbell_bench_press.pt;
-
-    // Search for the pt bench press name in the picker.
-    const searchInput = page.locator('input').last();
-    await searchInput.fill(ptBenchName.substring(0, 6));
+    // Search for the pt bench press name. flutterFill is required — Flutter
+    // CanvasKit ignores synthetic events from page.fill().
+    await flutterFill(
+      page,
+      EXERCISE_PICKER.searchInput,
+      ptBenchName.substring(0, 6),
+    );
     await page.waitForTimeout(800);
 
-    // Verify the pt name appears in the picker results.
-    // pt locale: "Adicionar {name}" (app_pt.arb addExerciseSemantics).
-    const ptExerciseInPicker = page
-      .locator(`role=button[name*="Adicionar ${ptBenchName}"]`)
+    // E1 hard assertion: the pt-named picker entry MUST be present. A
+    // misconfigured RPC or wrong locale resolution would fail this.
+    const ptAddButton = page
+      .locator(EXERCISE_LOC.addExerciseButton(ptBenchName, 'pt'))
       .first();
-    const altExerciseInPicker = page
-      .locator(`role=button[name*="${ptBenchName}"]`)
-      .first();
+    await expect(ptAddButton).toBeVisible({ timeout: 10_000 });
+    await ptAddButton.click();
 
-    const hasDirect = await ptExerciseInPicker
-      .isVisible({ timeout: 5_000 })
-      .catch(() => false);
-    const hasAlt = await altExerciseInPicker
-      .isVisible({ timeout: 5_000 })
-      .catch(() => false);
-
-    // E1 assertion: at least the pt name must appear in the picker.
-    expect(
-      hasDirect || hasAlt,
-      `pt exercise name "${ptBenchName}" must appear in the exercise picker for pt user`,
-    ).toBe(true);
-
-    // Add the exercise if found.
-    if (hasDirect) {
-      await ptExerciseInPicker.click();
-    } else if (hasAlt) {
-      await altExerciseInPicker.click();
-    } else {
-      // Fallback: pick first available exercise.
-      // pt locale: add button prefix is "Adicionar".
-      const firstResult = page.locator('role=button[name*="Adicionar "]').first();
-      await expect(firstResult).toBeVisible({ timeout: 5_000 });
-      await firstResult.click();
-    }
-
-    // Wait for the picker to close.
+    // Wait for the picker to close (back to create-routine screen).
     await expect(
       page.locator(ROUTINE_MANAGEMENT.createRoutineScreenTitle),
     ).toBeVisible({ timeout: 10_000 });

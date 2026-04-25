@@ -108,7 +108,7 @@ export const EXERCISE_NAMES: Record<string, { en: string; pt: string }> = {
   },
   dumbbell_curl: {
     en: 'Dumbbell Curl',
-    pt: 'Rosca Direta com Halteres',
+    pt: 'Rosca com Halteres',
   },
   tricep_pushdown: {
     en: 'Tricep Pushdown',
@@ -121,7 +121,7 @@ export const EXERCISE_NAMES: Record<string, { en: string; pt: string }> = {
   },
   crunches: {
     en: 'Crunches',
-    pt: 'Abdominal Crunch',
+    pt: 'Abdominal',
   },
 } as const;
 

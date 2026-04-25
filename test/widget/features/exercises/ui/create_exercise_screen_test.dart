@@ -14,18 +14,10 @@ import 'package:repsaga/features/exercises/models/exercise.dart';
 import 'package:repsaga/features/exercises/providers/exercise_providers.dart';
 import 'package:repsaga/features/exercises/ui/create_exercise_screen.dart';
 import '../../../../fixtures/test_factories.dart';
+import '../../../../helpers/stub_locale_notifier.dart';
 import '../../../../helpers/test_material_app.dart';
 
 class _MockExerciseRepository extends Mock implements ExerciseRepository {}
-
-/// Test-only LocaleNotifier that returns a fixed locale without touching Hive.
-class _StubLocaleNotifier extends LocaleNotifier {
-  _StubLocaleNotifier(this._locale);
-  final Locale _locale;
-
-  @override
-  Locale build() => _locale;
-}
 
 void main() {
   // Register fallback values for mocktail `any()` matchers on enum types.
@@ -302,7 +294,7 @@ void main() {
               exerciseRepositoryProvider.overrideWithValue(mockRepo),
               currentUserIdProvider.overrideWithValue('user-001'),
               localeProvider.overrideWith(
-                () => _StubLocaleNotifier(const Locale('pt')),
+                () => StubLocaleNotifier(const Locale('pt')),
               ),
             ],
           ),
@@ -323,9 +315,9 @@ void main() {
 
         // Submit the form. GoRouter's context.pop() is wired so it won't throw.
         await tester.tap(find.text('CREATE EXERCISE'));
-        await tester.pump();
-        // Allow the async submit to complete.
-        await tester.pump(const Duration(milliseconds: 100));
+        // Drain pending microtasks + frames so the async submit completes
+        // (avoids the magic 100ms sleep — pumpAndSettle waits for actual idle).
+        await tester.pumpAndSettle();
 
         // Verify createExercise was called with locale:'pt'.
         verify(
@@ -400,7 +392,7 @@ void main() {
               exerciseRepositoryProvider.overrideWithValue(mockRepo),
               currentUserIdProvider.overrideWithValue('user-001'),
               localeProvider.overrideWith(
-                () => _StubLocaleNotifier(const Locale('en')),
+                () => StubLocaleNotifier(const Locale('en')),
               ),
             ],
           ),

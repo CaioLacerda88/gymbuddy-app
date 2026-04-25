@@ -21,6 +21,7 @@ import 'package:repsaga/features/routines/providers/routine_providers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
 
 import '../../../../fixtures/test_factories.dart';
+import '../../../../helpers/stub_locale_notifier.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -29,15 +30,6 @@ import '../../../../fixtures/test_factories.dart';
 class MockRoutineRepository extends Mock implements RoutineRepository {}
 
 class MockAuthRepository extends Mock implements AuthRepository {}
-
-/// Test-only LocaleNotifier that returns a fixed locale without touching Hive.
-class _StubLocaleNotifier extends LocaleNotifier {
-  _StubLocaleNotifier(this._locale);
-  final Locale _locale;
-
-  @override
-  Locale build() => _locale;
-}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -71,9 +63,7 @@ ProviderContainer _makeContainer({
     overrides: [
       routineRepositoryProvider.overrideWithValue(repo),
       authRepositoryProvider.overrideWithValue(auth),
-      localeProvider.overrideWith(
-        () => _StubLocaleNotifier(const Locale('en')),
-      ),
+      localeProvider.overrideWith(() => StubLocaleNotifier(const Locale('en'))),
     ],
   );
 }

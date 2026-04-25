@@ -21,13 +21,14 @@ import { login } from '../helpers/auth';
 import {
   EXERCISE_LIST,
   EXERCISE_DETAIL,
+  EXERCISE_LOC,
   CREATE_EXERCISE,
 } from '../helpers/selectors';
 import { TEST_USERS } from '../fixtures/test-users';
 import { EXERCISE_NAMES } from '../fixtures/test-exercises';
 
 // =============================================================================
-// SMOKE: Exercise list and detail — pt locale (A1, A2, A4)
+// SMOKE: Exercise list and detail — pt locale (A1, A2)
 // Uses smokeLocalization user (existing pt user from Phase 15e)
 // =============================================================================
 
@@ -47,21 +48,27 @@ test.describe('Exercise list localization', { tag: '@smoke' }, () => {
   }) => {
     // Wait for the exercise list to load.
     // pt locale: AOM label prefix is "Exercício:" (app_pt.arb exerciseItemSemantics).
-    const cards = page.locator('role=button[name*="Exercício:"]');
-    await expect(cards.first()).toBeVisible({ timeout: 15_000 });
+    const ptBenchName = EXERCISE_NAMES.barbell_bench_press.pt;
+    const enBenchName = EXERCISE_NAMES.barbell_bench_press.en;
+
+    await expect(
+      page.locator(EXERCISE_LOC.exerciseCard(ptBenchName, 'pt')).or(
+        page.locator('role=button[name*="Exercício:"]'),
+      ).first(),
+    ).toBeVisible({ timeout: 15_000 });
 
     // Search for the pt name of Barbell Bench Press ("Supino" — starts with S,
     // off-screen in the initial A-sorted viewport).
     // Use identifier-based searchInput (locale-independent, pt aria-label = "Buscar exercícios").
-    await flutterFill(page, EXERCISE_LIST.searchInput, EXERCISE_NAMES.barbell_bench_press.pt.substring(0, 6));
+    await flutterFill(page, EXERCISE_LIST.searchInput, ptBenchName.substring(0, 6));
     await page.waitForTimeout(800);
     await expect(
-      page.locator(`role=button[name*="Exercício: ${EXERCISE_NAMES.barbell_bench_press.pt}"]`).first(),
+      page.locator(EXERCISE_LOC.exerciseCard(ptBenchName, 'pt')).first(),
     ).toBeVisible({ timeout: 10_000 });
 
     // Verify the en name does NOT appear for this pt user.
     await expect(
-      page.locator(`role=button[name*="Exercício: ${EXERCISE_NAMES.barbell_bench_press.en}"]`),
+      page.locator(EXERCISE_LOC.exerciseCard(enBenchName, 'pt')),
     ).not.toBeVisible({ timeout: 3_000 });
   });
 
@@ -69,13 +76,15 @@ test.describe('Exercise list localization', { tag: '@smoke' }, () => {
   test('should show pt description and form_tips on exercise detail for pt user (A2)', async ({
     page,
   }) => {
+    const ptBenchName = EXERCISE_NAMES.barbell_bench_press.pt;
+
     // Search for the pt name of Barbell Bench Press.
     // Use identifier-based searchInput (locale-independent — pt label is "Buscar exercícios").
-    await flutterFill(page, EXERCISE_LIST.searchInput, EXERCISE_NAMES.barbell_bench_press.pt.substring(0, 8));
+    await flutterFill(page, EXERCISE_LIST.searchInput, ptBenchName.substring(0, 8));
     await page.waitForTimeout(800);
 
     const card = page
-      .locator(`role=button[name*="Exercício: ${EXERCISE_NAMES.barbell_bench_press.pt}"]`)
+      .locator(EXERCISE_LOC.exerciseCard(ptBenchName, 'pt'))
       .first();
     await expect(card).toBeVisible({ timeout: 10_000 });
     await card.click();
@@ -87,14 +96,18 @@ test.describe('Exercise list localization', { tag: '@smoke' }, () => {
 
     // The exercise name rendered in the detail body must be the pt name.
     await expect(
-      page.locator(`text=${EXERCISE_NAMES.barbell_bench_press.pt}`).first(),
+      page.locator(`text=${ptBenchName}`).first(),
     ).toBeVisible({ timeout: 5_000 });
 
-    // ABOUT section must be present (pt: "SOBRE", app_pt.arb aboutSection).
-    await expect(page.locator('text=SOBRE').first()).toBeVisible({ timeout: 5_000 });
+    // ABOUT section must be present (pt: "SOBRE" — app_pt.arb aboutSection).
+    await expect(
+      page.locator(EXERCISE_LOC.aboutSectionText('pt')).first(),
+    ).toBeVisible({ timeout: 5_000 });
 
-    // FORM TIPS section must be present (pt: "DICAS DE FORMA", app_pt.arb formTipsSection).
-    await expect(page.locator('text=DICAS DE FORMA').first()).toBeVisible({ timeout: 5_000 });
+    // FORM TIPS section must be present (pt: "DICAS DE FORMA" — app_pt.arb formTipsSection).
+    await expect(
+      page.locator(EXERCISE_LOC.formTipsSectionText('pt')).first(),
+    ).toBeVisible({ timeout: 5_000 });
 
     // No literal backslash-n (regression guard from BUG-002).
     const literalBackslashN = page.locator('text=/\\\\n/');
@@ -121,11 +134,14 @@ test.describe('Exercise detail en locale', { tag: '@smoke' }, () => {
   test('should show en description and form_tips on exercise detail for en user (A4)', async ({
     page,
   }) => {
+    const enBenchName = EXERCISE_NAMES.barbell_bench_press.en;
+    const ptBenchName = EXERCISE_NAMES.barbell_bench_press.pt;
+
     await flutterFillByInput(page, 'Search exercises', 'Barbell Bench');
     await page.waitForTimeout(800);
 
     const card = page
-      .locator(`role=button[name*="Exercise: ${EXERCISE_NAMES.barbell_bench_press.en}"]`)
+      .locator(EXERCISE_LOC.exerciseCard(enBenchName, 'en'))
       .first();
     await expect(card).toBeVisible({ timeout: 10_000 });
     await card.click();
@@ -136,18 +152,22 @@ test.describe('Exercise detail en locale', { tag: '@smoke' }, () => {
 
     // The en name must be visible in the detail body.
     await expect(
-      page.locator(`text=${EXERCISE_NAMES.barbell_bench_press.en}`).first(),
+      page.locator(`text=${enBenchName}`).first(),
     ).toBeVisible({ timeout: 5_000 });
 
     // ABOUT section with en description.
-    await expect(page.locator('text=ABOUT')).toBeVisible({ timeout: 5_000 });
+    await expect(
+      page.locator(EXERCISE_LOC.aboutSectionText('en')).first(),
+    ).toBeVisible({ timeout: 5_000 });
 
     // FORM TIPS with en form tips.
-    await expect(page.locator('text=FORM TIPS')).toBeVisible({ timeout: 5_000 });
+    await expect(
+      page.locator(EXERCISE_LOC.formTipsSectionText('en')).first(),
+    ).toBeVisible({ timeout: 5_000 });
 
     // The pt name must NOT appear anywhere on screen.
     await expect(
-      page.locator(`text=${EXERCISE_NAMES.barbell_bench_press.pt}`),
+      page.locator(`text=${ptBenchName}`),
     ).not.toBeVisible({ timeout: 3_000 });
   });
 });
@@ -170,17 +190,20 @@ test.describe('Exercise list en locale', () => {
   test('should show en exercise names for en user in exercise list (A3)', async ({
     page,
   }) => {
+    const enBenchName = EXERCISE_NAMES.barbell_bench_press.en;
+    const ptBenchName = EXERCISE_NAMES.barbell_bench_press.pt;
+
     const cards = page.locator('role=button[name*="Exercise:"]');
     await expect(cards.first()).toBeVisible({ timeout: 15_000 });
 
     // The en name must appear in the list.
     await expect(
-      page.locator(`role=button[name*="Exercise: ${EXERCISE_NAMES.barbell_bench_press.en}"]`).first(),
+      page.locator(EXERCISE_LOC.exerciseCard(enBenchName, 'en')).first(),
     ).toBeVisible({ timeout: 10_000 });
 
     // The pt name must NOT appear.
     await expect(
-      page.locator(`role=button[name*="Exercise: ${EXERCISE_NAMES.barbell_bench_press.pt}"]`),
+      page.locator(EXERCISE_LOC.exerciseCard(ptBenchName, 'en')),
     ).not.toBeVisible({ timeout: 3_000 });
   });
 });
@@ -199,6 +222,9 @@ test.describe('Exercise list pt locale filters and search', () => {
   test('should show only pt-named chest exercises when applying chest filter for pt user (A5)', async ({
     page,
   }) => {
+    const ptBenchName = EXERCISE_NAMES.barbell_bench_press.pt;
+    const enBenchName = EXERCISE_NAMES.barbell_bench_press.en;
+
     // pt locale: AOM prefix is "Exercício:" (app_pt.arb exerciseItemSemantics).
     const cards = page.locator('role=button[name*="Exercício:"]');
     await expect(cards.first()).toBeVisible({ timeout: 15_000 });
@@ -217,17 +243,17 @@ test.describe('Exercise list pt locale filters and search', () => {
     // Search for the pt bench press to bring it into view.
     // "Supino Reto com Barra" starts with S — may be off-screen.
     // Use identifier-based searchInput (locale-independent).
-    await flutterFill(page, EXERCISE_LIST.searchInput, EXERCISE_NAMES.barbell_bench_press.pt.substring(0, 6));
+    await flutterFill(page, EXERCISE_LIST.searchInput, ptBenchName.substring(0, 6));
     await page.waitForTimeout(600);
 
     // The pt bench press (a chest exercise) must appear in pt locale.
     await expect(
-      page.locator(`role=button[name*="Exercício: ${EXERCISE_NAMES.barbell_bench_press.pt}"]`).first(),
+      page.locator(EXERCISE_LOC.exerciseCard(ptBenchName, 'pt')).first(),
     ).toBeVisible({ timeout: 10_000 });
 
     // The en bench press AOM label must NOT appear (pt user sees pt names).
     await expect(
-      page.locator(`role=button[name*="Exercício: ${EXERCISE_NAMES.barbell_bench_press.en}"]`),
+      page.locator(EXERCISE_LOC.exerciseCard(enBenchName, 'pt')),
     ).not.toBeVisible({ timeout: 3_000 });
   });
 
@@ -235,124 +261,151 @@ test.describe('Exercise list pt locale filters and search', () => {
   test('should find pt-named bench press when searching "supino" as pt user (B1)', async ({
     page,
   }) => {
+    const ptBenchName = EXERCISE_NAMES.barbell_bench_press.pt;
+
     await flutterFill(page, EXERCISE_LIST.searchInput, 'supino');
     await page.waitForTimeout(800);
 
     // At least one result must appear containing the pt bench press name.
     await expect(
-      page.locator(`role=button[name*="Exercício: ${EXERCISE_NAMES.barbell_bench_press.pt}"]`).first(),
+      page.locator(EXERCISE_LOC.exerciseCard(ptBenchName, 'pt')).first(),
     ).toBeVisible({ timeout: 10_000 });
   });
 
   // B2: pt user searches "bench" → finds via en-name cross-locale fallback.
+  // The RPC's trigram index covers BOTH locales, so an en-language query from
+  // a pt user must still match. The display name returned MUST be pt (the RPC
+  // resolves display via the locale fallback cascade, not the matched locale).
   test('should find pt-named bench press when searching "bench" as pt user via cross-locale fallback (B2)', async ({
     page,
   }) => {
+    const ptBenchName = EXERCISE_NAMES.barbell_bench_press.pt;
+    const enBenchName = EXERCISE_NAMES.barbell_bench_press.en;
+
     await flutterFill(page, EXERCISE_LIST.searchInput, 'bench');
     await page.waitForTimeout(800);
 
-    // The cross-locale search must find the exercise and return it with pt name.
-    // Either a result appears or an empty state — but if any result appears it
-    // must be the pt-rendered exercise (the RPC returns localized display text).
-    // pt locale: AOM prefix is "Exercício:".
-    const matchCards = page.locator('role=button[name*="Exercício:"]');
-    const emptyState = page.locator(EXERCISE_LIST.emptyStateFiltered);
+    // Hard assertion: the pt-named bench press card MUST appear. This is B2's
+    // primary contract — cross-locale search by en query returns a result for
+    // a pt user, with the result rendered in pt.
+    await expect(
+      page.locator(EXERCISE_LOC.exerciseCard(ptBenchName, 'pt')).first(),
+    ).toBeVisible({ timeout: 10_000 });
 
-    const hasCards = await matchCards.first().isVisible({ timeout: 5_000 }).catch(() => false);
-    const hasEmpty = await emptyState.isVisible({ timeout: 5_000 }).catch(() => false);
-
-    // At least one state must be visible — app must not crash.
-    expect(hasCards || hasEmpty).toBe(true);
-
-    // If cards appeared, verify no en bench press name leaks through.
-    if (hasCards) {
-      // The pt user's result must show pt name, not en name.
-      // The result card name in AOM includes the localized name.
-      // We verify the en name is absent to guard against locale leakage.
-      // Note: cross-locale search may return the exercise but the display
-      // name is still resolved as pt (the RPC's fallback cascade means the
-      // display is pt even if matched by en trigram index).
-      await expect(matchCards.first()).toBeVisible({ timeout: 3_000 });
-    }
+    // Hard assertion: the en name must NOT leak into the pt user's list. The
+    // RPC's display resolution must override the language used to match.
+    await expect(
+      page.locator(EXERCISE_LOC.exerciseCard(enBenchName, 'pt')),
+    ).not.toBeVisible({ timeout: 3_000 });
   });
 });
 
 // =============================================================================
 // FULL: User-created exercise pt (G1, G2)
-// Uses smokeLocalization user for the pt side; fullExercises user for en RLS check
+// G1 uses TWO browser contexts to actually verify cross-user RLS:
+//   - context A: pt creator (smokeLocalization) creates the exercise
+//   - context B: en user (fullExercises) logs in fresh and confirms it does
+//     not appear in their list. Without two contexts the RLS contract is
+//     untested — a single context would just be a logout-cancel.
 // =============================================================================
 
 test.describe('User-created exercise pt locale', () => {
-  // G1: pt user creates "Meu Exercício" → visible with pt name on list;
-  //     en user (fullExercises) does NOT see it (RLS).
+  // G1: pt user creates "Meu Exercício" → visible with pt name on creator's list;
+  //     en user (fullExercises) does NOT see it (RLS on user_id).
   test('should show custom pt-named exercise for creator but not for en user (G1)', async ({
-    page,
+    browser,
   }) => {
     const ptExerciseName = `Meu Exercício ${Date.now()}`;
 
-    // ─ Step 1: pt user creates the exercise ─────────────────────────────
-    await login(
-      page,
-      TEST_USERS.smokeLocalization.email,
-      TEST_USERS.smokeLocalization.password,
-    );
-    await navigateToTab(page, 'Exercises');
+    // ─ Context A: pt creator creates the exercise ───────────────────────
+    const creatorContext = await browser.newContext();
+    const creatorPage = await creatorContext.newPage();
+    try {
+      await login(
+        creatorPage,
+        TEST_USERS.smokeLocalization.email,
+        TEST_USERS.smokeLocalization.password,
+      );
+      await navigateToTab(creatorPage, 'Exercises');
 
-    await page.click(EXERCISE_LIST.createFab);
-    await expect(page.locator(CREATE_EXERCISE.nameInput)).toBeVisible({
-      timeout: 10_000,
-    });
-    await flutterFill(page, CREATE_EXERCISE.nameInput, ptExerciseName);
-    // pt locale: "Grupo muscular: Peito" / "Tipo de equipamento: Barra".
-    await page.locator('role=button[name*="Grupo muscular: Peito"]').first().click();
-    await page.locator('role=button[name*="Tipo de equipamento: Barra"]').first().click();
-    await page.click(CREATE_EXERCISE.saveButton);
+      await creatorPage.click(EXERCISE_LIST.createFab);
+      await expect(creatorPage.locator(CREATE_EXERCISE.nameInput)).toBeVisible({
+        timeout: 10_000,
+      });
+      await flutterFill(creatorPage, CREATE_EXERCISE.nameInput, ptExerciseName);
+      // pt locale: "Grupo muscular: Peito" / "Tipo de equipamento: Barra".
+      await creatorPage
+        .locator('role=button[name*="Grupo muscular: Peito"]')
+        .first()
+        .click();
+      await creatorPage
+        .locator('role=button[name*="Tipo de equipamento: Barra"]')
+        .first()
+        .click();
+      await creatorPage.click(CREATE_EXERCISE.saveButton);
 
-    // Must navigate back to the list.
-    await expect(page.locator(EXERCISE_LIST.heading).first()).toBeVisible({
-      timeout: 15_000,
-    });
+      // Must navigate back to the list.
+      await expect(
+        creatorPage.locator(EXERCISE_LIST.heading).first(),
+      ).toBeVisible({ timeout: 15_000 });
 
-    // Search for the exercise to confirm it was created.
-    // pt locale: AOM prefix is "Exercício:".
-    await flutterFill(page, EXERCISE_LIST.searchInput, ptExerciseName.substring(0, 10));
-    await page.waitForTimeout(800);
-    await expect(
-      page.locator(`role=button[name*="Exercício: ${ptExerciseName}"]`),
-    ).toBeVisible({ timeout: 10_000 });
+      // Search for the exercise — creator MUST see it with pt prefix.
+      await flutterFill(
+        creatorPage,
+        EXERCISE_LIST.searchInput,
+        ptExerciseName.substring(0, 10),
+      );
+      await creatorPage.waitForTimeout(800);
+      const creatorCard = creatorPage
+        .locator(EXERCISE_LOC.exerciseCard(ptExerciseName, 'pt'))
+        .first();
+      await expect(creatorCard).toBeVisible({ timeout: 10_000 });
 
-    // ─ Step 2: en user (fullExercises) must NOT see the pt-user's custom exercise ──
-    // Log out and log in as en user.
-    // Navigate to Profile → Log Out.
-    await page.locator('[flt-semantics-identifier="nav-profile"]').click();
-    await expect(page.locator('[flt-semantics-identifier="profile-logout-btn"]')).toBeVisible({
-      timeout: 10_000,
-    });
-    await page.locator('[flt-semantics-identifier="profile-logout-btn"]').click();
-    await expect(page.locator('[flt-semantics-identifier="profile-logout-dialog"]')).toBeVisible({
-      timeout: 5_000,
-    });
-    await page.locator('[flt-semantics-identifier="profile-cancel-btn"]').click();
-
-    // Re-login as the en user and search for the pt exercise name.
-    // (We confirm it doesn't exist rather than doing a full logout cycle,
-    // which requires page reload — use a fresh page context instead via
-    // the fullExercises user which has separate state.)
-    // Note: in Playwright, each test gets a new browser context, so shared
-    // describe blocks guarantee isolation. Here we confirm the exercise is
-    // visible for the creator only by checking the custom badge is present
-    // (only visible to the owner — RLS policy).
-    const customBadge = page.locator(EXERCISE_DETAIL.customBadge);
-    // Navigate to the exercise detail to verify the custom badge is shown
-    // for the owner (confirming RLS allows the creator to see their own
-    // custom exercise).
-    const creatorCard = page
-      .locator(`role=button[name*="Exercício: ${ptExerciseName}"]`)
-      .first();
-    if (await creatorCard.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      // Owner must see the custom badge on detail (RLS allows owner to read
+      // their own custom exercise).
       await creatorCard.click();
-      await expect(customBadge).toBeVisible({ timeout: 5_000 });
-      await page.goBack();
+      await expect(
+        creatorPage.locator(EXERCISE_DETAIL.customBadge),
+      ).toBeVisible({ timeout: 5_000 });
+    } finally {
+      // Keep creatorContext open until after we verify with en user, then close.
+    }
+
+    // ─ Context B: en user logs in fresh and MUST NOT see the pt exercise ──
+    const enContext = await browser.newContext();
+    const enPage = await enContext.newPage();
+    try {
+      await login(
+        enPage,
+        TEST_USERS.fullExercises.email,
+        TEST_USERS.fullExercises.password,
+      );
+      await navigateToTab(enPage, 'Exercises');
+
+      // Wait for the en list to render.
+      await expect(
+        enPage.locator('role=button[name*="Exercise:"]').first(),
+      ).toBeVisible({ timeout: 15_000 });
+
+      // Search for the pt exercise name. RLS must hide it from this user.
+      await flutterFill(
+        enPage,
+        EXERCISE_LIST.searchInput,
+        ptExerciseName.substring(0, 10),
+      );
+      await enPage.waitForTimeout(800);
+
+      // Hard RLS contract: the pt user's custom exercise MUST NOT appear in
+      // the en user's list under EITHER locale prefix.
+      await expect(
+        enPage.locator(EXERCISE_LOC.exerciseCard(ptExerciseName, 'en')),
+      ).not.toBeVisible({ timeout: 5_000 });
+      await expect(
+        enPage.locator(EXERCISE_LOC.exerciseCard(ptExerciseName, 'pt')),
+      ).not.toBeVisible({ timeout: 3_000 });
+    } finally {
+      await enContext.close();
+      await creatorContext.close();
     }
   });
 
@@ -361,7 +414,6 @@ test.describe('User-created exercise pt locale', () => {
     page,
   }) => {
     const accentedName = `Levantamento Específico ${Date.now()}`;
-    const accentedDesc = 'Exercício com acentuação: ã, é, ü, ô, ç — padrão UTF-8.';
 
     await login(
       page,
@@ -370,7 +422,7 @@ test.describe('User-created exercise pt locale', () => {
     );
     await navigateToTab(page, 'Exercises');
 
-    // Create the exercise with accented name and description.
+    // Create the exercise with accented name.
     await page.click(EXERCISE_LIST.createFab);
     await expect(page.locator(CREATE_EXERCISE.nameInput)).toBeVisible({
       timeout: 10_000,
@@ -398,7 +450,7 @@ test.describe('User-created exercise pt locale', () => {
     // ã, é, ü, ô, ç, or em-dash).
     // pt locale: AOM prefix is "Exercício:".
     await expect(
-      page.locator(`role=button[name*="Exercício: ${accentedName}"]`),
+      page.locator(EXERCISE_LOC.exerciseCard(accentedName, 'pt')),
     ).toBeVisible({ timeout: 10_000 });
   });
 });

@@ -556,6 +556,15 @@ export const PR_DISPLAY = {
   /** "Max Weight" label in _RecordTile — Semantics(identifier: 'pr-display-max-weight') */
   maxWeightLabel: '[flt-semantics-identifier="pr-display-max-weight"]',
   exerciseRecordCard: '[flt-semantics-identifier="pr-exercise-card"]',
+  /**
+   * Locate a specific PR card by exercise name. The card wraps its content
+   * in Semantics(container: true), which merges all child Text widgets into
+   * the parent group's accessibility label — so individual `text=...` nodes
+   * do NOT exist for the exercise name. Use role=group[name*=...] to match
+   * against the merged AOM label, e.g. "Supino Reto com Barra 100 kg × 5".
+   */
+  exerciseRecordCardByName: (name: string) =>
+    `role=group[name*="${name}"]`,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -721,4 +730,16 @@ export const EXERCISE_LOC = {
     const prefix = locale === 'pt' ? 'Exercício' : 'Exercise';
     return `role=group[name*="${prefix}: ${translatedName}"]`;
   },
+  /**
+   * Exercise detail "ABOUT" / "SOBRE" section header text.
+   * Source: app_en.arb aboutSection ("ABOUT"), app_pt.arb aboutSection ("SOBRE").
+   */
+  aboutSectionText: (locale: 'en' | 'pt' = 'en') =>
+    `text=${locale === 'pt' ? 'SOBRE' : 'ABOUT'}`,
+  /**
+   * Exercise detail "FORM TIPS" / "DICAS DE FORMA" section header text.
+   * Source: app_en.arb formTipsSection, app_pt.arb formTipsSection.
+   */
+  formTipsSectionText: (locale: 'en' | 'pt' = 'en') =>
+    `text=${locale === 'pt' ? 'DICAS DE FORMA' : 'FORM TIPS'}`,
 } as const;

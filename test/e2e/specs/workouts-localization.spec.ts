@@ -8,15 +8,14 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { navigateToTab } from '../helpers/app';
+import { flutterFill, navigateToTab } from '../helpers/app';
 import { login } from '../helpers/auth';
 import {
   WORKOUT,
   EXERCISE_PICKER,
-  HOME,
+  EXERCISE_LOC,
   PROFILE,
 } from '../helpers/selectors';
-import { EXERCISE_LOC } from '../helpers/selectors';
 import { startEmptyWorkout } from '../helpers/workout';
 import { TEST_USERS } from '../fixtures/test-users';
 import { EXERCISE_NAMES } from '../fixtures/test-exercises';
@@ -62,67 +61,41 @@ test.describe('Active workout pt locale', { tag: '@smoke' }, () => {
 
     // Open the exercise picker.
     await page.click(WORKOUT.addExerciseFab);
-    await expect(
-      page.locator('[flt-semantics-identifier="exercise-picker-search"]'),
-    ).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator(EXERCISE_PICKER.searchInput)).toBeVisible({
+      timeout: 10_000,
+    });
 
-    // Search for the pt bench press name.
+    // Search for the pt bench press name using flutterFill (Flutter CanvasKit
+    // requires real keyboard events; page.fill() uses synthetic events Flutter
+    // ignores). Substring keeps the search permissive.
     const ptBenchName = EXERCISE_NAMES.barbell_bench_press.pt;
-    await page.locator('[flt-semantics-identifier="exercise-picker-search"]').click();
-    // Use the native input approach for the picker search field.
-    const searchInput = page.locator('input').last();
-    await searchInput.fill(ptBenchName.substring(0, 6));
+    await flutterFill(page, EXERCISE_PICKER.searchInput, ptBenchName.substring(0, 6));
     await page.waitForTimeout(800);
 
-    // Add the exercise from the pt-named picker.
-    // pt locale: "Adicionar {name}" (app_pt.arb addExerciseSemantics).
-    const addButton = page
+    // Hard assertion: the pt-named picker entry must be present, not a fallback
+    // generic "Adicionar " match. A misconfigured RPC would fail this.
+    const ptAddButton = page
       .locator(EXERCISE_LOC.addExerciseButton(ptBenchName, 'pt'))
       .first();
-    const addButtonAlt = page
-      .locator(`role=button[name*="Adicionar ${ptBenchName}"]`)
-      .first();
+    await expect(ptAddButton).toBeVisible({ timeout: 10_000 });
+    await ptAddButton.click();
 
-    const hasDirectAdd = await addButton
-      .isVisible({ timeout: 3_000 })
-      .catch(() => false);
-    const hasAltAdd = await addButtonAlt
-      .isVisible({ timeout: 3_000 })
-      .catch(() => false);
-
-    if (hasDirectAdd) {
-      await addButton.click();
-    } else if (hasAltAdd) {
-      await addButtonAlt.click();
-    } else {
-      // Fallback: search by partial pt name and pick first result.
-      // pt locale: add button prefix is "Adicionar".
-      const firstResult = page.locator('role=button[name*="Adicionar "]').first();
-      await expect(firstResult).toBeVisible({ timeout: 5_000 });
-      await firstResult.click();
-    }
-
-    // The workout screen must now show the pt exercise name in the exercise card.
+    // Workout screen shows the active session.
     await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
       timeout: 10_000,
     });
 
-    // The exercise card in the active workout must show the pt name.
-    // pt locale: "Exercício: {name}" (app_pt.arb exerciseItemSemantics).
-    const exerciseCard = page.locator(
-      EXERCISE_LOC.exerciseDetailTap(ptBenchName, 'pt'),
-    );
-    const hasCard = await exerciseCard.isVisible({ timeout: 5_000 }).catch(() => false);
+    // Hard assertion: the active-workout exercise card MUST show the pt name.
+    await expect(
+      page.locator(EXERCISE_LOC.exerciseDetailTap(ptBenchName, 'pt')).first(),
+    ).toBeVisible({ timeout: 10_000 });
 
-    // If the exact pt name is not found in the tap target (pt RPC resolved
-    // correctly), also check via the standard WORKOUT.exerciseDetailTap with pt prefix.
-    if (!hasCard) {
-      // The exercise card must at least appear with the pt name in the group label.
-      // "Exercício: {name}. Toque para detalhes." (pt AOM label).
-      await expect(
-        page.locator(`role=group[name*="${ptBenchName}"]`).first(),
-      ).toBeVisible({ timeout: 5_000 });
-    }
+    // The en name must NOT leak into the active workout.
+    await expect(
+      page.locator(
+        EXERCISE_LOC.exerciseDetailTap(EXERCISE_NAMES.barbell_bench_press.en, 'en'),
+      ),
+    ).not.toBeVisible({ timeout: 3_000 });
   });
 });
 
@@ -132,6 +105,14 @@ test.describe('Active workout pt locale', { tag: '@smoke' }, () => {
 // =============================================================================
 
 test.describe('Locale switch during workout', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(
+      page,
+      TEST_USERS.smokeLocalizationEn.email,
+      TEST_USERS.smokeLocalizationEn.password,
+    );
+  });
+
   test.afterEach(async ({ page }) => {
     const finishVisible = await page
       .locator(WORKOUT.finishButton)
@@ -148,17 +129,11 @@ test.describe('Locale switch during workout', () => {
 
   // C2: locale switch → exercise picker shows new locale names.
   // Design note: the workout screen blocks the bottom nav bar while a workout
-  // is active. So we: (1) discard any active workout, (2) switch locale via
-  // Profile, (3) start a new workout and verify the exercise picker shows pt names.
+  // is active. So we: (1) switch locale via Profile, (2) start a new workout
+  // and verify the exercise picker shows pt names.
   test('should reflect new locale for exercise names after switching locale mid-workout (C2)', async ({
     page,
   }) => {
-    await login(
-      page,
-      TEST_USERS.smokeLocalizationEn.email,
-      TEST_USERS.smokeLocalizationEn.password,
-    );
-
     // Step 1: Switch locale to pt via Profile → Language (en user starts in en).
     await navigateToTab(page, 'Profile');
     await expect(page.locator(PROFILE.languageRow)).toBeVisible({ timeout: 10_000 });
@@ -177,35 +152,28 @@ test.describe('Locale switch during workout', () => {
 
     // Step 3: Open the exercise picker — it must show pt exercise names.
     await page.click(WORKOUT.addExerciseFab);
-    await expect(
-      page.locator('[flt-semantics-identifier="exercise-picker-search"]'),
-    ).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator(EXERCISE_PICKER.searchInput)).toBeVisible({
+      timeout: 10_000,
+    });
 
-    // Search for the bench press using the pt name.
-    const searchInput = page.locator('input').last();
-    await searchInput.fill(EXERCISE_NAMES.barbell_bench_press.pt.substring(0, 6));
+    // Search for bench press using the pt name. flutterFill is required —
+    // Flutter ignores synthetic events from page.fill().
+    await flutterFill(
+      page,
+      EXERCISE_PICKER.searchInput,
+      EXERCISE_NAMES.barbell_bench_press.pt.substring(0, 6),
+    );
     await page.waitForTimeout(800);
 
-    // The pt bench press must appear in the picker after the locale switch.
-    // This verifies that locale switch invalidates the exercise name cache.
-    const ptPickerButton = page
-      .locator(`role=button[name*="Adicionar ${EXERCISE_NAMES.barbell_bench_press.pt}"]`)
-      .first();
-    const hasButton = await ptPickerButton.isVisible({ timeout: 5_000 }).catch(() => false);
-
-    // C2 primary assertion: after locale switch to pt, the exercise picker
-    // shows pt exercise names (cache invalidated correctly).
-    // If the pt name button appeared, the locale switch succeeded.
-    // Either way, the app must not have crashed — verify by checking the
-    // exercise picker is still visible (it's open right now).
+    // Hard assertion: the picker MUST show the pt-named bench press after the
+    // locale switch. This is C2's primary contract — locale switch invalidates
+    // the locale-affected cache and the next picker fetch returns pt names.
     await expect(
-      page.locator('[flt-semantics-identifier="exercise-picker-search"]'),
-    ).toBeVisible({ timeout: 5_000 });
-
-    // Secondary: if the pt add button was found, we've fully verified locale switch.
-    // This is a best-effort assertion — cross-locale cache timing can vary.
-    if (!hasButton) {
-      console.log('[C2] pt picker button not found; locale cache may not have refreshed in time');
-    }
+      page
+        .locator(
+          EXERCISE_LOC.addExerciseButton(EXERCISE_NAMES.barbell_bench_press.pt, 'pt'),
+        )
+        .first(),
+    ).toBeVisible({ timeout: 10_000 });
   });
 });

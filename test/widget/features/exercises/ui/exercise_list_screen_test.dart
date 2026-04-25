@@ -8,16 +8,8 @@ import 'package:repsaga/features/exercises/providers/exercise_providers.dart';
 import 'package:repsaga/features/exercises/ui/exercise_list_screen.dart';
 
 import '../../../../fixtures/test_factories.dart';
+import '../../../../helpers/stub_locale_notifier.dart';
 import '../../../../helpers/test_material_app.dart';
-
-/// Test-only LocaleNotifier that returns a fixed locale without touching Hive.
-class _StubLocaleNotifier extends LocaleNotifier {
-  _StubLocaleNotifier(this._locale);
-  final Locale _locale;
-
-  @override
-  Locale build() => _locale;
-}
 
 void main() {
   final testExercises = [
@@ -203,7 +195,7 @@ void main() {
                 (ref) => AsyncData(ptExercises),
               ),
               localeProvider.overrideWith(
-                () => _StubLocaleNotifier(const Locale('pt')),
+                () => StubLocaleNotifier(const Locale('pt')),
               ),
             ],
             child: TestMaterialApp(
@@ -248,7 +240,7 @@ void main() {
                 (ref) => AsyncData(enExercises),
               ),
               localeProvider.overrideWith(
-                () => _StubLocaleNotifier(const Locale('en')),
+                () => StubLocaleNotifier(const Locale('en')),
               ),
             ],
             child: TestMaterialApp(

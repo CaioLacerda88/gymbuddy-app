@@ -18,17 +18,9 @@ import 'package:repsaga/features/workouts/providers/workout_history_providers.da
 import 'package:repsaga/features/workouts/providers/workout_providers.dart';
 
 import '../../../../fixtures/test_factories.dart';
+import '../../../../helpers/stub_locale_notifier.dart';
 
 class _MockWorkoutRepository extends Mock implements WorkoutRepository {}
-
-/// Test-only LocaleNotifier that returns a fixed locale without touching Hive.
-class _StubLocaleNotifier extends LocaleNotifier {
-  _StubLocaleNotifier(this._locale);
-  final Locale _locale;
-
-  @override
-  Locale build() => _locale;
-}
 
 void main() {
   late _MockWorkoutRepository mockRepo;
@@ -87,7 +79,7 @@ void main() {
           workoutRepositoryProvider.overrideWithValue(mockRepo),
           currentUserIdProvider.overrideWithValue('user-001'),
           localeProvider.overrideWith(
-            () => _StubLocaleNotifier(const Locale('en')),
+            () => StubLocaleNotifier(const Locale('en')),
           ),
         ],
       );
