@@ -68,7 +68,12 @@ Active work being done by agents. Each section is removed once the branch is mer
     - Gap 2 (Important) — `WorkoutRepository.getWorkoutHistory` N+1 protection test added: 5 workouts × 2 exercises asserts ONE batched `getExercisesByIds` call with deduped union (1 new test)
     - Gap 3 (Important) — `PRRepository.getRecordsForUser({userId, locale})` cache key now `'$userId:$locale'` per spec §8; 3 call sites updated (`prListProvider`, `cacheRefreshProvider`, `SyncService._reconcilePrCache`)
     - Format + analyze --fatal-infos clean; full suite 1779/1779 green
-  - [ ] Code quality review pass
+  - [x] Code quality review pass — 4 findings fixed in `a9a653e` (`refactor(15f): Stage 6 code-quality fixes`):
+    - Finding 1 (Important) — `week_review_stats_provider.dart:42` switched from `ref.read(localeProvider)` to `ref.watch(localeProvider)` so locale switch rebuilds the provider and `getWorkoutDetail` receives the fresh locale
+    - Finding 2 (Nit) — `exercise_repository.dart:307-310` replaced `description?.isEmpty ?? true ? null : description` with the readable `description?.isNotEmpty == true ? description : null` form (same fix on `formTips`); 0 hits for `isEmpty ?? true` in `lib/` after fix
+    - Finding 3 (Nit) — deleted `_parseRoutineRow` passthrough static helper; inlined `Routine.fromJson` at all four call sites (`getRoutines` tear-off, `getRoutine`/`createRoutine`/`updateRoutine` direct calls)
+    - Finding 4 (Nit) — `exercise_repository_test.dart:178` tightened `throwsA(isA<Object>())` (matched anything) to `throwsA(isA<NetworkException>())`; `StateError` from `getExerciseById` falls through `ErrorMapper.mapException` to the unmapped-default `NetworkException` branch
+    - Format + analyze --fatal-infos clean; full suite 1779/1779 green
 - [ ] **Stage 7** — Widget + E2E (qa-engineer)
   - [ ] `EXERCISE_NAMES` map in `test/e2e/fixtures/test-exercises.ts`
   - [ ] 4 new pt test users + slug-based global-setup seeds
