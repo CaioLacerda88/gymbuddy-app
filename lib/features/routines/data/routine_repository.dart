@@ -54,7 +54,7 @@ class RoutineRepository extends BaseRepository {
             .or('user_id.eq.$userId,is_default.eq.true')
             .order('created_at', ascending: false);
 
-        final routines = data.map(_parseRoutineRow).toList();
+        final routines = data.map(Routine.fromJson).toList();
         return _resolveExercises(
           routines: routines,
           userId: userId,
@@ -82,7 +82,7 @@ class RoutineRepository extends BaseRepository {
   }) {
     return mapException(() async {
       final data = await _templates.select().eq('id', id).single();
-      final routine = _parseRoutineRow(data);
+      final routine = Routine.fromJson(data);
       final resolved = await _resolveExercises(
         routines: [routine],
         userId: userId,
@@ -111,7 +111,7 @@ class RoutineRepository extends BaseRepository {
           .select()
           .single();
 
-      final routine = _parseRoutineRow(data);
+      final routine = Routine.fromJson(data);
       final resolved = await _resolveExercises(
         routines: [routine],
         userId: userId,
@@ -142,7 +142,7 @@ class RoutineRepository extends BaseRepository {
           .select()
           .single();
 
-      final routine = _parseRoutineRow(data);
+      final routine = Routine.fromJson(data);
       final resolved = await _resolveExercises(
         routines: [routine],
         userId: userId,
@@ -221,14 +221,6 @@ class RoutineRepository extends BaseRepository {
   // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------
-
-  /// Parse a raw Supabase row into a [Routine].
-  ///
-  /// Supabase returns JSONB columns as native Dart lists/maps, so
-  /// [Routine.fromJson] handles the exercises array directly.
-  static Routine _parseRoutineRow(Map<String, dynamic> row) {
-    return Routine.fromJson(row);
-  }
 
   /// Resolve [RoutineExercise.exercise] for every exercise referenced in
   /// [routines] by batch-fetching localized rows and copying them onto each

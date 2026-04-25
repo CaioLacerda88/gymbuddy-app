@@ -175,9 +175,15 @@ void main() {
           ..registerRpc('fn_exercises_localized', (_) => []);
         final repo = ExerciseRepository(client, const CacheService());
 
+        // The repository throws StateError for missing rows; mapException
+        // routes it through ErrorMapper, which surfaces non-Supabase errors
+        // as NetworkException (the safe-default unmapped bucket — see
+        // ErrorMapper.mapException). We assert the concrete sealed-subtype
+        // here so a future refactor that swallows the throw or converts it
+        // to a successful empty result fails this test loudly.
         await expectLater(
           repo.getExerciseById(locale: 'en', userId: 'user-001', id: 'missing'),
-          throwsA(isA<Object>()),
+          throwsA(isA<NetworkException>()),
         );
       });
     });

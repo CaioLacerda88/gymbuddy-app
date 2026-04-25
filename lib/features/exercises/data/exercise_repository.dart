@@ -304,8 +304,10 @@ class ExerciseRepository extends BaseRepository {
             'p_name': name,
             'p_muscle_group': muscleGroup.name,
             'p_equipment_type': equipmentType.name,
-            'p_description': description?.isEmpty ?? true ? null : description,
-            'p_form_tips': formTips?.isEmpty ?? true ? null : formTips,
+            'p_description': description?.isNotEmpty == true
+                ? description
+                : null,
+            'p_form_tips': formTips?.isNotEmpty == true ? formTips : null,
           },
         );
         final rows = (data as List).cast<Map<String, dynamic>>();

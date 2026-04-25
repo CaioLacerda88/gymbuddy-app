@@ -39,7 +39,7 @@ final weekReviewStatsProvider = FutureProvider<WeekReviewStats>((ref) async {
   final workoutRepo = ref.read(workoutRepositoryProvider);
   final prRepo = ref.read(prRepositoryProvider);
   final userId = plan.userId;
-  final locale = ref.read(localeProvider).languageCode;
+  final locale = ref.watch(localeProvider).languageCode;
 
   // Fetch volume and PR count in parallel.
   final results = await Future.wait([
