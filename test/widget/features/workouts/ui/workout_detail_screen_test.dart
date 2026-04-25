@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:repsaga/core/theme/app_theme.dart';
+import 'package:repsaga/features/exercises/models/exercise.dart';
 import 'package:repsaga/features/personal_records/providers/pr_providers.dart';
 import 'package:repsaga/features/profile/models/profile.dart';
 import 'package:repsaga/features/profile/providers/profile_providers.dart';
@@ -32,30 +33,36 @@ class _ProfileNotifierWithUnit extends AsyncNotifier<Profile?>
 
 void main() {
   WorkoutDetail makeDetail() {
-    return WorkoutRepository.parseWorkoutDetail({
-      ...TestWorkoutFactory.create(id: 'w-1'),
-      'workout_exercises': [
-        {
-          ...TestWorkoutExerciseFactory.create(id: 'we-1', exerciseId: 'e-1'),
-          'exercise': TestExerciseFactory.create(
-            id: 'e-1',
-            name: 'Bench Press',
-          ),
-          'sets': [
-            TestSetFactory.create(
-              id: 'set-1',
-              workoutExerciseId: 'we-1',
-              setNumber: 1,
-            ),
-            TestSetFactory.create(
-              id: 'set-2',
-              workoutExerciseId: 'we-1',
-              setNumber: 2,
-            ),
-          ],
-        },
-      ],
-    });
+    // Phase 15f Stage 6: parseWorkoutDetail resolves exercises from the
+    // `exerciseMap` parameter keyed on exercise_id, not from an embedded
+    // `'exercise'` field in the workout_exercises JSON.
+    return WorkoutRepository.parseWorkoutDetail(
+      {
+        ...TestWorkoutFactory.create(id: 'w-1'),
+        'workout_exercises': [
+          {
+            ...TestWorkoutExerciseFactory.create(id: 'we-1', exerciseId: 'e-1'),
+            'sets': [
+              TestSetFactory.create(
+                id: 'set-1',
+                workoutExerciseId: 'we-1',
+                setNumber: 1,
+              ),
+              TestSetFactory.create(
+                id: 'set-2',
+                workoutExerciseId: 'we-1',
+                setNumber: 2,
+              ),
+            ],
+          },
+        ],
+      },
+      {
+        'e-1': Exercise.fromJson(
+          TestExerciseFactory.create(id: 'e-1', name: 'Bench Press'),
+        ),
+      },
+    );
   }
 
   Widget buildTestWidget({required List<Override> overrides}) {
@@ -215,41 +222,47 @@ void main() {
     // Fake workout: 3 completed sets at 60/80/100 × 10/8/5.
     // Total volume = 600 + 640 + 500 = 1,740.
     WorkoutDetail makeVolumeDetail() {
-      return WorkoutRepository.parseWorkoutDetail({
-        ...TestWorkoutFactory.create(id: 'w-1', name: 'Push Day'),
-        'workout_exercises': [
-          {
-            ...TestWorkoutExerciseFactory.create(id: 'we-1', exerciseId: 'e-1'),
-            'exercise': TestExerciseFactory.create(
-              id: 'e-1',
-              name: 'Bench Press',
-            ),
-            'sets': [
-              TestSetFactory.create(
-                id: 'set-1',
-                workoutExerciseId: 'we-1',
-                setNumber: 1,
-                weight: 60.0,
-                reps: 10,
+      return WorkoutRepository.parseWorkoutDetail(
+        {
+          ...TestWorkoutFactory.create(id: 'w-1', name: 'Push Day'),
+          'workout_exercises': [
+            {
+              ...TestWorkoutExerciseFactory.create(
+                id: 'we-1',
+                exerciseId: 'e-1',
               ),
-              TestSetFactory.create(
-                id: 'set-2',
-                workoutExerciseId: 'we-1',
-                setNumber: 2,
-                weight: 80.0,
-                reps: 8,
-              ),
-              TestSetFactory.create(
-                id: 'set-3',
-                workoutExerciseId: 'we-1',
-                setNumber: 3,
-                weight: 100.0,
-                reps: 5,
-              ),
-            ],
-          },
-        ],
-      });
+              'sets': [
+                TestSetFactory.create(
+                  id: 'set-1',
+                  workoutExerciseId: 'we-1',
+                  setNumber: 1,
+                  weight: 60.0,
+                  reps: 10,
+                ),
+                TestSetFactory.create(
+                  id: 'set-2',
+                  workoutExerciseId: 'we-1',
+                  setNumber: 2,
+                  weight: 80.0,
+                  reps: 8,
+                ),
+                TestSetFactory.create(
+                  id: 'set-3',
+                  workoutExerciseId: 'we-1',
+                  setNumber: 3,
+                  weight: 100.0,
+                  reps: 5,
+                ),
+              ],
+            },
+          ],
+        },
+        {
+          'e-1': Exercise.fromJson(
+            TestExerciseFactory.create(id: 'e-1', name: 'Bench Press'),
+          ),
+        },
+      );
     }
 
     testWidgets('Per-set weight row shows kg suffix when profile is kg', (
