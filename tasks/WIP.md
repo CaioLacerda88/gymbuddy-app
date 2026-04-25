@@ -63,7 +63,12 @@ Active work being done by agents. Each section is removed once the branch is mer
   - [x] `exerciseName_*` ARB key deletion (300 keys total) + `flutter gen-l10n`; generated AppLocalizations confirms zero `exerciseName_` getters
   - [x] Step 10 grep invariants: `localizedExerciseName`, `_exerciseNames`, `exerciseName_` all 0 occurrences in `lib/`; `exercises(name` and `exercise:exercises` only in explanatory comments
   - [x] Final verification gate: `dart format` clean, `dart analyze --fatal-infos` 0 issues across entire repo, `flutter test` 1767/1767 green
-  - [ ] Reviews pass
+  - [x] Spec compliance review pass — 3 gaps fixed in `1baf073` (`refactor(15f): Stage 6 spec-compliance fixes`):
+    - Gap 1 (Critical) — `ExerciseRepository.getExercisesByIds` now read-through cached with key `'$locale:batch:${sortedIds.join(",")}'` per spec §7.1; empty-ids short-circuits BEFORE cache (8 new tests)
+    - Gap 2 (Important) — `WorkoutRepository.getWorkoutHistory` N+1 protection test added: 5 workouts × 2 exercises asserts ONE batched `getExercisesByIds` call with deduped union (1 new test)
+    - Gap 3 (Important) — `PRRepository.getRecordsForUser({userId, locale})` cache key now `'$userId:$locale'` per spec §8; 3 call sites updated (`prListProvider`, `cacheRefreshProvider`, `SyncService._reconcilePrCache`)
+    - Format + analyze --fatal-infos clean; full suite 1779/1779 green
+  - [ ] Code quality review pass
 - [ ] **Stage 7** — Widget + E2E (qa-engineer)
   - [ ] `EXERCISE_NAMES` map in `test/e2e/fixtures/test-exercises.ts`
   - [ ] 4 new pt test users + slug-based global-setup seeds
