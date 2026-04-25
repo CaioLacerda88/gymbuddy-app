@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/exceptions/app_exception.dart';
+import '../../../core/l10n/locale_provider.dart';
 import '../../../core/theme/app_icons.dart';
 import '../../../core/utils/enum_l10n.dart';
 import '../../../l10n/app_localizations.dart';
@@ -78,9 +79,11 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
       }
       final description = _descriptionController.text.trim();
       final formTips = _formTipsController.text.trim();
+      final locale = ref.read(localeProvider).languageCode;
       await ref
           .read(exerciseRepositoryProvider)
           .createExercise(
+            locale: locale,
             name: _nameController.text.trim(),
             muscleGroup: _selectedMuscleGroup!,
             equipmentType: _selectedEquipmentType!,

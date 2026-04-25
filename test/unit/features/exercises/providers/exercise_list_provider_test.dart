@@ -4,10 +4,18 @@
 ///  - F1: autoDispose behaviour (family entries cleaned up when listeners drop)
 ///  - F2: invalidation targets (filteredExerciseListProvider delegates correctly)
 ///  - Filter composition in filteredExerciseListProvider
+///
+/// Phase 15f Stage 6: providers now read locale + userId and pass them
+/// through to the repository. Tests override `localeProvider` and
+/// `currentUserIdProvider` to keep the mock surface flat.
 library;
+
+import 'dart:ui';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:repsaga/core/l10n/locale_provider.dart';
+import 'package:repsaga/features/auth/providers/auth_providers.dart';
 import 'package:repsaga/features/exercises/data/exercise_repository.dart';
 import 'package:repsaga/features/exercises/models/exercise.dart';
 import 'package:repsaga/features/exercises/providers/exercise_providers.dart';
@@ -17,6 +25,15 @@ import '../../../../fixtures/test_factories.dart';
 
 class _MockExerciseRepository extends Mock implements ExerciseRepository {}
 
+/// Test-only LocaleNotifier that returns a fixed locale without touching Hive.
+class _StubLocaleNotifier extends LocaleNotifier {
+  _StubLocaleNotifier(this._locale);
+  final Locale _locale;
+
+  @override
+  Locale build() => _locale;
+}
+
 void main() {
   late _MockExerciseRepository mockRepo;
 
@@ -25,6 +42,8 @@ void main() {
   });
 
   ProviderContainer createContainer({
+    String userId = 'user-001',
+    String localeCode = 'en',
     MuscleGroup? muscleGroup,
     EquipmentType? equipmentType,
     String searchQuery = '',
@@ -32,6 +51,10 @@ void main() {
     return ProviderContainer(
       overrides: [
         exerciseRepositoryProvider.overrideWithValue(mockRepo),
+        currentUserIdProvider.overrideWithValue(userId),
+        localeProvider.overrideWith(
+          () => _StubLocaleNotifier(Locale(localeCode)),
+        ),
         if (muscleGroup != null)
           selectedMuscleGroupProvider.overrideWith((ref) => muscleGroup),
         if (equipmentType != null)
@@ -45,7 +68,11 @@ void main() {
   final testExercises = [
     Exercise.fromJson(TestExerciseFactory.create()),
     Exercise.fromJson(
-      TestExerciseFactory.create(id: 'exercise-002', name: 'Squat'),
+      TestExerciseFactory.create(
+        id: 'exercise-002',
+        name: 'Squat',
+        slug: 'squat',
+      ),
     ),
   ];
 
@@ -63,33 +90,53 @@ void main() {
       expect(p1, equals(p3));
     });
 
-    test('calls getExercises when searchQuery is empty', () async {
-      when(
-        () => mockRepo.getExercises(muscleGroup: MuscleGroup.chest),
-      ).thenAnswer((_) async => testExercises);
+    test(
+      'calls getExercises with locale + userId when searchQuery empty',
+      () async {
+        when(
+          () => mockRepo.getExercises(
+            locale: 'en',
+            userId: 'user-001',
+            muscleGroup: MuscleGroup.chest,
+          ),
+        ).thenAnswer((_) async => testExercises);
 
-      final container = createContainer();
-      addTearDown(container.dispose);
+        final container = createContainer();
+        addTearDown(container.dispose);
 
-      const filter = ExerciseFilter(muscleGroup: MuscleGroup.chest);
-      final result = await container.read(exerciseListProvider(filter).future);
+        const filter = ExerciseFilter(muscleGroup: MuscleGroup.chest);
+        final result = await container.read(
+          exerciseListProvider(filter).future,
+        );
 
-      expect(result, testExercises);
-      verify(
-        () => mockRepo.getExercises(muscleGroup: MuscleGroup.chest),
-      ).called(1);
-      verifyNever(
-        () => mockRepo.searchExercises(
-          any(),
-          muscleGroup: any(named: 'muscleGroup'),
-          equipmentType: any(named: 'equipmentType'),
-        ),
-      );
-    });
+        expect(result, testExercises);
+        verify(
+          () => mockRepo.getExercises(
+            locale: 'en',
+            userId: 'user-001',
+            muscleGroup: MuscleGroup.chest,
+          ),
+        ).called(1);
+        verifyNever(
+          () => mockRepo.searchExercises(
+            locale: any(named: 'locale'),
+            userId: any(named: 'userId'),
+            query: any(named: 'query'),
+            muscleGroup: any(named: 'muscleGroup'),
+            equipmentType: any(named: 'equipmentType'),
+          ),
+        );
+      },
+    );
 
     test('calls searchExercises when searchQuery is non-empty', () async {
       when(
-        () => mockRepo.searchExercises('bench', muscleGroup: MuscleGroup.chest),
+        () => mockRepo.searchExercises(
+          locale: 'en',
+          userId: 'user-001',
+          query: 'bench',
+          muscleGroup: MuscleGroup.chest,
+        ),
       ).thenAnswer((_) async => [testExercises.first]);
 
       final container = createContainer();
@@ -103,7 +150,28 @@ void main() {
 
       expect(result, [testExercises.first]);
       verify(
-        () => mockRepo.searchExercises('bench', muscleGroup: MuscleGroup.chest),
+        () => mockRepo.searchExercises(
+          locale: 'en',
+          userId: 'user-001',
+          query: 'bench',
+          muscleGroup: MuscleGroup.chest,
+        ),
+      ).called(1);
+    });
+
+    test('locale override flows through to repo call', () async {
+      when(
+        () => mockRepo.getExercises(locale: 'pt', userId: 'user-001'),
+      ).thenAnswer((_) async => testExercises);
+
+      final container = createContainer(localeCode: 'pt');
+      addTearDown(container.dispose);
+
+      const filter = ExerciseFilter();
+      await container.read(exerciseListProvider(filter).future);
+
+      verify(
+        () => mockRepo.getExercises(locale: 'pt', userId: 'user-001'),
       ).called(1);
     });
 
@@ -111,7 +179,11 @@ void main() {
       'F1: auto-disposes family entries when listeners are removed',
       () async {
         when(
-          () => mockRepo.getExercises(muscleGroup: MuscleGroup.chest),
+          () => mockRepo.getExercises(
+            locale: 'en',
+            userId: 'user-001',
+            muscleGroup: MuscleGroup.chest,
+          ),
         ).thenAnswer((_) async => testExercises);
 
         final container = createContainer();
@@ -148,6 +220,8 @@ void main() {
         'exerciseListProvider', () async {
       when(
         () => mockRepo.getExercises(
+          locale: 'en',
+          userId: 'user-001',
           muscleGroup: MuscleGroup.chest,
           equipmentType: EquipmentType.barbell,
         ),
@@ -181,7 +255,9 @@ void main() {
       'F2: invalidating exerciseListProvider clears underlying data',
       () async {
         var callCount = 0;
-        when(() => mockRepo.getExercises()).thenAnswer((_) async {
+        when(
+          () => mockRepo.getExercises(locale: 'en', userId: 'user-001'),
+        ).thenAnswer((_) async {
           callCount++;
           return testExercises;
         });
