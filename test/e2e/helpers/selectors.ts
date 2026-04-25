@@ -556,6 +556,15 @@ export const PR_DISPLAY = {
   /** "Max Weight" label in _RecordTile — Semantics(identifier: 'pr-display-max-weight') */
   maxWeightLabel: '[flt-semantics-identifier="pr-display-max-weight"]',
   exerciseRecordCard: '[flt-semantics-identifier="pr-exercise-card"]',
+  /**
+   * Locate a specific PR card by exercise name. The card wraps its content
+   * in Semantics(container: true), which merges all child Text widgets into
+   * the parent group's accessibility label — so individual `text=...` nodes
+   * do NOT exist for the exercise name. Use role=group[name*=...] to match
+   * against the merged AOM label, e.g. "Supino Reto com Barra 100 kg × 5".
+   */
+  exerciseRecordCardByName: (name: string) =>
+    `role=group[name*="${name}"]`,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -676,4 +685,61 @@ export const LOCALIZATION = {
   ptNavRoutines: 'role=tab[name="Rotinas"]',
   /** pt-BR nav tab — "Perfil" (Profile) */
   ptNavProfile: 'role=tab[name="Perfil"]',
+} as const;
+
+// ---------------------------------------------------------------------------
+// Exercise localization — locale-keyed exercise card selectors (Phase 15f)
+//
+// Exercise names now come from the exercise_translations table via
+// fn_exercises_localized RPC. Use EXERCISE_NAMES from test-exercises.ts to
+// build locale-aware selectors.
+//
+// For locale-sensitive assertions, prefer:
+//   EXERCISE_LIST.exerciseCard(EXERCISE_NAMES.barbell_bench_press[locale])
+//
+// The selectors below are convenience wrappers for the most common exercises
+// used in E2E localization tests.
+// ---------------------------------------------------------------------------
+export const EXERCISE_LOC = {
+  /**
+   * Exercise card selector for a localized exercise name.
+   * Pass the translated name string (resolved from EXERCISE_NAMES) and the
+   * locale ('en' | 'pt'). The AOM label prefix is locale-sensitive:
+   *   en → "Exercise: {name}"  (app_en.arb exerciseItemSemantics)
+   *   pt → "Exercício: {name}" (app_pt.arb exerciseItemSemantics)
+   */
+  exerciseCard: (translatedName: string, locale: 'en' | 'pt' = 'en') => {
+    const prefix = locale === 'pt' ? 'Exercício' : 'Exercise';
+    return `role=button[name*="${prefix}: ${translatedName}"]`;
+  },
+  /**
+   * Exercise picker "Add <translatedName>" / "Adicionar <translatedName>" button.
+   * Used in workout + routine exercise-picker flows.
+   *   en → "Add {name}"        (app_en.arb addExerciseSemantics)
+   *   pt → "Adicionar {name}"  (app_pt.arb addExerciseSemantics)
+   */
+  addExerciseButton: (translatedName: string, locale: 'en' | 'pt' = 'en') => {
+    const verb = locale === 'pt' ? 'Adicionar' : 'Add';
+    return `role=button[name*="${verb} ${translatedName}"]`;
+  },
+  /**
+   * Active workout exercise group — matches the tap-for-details AOM label.
+   * The prefix follows the same locale rule as exerciseCard.
+   */
+  exerciseDetailTap: (translatedName: string, locale: 'en' | 'pt' = 'en') => {
+    const prefix = locale === 'pt' ? 'Exercício' : 'Exercise';
+    return `role=group[name*="${prefix}: ${translatedName}"]`;
+  },
+  /**
+   * Exercise detail "ABOUT" / "SOBRE" section header text.
+   * Source: app_en.arb aboutSection ("ABOUT"), app_pt.arb aboutSection ("SOBRE").
+   */
+  aboutSectionText: (locale: 'en' | 'pt' = 'en') =>
+    `text=${locale === 'pt' ? 'SOBRE' : 'ABOUT'}`,
+  /**
+   * Exercise detail "FORM TIPS" / "DICAS DE FORMA" section header text.
+   * Source: app_en.arb formTipsSection, app_pt.arb formTipsSection.
+   */
+  formTipsSectionText: (locale: 'en' | 'pt' = 'en') =>
+    `text=${locale === 'pt' ? 'DICAS DE FORMA' : 'FORM TIPS'}`,
 } as const;

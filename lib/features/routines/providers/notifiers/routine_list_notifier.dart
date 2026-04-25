@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/l10n/locale_provider.dart';
 import '../../../auth/providers/auth_providers.dart';
 import '../../models/routine.dart';
 import '../routine_providers.dart';
@@ -13,7 +14,8 @@ class RoutineListNotifier extends AsyncNotifier<List<Routine>> {
     final userId = ref.read(authRepositoryProvider).currentUser?.id;
     if (userId == null) return [];
     final repo = ref.watch(routineRepositoryProvider);
-    return repo.getRoutines(userId);
+    final locale = ref.watch(localeProvider).languageCode;
+    return repo.getRoutines(userId: userId, locale: locale);
   }
 
   /// Create a new routine and refresh the list.
@@ -24,7 +26,13 @@ class RoutineListNotifier extends AsyncNotifier<List<Routine>> {
     final userId = ref.read(authRepositoryProvider).currentUser?.id;
     if (userId == null) return;
     final repo = ref.read(routineRepositoryProvider);
-    await repo.createRoutine(userId: userId, name: name, exercises: exercises);
+    final locale = ref.read(localeProvider).languageCode;
+    await repo.createRoutine(
+      userId: userId,
+      locale: locale,
+      name: name,
+      exercises: exercises,
+    );
     ref.invalidateSelf();
   }
 
@@ -37,9 +45,11 @@ class RoutineListNotifier extends AsyncNotifier<List<Routine>> {
     final userId = ref.read(authRepositoryProvider).currentUser?.id;
     if (userId == null) return;
     final repo = ref.read(routineRepositoryProvider);
+    final locale = ref.read(localeProvider).languageCode;
     await repo.updateRoutine(
       id: id,
       userId: userId,
+      locale: locale,
       name: name,
       exercises: exercises,
     );
@@ -54,8 +64,10 @@ class RoutineListNotifier extends AsyncNotifier<List<Routine>> {
     if (userId == null) return null;
     try {
       final repo = ref.read(routineRepositoryProvider);
+      final locale = ref.read(localeProvider).languageCode;
       final copy = await repo.createRoutine(
         userId: userId,
+        locale: locale,
         name: '${source.name} (Copy)',
         exercises: source.exercises,
       );

@@ -4,16 +4,21 @@
 /// - workoutDetailProvider (workout_history_providers.dart)
 library;
 
+import 'dart:ui';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:repsaga/core/l10n/locale_provider.dart';
+import 'package:repsaga/features/auth/providers/auth_providers.dart';
 import 'package:repsaga/features/workouts/data/workout_repository.dart';
 import 'package:repsaga/features/workouts/models/exercise_set.dart';
 import 'package:repsaga/features/workouts/models/workout.dart';
 import 'package:repsaga/features/workouts/providers/workout_history_providers.dart';
 import 'package:repsaga/features/workouts/providers/workout_providers.dart';
-import 'package:mocktail/mocktail.dart';
 
 import '../../../../fixtures/test_factories.dart';
+import '../../../../helpers/stub_locale_notifier.dart';
 
 class _MockWorkoutRepository extends Mock implements WorkoutRepository {}
 
@@ -65,11 +70,18 @@ void main() {
       );
 
       when(
-        () => mockRepo.getWorkoutDetail('w-1'),
+        () =>
+            mockRepo.getWorkoutDetail('w-1', userId: 'user-001', locale: 'en'),
       ).thenAnswer((_) async => detail);
 
       final container = ProviderContainer(
-        overrides: [workoutRepositoryProvider.overrideWithValue(mockRepo)],
+        overrides: [
+          workoutRepositoryProvider.overrideWithValue(mockRepo),
+          currentUserIdProvider.overrideWithValue('user-001'),
+          localeProvider.overrideWith(
+            () => StubLocaleNotifier(const Locale('en')),
+          ),
+        ],
       );
       addTearDown(container.dispose);
 

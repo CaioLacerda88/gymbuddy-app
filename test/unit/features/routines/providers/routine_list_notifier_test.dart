@@ -7,17 +7,21 @@
 /// - When userId is null, duplicateRoutine returns null and does not call the repo
 library;
 
+import 'dart:ui';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:repsaga/core/l10n/locale_provider.dart';
 import 'package:repsaga/features/auth/data/auth_repository.dart';
 import 'package:repsaga/features/auth/providers/auth_providers.dart';
 import 'package:repsaga/features/routines/data/routine_repository.dart';
 import 'package:repsaga/features/routines/models/routine.dart';
 import 'package:repsaga/features/routines/providers/routine_providers.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
 
 import '../../../../fixtures/test_factories.dart';
+import '../../../../helpers/stub_locale_notifier.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -59,6 +63,7 @@ ProviderContainer _makeContainer({
     overrides: [
       routineRepositoryProvider.overrideWithValue(repo),
       authRepositoryProvider.overrideWithValue(auth),
+      localeProvider.overrideWith(() => StubLocaleNotifier(const Locale('en'))),
     ],
   );
 }
@@ -78,6 +83,13 @@ void main() {
   setUp(() {
     mockRepo = MockRoutineRepository();
     mockAuth = MockAuthRepository();
+    // Default: empty list. Specific tests can override.
+    when(
+      () => mockRepo.getRoutines(
+        userId: any(named: 'userId'),
+        locale: any(named: 'locale'),
+      ),
+    ).thenAnswer((_) async => []);
   });
 
   group('RoutineListNotifier.duplicateRoutine', () {
@@ -96,11 +108,11 @@ void main() {
         when(
           () => mockRepo.createRoutine(
             userId: any(named: 'userId'),
+            locale: any(named: 'locale'),
             name: any(named: 'name'),
             exercises: any(named: 'exercises'),
           ),
         ).thenAnswer((_) async => expectedCopy);
-        when(() => mockRepo.getRoutines(any())).thenAnswer((_) async => []);
 
         final container = _makeContainer(repo: mockRepo, auth: mockAuth);
         addTearDown(container.dispose);
@@ -113,13 +125,16 @@ void main() {
         final captured = verify(
           () => mockRepo.createRoutine(
             userId: captureAny(named: 'userId'),
+            locale: captureAny(named: 'locale'),
             name: captureAny(named: 'name'),
             exercises: captureAny(named: 'exercises'),
           ),
         ).captured;
 
-        // captured is [userId, name, exercises] in declaration order.
-        expect(captured[1], equals('Push Day (Copy)'));
+        // captured is [userId, locale, name, exercises] in declaration order.
+        expect(captured[0], equals('user-001'));
+        expect(captured[1], equals('en'));
+        expect(captured[2], equals('Push Day (Copy)'));
 
         // The returned Routine must have isDefault: false.
         expect(result, isNotNull);
@@ -143,11 +158,11 @@ void main() {
         when(
           () => mockRepo.createRoutine(
             userId: any(named: 'userId'),
+            locale: any(named: 'locale'),
             name: any(named: 'name'),
             exercises: any(named: 'exercises'),
           ),
         ).thenAnswer((_) async => copy);
-        when(() => mockRepo.getRoutines(any())).thenAnswer((_) async => []);
 
         final container = _makeContainer(repo: mockRepo, auth: mockAuth);
         addTearDown(container.dispose);
@@ -181,11 +196,11 @@ void main() {
       when(
         () => mockRepo.createRoutine(
           userId: any(named: 'userId'),
+          locale: any(named: 'locale'),
           name: any(named: 'name'),
           exercises: any(named: 'exercises'),
         ),
       ).thenAnswer((_) async => copiedRoutine);
-      when(() => mockRepo.getRoutines(any())).thenAnswer((_) async => []);
 
       final container = _makeContainer(repo: mockRepo, auth: mockAuth);
       addTearDown(container.dispose);
@@ -196,13 +211,14 @@ void main() {
       final captured = verify(
         () => mockRepo.createRoutine(
           userId: captureAny(named: 'userId'),
+          locale: captureAny(named: 'locale'),
           name: captureAny(named: 'name'),
           exercises: captureAny(named: 'exercises'),
         ),
       ).captured;
 
-      // captured: [userId, name, exercises]
-      final exercises = captured[2] as List<RoutineExercise>;
+      // captured: [userId, locale, name, exercises]
+      final exercises = captured[3] as List<RoutineExercise>;
       expect(exercises.length, equals(2));
       expect(exercises[0].exerciseId, equals('ex-1'));
       expect(exercises[1].exerciseId, equals('ex-2'));
@@ -214,7 +230,6 @@ void main() {
         final source = _makeRoutine();
 
         when(() => mockAuth.currentUser).thenReturn(null);
-        when(() => mockRepo.getRoutines(any())).thenAnswer((_) async => []);
 
         final container = _makeContainer(repo: mockRepo, auth: mockAuth);
         addTearDown(container.dispose);
@@ -226,6 +241,7 @@ void main() {
         verifyNever(
           () => mockRepo.createRoutine(
             userId: any(named: 'userId'),
+            locale: any(named: 'locale'),
             name: any(named: 'name'),
             exercises: any(named: 'exercises'),
           ),
@@ -246,11 +262,11 @@ void main() {
       when(
         () => mockRepo.createRoutine(
           userId: any(named: 'userId'),
+          locale: any(named: 'locale'),
           name: any(named: 'name'),
           exercises: any(named: 'exercises'),
         ),
       ).thenAnswer((_) async => copy);
-      when(() => mockRepo.getRoutines(any())).thenAnswer((_) async => []);
 
       final container = _makeContainer(repo: mockRepo, auth: mockAuth);
       addTearDown(container.dispose);
@@ -266,7 +282,9 @@ void main() {
 
       // getRoutines should have been called at least twice:
       // once during initial build() and once after invalidateSelf().
-      verify(() => mockRepo.getRoutines('user-001')).called(greaterThan(1));
+      verify(
+        () => mockRepo.getRoutines(userId: 'user-001', locale: 'en'),
+      ).called(greaterThan(1));
     });
   });
 }

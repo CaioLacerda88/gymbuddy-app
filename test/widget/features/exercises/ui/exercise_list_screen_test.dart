@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:repsaga/core/l10n/locale_provider.dart';
 import 'package:repsaga/core/theme/app_theme.dart';
 import 'package:repsaga/features/exercises/models/exercise.dart';
 import 'package:repsaga/features/exercises/providers/exercise_providers.dart';
 import 'package:repsaga/features/exercises/ui/exercise_list_screen.dart';
 
 import '../../../../fixtures/test_factories.dart';
+import '../../../../helpers/stub_locale_notifier.dart';
 import '../../../../helpers/test_material_app.dart';
 
 void main() {
@@ -149,6 +151,110 @@ void main() {
 
       expect(find.byType(RefreshIndicator), findsOneWidget);
     });
+  });
+
+  group('ExerciseListScreen Phase 15f pt locale', () {
+    // PT locale exercises — names come from exercise_translations (pt).
+    final ptExercises = [
+      Exercise.fromJson(
+        TestExerciseFactory.create(
+          id: 'exercise-pt-001',
+          name: 'Supino Reto com Barra',
+          muscleGroup: 'chest',
+          equipmentType: 'barbell',
+          slug: 'barbell_bench_press',
+        ),
+      ),
+      Exercise.fromJson(
+        TestExerciseFactory.create(
+          id: 'exercise-pt-002',
+          name: 'Agachamento com Barra',
+          muscleGroup: 'legs',
+          equipmentType: 'barbell',
+          slug: 'barbell_squat',
+        ),
+      ),
+      Exercise.fromJson(
+        TestExerciseFactory.create(
+          id: 'exercise-pt-003',
+          name: 'Levantamento Terra',
+          muscleGroup: 'back',
+          equipmentType: 'barbell',
+          slug: 'deadlift',
+        ),
+      ),
+    ];
+
+    testWidgets(
+      'renders pt exercise names when localeProvider is overridden to pt',
+      (tester) async {
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              filteredExerciseListProvider.overrideWith(
+                (ref) => AsyncData(ptExercises),
+              ),
+              localeProvider.overrideWith(
+                () => StubLocaleNotifier(const Locale('pt')),
+              ),
+            ],
+            child: TestMaterialApp(
+              theme: AppTheme.dark,
+              home: const ExerciseListScreen(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // All three pt names must render.
+        expect(find.text('Supino Reto com Barra'), findsOneWidget);
+        expect(find.text('Agachamento com Barra'), findsOneWidget);
+        expect(find.text('Levantamento Terra'), findsOneWidget);
+
+        // No English names should appear in the list.
+        expect(find.text('Barbell Bench Press'), findsNothing);
+        expect(find.text('Barbell Squat'), findsNothing);
+        expect(find.text('Deadlift'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'renders en exercise names when localeProvider is overridden to en',
+      (tester) async {
+        final enExercises = [
+          Exercise.fromJson(
+            TestExerciseFactory.create(
+              id: 'exercise-en-001',
+              name: 'Barbell Bench Press',
+              muscleGroup: 'chest',
+              equipmentType: 'barbell',
+              slug: 'barbell_bench_press',
+            ),
+          ),
+        ];
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              filteredExerciseListProvider.overrideWith(
+                (ref) => AsyncData(enExercises),
+              ),
+              localeProvider.overrideWith(
+                () => StubLocaleNotifier(const Locale('en')),
+              ),
+            ],
+            child: TestMaterialApp(
+              theme: AppTheme.dark,
+              home: const ExerciseListScreen(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Barbell Bench Press'), findsOneWidget);
+        expect(find.text('Supino Reto com Barra'), findsNothing);
+      },
+    );
   });
 
   group('ExerciseListScreen P9 custom-exercise accent', () {

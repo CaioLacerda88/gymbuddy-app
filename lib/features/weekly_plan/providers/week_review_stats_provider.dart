@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/l10n/locale_provider.dart';
 import '../../personal_records/data/pr_repository.dart';
 import '../../personal_records/providers/pr_providers.dart';
 import '../../workouts/data/workout_repository.dart';
@@ -38,10 +39,11 @@ final weekReviewStatsProvider = FutureProvider<WeekReviewStats>((ref) async {
   final workoutRepo = ref.read(workoutRepositoryProvider);
   final prRepo = ref.read(prRepositoryProvider);
   final userId = plan.userId;
+  final locale = ref.watch(localeProvider).languageCode;
 
   // Fetch volume and PR count in parallel.
   final results = await Future.wait([
-    _computeTotalVolume(workoutRepo, completedIds),
+    _computeTotalVolume(workoutRepo, completedIds, userId, locale),
     _countPRsForWorkouts(prRepo, completedIds, userId),
   ]);
 
@@ -55,11 +57,17 @@ final weekReviewStatsProvider = FutureProvider<WeekReviewStats>((ref) async {
 Future<double> _computeTotalVolume(
   WorkoutRepository workoutRepo,
   List<String> workoutIds,
+  String userId,
+  String locale,
 ) async {
   var total = 0.0;
   for (final workoutId in workoutIds) {
     try {
-      final detail = await workoutRepo.getWorkoutDetail(workoutId);
+      final detail = await workoutRepo.getWorkoutDetail(
+        workoutId,
+        userId: userId,
+        locale: locale,
+      );
       for (final sets in detail.setsByExercise.values) {
         for (final s in sets) {
           if (s.isCompleted) {

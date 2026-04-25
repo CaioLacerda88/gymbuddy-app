@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/l10n/locale_provider.dart';
 import '../../../core/local_storage/cache_service.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../exercises/models/exercise.dart';
+import '../../exercises/providers/exercise_providers.dart';
 import '../data/pr_repository.dart';
 import '../domain/pr_detection_service.dart';
 import '../models/personal_record.dart';
@@ -20,6 +22,7 @@ final prRepositoryProvider = Provider<PRRepository>((ref) {
   return PRRepository(
     Supabase.instance.client,
     ref.watch(cacheServiceProvider),
+    ref.watch(exerciseRepositoryProvider),
   );
 });
 
@@ -34,7 +37,8 @@ final prListProvider = FutureProvider<List<PersonalRecord>>((ref) {
   final repo = ref.watch(prRepositoryProvider);
   final user = ref.watch(authRepositoryProvider).currentUser;
   if (user == null) return [];
-  return repo.getRecordsForUser(user.id);
+  final locale = ref.watch(localeProvider).languageCode;
+  return repo.getRecordsForUser(userId: user.id, locale: locale);
 });
 
 /// Total count of personal records for the current user.
@@ -63,7 +67,8 @@ final prListWithExercisesProvider = FutureProvider<List<PRWithExercise>>((ref) {
   final repo = ref.watch(prRepositoryProvider);
   final user = ref.watch(authRepositoryProvider).currentUser;
   if (user == null) return [];
-  return repo.getRecordsWithExercises(user.id);
+  final locale = ref.watch(localeProvider).languageCode;
+  return repo.getRecordsWithExercises(userId: user.id, locale: locale);
 });
 
 /// Fetches the 3 most recent PRs with exercise details.
@@ -74,7 +79,12 @@ final recentPRsProvider = FutureProvider.autoDispose<List<PRWithExercise>>((
   final repo = ref.watch(prRepositoryProvider);
   final user = ref.watch(authRepositoryProvider).currentUser;
   if (user == null) return [];
-  return repo.getRecentRecordsWithExercises(user.id, limit: 3);
+  final locale = ref.watch(localeProvider).languageCode;
+  return repo.getRecentRecordsWithExercises(
+    userId: user.id,
+    locale: locale,
+    limit: 3,
+  );
 });
 
 /// Returns the set of set IDs that are PRs within a given workout.

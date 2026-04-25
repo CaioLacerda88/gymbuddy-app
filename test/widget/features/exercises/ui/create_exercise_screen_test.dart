@@ -3,12 +3,29 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:repsaga/core/l10n/locale_provider.dart';
+import 'package:repsaga/l10n/app_localizations.dart';
 import 'package:repsaga/core/theme/app_theme.dart';
+import 'package:repsaga/features/auth/providers/auth_providers.dart';
+import 'package:repsaga/features/exercises/data/exercise_repository.dart';
 import 'package:repsaga/features/exercises/models/exercise.dart';
+import 'package:repsaga/features/exercises/providers/exercise_providers.dart';
 import 'package:repsaga/features/exercises/ui/create_exercise_screen.dart';
+import '../../../../fixtures/test_factories.dart';
+import '../../../../helpers/stub_locale_notifier.dart';
 import '../../../../helpers/test_material_app.dart';
 
+class _MockExerciseRepository extends Mock implements ExerciseRepository {}
+
 void main() {
+  // Register fallback values for mocktail `any()` matchers on enum types.
+  setUpAll(() {
+    registerFallbackValue(MuscleGroup.chest);
+    registerFallbackValue(EquipmentType.barbell);
+  });
+
   Widget buildTestWidget({List<Override> overrides = const []}) {
     return ProviderScope(
       overrides: overrides,
@@ -186,5 +203,224 @@ void main() {
         findsOneWidget,
       );
     });
+  });
+
+  group('CreateExerciseScreen Phase 15f locale plumbing', () {
+    late _MockExerciseRepository mockRepo;
+
+    /// Builds a test widget with GoRouter so that context.pop() in _submit
+    /// does not throw "No GoRouter found in context".
+    Widget buildWithRouter({required List<Override> overrides}) {
+      // Mirrors the real app router: /exercises as parent, create as nested
+      // child. initialLocation '/exercises/create' causes GoRouter to push both
+      // routes into the stack so context.pop() in _submit returns to
+      // /exercises without throwing "Nothing to pop".
+      final router = GoRouter(
+        initialLocation: '/exercises/create',
+        routes: [
+          GoRoute(
+            path: '/exercises',
+            builder: (context, state) =>
+                const Scaffold(body: Text('Exercise List')),
+            routes: [
+              GoRoute(
+                path: 'create',
+                builder: (context, state) => const CreateExerciseScreen(),
+              ),
+            ],
+          ),
+        ],
+      );
+
+      return ProviderScope(
+        overrides: overrides,
+        child: MaterialApp.router(
+          theme: AppTheme.dark,
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          routerConfig: router,
+        ),
+      );
+    }
+
+    setUp(() {
+      mockRepo = _MockExerciseRepository();
+    });
+
+    testWidgets(
+      'calls createExercise with locale:pt when localeProvider is overridden to pt',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final createdExercise = Exercise.fromJson(
+          TestExerciseFactory.create(
+            id: 'exercise-new-pt',
+            name: 'Meu Exercício',
+            muscleGroup: 'chest',
+            equipmentType: 'barbell',
+            slug: 'meu_exercicio',
+          ),
+        );
+
+        when(
+          () => mockRepo.createExercise(
+            locale: 'pt',
+            name: any(named: 'name'),
+            muscleGroup: any(named: 'muscleGroup'),
+            equipmentType: any(named: 'equipmentType'),
+            userId: any(named: 'userId'),
+            description: any(named: 'description'),
+            formTips: any(named: 'formTips'),
+          ),
+        ).thenAnswer((_) async => createdExercise);
+
+        // Stub list provider so invalidation after create doesn't crash.
+        when(
+          () => mockRepo.getExercises(
+            locale: any(named: 'locale'),
+            userId: any(named: 'userId'),
+            muscleGroup: any(named: 'muscleGroup'),
+            equipmentType: any(named: 'equipmentType'),
+          ),
+        ).thenAnswer((_) async => []);
+
+        await tester.pumpWidget(
+          buildWithRouter(
+            overrides: [
+              exerciseRepositoryProvider.overrideWithValue(mockRepo),
+              currentUserIdProvider.overrideWithValue('user-001'),
+              localeProvider.overrideWith(
+                () => StubLocaleNotifier(const Locale('pt')),
+              ),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Select muscle group.
+        await tester.tap(find.text('Chest'));
+        await tester.pump();
+
+        // Select equipment type.
+        await tester.tap(find.text('Barbell'));
+        await tester.pump();
+
+        // Enter a valid name.
+        await tester.enterText(find.byType(TextFormField), 'Meu Exercício');
+        await tester.pump();
+
+        // Submit the form. GoRouter's context.pop() is wired so it won't throw.
+        await tester.tap(find.text('CREATE EXERCISE'));
+        // Drain pending microtasks + frames so the async submit completes
+        // (avoids the magic 100ms sleep — pumpAndSettle waits for actual idle).
+        await tester.pumpAndSettle();
+
+        // Verify createExercise was called with locale:'pt'.
+        verify(
+          () => mockRepo.createExercise(
+            locale: 'pt',
+            name: 'Meu Exercício',
+            muscleGroup: MuscleGroup.chest,
+            equipmentType: EquipmentType.barbell,
+            userId: 'user-001',
+            description: null,
+            formTips: null,
+          ),
+        ).called(1);
+
+        // Must NOT have been called with locale:'en'.
+        verifyNever(
+          () => mockRepo.createExercise(
+            locale: 'en',
+            name: any(named: 'name'),
+            muscleGroup: any(named: 'muscleGroup'),
+            equipmentType: any(named: 'equipmentType'),
+            userId: any(named: 'userId'),
+            description: any(named: 'description'),
+            formTips: any(named: 'formTips'),
+          ),
+        );
+      },
+    );
+
+    testWidgets(
+      'calls createExercise with locale:en when localeProvider is overridden to en',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final createdExercise = Exercise.fromJson(
+          TestExerciseFactory.create(
+            id: 'exercise-new-en',
+            name: 'My Exercise',
+            muscleGroup: 'chest',
+            equipmentType: 'barbell',
+            slug: 'my_exercise',
+          ),
+        );
+
+        when(
+          () => mockRepo.createExercise(
+            locale: 'en',
+            name: any(named: 'name'),
+            muscleGroup: any(named: 'muscleGroup'),
+            equipmentType: any(named: 'equipmentType'),
+            userId: any(named: 'userId'),
+            description: any(named: 'description'),
+            formTips: any(named: 'formTips'),
+          ),
+        ).thenAnswer((_) async => createdExercise);
+
+        when(
+          () => mockRepo.getExercises(
+            locale: any(named: 'locale'),
+            userId: any(named: 'userId'),
+            muscleGroup: any(named: 'muscleGroup'),
+            equipmentType: any(named: 'equipmentType'),
+          ),
+        ).thenAnswer((_) async => []);
+
+        await tester.pumpWidget(
+          buildWithRouter(
+            overrides: [
+              exerciseRepositoryProvider.overrideWithValue(mockRepo),
+              currentUserIdProvider.overrideWithValue('user-001'),
+              localeProvider.overrideWith(
+                () => StubLocaleNotifier(const Locale('en')),
+              ),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Chest'));
+        await tester.pump();
+        await tester.tap(find.text('Barbell'));
+        await tester.pump();
+        await tester.enterText(find.byType(TextFormField), 'My Exercise');
+        await tester.pump();
+        await tester.tap(find.text('CREATE EXERCISE'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+
+        verify(
+          () => mockRepo.createExercise(
+            locale: 'en',
+            name: 'My Exercise',
+            muscleGroup: MuscleGroup.chest,
+            equipmentType: EquipmentType.barbell,
+            userId: 'user-001',
+            description: null,
+            formTips: null,
+          ),
+        ).called(1);
+      },
+    );
   });
 }

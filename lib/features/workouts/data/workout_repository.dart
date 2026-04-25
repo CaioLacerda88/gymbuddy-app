@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import '../../../core/data/base_repository.dart';
 import '../../../core/local_storage/cache_service.dart';
 import '../../../core/local_storage/hive_service.dart';
+import '../../exercises/data/exercise_repository.dart';
 import '../../exercises/models/exercise.dart';
 import '../models/exercise_set.dart';
 import '../models/workout.dart';
@@ -15,11 +16,24 @@ typedef WorkoutDetail = ({
   Map<String, List<ExerciseSet>> setsByExercise,
 });
 
+/// Workout reads + saves.
+///
+/// **Phase 15f Stage 6 contract:**
+/// History/detail queries no longer embed `exercise:exercises(name)` /
+/// `exercise:exercises(*)` — those columns were dropped in migration 00034.
+/// Instead, the repo fetches workout shape (with `workout_exercises.exercise_id`
+/// only) and resolves localized exercise data via [ExerciseRepository.getExercisesByIds]
+/// in a single follow-up RPC. This is a two-query merge, not N+1: one workouts
+/// query + one batch RPC per `getWorkoutHistory` / `getWorkoutDetail` call.
+///
+/// Cache keys for history are now `'<userId>:<locale>'` so en and pt entries
+/// coexist; [LocaleNotifier.setLocale] also clears the box on switch.
 class WorkoutRepository extends BaseRepository {
-  const WorkoutRepository(this._client, this._cache);
+  const WorkoutRepository(this._client, this._cache, this._exerciseRepo);
 
   final supabase.SupabaseClient _client;
   final CacheService _cache;
+  final ExerciseRepository _exerciseRepo;
 
   supabase.SupabaseQueryBuilder get _workouts => _client.from('workouts');
 
@@ -73,19 +87,27 @@ class WorkoutRepository extends BaseRepository {
         },
       );
       final saved = Workout.fromJson(result as Map<String, dynamic>);
-      _cache.delete(HiveService.workoutHistoryCache, workout.userId);
+      // History cache is locale-prefixed (`'<userId>:<locale>'`); after a
+      // save we evict every locale entry — the heavy hand is fine here
+      // (rare event, single-user devices in practice). Same applies to
+      // last-sets which doesn't carry locale.
+      _cache.clearBox(HiveService.workoutHistoryCache);
       _cache.clearBox(HiveService.lastSetsCache);
       return saved;
     });
   }
 
-  /// Evict workout history and last-sets caches for a user.
+  /// Evict workout history and last-sets caches.
   ///
   /// Called by the notifier when a workout is saved offline — the repository's
   /// own saveWorkout() handles eviction on the online path, but when the RPC
   /// fails the notifier needs to evict manually.
+  ///
+  /// Clears the entire history box because keys are now `'<userId>:<locale>'`
+  /// and a save invalidates every locale entry for that user (the box is
+  /// scoped per device, not per user, so the heavy hand is acceptable).
   void evictHistoryCaches(String userId) {
-    _cache.delete(HiveService.workoutHistoryCache, userId);
+    _cache.clearBox(HiveService.workoutHistoryCache);
     _cache.clearBox(HiveService.lastSetsCache);
   }
 
@@ -124,45 +146,79 @@ class WorkoutRepository extends BaseRepository {
 
   /// Get paginated workout history (finished workouts only).
   ///
-  /// Joins exercise names in a single query so each returned [Workout] has
-  /// [Workout.exerciseSummary] pre-populated (e.g. "Bench Press, Squat +2").
+  /// Two-query merge: first pulls workouts + their `workout_exercises`
+  /// `(order, exercise_id)` rows, then batch-fetches localized exercise
+  /// names via [ExerciseRepository.getExercisesByIds] and rebuilds
+  /// [Workout.exerciseSummary] (e.g. "Bench Press, Squat +2") in the
+  /// requested [locale].
   ///
-  /// Only the first page (offset == 0) is cached, up to 50 workouts.
+  /// Only the first page (`offset == 0`) is cached, up to 50 workouts. The
+  /// cache key is `'<userId>:<locale>'` so an `en` and `pt` cache coexist.
   Future<List<Workout>> getWorkoutHistory(
     String userId, {
+    required String locale,
     int limit = 20,
     int offset = 0,
   }) async {
     // Only cache from the refresh pass (limit >= 50) to avoid a UI fetch
     // (limit 20) regressing a richer 50-item cache entry.
     final shouldCache = offset == 0 && limit >= 50;
+    final cacheKey = '$userId:$locale';
 
     final cached = shouldCache
-        ? _cache.read<List<Workout>>(HiveService.workoutHistoryCache, userId, (
-            json,
-          ) {
-            final list = json as List;
-            return list.map((e) {
-              final map = Map<String, dynamic>.from(e as Map<String, dynamic>);
-              final summary = map.remove('_exercise_summary') as String?;
-              final workout = Workout.fromJson(map);
-              return summary != null
-                  ? workout.copyWith(exerciseSummary: summary)
-                  : workout;
-            }).toList();
-          })
+        ? _cache.read<List<Workout>>(
+            HiveService.workoutHistoryCache,
+            cacheKey,
+            (json) {
+              final list = json as List;
+              return list.map((e) {
+                final map = Map<String, dynamic>.from(
+                  e as Map<String, dynamic>,
+                );
+                final summary = map.remove('_exercise_summary') as String?;
+                final workout = Workout.fromJson(map);
+                return summary != null
+                    ? workout.copyWith(exerciseSummary: summary)
+                    : workout;
+              }).toList();
+            },
+          )
         : null;
 
     try {
       final fresh = await mapException(() async {
+        // Step 1: workout shape with exercise IDs only.
         final data = await _workouts
-            .select('*, workout_exercises(order, exercise:exercises(name))')
+            .select('*, workout_exercises(order, exercise_id)')
             .eq('user_id', userId)
             .eq('is_active', false)
             .not('finished_at', 'is', null)
             .order('finished_at', ascending: false)
             .range(offset, offset + limit - 1);
-        return data.map(_workoutFromHistoryRow).toList();
+
+        // Step 2: collect distinct exercise IDs across all workouts in
+        // the page and batch-fetch their localized names. One RPC call,
+        // regardless of page size or how many distinct exercises appear.
+        final ids = <String>{};
+        for (final row in data) {
+          final wes = (row['workout_exercises'] as List<dynamic>?) ?? const [];
+          for (final we in wes) {
+            final id = (we as Map<String, dynamic>)['exercise_id'] as String?;
+            if (id != null) ids.add(id);
+          }
+        }
+        final exerciseMap = await _exerciseRepo.getExercisesByIds(
+          locale: locale,
+          userId: userId,
+          ids: ids.toList(),
+        );
+        final namesById = <String, String>{
+          for (final entry in exerciseMap.entries) entry.key: entry.value.name,
+        };
+
+        return data
+            .map((row) => _workoutFromHistoryRow(row, namesById))
+            .toList();
       });
 
       if (shouldCache) {
@@ -170,7 +226,7 @@ class WorkoutRepository extends BaseRepository {
         final toCache = fresh.take(50).toList();
         _cache.write(
           HiveService.workoutHistoryCache,
-          userId,
+          cacheKey,
           toCache.map((w) {
             final json = w.toJson();
             if (w.exerciseSummary != null) {
@@ -189,21 +245,33 @@ class WorkoutRepository extends BaseRepository {
   }
 
   /// Maps a history query row (with joined workout_exercises) to a [Workout]
-  /// with [Workout.exerciseSummary] populated.
-  static Workout _workoutFromHistoryRow(Map<String, dynamic> row) {
+  /// with [Workout.exerciseSummary] populated using the supplied [namesById]
+  /// lookup (locale-resolved by the batch RPC).
+  static Workout _workoutFromHistoryRow(
+    Map<String, dynamic> row,
+    Map<String, String> namesById,
+  ) {
     final workout = Workout.fromJson(row);
     final summary = buildExerciseSummary(
-      row['workout_exercises'] as List<dynamic>? ?? [],
+      (row['workout_exercises'] as List<dynamic>?) ?? const [],
+      namesById,
     );
     return workout.copyWith(exerciseSummary: summary.isEmpty ? null : summary);
   }
 
   /// Builds a summary string like "Bench Press, Squat, Deadlift +2" from
-  /// a list of joined workout_exercise rows that each contain an `exercise`
-  /// sub-object with a `name` field.
+  /// a list of `workout_exercises` rows that each contain `order` and
+  /// `exercise_id`. Names are resolved from the supplied [namesById] map
+  /// (typically produced by [ExerciseRepository.getExercisesByIds] in the
+  /// active locale).
   ///
-  /// Exercises are sorted by their `order` field before naming.
-  static String buildExerciseSummary(List<dynamic> workoutExercises) {
+  /// Rows with an exercise_id missing from [namesById] are skipped — that
+  /// happens when the referenced exercise was soft-deleted or is foreign-
+  /// owned. Exercises are sorted by their `order` field before naming.
+  static String buildExerciseSummary(
+    List<dynamic> workoutExercises,
+    Map<String, String> namesById,
+  ) {
     if (workoutExercises.isEmpty) return '';
 
     // Sort by `order` to list exercises in the order they were performed.
@@ -214,12 +282,15 @@ class WorkoutRepository extends BaseRepository {
         return aOrder.compareTo(bOrder);
       });
 
-    // Collect exercise names, skipping any rows with missing join data.
+    // Collect exercise names by looking up each row's exercise_id in the
+    // locale-resolved map. Missing entries (soft-deleted / foreign-owned
+    // exercises) are silently skipped.
     final names = <String>[];
     for (final item in sorted) {
-      final exercise = (item as Map<String, dynamic>)['exercise'];
-      if (exercise == null) continue;
-      final name = (exercise as Map<String, dynamic>)['name'] as String?;
+      final exerciseId =
+          (item as Map<String, dynamic>)['exercise_id'] as String?;
+      if (exerciseId == null) continue;
+      final name = namesById[exerciseId];
       if (name != null && name.isNotEmpty) names.add(name);
     }
 
@@ -234,13 +305,34 @@ class WorkoutRepository extends BaseRepository {
   }
 
   /// Get full workout detail with exercises and sets, parsed into typed data.
-  Future<WorkoutDetail> getWorkoutDetail(String workoutId) {
+  ///
+  /// Two-query merge: pulls workout + `workout_exercises` (with sets, no
+  /// embedded exercise) in one query, then resolves localized exercise
+  /// data via [ExerciseRepository.getExercisesByIds] in [locale]. The
+  /// resulting [WorkoutExercise.exercise] field is populated post-hoc
+  /// for each row whose `exercise_id` is present in the batch result.
+  Future<WorkoutDetail> getWorkoutDetail(
+    String workoutId, {
+    required String userId,
+    required String locale,
+  }) {
     return mapException(() async {
       final data = await _workouts
-          .select('*, workout_exercises(*, exercise:exercises(*), sets(*))')
+          .select('*, workout_exercises(*, sets(*))')
           .eq('id', workoutId)
           .single();
-      return parseWorkoutDetail(data);
+      final wes = (data['workout_exercises'] as List<dynamic>?) ?? const [];
+      final ids = <String>{
+        for (final we in wes)
+          if ((we as Map<String, dynamic>)['exercise_id'] != null)
+            we['exercise_id'] as String,
+      };
+      final exerciseMap = await _exerciseRepo.getExercisesByIds(
+        locale: locale,
+        userId: userId,
+        ids: ids.toList(),
+      );
+      return parseWorkoutDetail(data, exerciseMap);
     });
   }
 
@@ -449,13 +541,23 @@ class WorkoutRepository extends BaseRepository {
           .eq('user_id', userId)
           .eq('is_active', false)
           .not('finished_at', 'is', null);
-      _cache.delete(HiveService.workoutHistoryCache, userId);
+      // History keys are now `'<userId>:<locale>'`; clear the entire box to
+      // evict every locale entry for the user.
+      _cache.clearBox(HiveService.workoutHistoryCache);
       _cache.clearBox(HiveService.lastSetsCache);
     });
   }
 
   /// Parse a workout detail response into structured data.
-  static WorkoutDetail parseWorkoutDetail(Map<String, dynamic> data) {
+  ///
+  /// Optionally resolves [WorkoutExercise.exercise] from [exerciseMap], which
+  /// is the locale-resolved batch from [ExerciseRepository.getExercisesByIds].
+  /// When [exerciseMap] is empty the exercise field stays null on every row —
+  /// that's fine for tests that only assert workout/set shape.
+  static WorkoutDetail parseWorkoutDetail(
+    Map<String, dynamic> data, [
+    Map<String, Exercise> exerciseMap = const {},
+  ]) {
     final workout = Workout.fromJson(data);
     final exercisesData = data['workout_exercises'] as List<dynamic>? ?? [];
 
@@ -465,10 +567,11 @@ class WorkoutRepository extends BaseRepository {
     for (final weData in exercisesData) {
       final weMap = weData as Map<String, dynamic>;
 
-      Exercise? exercise;
-      if (weMap['exercise'] != null) {
-        exercise = Exercise.fromJson(weMap['exercise'] as Map<String, dynamic>);
-      }
+      // Resolve exercise from the batch RPC result. Missing IDs (soft-
+      // deleted or foreign-owned) leave `exercise: null`; the UI falls
+      // back to a generic label.
+      final exerciseId = weMap['exercise_id'] as String?;
+      final exercise = exerciseId != null ? exerciseMap[exerciseId] : null;
 
       final we = WorkoutExercise.fromJson(weMap).copyWith(exercise: exercise);
       exercises.add(we);

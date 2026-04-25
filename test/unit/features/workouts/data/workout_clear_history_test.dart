@@ -1,9 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:repsaga/core/local_storage/cache_service.dart';
+import 'package:repsaga/features/exercises/data/exercise_repository.dart';
 import 'package:repsaga/features/workouts/data/workout_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
+
+class _MockExerciseRepository extends Mock implements ExerciseRepository {}
 
 // ---------------------------------------------------------------------------
 // Fake Supabase infrastructure for WorkoutRepository.clearHistory
@@ -78,6 +82,7 @@ void main() {
       final repo = WorkoutRepository(
         FakeSupabaseClient(fakeBuilder),
         const CacheService(),
+        _MockExerciseRepository(),
       );
 
       await repo.clearHistory('user-001');
@@ -94,6 +99,7 @@ void main() {
       final repo = WorkoutRepository(
         FakeSupabaseClient(fakeBuilder),
         const CacheService(),
+        _MockExerciseRepository(),
       );
 
       await repo.clearHistory('user-001');
@@ -109,6 +115,7 @@ void main() {
       final repo = WorkoutRepository(
         FakeSupabaseClient(fakeBuilder),
         const CacheService(),
+        _MockExerciseRepository(),
       );
 
       expect(() => repo.clearHistory('user-001'), throwsA(isA<Exception>()));
