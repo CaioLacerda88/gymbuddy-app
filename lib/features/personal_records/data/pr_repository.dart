@@ -89,10 +89,22 @@ class PRRepository extends BaseRepository {
   /// Fetch all personal records for a user, ordered by most recent first.
   ///
   /// Uses read-through caching: returns cached data on network failure.
-  Future<List<PersonalRecord>> getRecordsForUser(String userId) async {
+  ///
+  /// **Cache key (spec §8):** `'<userId>:<locale>'`. Even though raw PR rows
+  /// don't carry localized text, the prCache box obeys the blanket
+  /// "anything in prCache is locale-prefixed" contract so a locale switch
+  /// can wipe-by-prefix without inspecting payload shape.
+  /// `LocaleNotifier.setLocale` clears the whole box on switch, so the
+  /// prefix is academic safety — if the eviction ever misses, en-locale
+  /// callers can't accidentally read a pt-locale entry.
+  Future<List<PersonalRecord>> getRecordsForUser({
+    required String userId,
+    required String locale,
+  }) async {
+    final cacheKey = '$userId:$locale';
     final cached = _cache.read<List<PersonalRecord>>(
       HiveService.prCache,
-      userId,
+      cacheKey,
       (json) => (json as List)
           .map((e) => PersonalRecord.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -111,7 +123,7 @@ class PRRepository extends BaseRepository {
       // Fire-and-forget cache write.
       _cache.write(
         HiveService.prCache,
-        userId,
+        cacheKey,
         fresh.map((r) => r.toJson()).toList(),
       );
 

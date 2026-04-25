@@ -207,7 +207,14 @@ class ExerciseRepository extends BaseRepository {
   /// caller is responsible for not exceeding the 500-id cap (`p_ids` cap
   /// enforced server-side).
   ///
-  /// Empty `ids` short-circuits without an RPC call.
+  /// Empty `ids` short-circuits without an RPC call and without touching the
+  /// cache (still returns `{}`).
+  ///
+  /// **Cache key (spec §7.1):** `'<locale>:batch:<id1>,<id2>,...'` where the
+  /// IDs are sorted ascending so callers passing `['B','A']` and `['A','B']`
+  /// hit the same entry. Read-through pattern matches [getExercises]: cache
+  /// is consulted before the RPC, fresh results are written fire-and-forget,
+  /// and on network failure we fall back to the cached map.
   ///
   /// Visibility: only returns rows where `deleted_at IS NULL` and
   /// `is_default = true OR user_id = userId`. Soft-deleted or
@@ -218,26 +225,54 @@ class ExerciseRepository extends BaseRepository {
     required String locale,
     required String userId,
     required List<String> ids,
-  }) {
-    return mapException(() async {
-      if (ids.isEmpty) return <String, Exercise>{};
+  }) async {
+    if (ids.isEmpty) return <String, Exercise>{};
 
-      final data = await _client.rpc(
-        'fn_exercises_localized',
-        params: {
-          'p_locale': locale,
-          'p_user_id': userId,
-          'p_muscle_group': null,
-          'p_equipment_type': null,
-          'p_ids': ids,
-          'p_order': 'name',
-        },
+    // Sort the IDs so callers passing the same set in different orders
+    // hit the same cache entry. The original list is left untouched.
+    final sortedIds = List<String>.from(ids)..sort();
+    final key = '$locale:batch:${sortedIds.join(",")}';
+
+    final cached = _cache.read<Map<String, Exercise>>(
+      HiveService.exerciseCache,
+      key,
+      (json) => (json as Map<String, dynamic>).map(
+        (k, v) => MapEntry(k, Exercise.fromJson(v as Map<String, dynamic>)),
+      ),
+    );
+
+    try {
+      final fresh = await mapException(() async {
+        final data = await _client.rpc(
+          'fn_exercises_localized',
+          params: {
+            'p_locale': locale,
+            'p_user_id': userId,
+            'p_muscle_group': null,
+            'p_equipment_type': null,
+            'p_ids': ids,
+            'p_order': 'name',
+          },
+        );
+        final rows = (data as List).cast<Map<String, dynamic>>();
+        return <String, Exercise>{
+          for (final row in rows) row['id'] as String: Exercise.fromJson(row),
+        };
+      });
+
+      // Fire-and-forget cache write (Map<String, Map<String, dynamic>>
+      // serializes cleanly through CacheService's jsonEncode pipeline).
+      _cache.write(
+        HiveService.exerciseCache,
+        key,
+        fresh.map((k, v) => MapEntry(k, v.toJson())),
       );
-      final rows = (data as List).cast<Map<String, dynamic>>();
-      return {
-        for (final row in rows) row['id'] as String: Exercise.fromJson(row),
-      };
-    });
+
+      return fresh;
+    } catch (e) {
+      if (cached != null) return cached;
+      rethrow;
+    }
   }
 
   /// Create a user-defined exercise via `fn_insert_user_exercise`.

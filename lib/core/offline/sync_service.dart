@@ -7,6 +7,7 @@ import '../../features/analytics/data/models/analytics_event.dart';
 import '../../features/analytics/providers/analytics_providers.dart';
 import '../../features/personal_records/providers/pr_providers.dart';
 import '../connectivity/connectivity_provider.dart';
+import '../l10n/locale_provider.dart';
 import '../observability/sentry_report.dart';
 import 'offline_queue_service.dart';
 import 'pending_action.dart';
@@ -260,7 +261,11 @@ class SyncService extends Notifier<SyncState> {
     if (userId.isEmpty) return;
     try {
       final prRepo = ref.read(prRepositoryProvider);
-      final serverRecords = await prRepo.getRecordsForUser(userId);
+      final locale = ref.read(localeProvider).languageCode;
+      final serverRecords = await prRepo.getRecordsForUser(
+        userId: userId,
+        locale: locale,
+      );
       SentryReport.addBreadcrumb(
         category: 'sync.reconcile',
         message: 'PR cache refreshed after upsertRecords drain',

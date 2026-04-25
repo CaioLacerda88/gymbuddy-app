@@ -35,35 +35,87 @@ void main() {
   });
 
   group('PRRepository cache - getRecordsForUser', () {
-    test('caches and returns cached on failure', () async {
-      // Pre-populate cache.
+    test(
+      'caches and returns cached on failure (locale-prefixed key)',
+      () async {
+        // Pre-populate cache under the locale-prefixed key (spec §8).
+        final prJson = [
+          TestPersonalRecordFactory.create(
+            id: 'pr-1',
+            userId: 'user-001',
+            value: 120.0,
+          ),
+          TestPersonalRecordFactory.create(
+            id: 'pr-2',
+            userId: 'user-001',
+            recordType: 'max_reps',
+            value: 15.0,
+          ),
+        ];
+        await prBox.put('user-001:en', jsonEncode(prJson));
+
+        // Create repo with a failing client.
+        final client = FakeSupabaseClient(
+          FakeQueryBuilder(error: Exception('offline')),
+        );
+        final repo = PRRepository(client, cache, mockExerciseRepo);
+
+        final result = await repo.getRecordsForUser(
+          userId: 'user-001',
+          locale: 'en',
+        );
+
+        expect(result, hasLength(2));
+        expect(result[0].id, 'pr-1');
+        expect(result[0].value, 120.0);
+        expect(result[1].recordType, RecordType.maxReps);
+      },
+    );
+
+    test('cache key is `<userId>:<locale>` (spec §8)', () async {
+      final prRow = TestPersonalRecordFactory.create(
+        id: 'pr-key',
+        userId: 'user-001',
+        value: 100.0,
+      );
+      final client = FakeSupabaseClient(FakeQueryBuilder(data: [prRow]));
+      final repo = PRRepository(client, cache, mockExerciseRepo);
+
+      await repo.getRecordsForUser(userId: 'user-001', locale: 'pt');
+
+      expect(
+        prBox.get('user-001:pt'),
+        isNotNull,
+        reason: 'cache key must be `<userId>:<locale>`',
+      );
+      expect(
+        prBox.get('user-001'),
+        isNull,
+        reason: 'legacy key without locale must not be written',
+      );
+    });
+
+    test('en cache does not satisfy pt request', () async {
+      // Seed only the en cache.
       final prJson = [
         TestPersonalRecordFactory.create(
-          id: 'pr-1',
+          id: 'pr-en',
           userId: 'user-001',
           value: 120.0,
         ),
-        TestPersonalRecordFactory.create(
-          id: 'pr-2',
-          userId: 'user-001',
-          recordType: 'max_reps',
-          value: 15.0,
-        ),
       ];
-      await prBox.put('user-001', jsonEncode(prJson));
+      await prBox.put('user-001:en', jsonEncode(prJson));
 
-      // Create repo with a failing client.
       final client = FakeSupabaseClient(
         FakeQueryBuilder(error: Exception('offline')),
       );
       final repo = PRRepository(client, cache, mockExerciseRepo);
 
-      final result = await repo.getRecordsForUser('user-001');
-
-      expect(result, hasLength(2));
-      expect(result[0].id, 'pr-1');
-      expect(result[0].value, 120.0);
-      expect(result[1].recordType, RecordType.maxReps);
+      await expectLater(
+        repo.getRecordsForUser(userId: 'user-001', locale: 'pt'),
+        throwsA(isA<Exception>()),
+        reason: 'pt request must not pick up en-cached data',
+      );
     });
 
     test('rethrows when no cache and network fails', () async {
@@ -73,7 +125,7 @@ void main() {
       final repo = PRRepository(client, cache, mockExerciseRepo);
 
       await expectLater(
-        repo.getRecordsForUser('user-001'),
+        repo.getRecordsForUser(userId: 'user-001', locale: 'en'),
         throwsA(isA<Exception>()),
       );
     });
@@ -185,7 +237,7 @@ void main() {
           onlineClient,
           cache,
           mockExerciseRepo,
-        ).getRecordsForUser('user-001');
+        ).getRecordsForUser(userId: 'user-001', locale: 'en');
 
         // Second call: network fails — must return data from cache written above.
         final offlineClient = FakeSupabaseClient(
@@ -195,7 +247,7 @@ void main() {
           offlineClient,
           cache,
           mockExerciseRepo,
-        ).getRecordsForUser('user-001');
+        ).getRecordsForUser(userId: 'user-001', locale: 'en');
 
         expect(result, hasLength(1));
         expect(result[0].id, 'pr-written');

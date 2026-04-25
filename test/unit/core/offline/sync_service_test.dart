@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import 'package:repsaga/core/connectivity/connectivity_provider.dart';
+import 'package:repsaga/core/local_storage/hive_service.dart';
 import 'package:repsaga/core/offline/offline_queue_service.dart';
 import 'package:repsaga/core/offline/pending_action.dart';
 import 'package:repsaga/core/offline/pending_sync_provider.dart';
@@ -123,6 +124,10 @@ void main() {
       tempDir = await Directory.systemTemp.createTemp('hive_sync_service_');
       Hive.init(tempDir.path);
       await Hive.openBox<dynamic>('offline_queue');
+      // Phase 15f Stage 6: SyncService._reconcilePrCache reads localeProvider
+      // (which lazily reads HiveService.userPrefs on first build), so the box
+      // must be open before any reconciliation test runs the drain loop.
+      await Hive.openBox<dynamic>(HiveService.userPrefs);
 
       queueService = const OfflineQueueService();
       mockWorkoutRepo = _MockWorkoutRepository();
@@ -884,17 +889,24 @@ void main() {
           // Stub upsertRecords to succeed.
           when(() => mockPRRepo.upsertRecords(any())).thenAnswer((_) async {});
 
-          // Stub getRecordsForUser to succeed.
+          // Stub getRecordsForUser to succeed (named args per spec §8 contract).
           when(
-            () => mockPRRepo.getRecordsForUser(any()),
+            () => mockPRRepo.getRecordsForUser(
+              userId: any(named: 'userId'),
+              locale: any(named: 'locale'),
+            ),
           ).thenAnswer((_) async => <PersonalRecord>[]);
 
           // Transition: offline -> online
           connectivityController.add(true);
           await _pumpAsync(200);
 
-          // prRepo.getRecordsForUser must have been called for reconciliation.
-          verify(() => mockPRRepo.getRecordsForUser('user-1')).called(1);
+          // prRepo.getRecordsForUser must have been called for reconciliation
+          // with the user's id and the current locale ('en' is the default
+          // when userPrefs has no entry).
+          verify(
+            () => mockPRRepo.getRecordsForUser(userId: 'user-1', locale: 'en'),
+          ).called(1);
         },
       );
 
@@ -921,7 +933,10 @@ void main() {
 
         // Reconciliation throws — must not break drain.
         when(
-          () => mockPRRepo.getRecordsForUser(any()),
+          () => mockPRRepo.getRecordsForUser(
+            userId: any(named: 'userId'),
+            locale: any(named: 'locale'),
+          ),
         ).thenThrow(Exception('Network error during reconciliation'));
 
         stubSaveWorkoutSuccess(id: 'w-after-pr');
@@ -948,7 +963,12 @@ void main() {
           await _pumpAsync(200);
 
           // getRecordsForUser must NOT be called for saveWorkout items.
-          verifyNever(() => mockPRRepo.getRecordsForUser(any()));
+          verifyNever(
+            () => mockPRRepo.getRecordsForUser(
+              userId: any(named: 'userId'),
+              locale: any(named: 'locale'),
+            ),
+          );
         },
       );
 
@@ -979,15 +999,22 @@ void main() {
 
           when(() => mockPRRepo.upsertRecords(any())).thenAnswer((_) async {});
           when(
-            () => mockPRRepo.getRecordsForUser(any()),
+            () => mockPRRepo.getRecordsForUser(
+              userId: any(named: 'userId'),
+              locale: any(named: 'locale'),
+            ),
           ).thenAnswer((_) async => <PersonalRecord>[]);
 
           connectivityController.add(true);
           await _pumpAsync(300);
 
           // Two unique userIds → two reconciliation calls (batched after loop).
-          verify(() => mockPRRepo.getRecordsForUser('user-a')).called(1);
-          verify(() => mockPRRepo.getRecordsForUser('user-b')).called(1);
+          verify(
+            () => mockPRRepo.getRecordsForUser(userId: 'user-a', locale: 'en'),
+          ).called(1);
+          verify(
+            () => mockPRRepo.getRecordsForUser(userId: 'user-b', locale: 'en'),
+          ).called(1);
         },
       );
 
@@ -1017,14 +1044,20 @@ void main() {
 
           when(() => mockPRRepo.upsertRecords(any())).thenAnswer((_) async {});
           when(
-            () => mockPRRepo.getRecordsForUser(any()),
+            () => mockPRRepo.getRecordsForUser(
+              userId: any(named: 'userId'),
+              locale: any(named: 'locale'),
+            ),
           ).thenAnswer((_) async => <PersonalRecord>[]);
 
           connectivityController.add(true);
           await _pumpAsync(300);
 
           // Same userId for both items → only one reconciliation call.
-          verify(() => mockPRRepo.getRecordsForUser('user-same')).called(1);
+          verify(
+            () =>
+                mockPRRepo.getRecordsForUser(userId: 'user-same', locale: 'en'),
+          ).called(1);
         },
       );
     });

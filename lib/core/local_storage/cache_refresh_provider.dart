@@ -42,7 +42,9 @@ final cacheRefreshProvider = FutureProvider<void>((ref) async {
     routineRepo
         .getRoutines(userId: userId, locale: locale)
         .catchError((_) => <Routine>[]),
-    prRepo.getRecordsForUser(userId).catchError((_) => <PersonalRecord>[]),
+    prRepo
+        .getRecordsForUser(userId: userId, locale: locale)
+        .catchError((_) => <PersonalRecord>[]),
     workoutRepo
         .getWorkoutHistory(userId, locale: locale, limit: 50)
         .catchError((_) => <Workout>[]),

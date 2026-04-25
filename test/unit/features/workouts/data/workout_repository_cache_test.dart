@@ -247,6 +247,84 @@ void main() {
         expect(result[0].id, 'w-written');
       },
     );
+
+    // -----------------------------------------------------------------------
+    // Phase 15f Stage 6 spec §12.2: the two-query merge in getWorkoutHistory
+    // must batch the secondary exercise lookup. With N workouts each
+    // referencing M exercises, exactly ONE call to
+    // ExerciseRepository.getExercisesByIds is allowed, with a deduplicated
+    // union of the IDs. Anything else regresses to N+1.
+    // -----------------------------------------------------------------------
+    test('getExercisesByIds called exactly once with deduplicated ids '
+        '(N+1 protection, spec §12.2)', () async {
+      // Five workouts, each with two workout_exercises. Some exercise IDs
+      // repeat across workouts — the deduplicated union should be five IDs.
+      // If the repo issued one fetch per workout (or per workout_exercise),
+      // we'd see called(5) or called(10) instead of called(1).
+      final workoutData = [
+        {
+          ...TestWorkoutFactory.create(id: 'w-1'),
+          'workout_exercises': [
+            {'order': 0, 'exercise_id': 'ex-A'},
+            {'order': 1, 'exercise_id': 'ex-B'},
+          ],
+        },
+        {
+          ...TestWorkoutFactory.create(id: 'w-2'),
+          'workout_exercises': [
+            {'order': 0, 'exercise_id': 'ex-B'}, // dup with w-1
+            {'order': 1, 'exercise_id': 'ex-C'},
+          ],
+        },
+        {
+          ...TestWorkoutFactory.create(id: 'w-3'),
+          'workout_exercises': [
+            {'order': 0, 'exercise_id': 'ex-A'}, // dup with w-1
+            {'order': 1, 'exercise_id': 'ex-D'},
+          ],
+        },
+        {
+          ...TestWorkoutFactory.create(id: 'w-4'),
+          'workout_exercises': [
+            {'order': 0, 'exercise_id': 'ex-D'}, // dup with w-3
+            {'order': 1, 'exercise_id': 'ex-E'},
+          ],
+        },
+        {
+          ...TestWorkoutFactory.create(id: 'w-5'),
+          'workout_exercises': [
+            {'order': 0, 'exercise_id': 'ex-C'}, // dup with w-2
+            {'order': 1, 'exercise_id': 'ex-E'}, // dup with w-4
+          ],
+        },
+      ];
+      final client = FakeSupabaseClient(FakeQueryBuilder(data: workoutData));
+      final repo = WorkoutRepository(client, cache, mockExerciseRepo);
+
+      await repo.getWorkoutHistory('user-001', locale: 'en', limit: 50);
+
+      // Exactly ONE batched call to getExercisesByIds, regardless of the
+      // 5 workouts × 2 exercises = 10 workout_exercise rows.
+      final captured =
+          verify(
+                () => mockExerciseRepo.getExercisesByIds(
+                  locale: 'en',
+                  userId: 'user-001',
+                  ids: captureAny(named: 'ids'),
+                ),
+              ).captured.single
+              as List<String>;
+
+      // The captured ids must be the deduplicated union — five distinct
+      // exercises across the page.
+      expect(
+        captured.toSet(),
+        {'ex-A', 'ex-B', 'ex-C', 'ex-D', 'ex-E'},
+        reason:
+            'getExercisesByIds must receive the deduplicated union of '
+            'exercise IDs across all workouts in the page',
+      );
+    });
   });
 
   group('WorkoutRepository cache - getLastWorkoutSets', () {

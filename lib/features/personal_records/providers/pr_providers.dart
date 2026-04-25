@@ -37,7 +37,8 @@ final prListProvider = FutureProvider<List<PersonalRecord>>((ref) {
   final repo = ref.watch(prRepositoryProvider);
   final user = ref.watch(authRepositoryProvider).currentUser;
   if (user == null) return [];
-  return repo.getRecordsForUser(user.id);
+  final locale = ref.watch(localeProvider).languageCode;
+  return repo.getRecordsForUser(userId: user.id, locale: locale);
 });
 
 /// Total count of personal records for the current user.
