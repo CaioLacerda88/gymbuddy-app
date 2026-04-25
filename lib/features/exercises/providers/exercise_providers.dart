@@ -41,15 +41,25 @@ class ExerciseFilter {
 }
 
 /// Selected muscle group filter.
-final selectedMuscleGroupProvider = StateProvider<MuscleGroup?>((ref) => null);
-
-/// Selected equipment type filter.
-final selectedEquipmentTypeProvider = StateProvider<EquipmentType?>(
+///
+/// `autoDispose` so the filter resets when no UI is listening (i.e. the
+/// [ExerciseListScreen] is unmounted). Without it, navigating away from the
+/// list and back leaves stale filter state behind while the screen's local
+/// `TextEditingController` is recreated empty — producing a "stuck filter
+/// with empty search box" that the user cannot clear (F4).
+final selectedMuscleGroupProvider = StateProvider.autoDispose<MuscleGroup?>(
   (ref) => null,
 );
 
-/// Search query for exercises.
-final searchQueryProvider = StateProvider<String>((ref) => '');
+/// Selected equipment type filter. See [selectedMuscleGroupProvider] for the
+/// autoDispose rationale (F4).
+final selectedEquipmentTypeProvider = StateProvider.autoDispose<EquipmentType?>(
+  (ref) => null,
+);
+
+/// Search query for exercises. See [selectedMuscleGroupProvider] for the
+/// autoDispose rationale (F4).
+final searchQueryProvider = StateProvider.autoDispose<String>((ref) => '');
 
 /// Fetches exercises based on an [ExerciseFilter].
 ///
@@ -124,13 +134,20 @@ Future<void> deleteExercise(
 }
 
 /// Combines filter state providers and watches [exerciseListProvider].
-final filteredExerciseListProvider = Provider<AsyncValue<List<Exercise>>>((
-  ref,
-) {
-  final filter = ExerciseFilter(
-    muscleGroup: ref.watch(selectedMuscleGroupProvider),
-    equipmentType: ref.watch(selectedEquipmentTypeProvider),
-    searchQuery: ref.watch(searchQueryProvider),
-  );
-  return ref.watch(exerciseListProvider(filter));
-});
+///
+/// `autoDispose` so the entire filter chain
+/// (`searchQueryProvider`, `selectedMuscleGroupProvider`,
+/// `selectedEquipmentTypeProvider`) tears down once the
+/// [ExerciseListScreen] unmounts (F4). A non-autoDispose Provider here
+/// would keep its `ref.watch` subscriptions to the filter providers alive
+/// forever, defeating their `.autoDispose` and causing the
+/// "stuck filter / empty search box" navigation bug.
+final filteredExerciseListProvider =
+    Provider.autoDispose<AsyncValue<List<Exercise>>>((ref) {
+      final filter = ExerciseFilter(
+        muscleGroup: ref.watch(selectedMuscleGroupProvider),
+        equipmentType: ref.watch(selectedEquipmentTypeProvider),
+        searchQuery: ref.watch(searchQueryProvider),
+      );
+      return ref.watch(exerciseListProvider(filter));
+    });

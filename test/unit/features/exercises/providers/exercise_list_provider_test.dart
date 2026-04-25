@@ -294,4 +294,154 @@ void main() {
       expect(filter.searchQuery, isEmpty);
     });
   });
+
+  // F4: filter state must reset when no UI is listening, mirroring the
+  // lifetime of the ExerciseListScreen. Without autoDispose on the three
+  // filter StateProviders + filteredExerciseListProvider, the filter values
+  // outlive the screen — so navigating away from /exercises and back keeps
+  // the previous searchQuery / muscleGroup / equipmentType. The TextField's
+  // controller, however, IS local to the screen and resets to empty on
+  // remount. Result: the search field appears empty but the list is still
+  // filtered, and the user cannot recover (clearing an empty field is a
+  // no-op, and tapping chips composes against the stale searchQuery).
+  group('F4: filter state lifecycle', () {
+    test(
+      'searchQueryProvider auto-disposes when no listeners remain',
+      () async {
+        when(
+          () => mockRepo.getExercises(locale: 'en', userId: 'user-001'),
+        ).thenAnswer((_) async => testExercises);
+
+        final container = createContainer();
+        addTearDown(container.dispose);
+
+        // Simulate the screen subscribing to filteredExerciseListProvider,
+        // which transitively keeps the filter providers alive.
+        final sub = container.listen(filteredExerciseListProvider, (_, _) {});
+
+        // User types into the search field; provider state updates.
+        container.read(searchQueryProvider.notifier).state = 'bench';
+        expect(container.read(searchQueryProvider), 'bench');
+
+        // Screen unmounts — listener drops.
+        sub.close();
+        await Future<void>.delayed(Duration.zero);
+
+        // Filter providers must tear down so a fresh subscriber sees defaults
+        // (mirrors what the ExerciseListScreen state expects on remount).
+        expect(
+          container.exists(searchQueryProvider),
+          isFalse,
+          reason: 'searchQueryProvider must autoDispose when nothing listens',
+        );
+
+        // Re-subscribe (simulates navigating back to the screen).
+        container.listen(filteredExerciseListProvider, (_, _) {});
+        expect(
+          container.read(searchQueryProvider),
+          '',
+          reason: 'remount must observe a clean default search query',
+        );
+      },
+    );
+
+    test(
+      'selectedMuscleGroupProvider auto-disposes when no listeners remain',
+      () async {
+        when(
+          () => mockRepo.getExercises(locale: 'en', userId: 'user-001'),
+        ).thenAnswer((_) async => testExercises);
+
+        final container = createContainer();
+        addTearDown(container.dispose);
+
+        final sub = container.listen(filteredExerciseListProvider, (_, _) {});
+
+        container.read(selectedMuscleGroupProvider.notifier).state =
+            MuscleGroup.chest;
+        expect(container.read(selectedMuscleGroupProvider), MuscleGroup.chest);
+
+        sub.close();
+        await Future<void>.delayed(Duration.zero);
+
+        expect(
+          container.exists(selectedMuscleGroupProvider),
+          isFalse,
+          reason:
+              'selectedMuscleGroupProvider must autoDispose when nothing listens',
+        );
+
+        container.listen(filteredExerciseListProvider, (_, _) {});
+        expect(
+          container.read(selectedMuscleGroupProvider),
+          isNull,
+          reason: 'remount must observe a clean default muscle group',
+        );
+      },
+    );
+
+    test(
+      'selectedEquipmentTypeProvider auto-disposes when no listeners remain',
+      () async {
+        when(
+          () => mockRepo.getExercises(locale: 'en', userId: 'user-001'),
+        ).thenAnswer((_) async => testExercises);
+
+        final container = createContainer();
+        addTearDown(container.dispose);
+
+        final sub = container.listen(filteredExerciseListProvider, (_, _) {});
+
+        container.read(selectedEquipmentTypeProvider.notifier).state =
+            EquipmentType.barbell;
+        expect(
+          container.read(selectedEquipmentTypeProvider),
+          EquipmentType.barbell,
+        );
+
+        sub.close();
+        await Future<void>.delayed(Duration.zero);
+
+        expect(
+          container.exists(selectedEquipmentTypeProvider),
+          isFalse,
+          reason:
+              'selectedEquipmentTypeProvider must autoDispose when nothing listens',
+        );
+
+        container.listen(filteredExerciseListProvider, (_, _) {});
+        expect(
+          container.read(selectedEquipmentTypeProvider),
+          isNull,
+          reason: 'remount must observe a clean default equipment type',
+        );
+      },
+    );
+
+    test(
+      'filteredExerciseListProvider auto-disposes when no listeners remain',
+      () async {
+        when(
+          () => mockRepo.getExercises(locale: 'en', userId: 'user-001'),
+        ).thenAnswer((_) async => testExercises);
+
+        final container = createContainer();
+        addTearDown(container.dispose);
+
+        final sub = container.listen(filteredExerciseListProvider, (_, _) {});
+        expect(container.exists(filteredExerciseListProvider), isTrue);
+
+        sub.close();
+        await Future<void>.delayed(Duration.zero);
+
+        expect(
+          container.exists(filteredExerciseListProvider),
+          isFalse,
+          reason:
+              'filteredExerciseListProvider must autoDispose so the chain '
+              'breaks and the filter StateProviders can also dispose',
+        );
+      },
+    );
+  });
 }
