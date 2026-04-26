@@ -68,6 +68,9 @@ const TEST_USERS = [
   'e2e-full-history-pt@test.local',
   'e2e-smoke-loc-routines@test.local',
   'e2e-full-pr-pt@test.local',
+  // Phase 18a — RPG foundation e2e tests
+  'e2e-rpg-foundation@test.local',
+  'e2e-rpg-fresh@test.local',
 ];
 
 /**
@@ -548,6 +551,199 @@ async function seedExerciseProgressData(
   console.log(
     `[global-setup] Seeded exercise progress data for smokeExerciseProgress (workouts: ${insertedWorkoutIds.join(', ')})`,
   );
+}
+
+/**
+ * Seed the rpgFoundationUser with ~12 prior workouts across 6 weeks and
+ * multiple body parts, so the backfill produces lifetime_xp > 0 and LVL > 1.
+ *
+ * Workout plan (12 sessions over 6 weeks, 2 per week):
+ *   Sessions 1-4:  barbell_bench_press (chest dominant)
+ *   Sessions 5-8:  barbell_squat (legs dominant)
+ *   Sessions 9-12: barbell_bent_over_row (back dominant)
+ *
+ * Each session: 3 working sets × the exercise. This ensures multiple body-part
+ * progress rows are created by backfill. Seeding inserts the raw workout/set
+ * rows directly (bypass save_workout RPC) so backfill processes them on first
+ * login.
+ *
+ * Idempotent: checks for 'E2E RPG Foundation Workout 1' before seeding.
+ */
+async function seedRpgFoundationUser(supabase: SupabaseClient): Promise<void> {
+  const email = 'e2e-rpg-foundation@test.local';
+  const userId = await getUserId(supabase, email);
+  if (!userId) return;
+
+  // Ensure profile row exists so the router lands on /home.
+  await supabase.from('profiles').upsert(
+    {
+      id: userId,
+      display_name: 'RPG Foundation User',
+      fitness_level: 'intermediate',
+    },
+    { onConflict: 'id' },
+  );
+
+  // Check idempotency.
+  const { data: existing } = await supabase
+    .from('workouts')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('name', 'E2E RPG Foundation Workout 1')
+    .maybeSingle();
+  if (existing) {
+    console.log('[global-setup] RPG foundation seed data already exists, skipping.');
+    return;
+  }
+
+  // Find exercises by slug.
+  const slugs = ['barbell_bench_press', 'barbell_squat', 'barbell_bent_over_row'];
+  const exerciseMap: Record<string, string> = {};
+  for (const slug of slugs) {
+    const { data: exRows } = await supabase
+      .from('exercises')
+      .select('id')
+      .eq('slug', slug)
+      .eq('is_default', true)
+      .limit(1);
+    const ex = exRows?.[0];
+    if (!ex) {
+      console.log(`[global-setup] Warning: could not find exercise ${slug} for RPG foundation seed.`);
+      return;
+    }
+    exerciseMap[slug] = ex.id;
+  }
+
+  // 12 workout sessions: 2 per week for 6 weeks ago → now.
+  // Weeks 6-5-4-3-2-1 ago (oldest first so backfill cursor traverses in order).
+  const sessions: Array<{ name: string; slug: string; weightKg: number; reps: number; weeksAgo: number; dayOffset: number }> = [
+    // Week 6 ago
+    { name: 'E2E RPG Foundation Workout 1', slug: 'barbell_bench_press', weightKg: 70, reps: 8, weeksAgo: 6, dayOffset: 1 },
+    { name: 'E2E RPG Foundation Workout 2', slug: 'barbell_squat', weightKg: 90, reps: 5, weeksAgo: 6, dayOffset: 4 },
+    // Week 5 ago
+    { name: 'E2E RPG Foundation Workout 3', slug: 'barbell_bench_press', weightKg: 72.5, reps: 8, weeksAgo: 5, dayOffset: 1 },
+    { name: 'E2E RPG Foundation Workout 4', slug: 'barbell_squat', weightKg: 92.5, reps: 5, weeksAgo: 5, dayOffset: 4 },
+    // Week 4 ago
+    { name: 'E2E RPG Foundation Workout 5', slug: 'barbell_bent_over_row', weightKg: 60, reps: 10, weeksAgo: 4, dayOffset: 1 },
+    { name: 'E2E RPG Foundation Workout 6', slug: 'barbell_bench_press', weightKg: 75, reps: 8, weeksAgo: 4, dayOffset: 4 },
+    // Week 3 ago
+    { name: 'E2E RPG Foundation Workout 7', slug: 'barbell_squat', weightKg: 95, reps: 5, weeksAgo: 3, dayOffset: 1 },
+    { name: 'E2E RPG Foundation Workout 8', slug: 'barbell_bent_over_row', weightKg: 62.5, reps: 10, weeksAgo: 3, dayOffset: 4 },
+    // Week 2 ago
+    { name: 'E2E RPG Foundation Workout 9', slug: 'barbell_bench_press', weightKg: 77.5, reps: 8, weeksAgo: 2, dayOffset: 1 },
+    { name: 'E2E RPG Foundation Workout 10', slug: 'barbell_squat', weightKg: 97.5, reps: 5, weeksAgo: 2, dayOffset: 4 },
+    // Week 1 ago
+    { name: 'E2E RPG Foundation Workout 11', slug: 'barbell_bent_over_row', weightKg: 65, reps: 10, weeksAgo: 1, dayOffset: 1 },
+    { name: 'E2E RPG Foundation Workout 12', slug: 'barbell_bench_press', weightKg: 80, reps: 8, weeksAgo: 1, dayOffset: 4 },
+  ];
+
+  const now = new Date();
+  let seededCount = 0;
+  for (const session of sessions) {
+    const startedAt = new Date(now);
+    startedAt.setDate(now.getDate() - session.weeksAgo * 7 - session.dayOffset);
+    startedAt.setHours(10, 0, 0, 0);
+    const finishedAt = new Date(startedAt.getTime() + 60 * 60 * 1000);
+
+    const { data: workout, error: wErr } = await supabase
+      .from('workouts')
+      .insert({
+        user_id: userId,
+        name: session.name,
+        started_at: startedAt.toISOString(),
+        finished_at: finishedAt.toISOString(),
+        duration_seconds: 3600,
+      })
+      .select('id')
+      .single();
+
+    if (wErr || !workout) {
+      console.log(`[global-setup] Warning: could not insert RPG foundation workout (${session.name}): ${wErr?.message}`);
+      continue;
+    }
+
+    const { data: wx, error: wxErr } = await supabase
+      .from('workout_exercises')
+      .insert({
+        workout_id: workout.id,
+        exercise_id: exerciseMap[session.slug],
+        order: 1,
+      })
+      .select('id')
+      .single();
+
+    if (wxErr || !wx) {
+      console.log(`[global-setup] Warning: could not insert workout_exercise for ${session.name}: ${wxErr?.message}`);
+      continue;
+    }
+
+    // 3 working sets per session.
+    for (let s = 1; s <= 3; s++) {
+      const { error: setErr } = await supabase.from('sets').insert({
+        workout_exercise_id: wx.id,
+        set_number: s,
+        reps: session.reps,
+        weight: session.weightKg,
+        set_type: 'working',
+        is_completed: true,
+      });
+      if (setErr) {
+        console.log(`[global-setup] Warning: could not insert set ${s} for ${session.name}: ${setErr.message}`);
+      }
+    }
+
+    seededCount++;
+  }
+
+  console.log(`[global-setup] Seeded ${seededCount} RPG foundation workouts for rpgFoundationUser`);
+}
+
+/**
+ * Seed the rpgFreshUser with just a profile row (zero workout history).
+ * The backfill produces 0 XP → LVL 1. Used by E2-E3-E6 tests.
+ *
+ * Clean on every run: deletes all workouts + XP data so state is deterministic.
+ */
+async function seedRpgFreshUser(supabase: SupabaseClient): Promise<void> {
+  const email = 'e2e-rpg-fresh@test.local';
+  const userId = await getUserId(supabase, email);
+  if (!userId) return;
+
+  // Clean all workout data + RPG XP state every run (fresh user must start clean).
+  const { data: existingWorkouts } = await supabase
+    .from('workouts')
+    .select('id')
+    .eq('user_id', userId);
+  if (existingWorkouts && existingWorkouts.length > 0) {
+    const workoutIds = existingWorkouts.map((w: { id: string }) => w.id);
+    const { data: wxs } = await supabase
+      .from('workout_exercises')
+      .select('id')
+      .in('workout_id', workoutIds);
+    if (wxs && wxs.length > 0) {
+      await supabase.from('sets').delete().in('workout_exercise_id', wxs.map((wx: { id: string }) => wx.id));
+    }
+    await supabase.from('workout_exercises').delete().in('workout_id', workoutIds);
+    await supabase.from('workouts').delete().in('id', workoutIds);
+  }
+
+  // Clean RPG tables.
+  await supabase.from('xp_events').delete().eq('user_id', userId);
+  await supabase.from('body_part_progress').delete().eq('user_id', userId);
+  await supabase.from('exercise_peak_loads').delete().eq('user_id', userId);
+  await supabase.from('backfill_progress').delete().eq('user_id', userId);
+
+  // Upsert profile so the router lands on /home (not /onboarding).
+  await supabase.from('profiles').upsert(
+    {
+      id: userId,
+      display_name: 'RPG Fresh User',
+      fitness_level: 'beginner',
+    },
+    { onConflict: 'id' },
+  );
+
+  console.log('[global-setup] Cleaned and seeded profile for rpgFreshUser');
 }
 
 async function globalSetup(): Promise<void> {
@@ -1159,6 +1355,10 @@ async function globalSetup(): Promise<void> {
     }
     await seedPRData(supabase, fullPRPtUserId);
   }
+
+  // ── Phase 18a: seed RPG foundation + fresh users ─────────────────────
+  await seedRpgFoundationUser(supabase);
+  await seedRpgFreshUser(supabase);
 
   console.log('[global-setup] Done.');
 }

@@ -201,4 +201,22 @@ export const TEST_USERS = {
     email: 'e2e-full-pr-pt@test.local',
     password: 'TestPassword123!',
   },
+
+  // -------------------------------------------------------------------------
+  // Phase 18a — RPG Foundation e2e (specs/rpg-foundation.spec.ts)
+  // -------------------------------------------------------------------------
+  // rpgFoundationUser: ~12 prior workouts spanning 6 weeks across multiple
+  // body parts. After backfill, character_state.lifetime_xp > 0 and LVL > 1.
+  // Used by 18a-E1 (backfill on first login) and 18a-E4 (XP accumulation).
+  rpgFoundationUser: {
+    email: 'e2e-rpg-foundation@test.local',
+    password: 'TestPassword123!',
+  },
+  // rpgFreshUser: profile seeded, zero workout history.
+  // Used by 18a-E2 (first-workout XP), 18a-E3 (re-save no double XP),
+  // and 18a-E6 (compound body-part attribution).
+  rpgFreshUser: {
+    email: 'e2e-rpg-fresh@test.local',
+    password: 'TestPassword123!',
+  },
 } as const;
