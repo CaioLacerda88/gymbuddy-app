@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_icons.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -221,14 +222,38 @@ class _ActiveHalo extends StatelessWidget {
   }
 }
 
-class _RadiantHalo extends StatelessWidget {
+/// Stateful so the §8.4 "single haptic on first paint of Radiant state"
+/// contract is structurally guaranteed: the haptic fires from `initState`,
+/// which runs exactly once per widget instance. Because [_RuneHaloState]
+/// returns a fresh `_RadiantHalo` whenever the halo transitions INTO Radiant
+/// (via the switch in `_buildForState`), the haptic always fires on the
+/// transition without an explicit `_didFire` boolean to maintain.
+class _RadiantHalo extends StatefulWidget {
   const _RadiantHalo({required this.controller, required this.size});
 
   final AnimationController controller;
   final double size;
 
   @override
+  State<_RadiantHalo> createState() => _RadiantHaloState();
+}
+
+class _RadiantHaloState extends State<_RadiantHalo> {
+  @override
+  void initState() {
+    super.initState();
+    // §8.4: single haptic on first paint of Radiant state — the reward
+    // signal that the user has reached peak conditioning. Fire once per
+    // widget instance; the parent (`_RuneHaloState`) disposes and rebuilds
+    // a new `_RadiantHalo` on every transition into Radiant, so this
+    // naturally fires once per transition without a boolean flag.
+    HapticFeedback.lightImpact();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final size = widget.size;
+    final controller = widget.controller;
     final enlargedSize = size * 1.10;
     // Radiant is the §8.4 reward signal (peak conditioning). All gold pixels
     // in this subtree resolve through `RewardAccent.of(context).color` so the
