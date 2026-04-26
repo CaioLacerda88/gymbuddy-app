@@ -70,7 +70,7 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 17d | Character Sheet + Milestone Signal (re-scoped into 18b character sheet + 18d stats deep-dive) | SUPERSEDED | - |
 | 17e | Home Recap + First-Week Quest + LVL Line | SUPERSEDED | - |
 | 17 | Gamification Foundation (visual + XP infra shipped; remaining sub-phases SUPERSEDED by Phase 18 RPG v1) | PARTIAL | #101, #103, #105, #106, #107, #108 |
-| 18a | RPG v1: Schema + XP engine + backfill (foundation) | TODO | - |
+| 18a | RPG v1: Schema + XP engine + backfill (foundation) | DONE | #112 |
 | 18b | RPG v1: Character sheet + rune sigils UI | TODO | - |
 | 18c | RPG v1: Mid-workout overlay rewire + title unlocks | TODO | - |
 | 18d | RPG v1: Stats deep-dive + Vitality nightly job + visual states | TODO | - |
@@ -1154,74 +1154,17 @@ Two numbers per body part: **Rank** (1-99, monotonic, the lifetime saga) and **V
 
 ---
 
-### 18a: Schema + XP engine + backfill (RPG v1 foundation)
+### 18a: Schema + XP engine + backfill (RPG v1 foundation) — DONE (PR #112)
 
-**Goal:** Land the persistent data model. Every set lifted produces correct `xp_events` rows + correct `body_part_progress` state. Backfill all existing users so their character sheet renders truthfully on day one.
+- Schema landed: `xp_events`, `body_part_progress`, `exercise_peak_loads`, `earned_titles`, `backfill_progress` (RLS owner-only); `xp_attribution` JSONB on `exercises` with IMMUTABLE helper + CHECK; `character_state` view with `WITH (security_invoker = true)` so RLS is honored.
+- XP hot path: `record_session_xp_batch(workout_id)` single-pass (float8 inner loop, numeric(14,4) at storage boundary) — p95 = 11ms on 100-set payload via EXPLAIN ANALYZE (38× speedup over the original per-set PL/pgSQL FOR loop). Diagnostic single-set entry `record_set_xp(set_id)` retained for chunked backfill + concurrency tests; doc-commented as one-set-per-call only.
+- Backfill `backfill_rpg_v1(user_id)` is a FUNCTION returning `(out_processed, out_total_processed, out_is_complete)` looped from `RpgRepository.runBackfill` (PostgREST tx-wrap + DEFINER COMMIT incompatibility forced FUNCTION-with-driver-loop instead of PROCEDURE-with-internal-COMMITs); cursor uses the same `(started_at, set_id)` total ordering as the chunk fetch.
+- 17b `user_xp` / `award_xp` / `retro_backfill_xp` dropped; `XpRepository` shim now reads `character_state.lifetime_xp` so the 17b LVL badge + saga intro overlay keep rendering during the 18a→18b transition. `XpCalculator` placeholder + `xpForLevel` curve flagged for 18e cleanup (still live for `active_workout_notifier`).
+- Bug fixes landed in same PR: BUG-RPG-001 (re-save reversal pattern in `save_workout` — sum prior xp_events per body_part, decrement, recompute rank, then cascade-delete), BUG-RPG-002 (cursor ordering parity in chunk loop), BUG-RPG-003 (numeric(14,4) widening for 0.0001 parity), BUG-RPG-004 (batch refactor + monotone-peak `WHERE EXCLUDED.peak_weight > ...` guard so `updated_at` is honest).
+- CI infra: `@Tags(['integration'])` + `dart_test.yaml` + `--exclude-tags integration` in `.github/workflows/ci.yml` and `Makefile` so remote CI doesn't try to run integration tests without a live Supabase. New `make test-integration` target for opt-in.
+- Tests: 1885 unit/widget passing, 17/17 integration (incl. 100-set perf bench), 6/6 in `test/e2e/specs/rpg-foundation.spec.ts` (E1–E6 of the bulletproof e2e matrix). Migration applied to hosted Supabase post-merge.
 
-**Schema (per design spec §11):**
-
-- New tables: `xp_events` (polymorphic event log; replaces the placeholder schema from 17b — see migration plan), `body_part_progress` (per-`(user_id, body_part)` materialized state), `exercise_peak_loads` (drives strength_mult), `earned_titles` (catalog unlocks + active flag).
-- Modifications to `exercises`: add `secondary_muscle_groups JSONB`, `xp_attribution JSONB`, plus the IMMUTABLE helper function `xp_attribution_sum(jsonb)` and CHECK constraint `xp_attribution_sums_to_one`. (The spec's original inline-subquery CHECK is invalid PG; spec was patched to use a helper function — see spec §11.2.)
-- Derived view `character_state` (computed character_level + max_rank + min_rank + lifetime_xp).
-
-**XP engine (per design spec §4):**
-
-- `set_xp = volume_load^0.65 × intensity_mult(reps) × strength_mult × novelty_mult × cap_mult`
-- Distribution per body part via `xp_attribution` map.
-- Implementation lives in `lib/features/rpg/domain/xp_calculator.dart` with **pure-function entry points** so unit tests don't need DB. The Postgres path (a `SECURITY DEFINER` RPC `record_set_xp(set_id)`) calls the same logic re-implemented in PL/pgSQL — both implementations covered by parity tests.
-- **Decision (orchestrator-flagged, see review §A.2):** Postgres trigger vs Edge Function. Recommended: **explicit RPC `record_set_xp(set_id)` called from `save_workout` RPC**, NOT a row-level trigger. Reasons: triggers are invisible state, hard to debug, and the spec's <50ms p95 budget is achievable inside the existing transaction. Edge Function adds a network hop + cold-start risk. Final pick deferred to orchestrator/user.
-
-**Vitality:**
-
-- Update path lives in 18d (nightly job). 18a only seeds `vitality_ewma = 0` and `vitality_peak = 0` on `body_part_progress` rows so 18b can render dormant runes for zero-history users.
-
-**Default-exercise attribution map:**
-
-- Migration also INSERTs `xp_attribution` JSON onto every `is_default = true` exercise row per spec §5.2 mappings. **Translation-coverage rule still applies:** any new default exercises added here ship with en+pt translations (the spec doesn't add new defaults, just attribution columns to existing ones — but `scripts/check_exercise_translation_coverage.sh` still runs as a defense-in-depth gate).
-
-**Backfill (the high-risk piece):**
-
-- `backfill_rpg_v1(user_id uuid)` PL/pgSQL procedure replays every historical `sets` row in chronological order, computing XP per the v1 formula and updating `body_part_progress` + `exercise_peak_loads` per row.
-- **Concurrency safety:** procedure takes a `pg_advisory_xact_lock(hashtext('rpg_backfill_' || user_id::text))` so two concurrent runs for the same user serialize.
-- **Timeout safety:** for users with thousands of sets, a single transaction can exceed Supabase's statement timeout. Procedure uses **chunked commits per 500 sets** with a `last_processed_set_id` checkpoint column on a `backfill_progress (user_id, last_set_id, completed_at)` table → idempotent and resumable. (Orchestrator-flagged: see review §A.3.)
-- Existing 17b rows in `xp_events` (placeholder formula) are deleted at backfill start; existing 17b `user_xp.total_xp` is recomputed from the new event stream. **17b's `XpCalculator` and `xpForLevel` curve become dead code after 18a** — flagged for cleanup in 18e.
-
-**Performance budget (spec §12.3):**
-
-- Set-completion path <50ms p95 inside `save_workout` RPC. Validated by `make ci`-tier benchmark against a 100-set test workout.
-- Backfill job <60s for a 5000-set user (chunked).
-
-**Acceptance:**
-
-- All 4 new tables created with correct PKs/FKs/indexes per spec §11.1.
-- `xp_attribution_sums_to_one` CHECK constraint passes for all default-exercise rows; rejects rows summing >1.01 or <0.99.
-- `record_set_xp(set_id)` RPC computes deltas matching the unit-test parity table.
-- `backfill_rpg_v1(user_id)` is idempotent (re-runs produce no row drift) and resumable (kill mid-run + restart completes).
-- Existing 17b `xp_events` rows are migrated cleanly; no orphaned legacy rows.
-- All RLS policies replicated from existing tables (owner-read, owner-write).
-- `make ci` green.
-
-**Files:**
-
-- Create: `supabase/migrations/00040_rpg_system_v1.sql` (schema + helper fn + CHECK + default-exercise attribution + backfill procedure + cleanup of 17b placeholder rows), `scripts/emergency_rollback_phase18.sql`
-- Create: `lib/features/rpg/data/rpg_repository.dart`, `lib/features/rpg/data/peak_loads_repository.dart`, `lib/features/rpg/domain/xp_calculator.dart`, `xp_distribution.dart`, `rank_curve.dart`, `vitality_calculator.dart` (formulas only — driver lives in 18d), `lib/features/rpg/models/body_part.dart`, `body_part_progress.dart`, `xp_event.dart`, `peak_load.dart`, `attribution.dart`, `lib/features/rpg/providers/rpg_progress_provider.dart`
-- Modify: `supabase/migrations/` add migration; `save_workout` RPC (existing) extended to call `record_set_xp` per inserted set inside the same transaction
-- Delete (in same PR or follow-up cleanup): existing 17b `XpCalculator` if it lives in `features/gamification/domain/`; the saga-intro-overlay infra stays
-
-**Test plan:**
-
-- **Unit:** `test/unit/features/rpg/xp_calculator_test.dart` (~40 cases — base formula, intensity table lookup, strength_mult floor/ceiling, novelty exp decay, weekly cap), `attribution_test.dart` (sum-to-one, NULL fallback to primary muscle), `rank_curve_test.dart` (cumulative XP table parity vs spec sample milestones), `vitality_calculator_test.dart` (EWMA up/down asymmetry, peak monotonicity).
-- **Integration:** `test/integration/rpg_record_set_xp_test.dart` against local Supabase: (a) insert set → assert `xp_events` row + `body_part_progress` updated; (b) PG/Dart parity table — same inputs through both paths produce identical XP within 0.01; (c) concurrent INSERT race — 10 simultaneous sets → final `body_part_progress.total_xp` matches sequential sum (idempotency under contention).
-- **Backfill replay test:** `test/integration/rpg_backfill_test.dart` — fixture user with 1500 historical sets, run procedure, assert final state matches reference Python simulator output within 0.01 XP per body part.
-- **Backfill resume test:** kill procedure mid-run via test hook (raise exception after chunk 2 of 4), re-run, assert final state matches single-run baseline.
-- **E2E:** No new specs. Existing flows unaffected (no UI surface yet). Selector impact assessment only.
-- **Migration safety:** dry-run on a hosted DB snapshot before merge.
-
-**Dependencies:** 17b foundation (xp_events table will be replaced; saga-intro-overlay infra retained).
-
-**Open decision for orchestrator (must pick before implementation begins):**
-- Trigger vs RPC for set→xp computation. (Recommendation: RPC inside `save_workout` transaction.)
-- Backfill chunk size (500 default, possibly 1000 if profiling allows).
+**18a-deliverable e2e matrix rows shipped (the rest land in 18b/c as UI lands):** E1 backfill on first login, E2 first-workout XP applied, E3 re-save no double XP (BUG-RPG-001 sentinel), E4 XP accumulates across workouts, E5 saga intro gate regression, E6 compound body-part attribution (squat: legs 0.80 / core 0.10 / back 0.10 ± 5%, 1-set baseline to avoid per-body-part novelty decay drift).
 
 ---
 
