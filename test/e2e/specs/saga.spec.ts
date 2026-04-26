@@ -139,20 +139,24 @@ test.describe('Saga — foundation user character sheet', { tag: '@smoke' }, () 
     // The presence of the badge confirms the data state rendered (not loading skeleton).
     await expect(page.locator(SAGA.classBadge).first()).toBeVisible({ timeout: 15_000 });
 
-    // NOTE: Flutter canvaskit renders all text on a canvas element, not DOM text
-    // nodes. Playwright text= selectors cannot read "Lvl N" numeral directly.
-    // Level is verified indirectly: the character-sheet body (not skeleton) is
-    // visible (asserted in beforeEach), and the class badge + body-part rows
-    // confirm data-state rendering. Numeric level verification would require
-    // a Semantics(identifier: 'character-level') wrapper on the Text widget
-    // (deferred to a future improvement).
-
     // Multiple body-part rows must be present.
     for (const slug of ['chest', 'back', 'legs'] as const) {
       await expect(page.locator(SAGA.bodyPartRow(slug)).first()).toBeVisible({
         timeout: 10_000,
       });
     }
+
+    // Level must be > 1 — rpgFoundationUser has 12+ seeded workouts which
+    // grant enough XP to push past LVL 1. Read the AOM accessible name on
+    // the character-level Semantics wrapper (canvaskit renders the numeral
+    // on a canvas, but the Semantics(identifier:'character-level') wrapper
+    // exposes the text via the accessibility tree).
+    const lvlText = await page
+      .locator(SAGA.characterLevel)
+      .first()
+      .textContent();
+    const lvl = Number(lvlText?.replace(/^Lvl\s*/, '').trim());
+    expect(lvl).toBeGreaterThan(1);
   });
 });
 
