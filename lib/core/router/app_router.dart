@@ -302,10 +302,29 @@ class _ShellScaffold extends ConsumerWidget {
             onDestinationSelected: (index) {
               const routes = ['/home', '/exercises', '/routines', '/profile'];
               final target = routes[index];
-              // Guard against rapid tab switching: skip navigation when the
-              // target route already matches the current location.
               final current = GoRouterState.of(context).matchedLocation;
-              if (current == target) return;
+
+              // Re-tapping the active tab should pop back to the branch root
+              // (e.g. /profile/settings → /profile, /saga/stats → /profile).
+              // We compare branch-by-tab-index rather than path-prefix because
+              // the Saga tab spans both /profile and /saga/* sub-routes.
+              final isSameBranch = tabIndex == index;
+              if (isSameBranch) {
+                if (current == target) return; // already at root, no-op
+                final navigator = Navigator.of(context);
+                if (navigator.canPop()) {
+                  // Pushed sub-routes (e.g. via context.push): pop them all
+                  // off until the shell's branch root is exposed again.
+                  navigator.popUntil((r) => r.isFirst);
+                } else {
+                  // Deep-linked into a sub-route with no pop history — fall
+                  // back to an explicit go() so the tab reset still works.
+                  context.go(target);
+                }
+                return;
+              }
+
+              // Different branch entirely.
               context.go(target);
             },
             destinations: [

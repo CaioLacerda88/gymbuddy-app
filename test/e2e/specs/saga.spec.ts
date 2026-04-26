@@ -183,19 +183,12 @@ test.describe('Saga — navigation', { tag: '@smoke' }, () => {
 
   // S4: Re-tap Saga tab from settings → back to character sheet.
   //
-  // KNOWN BUG (Phase 18b): GoRouter _ShellScaffold.onDestinationSelected calls
-  // context.go('/profile'). However when /profile/settings was opened via
-  // context.push(), GoRouter's matchedLocation on the shell context returns
-  // the parent /profile for the guard check `if (current == target) return`.
-  // This causes the re-tap to be silently dropped — the settings screen stays
-  // visible. The fix is to use context.go('/profile') unconditionally (remove
-  // the guard check) or use popUntilFirst in the onDestinationSelected handler.
-  //
-  // This test documents the BUG and verifies the ACTUAL current behavior
-  // (settings screen remains) so CI will catch when the behavior changes.
-  // Once the router fix lands, flip the assertion: settings NOT visible →
-  // runeHalo visible.
-  test('should show character sheet after re-tapping Saga tab from settings (S4 — KNOWN BUG)', async ({
+  // _ShellScaffold.onDestinationSelected handles re-tap of the active branch
+  // by popping any pushed sub-routes (e.g. /profile/settings, /saga/stats)
+  // back to the branch root (/profile, the character sheet). This test
+  // verifies that contract: open settings via the gear icon, re-tap the Saga
+  // tab, expect the character sheet back (settings no longer visible).
+  test('should show character sheet after re-tapping Saga tab from settings (S4)', async ({
     page,
   }) => {
     // Navigate into settings via gear icon.
@@ -205,14 +198,9 @@ test.describe('Saga — navigation', { tag: '@smoke' }, () => {
     // Re-tap the Saga / Profile nav tab.
     await page.click(NAV.profileTab);
 
-    // BUG: The re-tap is silently dropped because the guard in _ShellScaffold
-    // onDestinationSelected compares matchedLocation ('/profile') == target ('/profile')
-    // and returns early. ProfileSettingsScreen stays visible instead of popping.
-    // The settings screen (profile-heading) remains visible after re-tap.
-    await expect(page.locator(SAGA.profileSettingsScreen).first()).toBeVisible({ timeout: 5_000 });
-    // TODO: once router fix lands, replace these two lines with:
-    //   await expect(page.locator(SAGA.runeHalo).first()).toBeVisible({ timeout: 20_000 });
-    //   await expect(page.locator(SAGA.profileSettingsScreen)).not.toBeVisible({ timeout: 5_000 });
+    // Expect: settings popped off, character sheet visible again.
+    await expect(page.locator(SAGA.runeHalo).first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(SAGA.profileSettingsScreen)).not.toBeVisible({ timeout: 5_000 });
   });
 
   // S5: Stats codex nav row → stats stub screen.
