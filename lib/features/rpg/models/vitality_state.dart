@@ -62,6 +62,12 @@ extension VitalityStateX on VitalityState {
   ///   * 0 < % ≤ 30      → Fading
   ///   * 30 < % ≤ 70     → Active
   ///   * 70 < % ≤ 100    → Radiant
+  ///
+  /// vitalityEwma == 0 with peak > 0 (fully decayed) also maps to Fading
+  /// per spec §8.4 fall-through — the user trained this body part once but
+  /// has fully fallen off the path. The first branch only catches a never-
+  /// trained body part (peak == 0); a decayed one falls into the Fading
+  /// branch via the `<= 30` bound.
   static VitalityState fromVitality({
     required double vitalityEwma,
     required double vitalityPeak,

@@ -694,8 +694,11 @@ export const SAGA = {
   gearIcon: '[flt-semantics-identifier="saga-settings-btn"]',
   /** ProfileSettingsScreen root — identified by PROFILE.heading ('profile-heading') */
   profileSettingsScreen: '[flt-semantics-identifier="profile-heading"]',
-  /** SagaStubScreen body copy — text= selector for "Coming soon." / "Em breve." */
-  sagaStubScreen: 'text=Coming soon.',
+  /** SagaStubScreen body — Semantics(identifier: 'saga-stub-screen').
+   *  Locale-independent (was previously `text=Coming soon.`, which broke
+   *  pt-BR because the localized copy is "Em breve.").
+   */
+  sagaStubScreen: '[flt-semantics-identifier="saga-stub-screen"]',
 } as const;
 
 // ---------------------------------------------------------------------------

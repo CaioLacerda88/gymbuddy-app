@@ -25,22 +25,30 @@ class SagaStubScreen extends StatelessWidget {
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.auto_stories_outlined,
-                color: AppColors.textDim,
-                size: 48,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                l10n.comingSoonStub,
-                style: theme.textTheme.bodyLarge?.copyWith(
+          // Identifier wrapper for deterministic e2e targeting — the
+          // localized "Coming soon." text changes by locale, the identifier
+          // does not. Tests assert visibility on `saga-stub-screen` rather
+          // than scraping the body copy.
+          child: Semantics(
+            container: true,
+            identifier: 'saga-stub-screen',
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.auto_stories_outlined,
                   color: AppColors.textDim,
+                  size: 48,
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                Text(
+                  l10n.comingSoonStub,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: AppColors.textDim,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -93,8 +93,10 @@ class _CharacterSheetBody extends StatelessWidget {
             const SizedBox(height: 16),
             _SheetHeader(sheet: sheet),
             const SizedBox(height: 16),
-            if (sheet.isZeroHistory) const _FirstSetAwakensBanner(),
-            const SizedBox(height: 8),
+            if (sheet.isZeroHistory) ...[
+              const _FirstSetAwakensBanner(),
+              const SizedBox(height: 8),
+            ],
             Center(
               child: Semantics(
                 container: true,
