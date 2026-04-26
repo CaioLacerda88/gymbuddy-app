@@ -49,6 +49,10 @@ dev_dependencies:
   # WakelockPlusPlatformInterface from test fakes.
   wakelock_plus_platform_interface: ^1.4.0
   flutter_launcher_icons: ^0.14.1
+  # Used by integration tests (test/integration/) to call Supabase Admin API
+  # for test-user creation/deletion. Already a transitive dep of
+  # supabase_flutter; listed here explicitly to satisfy the linter.
+  http: ^1.0.0
 
 flutter:
   generate: true

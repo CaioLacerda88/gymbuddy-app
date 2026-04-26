@@ -122,7 +122,11 @@ CREATE TABLE public.xp_events (
   occurred_at     timestamptz   NOT NULL DEFAULT now(),
   payload         jsonb         NOT NULL,
   attribution     jsonb         NOT NULL,
-  total_xp        numeric(12,2) NOT NULL CHECK (total_xp >= 0),
+  -- numeric(14,4): scale=4 to keep per-event rounding error <0.0001 so
+  -- aggregations across hundreds of sets stay within the 0.01 spec tolerance
+  -- vs the Dart double reference (BUG-RPG-003 — compounding rounding).
+  -- precision widened to 14 to cover lifetime sums without overflow.
+  total_xp        numeric(14,4) NOT NULL CHECK (total_xp >= 0),
   created_at      timestamptz   NOT NULL DEFAULT now(),
 
   -- A 'set' event must carry both set_id and session_id (D4 invariant).
@@ -161,10 +165,18 @@ CREATE TABLE public.body_part_progress (
   user_id        uuid          NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   body_part      text          NOT NULL CHECK (body_part IN
                                 ('chest','back','legs','shoulders','arms','core','cardio')),
-  total_xp       numeric(14,2) NOT NULL DEFAULT 0 CHECK (total_xp >= 0),
+  -- numeric(14,4): see xp_events.total_xp comment. The body_part_progress
+  -- total is the sum of many (potentially hundreds) of xp_events
+  -- contributions; numeric(_, 2) compounded a per-row rounding error that
+  -- exceeded the 0.01 PG/Dart parity tolerance after ~25 sets
+  -- (BUG-RPG-003). Widening to 4 fractional digits keeps the cumulative
+  -- drift below 0.001 well past the lifetime of any realistic body part.
+  total_xp       numeric(14,4) NOT NULL DEFAULT 0 CHECK (total_xp >= 0),
   rank           int           NOT NULL DEFAULT 1 CHECK (rank >= 1 AND rank <= 99),
-  vitality_ewma  numeric(12,2) NOT NULL DEFAULT 0 CHECK (vitality_ewma >= 0),
-  vitality_peak  numeric(12,2) NOT NULL DEFAULT 0 CHECK (vitality_peak >= 0),
+  -- vitality_* widened in lockstep — they are also incrementally UPSERTed
+  -- by the 18d nightly job and would compound the same rounding error.
+  vitality_ewma  numeric(14,4) NOT NULL DEFAULT 0 CHECK (vitality_ewma >= 0),
+  vitality_peak  numeric(14,4) NOT NULL DEFAULT 0 CHECK (vitality_peak >= 0),
   last_event_at  timestamptz,
   updated_at     timestamptz   NOT NULL DEFAULT now(),
   PRIMARY KEY (user_id, body_part)
@@ -177,7 +189,13 @@ CREATE TABLE public.body_part_progress (
 CREATE TABLE public.exercise_peak_loads (
   user_id      uuid           NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   exercise_id  uuid           NOT NULL REFERENCES public.exercises(id) ON DELETE CASCADE,
-  peak_weight  numeric(8,2)   NOT NULL CHECK (peak_weight > 0),
+  -- numeric(8,4): peak_weight feeds strength_mult = clamp(weight / peak,
+  -- 0.40, 1.00). At high weights (300+ kg) numeric(8,2) rounds the divisor
+  -- enough to push strength_mult one rounding step away from the Dart
+  -- reference, drifting body_part_progress totals beyond the 0.01 tolerance
+  -- (BUG-RPG-003 root). Scale 4 makes the ratio exact for any realistic
+  -- weight increment (gym plates step at 1.25kg minimum).
+  peak_weight  numeric(8,4)   NOT NULL CHECK (peak_weight > 0),
   peak_reps    int            NOT NULL CHECK (peak_reps > 0),
   peak_date    timestamptz    NOT NULL,
   updated_at   timestamptz    NOT NULL DEFAULT now(),
@@ -784,6 +802,7 @@ SET search_path = public
 AS $$
 DECLARE
   v_processed       bigint;
+  v_visited         bigint;
   v_last_set_id     uuid;
   v_last_set_ts     timestamptz;
   v_total_processed bigint;
@@ -832,19 +851,33 @@ BEGIN
   -- in chronological order. Inline formula in _rpg_backfill_chunk
   -- because record_set_xp's session/weekly subqueries don't scale across
   -- replay.
-  v_processed := public._rpg_backfill_chunk(p_user_id, p_chunk_size);
+  --
+  -- The chunk function returns (processed, last_set_id, last_set_ts) so the
+  -- cursor advance uses the SAME total ordering tuple — `(w.started_at,
+  -- s.id)` — that the chunk fetch uses. Earlier versions of this code
+  -- advanced the cursor by querying `xp_events` ordered by
+  -- `(occurred_at DESC, e.id DESC)`, but `e.id` is the xp_events PK, not
+  -- `s.id`, so the cursor and the next chunk's WHERE clause used DIFFERENT
+  -- ordering keys. That allowed sets at the boundary of a same-timestamp
+  -- group to be re-visited on the next chunk, inflating the processed
+  -- counter (BUG-RPG-002).
+  -- The chunk function returns `processed` = sets actually replayed (does
+  -- NOT count idempotent skips) plus `last_set_id` / `last_set_ts` set to
+  -- the LAST set the chunk visited (whether replayed or skipped). The
+  -- chunk also returns `visited` so we can detect end-of-input via
+  -- underflow without conflating "processed" and "visited".
+  SELECT c.processed, c.visited, c.last_set_id, c.last_set_ts
+  INTO v_processed, v_visited, v_last_set_id, v_last_set_ts
+  FROM public._rpg_backfill_chunk(p_user_id, p_chunk_size) AS c;
 
-  -- Update checkpoint based on the last xp_event row written.
-  SELECT s.id, w.started_at
-  INTO v_last_set_id, v_last_set_ts
-  FROM public.xp_events e
-  JOIN public.sets s ON s.id = e.set_id
-  JOIN public.workout_exercises we ON we.id = s.workout_exercise_id
-  JOIN public.workouts w ON w.id = we.workout_id
-  WHERE e.user_id = p_user_id
-    AND e.set_id IS NOT NULL
-  ORDER BY e.occurred_at DESC, e.id DESC
-  LIMIT 1;
+  -- If the chunk visited nothing at all (cursor already past the last
+  -- set), the function returned NULLs for last_set_*. Preserve the
+  -- existing cursor so the UPDATE below doesn't overwrite a real value
+  -- with NULL.
+  IF v_last_set_id IS NULL THEN
+    SELECT bp.last_set_id, bp.last_set_ts INTO v_last_set_id, v_last_set_ts
+    FROM public.backfill_progress bp WHERE bp.user_id = p_user_id;
+  END IF;
 
   v_total_processed := v_total_processed + v_processed;
 
@@ -853,35 +886,58 @@ BEGIN
       last_set_ts    = v_last_set_ts,
       sets_processed = v_total_processed,
       updated_at     = now(),
-      -- Mark complete when the chunk underflowed (no more sets).
+      -- Mark complete when the chunk visited fewer rows than the chunk
+      -- size — that means there's no more input. Using `v_visited` (not
+      -- `v_processed`) is essential: a resume that skips every visited
+      -- row must still terminate when it runs out of input.
       completed_at   = CASE
-                         WHEN v_processed < p_chunk_size THEN now()
+                         WHEN v_visited < p_chunk_size THEN now()
                          ELSE NULL
                        END
   WHERE user_id = p_user_id;
 
   out_processed       := v_processed;
   out_total_processed := v_total_processed;
-  out_is_complete     := (v_processed < p_chunk_size);
+  out_is_complete     := (v_visited < p_chunk_size);
   RETURN NEXT;
 END;
 $$;
 
 -- _rpg_backfill_chunk: the inner function. Returns the number of sets
--- processed. SECURITY DEFINER + locked search_path. Replays up to N sets
--- after the cursor, computing XP exactly as the Python sim does (per-bp
--- novelty + cap, peak advancement before strength_mult).
+-- actually processed (NOT visit count) plus the cursor advance tuple.
+-- SECURITY DEFINER + locked search_path. Replays up to N sets after the
+-- cursor, computing XP exactly as the Python sim does (per-bp novelty +
+-- cap, peak advancement before strength_mult).
+--
+-- Returns the SAME total-ordering tuple `(w.started_at, s.id)` that the
+-- chunk fetch uses, so the wrapper's cursor write is symmetrical with the
+-- next chunk's WHERE clause. See BUG-RPG-002 note in the wrapper for why
+-- the prior `xp_events`-based cursor advance was unsafe.
+--
+-- Idempotent-skip semantics: if the INSERT into xp_events ON CONFLICT DO
+-- NOTHING returns NULL (the row already existed — e.g. a partial backfill
+-- resume hitting an already-replayed set), the row is treated as ALREADY
+-- processed by an earlier chunk. The counter is NOT incremented and the
+-- cursor still advances past it, so a future chunk doesn't re-visit it.
+-- This restores the invariant: out_total_processed == count(distinct
+-- xp_events.set_id) for the user.
 --
 -- This function is internal; not exposed to authenticated.
 
 CREATE OR REPLACE FUNCTION public._rpg_backfill_chunk(p_user_id uuid, p_chunk_size int)
-RETURNS bigint
+RETURNS TABLE (
+  processed     bigint,
+  visited       bigint,
+  last_set_id   uuid,
+  last_set_ts   timestamptz
+)
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
   v_processed   bigint := 0;
+  v_visited     bigint := 0;
   r_set         record;
   v_attribution jsonb;
   v_primary     text;
@@ -903,11 +959,15 @@ DECLARE
   v_now         timestamptz;
   v_cursor_ts   timestamptz;
   v_cursor_id   uuid;
+  v_last_set_id uuid;
+  v_last_set_ts timestamptz;
 BEGIN
-  -- Read cursor.
-  SELECT last_set_ts, last_set_id INTO v_cursor_ts, v_cursor_id
-  FROM public.backfill_progress
-  WHERE user_id = p_user_id;
+  -- Read cursor. Alias the table because `last_set_id` / `last_set_ts` are
+  -- ALSO the names of OUT parameters on this function (RETURNS TABLE),
+  -- which makes the unqualified column references ambiguous to PL/pgSQL.
+  SELECT bp.last_set_ts, bp.last_set_id INTO v_cursor_ts, v_cursor_id
+  FROM public.backfill_progress bp
+  WHERE bp.user_id = p_user_id;
 
   -- Iterate sets in chronological order, using (workout.started_at, set.id)
   -- as the strict ordering. We use workout.started_at as the surrogate for
@@ -942,6 +1002,7 @@ BEGIN
     ORDER BY w.started_at ASC, s.id ASC
     LIMIT p_chunk_size
   LOOP
+    v_visited := v_visited + 1;
     v_now := r_set.occurred_at;
 
     -- Resolve attribution
@@ -973,9 +1034,15 @@ BEGIN
     ON CONFLICT (user_id, set_id) WHERE set_id IS NOT NULL DO NOTHING
     RETURNING id INTO v_event_id;
 
-    -- Idempotent skip: row already existed (a partial backfill resume)
+    -- Idempotent skip: row already existed (a partial backfill resume that
+    -- crashed AFTER inserting the xp_events row but BEFORE the wrapper's
+    -- cursor write committed). The set has already been counted by the
+    -- earlier chunk; we must NOT increment v_processed (the counter would
+    -- exceed the set count — BUG-RPG-002), but we DO advance the cursor
+    -- past this row so the next chunk skips it.
     IF v_event_id IS NULL THEN
-      v_processed := v_processed + 1;
+      v_last_set_id := r_set.set_id;
+      v_last_set_ts := r_set.occurred_at;
       CONTINUE;
     END IF;
 
@@ -1068,9 +1135,19 @@ BEGIN
       updated_at  = v_now;
 
     v_processed := v_processed + 1;
+    -- Track cursor advance using the SAME ordering tuple the chunk fetch
+    -- uses (w.started_at, s.id). The wrapper writes this back to
+    -- backfill_progress so the next chunk's WHERE clause sees a cursor
+    -- with consistent semantics.
+    v_last_set_id := r_set.set_id;
+    v_last_set_ts := r_set.occurred_at;
   END LOOP;
 
-  RETURN v_processed;
+  processed   := v_processed;
+  visited     := v_visited;
+  last_set_id := v_last_set_id;
+  last_set_ts := v_last_set_ts;
+  RETURN NEXT;
 END;
 $$;
 
@@ -1124,6 +1201,53 @@ BEGIN
     RAISE EXCEPTION 'Workout not found or does not belong to user'
       USING ERRCODE = 'P0002';
   END IF;
+
+  -- ===========================================================================
+  -- BUG-RPG-001 fix — REVERSAL PATTERN
+  -- ===========================================================================
+  -- Re-saving a workout (saveWorkout called twice on the same workout id) must
+  -- be idempotent w.r.t. body_part_progress totals. The cascade-delete below
+  -- removes prior workout_exercises → sets → xp_events, but it does NOT undo
+  -- the body_part_progress.total_xp deltas those xp_events contributed. The
+  -- subsequent record_set_xp loop (re-inserts) would stack on top, doubling
+  -- per-bp totals.
+  --
+  -- Fix: BEFORE the cascade, sum the per-(user, body_part) contributions from
+  -- xp_events tied to this session and decrement body_part_progress
+  -- accordingly. Cascade-delete then wipes the events; the post-INSERT
+  -- record_set_xp loop rebuilds the contributions from scratch.
+  --
+  -- Why decrement instead of recompute-from-scratch:
+  --   * O(1) per affected body_part — bounded by 7 rows max.
+  --   * Doesn't disturb body_part_progress rows for sessions OTHER than this
+  --     one (which would be the side effect of "delete + recompute from all
+  --     xp_events").
+  --   * rank stays consistent — it's recomputed inside record_set_xp's UPSERT
+  --     based on the new total_xp.
+  --
+  -- We update `rank` here too (using rpg_rank_for_xp on the new lower total)
+  -- so the row is internally consistent between the reversal and the
+  -- subsequent re-add. record_set_xp's UPSERT will recompute it again on the
+  -- new total, but we keep the invariant rank == rpg_rank_for_xp(total_xp)
+  -- true at every commit boundary.
+  WITH session_contrib AS (
+    SELECT
+      e.user_id,
+      kv.key                    AS body_part,
+      SUM(kv.value::numeric)    AS xp_to_revert
+    FROM xp_events e
+    CROSS JOIN LATERAL jsonb_each_text(e.attribution) AS kv(key, value)
+    WHERE e.user_id = v_user_id
+      AND e.session_id = v_workout_id
+    GROUP BY e.user_id, kv.key
+  )
+  UPDATE body_part_progress bpp
+  SET total_xp = GREATEST(0, bpp.total_xp - sc.xp_to_revert),
+      rank     = public.rpg_rank_for_xp(GREATEST(0, bpp.total_xp - sc.xp_to_revert)),
+      updated_at = now()
+  FROM session_contrib sc
+  WHERE bpp.user_id   = sc.user_id
+    AND bpp.body_part = sc.body_part;
 
   -- Cascade-delete prior exercises + sets. Cascade also cleans xp_events
   -- rows linked to those sets (via set_id ON DELETE CASCADE), so a save

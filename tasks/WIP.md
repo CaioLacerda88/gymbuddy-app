@@ -56,10 +56,15 @@ Active work being done by agents. Each section is removed once the branch is mer
 - [x] Unit: `rank_curve_test.dart` (parity vs spec §6 milestones)
 - [x] Unit: `vitality_calculator_test.dart` (asymmetric α, peak monotonicity)
 - [x] Unit: `gamification/xp_repository_test.dart` updated for 18a shim contract (character_state read, awardXp no-op, backfill loop assertion)
-- [ ] Integration: `rpg_record_set_xp_test.dart` (PG/Dart parity, concurrent INSERT race) — defer to qa-engineer
-- [ ] Integration: `rpg_backfill_test.dart` (1500-set fixture user vs Python sim reference) — defer to qa-engineer
-- [ ] Integration: `rpg_backfill_resume_test.dart` (kill mid-run + restart) — defer to qa-engineer
+- [x] Integration: `rpg_record_set_xp_test.dart` (10 tests — PG/Dart parity, BUG-RPG-001 idempotent re-save, concurrent guard, peak advancement)
+- [x] Integration: `rpg_backfill_test.dart` (3 tests — 60-set fixture parity, idempotent re-run, wipe-on-first-chunk)
+- [x] Integration: `rpg_backfill_resume_test.dart` (3 tests — partial chunk + resume, cursor skip, advisory-lock serialization)
 - [ ] Migration dry-run on hosted DB snapshot — apply post-merge per CLAUDE.md step 10
+
+### QA round 1 fixes (BUG-RPG-001/002/003 — this cycle)
+- [x] BUG-RPG-002: backfill chunk counter no longer inflated by idempotent skips. Cursor advance + chunk fetch use the SAME total ordering tuple `(w.started_at ASC, s.id ASC)`. `_rpg_backfill_chunk` now returns `(processed, visited, last_set_id, last_set_ts)`; `processed` is incremented only on real INSERT, `visited` drives end-of-input detection. Defense-in-depth: idempotent-skip branch advances cursor but does NOT increment processed. Verified: `out_total_processed == set_count` on 60-set fixture.
+- [x] BUG-RPG-003: `numeric(_,2) → numeric(_,4)` widening on `xp_events.total_xp`, `body_part_progress.{total_xp,vitality_ewma,vitality_peak}`, `exercise_peak_loads.peak_weight`. Per-row rounding error <0.0001; cumulative drift after 25+ sets stays well under the 0.01 spec tolerance.
+- [x] BUG-RPG-001: `save_workout` now applies REVERSAL PATTERN before cascade-deleting prior sets — sums per-(user, body_part) contributions from `xp_events` tied to this `session_id` and decrements `body_part_progress.total_xp` (clamped at 0) + recomputes `rank` via `rpg_rank_for_xp`. Cascade then wipes `xp_events`; subsequent `record_set_xp` loop rebuilds from a clean per-session baseline. Test inverted: re-save delta ≤ 0.01.
 
 ### Verification gate (before PR)
 - [x] `dart analyze --fatal-infos` clean
@@ -68,6 +73,80 @@ Active work being done by agents. Each section is removed once the branch is mer
 - [ ] `make ci` green (format + analyze + test + android-debug-build) — orchestrator runs before PR
 - [ ] Performance benchmark: 100-set workout `save_workout` p95 ≤ 50ms — qa-engineer captures
 - [ ] No selectors broken (no UI surface change in 18a) — qa-engineer audits
+
+### E2E coverage — bulletproof RPG (lock in 18a, deliver per-phase as UI lands)
+
+**Standing rule:** RPG cannot ship without comprehensive e2e. This matrix is the
+contract — every row gets a passing test before its phase merges. 18a delivers
+the rows observable through the 17b shim (LVL line). 18b/18c rows are gated to
+those phases when the character sheet UI / saga overlay v2 land.
+
+**Selectors to add** (extend `test/e2e/helpers/selectors.ts` `GAMIFICATION` block):
+- `lvlBadge` (already exists) — used for through-shim XP assertions in 18a
+- `sagaTab` — bottom-nav `nav-saga` (18b)
+- `bodyPartTile(name)` — `body-part-{slug}` per body part (18b)
+- `bodyPartRune(name)` — `body-part-rune-{slug}` Dormant/Fading/Active/Radiant variants (18b)
+- `bodyPartRank(name)` — `body-part-rank-{slug}` numeric label (18b)
+- `bodyPartVitalityPct(name)` — `body-part-vitality-{slug}` (18b)
+- `classCard` — `class-card` showing derived class label (18b)
+- `statsDeepDive(name)` — `stats-deep-dive-{slug}` panel route (18b)
+- `peakBadge(name)` — `peak-badge-{slug}` "NEW PEAK" pill (18b)
+- `rankUpToast` — `rank-up-toast` non-blocking inline animation (18b)
+- `titlePill(slug)` — `title-{slug}` mid-workout title award (18c)
+- `earnedTitlesCarousel` — `earned-titles` (18c)
+- `sagaIntroV2Step{n}` — new copy keyed under same overlay (18c)
+
+**New test users** (add to `test/e2e/fixtures/test-users.ts` + `global-setup.ts`):
+- `rpgFoundationUser` — profile seeded, ~12 prior workouts spanning 6 weeks across multiple body parts (used by 18a backfill + accumulation tests)
+- `rpgFreshUser` — profile seeded, zero history (used by 18a first-workout-XP test + 18b dormant-runes test)
+- `rpgArmsDominantUser` — profile seeded, 20+ arm-only sessions (used by 18b class derivation = Berserker test)
+- `rpgLayoffUser` — profile seeded, history with a 6-week gap (used by 18a/b vitality decay + recovery tests)
+- `rpgPeakUser` — profile seeded, history that establishes a clear peak_load (used by 18b PR-reattainment + cap-mult tests)
+
+#### 18a-deliverable e2e (foundation; observable via 17b shim — `specs/rpg-foundation.spec.ts`)
+
+- [ ] **18a-E1 — Backfill on first login (`rpgFoundationUser`)** — login → LVL badge reflects character_state.lifetime_xp from backfilled history (LVL > 1, deterministic value vs Python sim reference). @smoke
+- [ ] **18a-E2 — First-workout XP applied (`rpgFreshUser`)** — fresh login, LVL = 1 → save 5-set bench workout → LVL badge updates (LVL > 1; exact XP matches calculator output). @smoke
+- [ ] **18a-E3 — Re-save doesn't double XP (BUG-RPG-001 regression, `rpgFreshUser`)** — save workout → record LVL → re-open same session → re-save with no changes → LVL unchanged. @smoke
+- [ ] **18a-E4 — XP accumulates across workouts (`rpgFoundationUser`)** — record LVL → save additional workout → LVL strictly greater (no decrease, no plateau).
+- [ ] **18a-E5 — Saga intro gate regression** — `gamification-intro.spec.ts` still all-green after migration (no shim regression).
+- [ ] **18a-E6 — Concurrent body-part attribution (`rpgFreshUser`)** — save compound workout (e.g. squat: legs 0.6 / core 0.2 / back 0.2) → backend `body_part_progress` rows reflect 0.6/0.2/0.2 split (asserted via Supabase read in test, not UI — UI lands in 18b).
+
+#### 18b-deliverable e2e (character sheet UI — `specs/rpg-character-sheet.spec.ts`)
+
+- [ ] **18b-E1 — `/saga` route accessible** — Saga tab visible in bottom nav, tap routes to character sheet. @smoke
+- [ ] **18b-E2 — Untrained body parts show dormant runes (`rpgFreshUser`)** — character sheet → all 6 body parts (Chest/Back/Legs/Shoulders/Arms/Core) render dormant variant, rank 0, vitality 0%.
+- [ ] **18b-E3 — Trained body part shows active rune (`rpgFoundationUser`)** — at least one body part renders Active or Radiant rune, rank ≥ 1, vitality > 0%. @smoke
+- [ ] **18b-E4 — Stats deep-dive opens (`rpgFoundationUser`)** — tap body part tile → deep-dive panel shows total volume, peak load, set count, vitality trajectory chart. @smoke
+- [ ] **18b-E5 — Class card derivation (`rpgArmsDominantUser`)** — class label = "Berserker" (arms-dominant rule per spec §9). Fresh user → "Initiate" floor.
+- [ ] **18b-E6 — Rank-up animation fires inline mid-workout** — complete enough volume to cross rank threshold mid-session → `rank-up-toast` renders without blocking the workout flow (assert toast present + workout still navigable).
+- [ ] **18b-E7 — Peak badge on PR (`rpgPeakUser`)** — log a working set above prior peak_load → "NEW PEAK" pill renders on body part tile + peak_load updates in deep-dive. @smoke
+- [ ] **18b-E8 — Vitality decay observable (`rpgLayoffUser`)** — login → vitality < 100% on body parts the user hasn't trained recently (validates asymmetric EWMA τ_down = 42d).
+- [ ] **18b-E9 — Vitality recovery faster than decay (`rpgLayoffUser`)** — save 3 sessions on a faded body part → vitality climbs measurably (validates τ_up = 14d).
+- [ ] **18b-E10 — Strength-mult floor (`rpgPeakUser`)** — log multiple sessions at 50% of peak_load → XP awarded > 0 (strength_mult floors at 0.4, not zero); per-set XP delta consistent with calculator.
+- [ ] **18b-E11 — Weekly cap-mult kicks in** — log 25 sets on one body part in a single week → set #21+ awards diminished XP per spec §4 cap rule.
+- [ ] **18b-E12 — Bodyweight (zero load) handled** — log a set with weight = 0 + reps > 0 → no NaN/error, XP awarded per the bodyweight branch of the calculator.
+
+#### 18c-deliverable e2e (overlay rewire + titles + class system — `specs/rpg-overlay.spec.ts`)
+
+- [ ] **18c-E1 — Title earned mid-workout** — cross a title threshold → `title-{slug}` pill animates in inline (not a blocking modal). @smoke
+- [ ] **18c-E2 — Earned titles carousel** — character sheet renders `earned-titles` with all earned titles for the user.
+- [ ] **18c-E3 — Saga intro overlay v2 copy** — fresh user sees new dual-track Rank+Vitality copy on first launch (steps 0/1/2 still 3-step structure, content updated per spec §13).
+- [ ] **18c-E4 — Class transition** — user trains a new body part to dominance → class card label transitions (e.g. Berserker → Sentinel) on character sheet.
+
+#### Cross-platform parity (one-time, end of 18b)
+
+- [ ] **18b-E13 — Web/Android XP parity** — same user on both platforms (run e2e on Chrome + smoke check on Android emulator) → identical LVL + per-body-part XP. (Manual or scripted; not blocking 18b PR if Android emulator setup is non-trivial — gate with explicit decision.)
+
+#### Coverage acceptance
+
+- **Phase 18a PR:** rows 18a-E1..E6 must be green in `specs/rpg-foundation.spec.ts`, all tagged appropriately, and `gamification-intro.spec.ts` regression-clean.
+- **Phase 18b PR:** all 18b-E1..E12 green. 18b-E13 captured in PR description (parity numbers) but not gating.
+- **Phase 18c PR:** all 18c-E1..E4 green.
+
+#### Bug-found protocol during e2e authoring
+
+If any e2e reveals an unexpected backend or calculator behavior, STOP — do not patch the test to match the bug. Surface to tech-lead via the orchestrator pipeline. Same standing rule as integration: no deferring review findings.
 
 ---
 
