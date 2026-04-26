@@ -304,7 +304,13 @@ CREATE POLICY backfill_progress_select_own
 -- Views inherit RLS from their base tables — body_part_progress' owner-
 -- SELECT policy means each authenticated user sees only their own row.
 
-CREATE OR REPLACE VIEW public.character_state AS
+-- security_invoker = true is required so that RLS on body_part_progress is
+-- enforced when the view is queried by an authenticated user. Without this,
+-- views run as the view owner (postgres) and bypass the calling user's RLS
+-- policies, exposing all users' data to every caller. Postgres 15+ supports
+-- the security_invoker option; this migration requires PG15+.
+CREATE OR REPLACE VIEW public.character_state
+WITH (security_invoker = true) AS
 SELECT
   user_id,
   GREATEST(1, FLOOR((SUM(rank) - COUNT(*)) / 4.0)::int + 1) AS character_level,

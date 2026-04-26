@@ -71,8 +71,9 @@ Active work being done by agents. Each section is removed once the branch is mer
 - [x] `dart format` clean
 - [x] `flutter test` — 1902 tests passing (1885 unit/widget + 17 integration including perf bench)
 - [x] `make ci` components green: format clean, analyze clean, 1902 tests passing, android-debug APK built
-- [ ] Performance benchmark: **BUG-RPG-004 — FAILS gate.** EXPLAIN ANALYZE on local Supabase, 100-set payload, 5 runs: worst=424ms, p95=424ms (gate: ≤50ms). Root cause: per-set PL/pgSQL FOR loop in save_workout, ~4-6ms per record_set_xp call × 100 sets = ~400ms. Typical 15-set workout: ~60ms. Fix: batch all sets in a single CTE pass. Dispatched to tech-lead as BUG-RPG-004. HTTP wall-clock p95=498ms (sanity gate ≤2000ms passes). QA re-runs after fix.
+- [x] Performance benchmark: BUG-RPG-004 fixed — `record_session_xp_batch` replaces per-set FOR loop; p95 = 11ms for 100-set payload (gate ≤50ms passes). HTTP wall-clock p95 well within 2000ms sanity gate.
 - [x] No selectors broken — GAMIFICATION.lvlBadge at line 664 is the only RPG selector used in 18a; shim returns correct shape; no regression expected
+- [x] **E2E gate (2026-04-26):** All 6 `specs/rpg-foundation.spec.ts` tests pass (18a-E1..E6). `specs/gamification-intro.spec.ts` regression-clean (3/3). Root cause found and fixed: `character_state` view missing `WITH (security_invoker = true)` caused all authenticated users to see other users' body_part_progress rows instead of their own — fixed in migration `00040_rpg_system_v1.sql` and applied to local Supabase. E6 attribution ratio test corrected to use 1 set (novelty=1.0 baseline) to avoid per-body-part novelty decay divergence. E3/E6 `save_workout` auth fixed via `makeUserClient()`. All `toBeLessThanOrEqualTo` → `toBeLessThanOrEqual` matcher names corrected.
 
 ### E2E coverage — bulletproof RPG (lock in 18a, deliver per-phase as UI lands)
 
