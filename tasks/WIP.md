@@ -86,15 +86,16 @@ Active work being done by agents. Each section is removed once the branch is mer
 | NIT        | `readLvlFromBadge` 15-attempt × 500 ms inner timeout was 7.5 s blackout                      | Reduced inner loop to 5 × 200 ms = 1 s max per outer poll. Outer poll loop iterates more frequently — closer to UX of "fast feedback when badge text appears". Both fallback strategies (textContent + accessibility snapshot) preserved.                                                                                                                      | `test/e2e/specs/rpg-foundation.spec.ts`                                                                                                                                                                                                       |
 | NIT        | `exercise_peak_loads.updated_at` advanced even when `peak_weight` unchanged                   | Added `WHERE EXCLUDED.peak_weight > public.exercise_peak_loads.peak_weight` to the ON CONFLICT DO UPDATE in **both** `record_set_xp` §9 and `record_session_xp_batch` §7. Skips the row update entirely when peak didn't advance — `updated_at` is now an honest "peak last advanced" timestamp. Monotone non-decreasing invariant preserved by the guard.    | `supabase/migrations/00040_rpg_system_v1.sql` (record_set_xp §9, record_session_xp_batch §7)                                                                                                                                                  |
 
-**Verification:**
+**Verification (READY FOR PR — commit 41d921d, 2026-04-26):**
 
 - `dart format .` — no changes needed (354 files, 0 changed)
 - `dart analyze --fatal-infos` — clean (0 issues)
 - `npx supabase db reset --local` — migration applied cleanly
 - `flutter test --exclude-tags integration` — 1885 tests passing, integration files NOT picked up (verified)
-- `flutter test --tags integration` — 17 integration tests passing (16 functional + 1 perf bench; perf p95 = 97 ms HTTP wall-clock, well within 2000 ms relaxed gate)
+- `flutter test --tags integration` — 17/17 integration tests passing (16 functional + 1 perf bench)
 - `flutter build web` — built clean
-- `cd test/e2e && FLUTTER_APP_URL= npx playwright test specs/rpg-foundation.spec.ts specs/gamification-intro.spec.ts` — 9/9 passing
+- `flutter build apk --debug` — APK built clean
+- `cd test/e2e && FLUTTER_APP_URL= npx playwright test --reporter=list` — **190/190 passing** (full regression suite, 22.8 min). Zero failures across all specs: auth, exercises, workouts, routines, weekly-plan, PR, manage-data, onboarding, localization, rpg-foundation, gamification-intro. No unrelated regressions.
 
 **Skipped findings (per orchestrator brief):**
 
