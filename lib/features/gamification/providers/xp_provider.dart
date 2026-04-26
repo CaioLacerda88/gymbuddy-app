@@ -90,10 +90,12 @@ class XpNotifier extends AsyncNotifier<GamificationSummary> {
 // Local-only "has retro run?" flag
 // ---------------------------------------------------------------------------
 //
-// Used by the app-startup gate to call retro_backfill_xp once per user per
-// device. The server-side guard is the source of truth for correctness
-// (skips duplicate `source='retro'` rows); this flag exists only to avoid
-// the round-trip.
+// Used by the app-startup gate to drive `backfill_rpg_v1` once per user per
+// device. `backfill_rpg_v1` is a chunked function looped from the Dart driver
+// in `XpRepository.runRetroBackfill` until `out_is_complete=true`. The
+// server-side `backfill_progress.completed_at` checkpoint is the source of
+// truth for correctness (a re-run on a completed user is a no-op); this
+// flag exists only to avoid the cold-start round-trip.
 
 const String _kRetroKeyPrefix = 'saga_retro_run:';
 const String _kSagaIntroSeenPrefix = 'saga_intro_seen:';

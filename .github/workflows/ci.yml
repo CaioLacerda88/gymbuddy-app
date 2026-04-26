@@ -108,7 +108,10 @@ jobs:
         run: dart run build_runner build --delete-conflicting-outputs
 
       - name: Run tests
-        run: flutter test --coverage
+        # Integration tests under test/integration/ require a live local
+        # Supabase instance and are tagged `integration` so they are
+        # excluded here. Run them locally via `make test-integration`.
+        run: flutter test --coverage --exclude-tags integration
 
   build:
     runs-on: ubuntu-latest

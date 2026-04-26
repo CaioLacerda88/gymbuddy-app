@@ -1,4 +1,4 @@
-.PHONY: gen gen-l10n gen-watch format analyze test build-android-debug build-android-release-arm64 ci
+.PHONY: gen gen-l10n gen-watch format analyze test test-integration build-android-debug build-android-release-arm64 ci
 
 gen-l10n:
 	flutter gen-l10n
@@ -18,7 +18,12 @@ analyze:
 	bash scripts/check_hardcoded_colors.sh
 
 test:
-	flutter test
+	flutter test --exclude-tags integration
+
+# Integration tests require a live local Supabase (`npx supabase start`).
+# Excluded from `make test` and CI; run explicitly with `make test-integration`.
+test-integration:
+	flutter test --tags integration
 
 build-android-debug:
 	flutter build apk --debug --no-shrink
