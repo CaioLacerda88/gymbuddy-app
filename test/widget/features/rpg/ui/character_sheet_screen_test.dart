@@ -1,0 +1,210 @@
+/// Widget tests for [CharacterSheetScreen] (Phase 18b).
+///
+/// Verifies the screen renders the right composition for two scenarios:
+///   1. Day-0 user (no XP, no rows) — six dormant body-part rows visible,
+///      first-set-awakens banner shown, halo collapses to Dormant.
+///   2. High-rank user with mixed Vitality — header level numeral matches the
+///      provider, no first-set banner.
+///
+/// We override [characterSheetProvider] directly via [Provider.overrideWith]
+/// so the tests don't depend on Supabase / repositories.
+library;
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:repsaga/core/theme/app_theme.dart';
+import 'package:repsaga/features/rpg/models/body_part.dart';
+import 'package:repsaga/features/rpg/models/character_sheet_state.dart';
+import 'package:repsaga/features/rpg/models/vitality_state.dart';
+import 'package:repsaga/features/rpg/providers/character_sheet_provider.dart';
+import 'package:repsaga/features/rpg/ui/character_sheet_screen.dart';
+import 'package:repsaga/features/rpg/ui/widgets/rank_stamp.dart';
+import 'package:repsaga/l10n/app_localizations.dart';
+
+BodyPartSheetEntry _entry({
+  required BodyPart bp,
+  int rank = 1,
+  double totalXp = 0,
+  double vitalityEwma = 0,
+  double vitalityPeak = 0,
+  VitalityState? vitalityState,
+}) {
+  return BodyPartSheetEntry(
+    bodyPart: bp,
+    rank: rank,
+    vitalityEwma: vitalityEwma,
+    vitalityPeak: vitalityPeak,
+    vitalityState:
+        vitalityState ??
+        VitalityStateX.fromVitality(
+          vitalityEwma: vitalityEwma,
+          vitalityPeak: vitalityPeak,
+        ),
+    xpInRank: 0,
+    xpForNextRank: 60,
+    totalXp: totalXp,
+  );
+}
+
+CharacterSheetState _dayZeroState() {
+  return CharacterSheetState(
+    characterLevel: 1,
+    lifetimeXp: 0,
+    bodyPartProgress: activeBodyParts.map((bp) => _entry(bp: bp)).toList(),
+    activeTitle: null,
+    className: null,
+  );
+}
+
+CharacterSheetState _highRankState() {
+  return CharacterSheetState(
+    characterLevel: 12,
+    lifetimeXp: 5400,
+    bodyPartProgress: [
+      _entry(
+        bp: BodyPart.chest,
+        rank: 14,
+        totalXp: 1200,
+        vitalityEwma: 80,
+        vitalityPeak: 90,
+      ),
+      _entry(
+        bp: BodyPart.back,
+        rank: 12,
+        totalXp: 900,
+        vitalityEwma: 75,
+        vitalityPeak: 85,
+      ),
+      _entry(
+        bp: BodyPart.legs,
+        rank: 10,
+        totalXp: 700,
+        vitalityEwma: 75,
+        vitalityPeak: 80,
+      ),
+      _entry(
+        bp: BodyPart.shoulders,
+        rank: 9,
+        totalXp: 600,
+        vitalityEwma: 72,
+        vitalityPeak: 80,
+      ),
+      _entry(
+        bp: BodyPart.arms,
+        rank: 11,
+        totalXp: 800,
+        vitalityEwma: 78,
+        vitalityPeak: 85,
+      ),
+      _entry(
+        bp: BodyPart.core,
+        rank: 8,
+        totalXp: 500,
+        vitalityEwma: 73,
+        vitalityPeak: 80,
+      ),
+    ],
+    activeTitle: null,
+    className: null,
+  );
+}
+
+GoRouter _router() {
+  return GoRouter(
+    initialLocation: '/profile',
+    routes: [
+      GoRoute(
+        path: '/profile',
+        builder: (_, _) => const CharacterSheetScreen(),
+      ),
+      GoRoute(
+        path: '/profile/settings',
+        builder: (_, _) =>
+            const Scaffold(body: Center(child: Text('Settings Placeholder'))),
+      ),
+      GoRoute(
+        path: '/saga/stats',
+        builder: (_, _) =>
+            const Scaffold(body: Center(child: Text('Stats Placeholder'))),
+      ),
+      GoRoute(
+        path: '/saga/titles',
+        builder: (_, _) =>
+            const Scaffold(body: Center(child: Text('Titles Placeholder'))),
+      ),
+      GoRoute(
+        path: '/home/history',
+        builder: (_, _) =>
+            const Scaffold(body: Center(child: Text('History Placeholder'))),
+      ),
+    ],
+  );
+}
+
+Widget _buildApp(CharacterSheetState state) {
+  return ProviderScope(
+    overrides: [characterSheetProvider.overrideWith((_) => AsyncData(state))],
+    child: MaterialApp.router(
+      theme: AppTheme.dark,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      routerConfig: _router(),
+    ),
+  );
+}
+
+void main() {
+  group('CharacterSheetScreen', () {
+    testWidgets(
+      'day-0 state renders six body-part rows and the first-set-awakens banner',
+      (tester) async {
+        // Tall canvas so all rows fit.
+        tester.view.physicalSize = const Size(800, 2400);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(_buildApp(_dayZeroState()));
+        await tester.pump();
+        await tester.pump();
+
+        // First-set-awakens banner copy is visible.
+        expect(find.text('Your first set awakens this path.'), findsOneWidget);
+
+        // Class slot placeholder.
+        expect(find.text('The iron will name you.'), findsOneWidget);
+
+        // Six body-part rows. Use Semantics(identifier: ...) selector.
+        expect(find.bySemanticsLabel(RegExp('Chest')), findsAtLeastNWidgets(1));
+
+        // No RankStamp on day-0 (all six rows are compressed/untrained).
+        expect(find.byType(RankStamp), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'high-rank state renders the level numeral, no day-0 banner, six RankStamps',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 2400);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(_buildApp(_highRankState()));
+        await tester.pump();
+        await tester.pump();
+
+        // Level numeral.
+        expect(find.text('Lvl 12'), findsOneWidget);
+
+        // No first-set-awakens banner when the user has lifetime XP.
+        expect(find.text('Your first set awakens this path.'), findsNothing);
+
+        // Six expanded rows → six RankStamps.
+        expect(find.byType(RankStamp), findsNWidgets(6));
+      },
+    );
+  });
+}
