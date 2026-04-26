@@ -11,7 +11,7 @@ import 'dart:io';
 import 'package:repsaga/core/local_storage/hive_service.dart';
 import 'package:repsaga/features/profile/models/profile.dart';
 import 'package:repsaga/features/profile/providers/profile_providers.dart';
-import 'package:repsaga/features/profile/ui/profile_screen.dart';
+import 'package:repsaga/features/profile/ui/profile_settings_screen.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -54,7 +54,10 @@ Widget buildTestWidget({
       profileProvider.overrideWith(() => MockProfileNotifier(profile)),
       authRepositoryProvider.overrideWithValue(mockAuth),
     ],
-    child: TestMaterialApp(theme: AppTheme.dark, home: const ProfileScreen()),
+    child: TestMaterialApp(
+      theme: AppTheme.dark,
+      home: const ProfileSettingsScreen(),
+    ),
   );
 }
 
@@ -68,7 +71,7 @@ void main() {
   late Directory tempDir;
 
   setUpAll(() async {
-    // ProfileScreen watches crashReportsEnabledProvider which reads the
+    // ProfileSettingsScreen watches crashReportsEnabledProvider which reads the
     // user_prefs Hive box. Open it on a temp path so tests don't crash.
     tempDir = await Directory.systemTemp.createTemp('profile_widget_test_');
     Hive.init(tempDir.path);
@@ -82,7 +85,7 @@ void main() {
     }
   });
 
-  group('ProfileScreen', () {
+  group('ProfileSettingsScreen', () {
     testWidgets('shows display name when profile has displayName', (
       tester,
     ) async {
@@ -258,7 +261,7 @@ void main() {
             ],
             child: TestMaterialApp(
               theme: AppTheme.dark,
-              home: const ProfileScreen(),
+              home: const ProfileSettingsScreen(),
             ),
           ),
         );
@@ -294,7 +297,7 @@ void main() {
             ],
             child: TestMaterialApp(
               theme: AppTheme.dark,
-              home: const ProfileScreen(),
+              home: const ProfileSettingsScreen(),
             ),
           ),
         );
@@ -323,7 +326,7 @@ void main() {
           ],
           child: TestMaterialApp(
             theme: AppTheme.dark,
-            home: const ProfileScreen(),
+            home: const ProfileSettingsScreen(),
           ),
         ),
       );
@@ -402,7 +405,7 @@ void main() {
             ],
             child: TestMaterialApp(
               theme: AppTheme.dark,
-              home: const ProfileScreen(),
+              home: const ProfileSettingsScreen(),
             ),
           ),
         );
@@ -440,7 +443,7 @@ void main() {
             ],
             child: TestMaterialApp(
               theme: AppTheme.dark,
-              home: const ProfileScreen(),
+              home: const ProfileSettingsScreen(),
             ),
           ),
         );
@@ -641,7 +644,7 @@ void main() {
             ],
             child: TestMaterialApp(
               theme: AppTheme.dark,
-              home: const ProfileScreen(),
+              home: const ProfileSettingsScreen(),
             ),
           ),
         );

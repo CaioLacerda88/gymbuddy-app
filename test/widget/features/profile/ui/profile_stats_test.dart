@@ -11,7 +11,7 @@ import 'package:repsaga/features/auth/providers/auth_providers.dart';
 import 'package:repsaga/features/personal_records/providers/pr_providers.dart';
 import 'package:repsaga/features/profile/models/profile.dart';
 import 'package:repsaga/features/profile/providers/profile_providers.dart';
-import 'package:repsaga/features/profile/ui/profile_screen.dart';
+import 'package:repsaga/features/profile/ui/profile_settings_screen.dart';
 import 'package:repsaga/features/workouts/providers/workout_history_providers.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:mocktail/mocktail.dart';
@@ -30,7 +30,7 @@ class MockAuthRepository extends Mock implements AuthRepository {
   );
 }
 
-Widget _buildProfileScreen({
+Widget _buildProfileSettingsScreen({
   required ProfileNotifier Function() profileNotifier,
   int workoutCount = 0,
   int prCount = 0,
@@ -44,7 +44,7 @@ Widget _buildProfileScreen({
     ],
     child: TestMaterialApp(
       theme: AppTheme.dark,
-      home: const Scaffold(body: ProfileScreen()),
+      home: const Scaffold(body: ProfileSettingsScreen()),
     ),
   );
 }
@@ -65,12 +65,12 @@ void main() {
     }
   });
 
-  group('ProfileScreen stats section (UX-U06)', () {
+  group('ProfileSettingsScreen stats section (UX-U06)', () {
     testWidgets('shows zero workout count, zero PR count, and member since', (
       tester,
     ) async {
       await tester.pumpWidget(
-        _buildProfileScreen(
+        _buildProfileSettingsScreen(
           profileNotifier: _FakeProfileNotifier.new,
           workoutCount: 0,
           prCount: 0,
@@ -93,7 +93,7 @@ void main() {
 
     testWidgets('shows correct workout count when > 0', (tester) async {
       await tester.pumpWidget(
-        _buildProfileScreen(
+        _buildProfileSettingsScreen(
           profileNotifier: _FakeProfileNotifier.new,
           workoutCount: 42,
           prCount: 0,
@@ -107,7 +107,7 @@ void main() {
 
     testWidgets('shows correct PR count when > 0', (tester) async {
       await tester.pumpWidget(
-        _buildProfileScreen(
+        _buildProfileSettingsScreen(
           profileNotifier: _FakeProfileNotifier.new,
           workoutCount: 0,
           prCount: 7,
@@ -123,7 +123,9 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(
-        _buildProfileScreen(profileNotifier: _LoadingProfileNotifier.new),
+        _buildProfileSettingsScreen(
+          profileNotifier: _LoadingProfileNotifier.new,
+        ),
       );
 
       // Do NOT call pumpAndSettle — profile stays in loading state.

@@ -21,6 +21,34 @@ class AppLocalizationsPt extends AppLocalizations {
   String get navProfile => 'Perfil';
 
   @override
+  String get sagaTabLabel => 'Saga';
+
+  @override
+  String get classSlotPlaceholder => 'O ferro lhe dará um nome.';
+
+  @override
+  String get dormantCardioCopy =>
+      'As runas de cardio despertam em um capítulo futuro.';
+
+  @override
+  String get firstSetAwakensCopy => 'Sua primeira série desperta este caminho.';
+
+  @override
+  String get statsDeepDiveLabel => 'Estatísticas';
+
+  @override
+  String get titlesLabel => 'Títulos';
+
+  @override
+  String get historyLabel => 'Histórico';
+
+  @override
+  String get comingSoonStub => 'Em breve.';
+
+  @override
+  String get settingsLabel => 'Configurações';
+
+  @override
   String get save => 'Salvar';
 
   @override

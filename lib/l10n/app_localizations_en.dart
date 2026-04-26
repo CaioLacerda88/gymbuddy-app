@@ -21,6 +21,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navProfile => 'Profile';
 
   @override
+  String get sagaTabLabel => 'Saga';
+
+  @override
+  String get classSlotPlaceholder => 'The iron will name you.';
+
+  @override
+  String get dormantCardioCopy => 'Cardio runes awaken in a future chapter.';
+
+  @override
+  String get firstSetAwakensCopy => 'Your first set awakens this path.';
+
+  @override
+  String get statsDeepDiveLabel => 'Stats deep-dive';
+
+  @override
+  String get titlesLabel => 'Titles';
+
+  @override
+  String get historyLabel => 'History';
+
+  @override
+  String get comingSoonStub => 'Coming soon.';
+
+  @override
+  String get settingsLabel => 'Settings';
+
+  @override
   String get save => 'Save';
 
   @override
