@@ -27,6 +27,10 @@ import 'package:repsaga/features/workouts/models/workout_exercise.dart';
 import 'package:repsaga/features/workouts/providers/workout_providers.dart';
 import 'package:repsaga/features/exercises/models/exercise.dart';
 import 'package:repsaga/features/exercises/providers/exercise_progress_provider.dart';
+import 'package:repsaga/features/rpg/data/peak_loads_repository.dart';
+import 'package:repsaga/features/rpg/data/rpg_repository.dart';
+import 'package:repsaga/features/rpg/models/body_part_progress.dart';
+import 'package:repsaga/features/rpg/providers/rpg_progress_provider.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
 
@@ -43,6 +47,10 @@ class MockOfflineQueueService extends Mock implements OfflineQueueService {}
 class MockPRRepository extends Mock implements PRRepository {}
 
 class MockCacheService extends Mock implements CacheService {}
+
+class MockRpgRepository extends Mock implements RpgRepository {}
+
+class MockPeakLoadsRepository extends Mock implements PeakLoadsRepository {}
 
 class FakeActiveWorkoutState extends Fake implements ActiveWorkoutState {}
 
@@ -1036,6 +1044,82 @@ void main() {
           since: any(named: 'since'),
         ),
       ).called(1);
+    });
+
+    test('success: invalidates rpgProgressProvider so the Saga tab refreshes '
+        'after save (PR #113 review Blocker)', () async {
+      // Regression for PR #113 reviewer finding (Stage 8 Blocker):
+      // `save_workout` calls `record_set_xp` server-side in the same
+      // transaction, so by the time finishWorkout() returns, lifetime_xp
+      // and per-body-part rows are durable. Without an explicit
+      // invalidate, `rpgProgressProvider` keeps the pre-save snapshot —
+      // the character sheet shows lifetime_xp == 0 and the
+      // first-set-awakens banner never disappears until app restart.
+      //
+      // Mirror the exerciseProgressProvider regression test pattern: subscribe
+      // to rpgProgressProvider before the save, prime its repo calls, finish
+      // the workout, then re-read the provider and assert the repo is hit a
+      // second time.
+      final initial = makeState(exerciseCount: 1, setsPerExercise: 1);
+      final mockRepo = MockWorkoutRepository();
+      final mockStorage = MockWorkoutLocalStorage();
+      final mockAuth = MockAuthRepository();
+      final mockRpgRepo = MockRpgRepository();
+      final mockPeakLoadsRepo = MockPeakLoadsRepository();
+
+      when(() => mockStorage.loadActiveWorkout()).thenReturn(initial);
+      when(() => mockStorage.saveActiveWorkout(any())).thenAnswer((_) async {});
+      when(() => mockStorage.clearActiveWorkout()).thenAnswer((_) async {});
+      when(() => mockAuth.currentUser).thenReturn(fakeUser());
+      when(
+        () => mockRepo.saveWorkout(
+          workout: any(named: 'workout'),
+          exercises: any(named: 'exercises'),
+          sets: any(named: 'sets'),
+        ),
+      ).thenAnswer((_) async => makeWorkout(isActive: false));
+      when(
+        () => mockRpgRepo.getAllBodyPartProgress(),
+      ).thenAnswer((_) async => const <BodyPartProgress>[]);
+      when(
+        () => mockRpgRepo.getCharacterState(),
+      ).thenAnswer((_) async => CharacterState.empty);
+
+      final container = ProviderContainer(
+        overrides: [
+          workoutRepositoryProvider.overrideWithValue(mockRepo),
+          workoutLocalStorageProvider.overrideWithValue(mockStorage),
+          authRepositoryProvider.overrideWithValue(mockAuth),
+          analyticsRepositoryProvider.overrideWithValue(
+            const _FakeAnalyticsRepository(),
+          ),
+          rpgRepositoryProvider.overrideWithValue(mockRpgRepo),
+          peakLoadsRepositoryProvider.overrideWithValue(mockPeakLoadsRepo),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      // Prime the active workout state and the rpg snapshot — simulates a
+      // user who's seen their character sheet before the save.
+      await container.read(activeWorkoutProvider.future);
+      final sub = container.listen(rpgProgressProvider, (_, _) {});
+      addTearDown(sub.close);
+      await container.read(rpgProgressProvider.future);
+
+      // Pre-save: each repo method is hit exactly once.
+      verify(() => mockRpgRepo.getAllBodyPartProgress()).called(1);
+      verify(() => mockRpgRepo.getCharacterState()).called(1);
+
+      // Act: finish the workout successfully.
+      await container.read(activeWorkoutProvider.notifier).finishWorkout();
+
+      // Re-read the provider — if the notifier invalidated correctly,
+      // the rpg repo is hit a second time. Without the invalidate this
+      // would fail (call count stays at 1).
+      await container.read(rpgProgressProvider.future);
+
+      verify(() => mockRpgRepo.getAllBodyPartProgress()).called(1);
+      verify(() => mockRpgRepo.getCharacterState()).called(1);
     });
 
     test('does nothing when state is null', () async {
