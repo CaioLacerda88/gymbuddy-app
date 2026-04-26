@@ -439,14 +439,26 @@ CREATE UNIQUE INDEX earned_titles_one_active
 -- Attribution map per exercise (default exercises and user-created)
 ALTER TABLE exercises
   ADD COLUMN secondary_muscle_groups JSONB NOT NULL DEFAULT '[]'::jsonb,
-  ADD COLUMN xp_attribution JSONB,
+  ADD COLUMN xp_attribution JSONB;
+
+-- PostgreSQL forbids subqueries in CHECK constraints, so the sum-to-one
+-- invariant is enforced via an IMMUTABLE helper function. (Original spec
+-- attempted an inline SELECT ... FROM jsonb_each_text(...), which PG rejects
+-- with: "cannot use subquery in check constraint".)
+CREATE OR REPLACE FUNCTION xp_attribution_sum(attr jsonb)
+RETURNS numeric
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT COALESCE(sum(value::numeric), 0)
+  FROM jsonb_each_text(attr)
+$$;
+
+ALTER TABLE exercises
   ADD CONSTRAINT xp_attribution_sums_to_one
     CHECK (
-      xp_attribution IS NULL OR
-      (
-        SELECT abs(sum((value)::numeric) - 1.0) <= 0.01
-        FROM jsonb_each_text(xp_attribution)
-      )
+      xp_attribution IS NULL
+      OR abs(xp_attribution_sum(xp_attribution) - 1.0) <= 0.01
     );
 
 -- A workout_set INSERT must trigger an xp_events row. Implementation is the

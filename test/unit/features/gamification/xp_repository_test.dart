@@ -9,10 +9,12 @@ import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 // ---------------------------------------------------------------------------
 // Fake Supabase infrastructure
 //
-// XpRepository uses the following chains:
-//   getSummary:       .from('user_xp').select('total_xp').eq(..).maybeSingle()
-//   awardXp (on row): .rpc('award_xp', params: {...})
-//   runRetroBackfill: .rpc('retro_backfill_xp', params: {...})
+// XpRepository (18a shim) uses the following chains:
+//   getSummary:       .from('character_state').select('lifetime_xp').maybeSingle()
+//   awardXp:          re-reads getSummary (no-op; record_set_xp inside save_workout
+//                     is the actual writer)
+//   runRetroBackfill: loops .rpc('backfill_rpg_v1', params: {p_user_id, p_chunk_size})
+//                     until the response's out_is_complete is true.
 // ---------------------------------------------------------------------------
 
 class _FakeAuth extends Fake implements supabase.GoTrueClient {
@@ -33,15 +35,30 @@ class _FakeUser extends Fake implements supabase.User {
 }
 
 class _FakeSupabaseClient extends Fake implements supabase.SupabaseClient {
-  _FakeSupabaseClient({required this.auth, required this.builder});
+  _FakeSupabaseClient({
+    required this.auth,
+    required this.builder,
+    this.rpcResponses = const <Object?>[],
+  });
 
   @override
   final _FakeAuth auth;
   final _FakeQueryBuilder builder;
 
+  /// Sequenced RPC responses. Each rpc() invocation pops the next entry
+  /// (or returns null if the queue is empty). For backfill_rpg_v1 the
+  /// repository loops until out_is_complete=true, so tests must supply
+  /// at least one terminal payload.
+  final List<Object?> rpcResponses;
+  int _rpcResponseIdx = 0;
+
   int rpcCallCount = 0;
-  String? lastRpcName;
-  Map<String, dynamic>? lastRpcParams;
+  final List<String> rpcNames = <String>[];
+  final List<Map<String, dynamic>?> rpcParams = <Map<String, dynamic>?>[];
+
+  String? get lastRpcName => rpcNames.isEmpty ? null : rpcNames.last;
+  Map<String, dynamic>? get lastRpcParams =>
+      rpcParams.isEmpty ? null : rpcParams.last;
 
   @override
   supabase.SupabaseQueryBuilder from(String table) => builder;
@@ -53,19 +70,26 @@ class _FakeSupabaseClient extends Fake implements supabase.SupabaseClient {
     dynamic get,
   }) {
     rpcCallCount += 1;
-    lastRpcName = fn;
-    lastRpcParams = params == null ? null : Map<String, dynamic>.from(params);
-    return _FakeRpcBuilder<T>() as supabase.PostgrestFilterBuilder<T>;
+    rpcNames.add(fn);
+    rpcParams.add(params == null ? null : Map<String, dynamic>.from(params));
+    final response = _rpcResponseIdx < rpcResponses.length
+        ? rpcResponses[_rpcResponseIdx]
+        : null;
+    _rpcResponseIdx += 1;
+    return _FakeRpcBuilder<T>(response) as supabase.PostgrestFilterBuilder<T>;
   }
 }
 
-/// Terminal future for rpc() — awaits to null (award_xp has no meaningful
-/// return payload from the client's perspective in this unit test).
+/// Terminal future for rpc(). Returns the canned response payload cast
+/// to T. `null` is acceptable for callers that ignore the return value.
 class _FakeRpcBuilder<T> extends Fake
     implements supabase.PostgrestFilterBuilder<T> {
+  _FakeRpcBuilder(this._response);
+  final Object? _response;
+
   @override
   Future<S> then<S>(FutureOr<S> Function(T) onValue, {Function? onError}) {
-    return Future.value(onValue(null as T));
+    return Future.value(onValue(_response as T));
   }
 }
 
@@ -118,10 +142,15 @@ class _FakeSingleBuilder<T> extends Fake
 _FakeSupabaseClient _makeClient({
   supabase.User? user,
   Map<String, dynamic>? row,
+  List<Object?> rpcResponses = const <Object?>[],
 }) {
   final builder = _FakeQueryBuilder(singleResult: row);
   final auth = _FakeAuth(user);
-  return _FakeSupabaseClient(auth: auth, builder: builder);
+  return _FakeSupabaseClient(
+    auth: auth,
+    builder: builder,
+    rpcResponses: rpcResponses,
+  );
 }
 
 void main() {
@@ -138,7 +167,7 @@ void main() {
     });
 
     test(
-      'returns empty summary when no user_xp row exists (first-run path)',
+      'returns empty summary when no character_state row exists (first-run path)',
       () async {
         final client = _makeClient(user: _FakeUser('user-001'));
         final repo = XpRepository(client);
@@ -151,13 +180,13 @@ void main() {
     );
 
     test(
-      'derives level + rank from persisted total_xp (client curve authoritative)',
+      'derives level + rank from character_state.lifetime_xp (18a shim)',
       () async {
         final client = _makeClient(
           user: _FakeUser('user-001'),
           // Enough XP to put the user above Rank.iron threshold (2500) and
           // above LVL 1. Exercises the "re-derive from fromTotal" path.
-          row: {'total_xp': 3000},
+          row: {'lifetime_xp': 3000},
         );
         final repo = XpRepository(client);
 
@@ -171,10 +200,9 @@ void main() {
   });
 
   group('XpBreakdown.toJson payload contract', () {
-    // The award_xp RPC reads `level` and `rank` from p_breakdown.
-    // XpRepository.awardXp must merge those into the breakdown jsonb.
-    // This test locks the json-key shape that both sides agree on so a
-    // Freezed field rename cannot silently break the RPC contract.
+    // The breakdown shape is preserved across the 18a shim so any future
+    // re-introduction of a client-side award path doesn't have to change
+    // model serialization. Lock the keys here.
     test('exposes the six expected component keys plus total', () {
       final json = XpBreakdown.zero.toJson();
       expect(json.keys.toSet(), {
@@ -189,9 +217,14 @@ void main() {
     });
   });
 
-  group('XpRepository.awardXp', () {
+  group('XpRepository.awardXp — 18a no-op shim', () {
+    // 18a contract: awardXp must NOT call the dropped award_xp RPC. The
+    // server-side `record_set_xp` (called from `save_workout`) is the
+    // single writer. awardXp re-reads the post-save summary so the
+    // notifier's optimistic state can reconcile with server truth.
+
     test(
-      'returns the current summary without RPC when total XP is 0 (no-op)',
+      'returns the current summary without calling award_xp (zero XP)',
       () async {
         final client = _makeClient(user: _FakeUser('user-001'));
         final repo = XpRepository(client);
@@ -203,16 +236,20 @@ void main() {
         );
 
         expect(summary.totalXp, 0);
-        expect(client.rpcCallCount, 0);
+        expect(
+          client.rpcCallCount,
+          0,
+          reason: '18a shim must not call any RPC from awardXp',
+        );
       },
     );
 
     test(
-      'calls award_xp with level + rank merged into the breakdown jsonb',
+      'returns the current summary without calling award_xp (non-zero XP)',
       () async {
         final client = _makeClient(
           user: _FakeUser('user-001'),
-          row: {'total_xp': 0}, // fresh user, first award
+          row: {'lifetime_xp': 3000},
         );
         final repo = XpRepository(client);
 
@@ -233,40 +270,95 @@ void main() {
           workoutId: 'wk-abc',
         );
 
-        expect(client.rpcCallCount, 1);
-        expect(client.lastRpcName, 'award_xp');
-        final params = client.lastRpcParams!;
-        expect(params['p_user_id'], 'user-001');
-        expect(params['p_workout_id'], 'wk-abc');
-        expect(params['p_amount'], 180);
-        expect(params['p_source'], 'workout');
-
-        final payload = params['p_breakdown'] as Map<String, dynamic>;
-        // Breakdown keys passed through.
-        expect(payload['base'], 50);
-        expect(payload['total'], 180);
-        // Client-side snapshot fields merged in for the server to persist.
-        expect(payload['level'], isA<int>());
-        expect(payload['rank'], isA<String>());
-        // 180 XP is below LVL 2 threshold — level must stay at 1.
-        expect(payload['level'], 1);
-        expect(payload['rank'], 'rookie');
-
-        expect(summary.totalXp, 180);
+        expect(
+          client.rpcCallCount,
+          0,
+          reason:
+              '18a shim must not call award_xp — record_set_xp '
+              'already wrote XP server-side.',
+        );
+        expect(
+          summary.totalXp,
+          3000,
+          reason:
+              'awardXp returns the freshly-read summary, not '
+              'optimistic + breakdown.total',
+        );
       },
     );
   });
 
   group('XpRepository.runRetroBackfill', () {
-    test('invokes retro_backfill_xp with the user id', () async {
-      final client = _makeClient(user: _FakeUser('user-001'));
+    test('invokes backfill_rpg_v1 with user id and chunk size, stopping on '
+        'is_complete=true', () async {
+      final client = _makeClient(
+        user: _FakeUser('user-001'),
+        rpcResponses: <Object?>[
+          // Mirrors the SQL function's RETURNS TABLE shape.
+          <Map<String, dynamic>>[
+            {
+              'out_processed': 0,
+              'out_total_processed': 0,
+              'out_is_complete': true,
+            },
+          ],
+        ],
+      );
       final repo = XpRepository(client);
 
       await repo.runRetroBackfill('user-001');
 
       expect(client.rpcCallCount, 1);
-      expect(client.lastRpcName, 'retro_backfill_xp');
-      expect(client.lastRpcParams, {'p_user_id': 'user-001'});
+      expect(client.lastRpcName, 'backfill_rpg_v1');
+      expect(client.lastRpcParams, {
+        'p_user_id': 'user-001',
+        'p_chunk_size': 500,
+      });
+    });
+
+    test('loops until is_complete=true (multi-chunk path)', () async {
+      final client = _makeClient(
+        user: _FakeUser('user-001'),
+        rpcResponses: <Object?>[
+          <Map<String, dynamic>>[
+            {
+              'out_processed': 500,
+              'out_total_processed': 500,
+              'out_is_complete': false,
+            },
+          ],
+          <Map<String, dynamic>>[
+            {
+              'out_processed': 500,
+              'out_total_processed': 1000,
+              'out_is_complete': false,
+            },
+          ],
+          <Map<String, dynamic>>[
+            {
+              'out_processed': 250,
+              'out_total_processed': 1250,
+              'out_is_complete': true,
+            },
+          ],
+        ],
+      );
+      final repo = XpRepository(client);
+
+      await repo.runRetroBackfill('user-001');
+
+      expect(
+        client.rpcCallCount,
+        3,
+        reason:
+            'shim must keep calling backfill_rpg_v1 until the server '
+            'returns out_is_complete=true',
+      );
+      expect(
+        client.rpcNames,
+        everyElement('backfill_rpg_v1'),
+        reason: 'all RPC calls must target backfill_rpg_v1',
+      );
     });
   });
 }

@@ -1,0 +1,1147 @@
+{
+  "attribution_distribution": [
+    {
+      "attribution": {
+        "arms": 0.1,
+        "chest": 0.7,
+        "shoulders": 0.2
+      },
+      "exercise_slug": "bench",
+      "expected_distribution": {
+        "arms": 10.0,
+        "chest": 70.0,
+        "shoulders": 20.0
+      },
+      "set_xp_input": 100.0
+    },
+    {
+      "attribution": {
+        "arms": 0.1,
+        "chest": 0.6,
+        "shoulders": 0.3
+      },
+      "exercise_slug": "incline_bench",
+      "expected_distribution": {
+        "arms": 10.0,
+        "chest": 60.0,
+        "shoulders": 30.0
+      },
+      "set_xp_input": 100.0
+    },
+    {
+      "attribution": {
+        "arms": 0.2,
+        "core": 0.2,
+        "shoulders": 0.6
+      },
+      "exercise_slug": "overhead_press",
+      "expected_distribution": {
+        "arms": 20.0,
+        "core": 20.0,
+        "shoulders": 60.0
+      },
+      "set_xp_input": 100.0
+    },
+    {
+      "attribution": {
+        "arms": 0.1,
+        "core": 0.05,
+        "shoulders": 0.85
+      },
+      "exercise_slug": "lateral_raise",
+      "expected_distribution": {
+        "arms": 10.0,
+        "core": 5.0,
+        "shoulders": 85.0
+      },
+      "set_xp_input": 100.0
+    },
+    {
+      "attribution": {
+        "arms": 0.95,
+        "shoulders": 0.05
+      },
+      "exercise_slug": "tricep_pushdown",
+      "expected_distribution": {
+        "arms": 95.0,
+        "shoulders": 5.0
+      },
+      "set_xp_input": 100.0
+    },
+    {
+      "attribution": {
+        "arms": 0.2,
+        "back": 0.7,
+        "core": 0.1
+      },
+      "exercise_slug": "row",
+      "expected_distribution": {
+        "arms": 20.0,
+        "back": 70.0,
+        "core": 10.0
+      },
+      "set_xp_input": 100.0
+    },
+    {
+      "attribution": {
+        "arms": 0.2,
+        "back": 0.75,
+        "core": 0.05
+      },
+      "exercise_slug": "pulldown",
+      "expected_distribution": {
+        "arms": 20.0,
+        "back": 75.0,
+        "core": 5.0
+      },
+      "set_xp_input": 100.0
+    },
+    {
+      "attribution": {
+        "arms": 0.25,
+        "back": 0.65,
+        "core": 0.1
+      },
+      "exercise_slug": "pullup",
+      "expected_distribution": {
+        "arms": 25.0,
+        "back": 65.0,
+        "core": 10.0
+      },
+      "set_xp_input": 100.0
+    },
+    {
+      "attribution": {
+        "arms": 0.9,
+        "back": 0.1
+      },
+      "exercise_slug": "curl",
+      "expected_distribution": {
+        "arms": 90.0,
+        "back": 10.0
+      },
+      "set_xp_input": 100.0
+    },
+    {
+      "attribution": {
+        "back": 0.1,
+        "core": 0.1,
+        "legs": 0.8
+      },
+      "exercise_slug": "squat",
+      "expected_distribution": {
+        "back": 10.0,
+        "core": 10.0,
+        "legs": 80.0
+      },
+      "set_xp_input": 100.0
+    },
+    {
+      "attribution": {
+        "arms": 0.1,
+        "back": 0.4,
+        "core": 0.1,
+        "legs": 0.4
+      },
+      "exercise_slug": "deadlift",
+      "expected_distribution": {
+        "arms": 10.0,
+        "back": 40.0,
+        "core": 10.0,
+        "legs": 40.0
+      },
+      "set_xp_input": 100.0
+    },
+    {
+      "attribution": {
+        "core": 0.05,
+        "legs": 0.95
+      },
+      "exercise_slug": "leg_press",
+      "expected_distribution": {
+        "core": 5.0,
+        "legs": 95.0
+      },
+      "set_xp_input": 100.0
+    },
+    {
+      "attribution": {
+        "core": 0.1,
+        "legs": 0.9
+      },
+      "exercise_slug": "lunge",
+      "expected_distribution": {
+        "core": 10.0,
+        "legs": 90.0
+      },
+      "set_xp_input": 100.0
+    },
+    {
+      "attribution": {
+        "arms": 0.05,
+        "core": 0.9,
+        "shoulders": 0.05
+      },
+      "exercise_slug": "plank",
+      "expected_distribution": {
+        "arms": 5.0,
+        "core": 90.0,
+        "shoulders": 5.0
+      },
+      "set_xp_input": 100.0
+    },
+    {
+      "attribution": {
+        "core": 1.0
+      },
+      "exercise_slug": "leg_raise",
+      "expected_distribution": {
+        "core": 100.0
+      },
+      "set_xp_input": 100.0
+    }
+  ],
+  "backfill_replay": {
+    "archetype": "intermediate",
+    "final_ranks": {
+      "arms": 37,
+      "back": 36,
+      "cardio": 1,
+      "chest": 30,
+      "core": 26,
+      "legs": 37,
+      "shoulders": 30
+    },
+    "final_xp_pool": {
+      "arms": 18995.434894641843,
+      "back": 16987.10235748577,
+      "cardio": 0.0,
+      "chest": 9690.873846623992,
+      "core": 6542.855964336082,
+      "legs": 18817.89048147839,
+      "shoulders": 9717.137955674167
+    },
+    "total_sets": 1590,
+    "weeks_simulated": 30
+  },
+  "cap_mult": [
+    {
+      "cap_mult": 1.0,
+      "weekly_volume_for_body_part": 0
+    },
+    {
+      "cap_mult": 1.0,
+      "weekly_volume_for_body_part": 10
+    },
+    {
+      "cap_mult": 1.0,
+      "weekly_volume_for_body_part": 19
+    },
+    {
+      "cap_mult": 1.0,
+      "weekly_volume_for_body_part": 19.99
+    },
+    {
+      "cap_mult": 0.5,
+      "weekly_volume_for_body_part": 20
+    },
+    {
+      "cap_mult": 0.5,
+      "weekly_volume_for_body_part": 20.5
+    },
+    {
+      "cap_mult": 0.5,
+      "weekly_volume_for_body_part": 30
+    },
+    {
+      "cap_mult": 0.5,
+      "weekly_volume_for_body_part": 50
+    }
+  ],
+  "character_level": [
+    {
+      "character_level": 1,
+      "ranks": {
+        "arms": 1,
+        "back": 1,
+        "chest": 1,
+        "core": 1,
+        "legs": 1,
+        "shoulders": 1
+      }
+    },
+    {
+      "character_level": 7,
+      "ranks": {
+        "arms": 5,
+        "back": 5,
+        "chest": 5,
+        "core": 5,
+        "legs": 5,
+        "shoulders": 5
+      }
+    },
+    {
+      "character_level": 29,
+      "ranks": {
+        "arms": 20,
+        "back": 20,
+        "chest": 20,
+        "core": 20,
+        "legs": 20,
+        "shoulders": 20
+      }
+    },
+    {
+      "character_level": 74,
+      "ranks": {
+        "arms": 50,
+        "back": 50,
+        "chest": 50,
+        "core": 50,
+        "legs": 50,
+        "shoulders": 50
+      }
+    },
+    {
+      "character_level": 148,
+      "ranks": {
+        "arms": 99,
+        "back": 99,
+        "chest": 99,
+        "core": 99,
+        "legs": 99,
+        "shoulders": 99
+      }
+    }
+  ],
+  "intensity_lookup": [
+    {
+      "intensity_mult": 1.3,
+      "reps": 1
+    },
+    {
+      "intensity_mult": 1.3,
+      "reps": 2
+    },
+    {
+      "intensity_mult": 1.25,
+      "reps": 3
+    },
+    {
+      "intensity_mult": 1.25,
+      "reps": 4
+    },
+    {
+      "intensity_mult": 1.2,
+      "reps": 5
+    },
+    {
+      "intensity_mult": 1.2,
+      "reps": 7
+    },
+    {
+      "intensity_mult": 1.0,
+      "reps": 8
+    },
+    {
+      "intensity_mult": 1.0,
+      "reps": 10
+    },
+    {
+      "intensity_mult": 0.95,
+      "reps": 12
+    },
+    {
+      "intensity_mult": 0.95,
+      "reps": 13
+    },
+    {
+      "intensity_mult": 0.9,
+      "reps": 15
+    },
+    {
+      "intensity_mult": 0.9,
+      "reps": 16
+    },
+    {
+      "intensity_mult": 0.8,
+      "reps": 20
+    },
+    {
+      "intensity_mult": 0.8,
+      "reps": 25
+    }
+  ],
+  "meta": {
+    "char_level_denominator": 4,
+    "novelty_denominator": 15,
+    "over_cap_multiplier": 0.5,
+    "strength_mult_floor": 0.4,
+    "volume_exponent": 0.65,
+    "weekly_cap_sets": 20,
+    "xp_base": 60,
+    "xp_growth": 1.1
+  },
+  "novelty_mult": [
+    {
+      "novelty_mult": 1.0,
+      "session_volume_for_body_part": 0
+    },
+    {
+      "novelty_mult": 0.9355069850316178,
+      "session_volume_for_body_part": 1
+    },
+    {
+      "novelty_mult": 0.7165313105737893,
+      "session_volume_for_body_part": 5
+    },
+    {
+      "novelty_mult": 0.513417119032592,
+      "session_volume_for_body_part": 10
+    },
+    {
+      "novelty_mult": 0.36787944117144233,
+      "session_volume_for_body_part": 15
+    },
+    {
+      "novelty_mult": 0.26359713811572677,
+      "session_volume_for_body_part": 20
+    },
+    {
+      "novelty_mult": 0.1353352832366127,
+      "session_volume_for_body_part": 30
+    },
+    {
+      "novelty_mult": 0.035673993347252395,
+      "session_volume_for_body_part": 50
+    }
+  ],
+  "rank_curve": {
+    "cumulative": {
+      "1": 0,
+      "10": 814.7686146000003,
+      "11": 956.2454760600006,
+      "12": 1111.8700236660006,
+      "13": 1283.0570260326008,
+      "14": 1471.3627286358608,
+      "15": 1678.499001499447,
+      "16": 1906.348901649392,
+      "17": 2156.983791814331,
+      "18": 2432.682170995765,
+      "19": 2735.9503880953416,
+      "2": 60.0,
+      "20": 3069.545426904876,
+      "21": 3436.499969595364,
+      "22": 3840.1499665549,
+      "23": 4284.164963210391,
+      "24": 4772.58145953143,
+      "25": 5309.839605484573,
+      "26": 5900.823566033031,
+      "27": 6550.905922636335,
+      "28": 7265.996514899969,
+      "29": 8052.596166389967,
+      "3": 126.00000000000001,
+      "30": 8917.855783028963,
+      "31": 9869.64136133186,
+      "32": 10916.605497465047,
+      "33": 12068.266047211553,
+      "34": 13335.09265193271,
+      "35": 14728.601917125983,
+      "36": 16261.462108838583,
+      "37": 17947.608319722443,
+      "38": 19802.369151694686,
+      "39": 21842.60606686416,
+      "4": 198.60000000000008,
+      "40": 24086.866673550576,
+      "41": 26555.55334090564,
+      "42": 29271.1086749962,
+      "43": 32258.219542495826,
+      "44": 35544.041496745405,
+      "45": 39158.445646419954,
+      "46": 43134.29021106195,
+      "47": 47507.71923216815,
+      "48": 52318.49115538496,
+      "49": 57610.34027092347,
+      "5": 278.46,
+      "50": 63431.37429801583,
+      "51": 69834.51172781741,
+      "52": 76877.96290059916,
+      "53": 84625.75919065908,
+      "54": 93148.335109725,
+      "55": 102523.1686206975,
+      "56": 112835.48548276727,
+      "57": 124179.03403104401,
+      "58": 136656.93743414842,
+      "59": 150382.63117756328,
+      "6": 366.306,
+      "60": 165480.89429531962,
+      "61": 182088.98372485154,
+      "62": 200357.88209733673,
+      "63": 220453.67030707045,
+      "64": 242559.03733777752,
+      "65": 266874.9410715553,
+      "66": 293622.43517871085,
+      "67": 323044.6786965819,
+      "68": 355409.14656624023,
+      "69": 391010.06122286426,
+      "7": 462.9366000000001,
+      "70": 430171.06734515063,
+      "71": 473248.1740796658,
+      "72": 520632.99148763245,
+      "73": 572756.2906363957,
+      "74": 630091.9197000354,
+      "75": 693161.1116700389,
+      "76": 762537.2228370429,
+      "77": 838850.9451207472,
+      "78": 922796.0396328222,
+      "79": 1015135.6435961043,
+      "8": 569.2302600000002,
+      "80": 1116709.2079557148,
+      "81": 1228440.1287512865,
+      "82": 1351344.1416264153,
+      "83": 1486538.5557890565,
+      "84": 1635252.4113679626,
+      "85": 1798837.652504759,
+      "86": 1978781.4177552352,
+      "87": 2176719.5595307583,
+      "88": 2394451.515483835,
+      "89": 2633956.6670322185,
+      "9": 686.1532860000003,
+      "90": 2897412.333735441,
+      "91": 3187213.5671089846,
+      "92": 3505994.9238198837,
+      "93": 3856654.4162018728,
+      "94": 4242379.85782206,
+      "95": 4666677.843604267,
+      "96": 5133405.627964694,
+      "97": 5646806.190761163,
+      "98": 6211546.80983728,
+      "99": 6832761.490821008
+    },
+    "lookups": [
+      {
+        "rank": 1,
+        "total_xp": 0
+      },
+      {
+        "rank": 1,
+        "total_xp": 59
+      },
+      {
+        "rank": 2,
+        "total_xp": 60
+      },
+      {
+        "rank": 4,
+        "total_xp": 277
+      },
+      {
+        "rank": 4,
+        "total_xp": 278
+      },
+      {
+        "rank": 9,
+        "total_xp": 813
+      },
+      {
+        "rank": 9,
+        "total_xp": 814
+      },
+      {
+        "rank": 19,
+        "total_xp": 3068
+      },
+      {
+        "rank": 19,
+        "total_xp": 3069
+      },
+      {
+        "rank": 29,
+        "total_xp": 8916
+      },
+      {
+        "rank": 29,
+        "total_xp": 8917
+      },
+      {
+        "rank": 49,
+        "total_xp": 63430
+      },
+      {
+        "rank": 49,
+        "total_xp": 63431
+      },
+      {
+        "rank": 69,
+        "total_xp": 430170
+      },
+      {
+        "rank": 69,
+        "total_xp": 430171
+      },
+      {
+        "rank": 98,
+        "total_xp": 6832760
+      },
+      {
+        "rank": 98,
+        "total_xp": 6832761
+      },
+      {
+        "rank": 99,
+        "total_xp": 9999999
+      }
+    ],
+    "milestones": [
+      {
+        "cumulative_xp": 0,
+        "rank": 1
+      },
+      {
+        "cumulative_xp": 60.0,
+        "rank": 2
+      },
+      {
+        "cumulative_xp": 278.46,
+        "rank": 5
+      },
+      {
+        "cumulative_xp": 814.7686146000003,
+        "rank": 10
+      },
+      {
+        "cumulative_xp": 3069.545426904876,
+        "rank": 20
+      },
+      {
+        "cumulative_xp": 8917.855783028963,
+        "rank": 30
+      },
+      {
+        "cumulative_xp": 63431.37429801583,
+        "rank": 50
+      },
+      {
+        "cumulative_xp": 430171.06734515063,
+        "rank": 70
+      },
+      {
+        "cumulative_xp": 2897412.333735441,
+        "rank": 90
+      },
+      {
+        "cumulative_xp": 6832761.490821008,
+        "rank": 99
+      }
+    ]
+  },
+  "set_xp_examples": [
+    {
+      "components": {
+        "base_xp": 56.797667740331384,
+        "cap_mult": 1.0,
+        "intensity_mult": 1.2,
+        "novelty_mult": 1.0,
+        "strength_mult": 1.0,
+        "volume_load": 500
+      },
+      "inputs": {
+        "peak_load": 100,
+        "reps": 5,
+        "session_volume_for_body_part": 0,
+        "weekly_volume_for_body_part": 0,
+        "weight_kg": 100
+      },
+      "name": "bench_peak_fresh",
+      "set_xp": 68.15720128839766
+    },
+    {
+      "components": {
+        "base_xp": 56.797667740331384,
+        "cap_mult": 1.0,
+        "intensity_mult": 1.2,
+        "novelty_mult": 0.513417119032592,
+        "strength_mult": 1.0,
+        "volume_load": 500
+      },
+      "inputs": {
+        "peak_load": 100,
+        "reps": 5,
+        "session_volume_for_body_part": 10,
+        "weekly_volume_for_body_part": 0,
+        "weight_kg": 100
+      },
+      "name": "bench_peak_late_session",
+      "set_xp": 34.993073926813594
+    },
+    {
+      "components": {
+        "base_xp": 45.04475496986848,
+        "cap_mult": 1.0,
+        "intensity_mult": 1.2,
+        "novelty_mult": 1.0,
+        "strength_mult": 0.7,
+        "volume_load": 350
+      },
+      "inputs": {
+        "peak_load": 100,
+        "reps": 5,
+        "session_volume_for_body_part": 0,
+        "weekly_volume_for_body_part": 0,
+        "weight_kg": 70
+      },
+      "name": "bench_deload_70",
+      "set_xp": 37.837594174689514
+    },
+    {
+      "components": {
+        "base_xp": 56.797667740331384,
+        "cap_mult": 0.5,
+        "intensity_mult": 1.2,
+        "novelty_mult": 1.0,
+        "strength_mult": 1.0,
+        "volume_load": 500
+      },
+      "inputs": {
+        "peak_load": 100,
+        "reps": 5,
+        "session_volume_for_body_part": 0,
+        "weekly_volume_for_body_part": 25,
+        "weight_kg": 100
+      },
+      "name": "past_weekly_cap",
+      "set_xp": 34.07860064419883
+    },
+    {
+      "components": {
+        "base_xp": 100.33854750857574,
+        "cap_mult": 1.0,
+        "intensity_mult": 0.8,
+        "novelty_mult": 1.0,
+        "strength_mult": 0.6,
+        "volume_load": 1200
+      },
+      "inputs": {
+        "peak_load": 100,
+        "reps": 20,
+        "session_volume_for_body_part": 0,
+        "weekly_volume_for_body_part": 0,
+        "weight_kg": 60
+      },
+      "name": "high_rep_endurance",
+      "set_xp": 48.16250280411636
+    },
+    {
+      "components": {
+        "base_xp": 24.83037183640355,
+        "cap_mult": 1.0,
+        "intensity_mult": 1.3,
+        "novelty_mult": 1.0,
+        "strength_mult": 1.0,
+        "volume_load": 140
+      },
+      "inputs": {
+        "peak_load": 130,
+        "reps": 1,
+        "session_volume_for_body_part": 0,
+        "weekly_volume_for_body_part": 0,
+        "weight_kg": 140
+      },
+      "name": "one_rm",
+      "set_xp": 32.27948338732462
+    },
+    {
+      "components": {
+        "base_xp": 1.0,
+        "cap_mult": 1.0,
+        "intensity_mult": 1.0,
+        "novelty_mult": 1.0,
+        "strength_mult": 1.0,
+        "volume_load": 1.0
+      },
+      "inputs": {
+        "peak_load": 0,
+        "reps": 8,
+        "session_volume_for_body_part": 0,
+        "weekly_volume_for_body_part": 0,
+        "weight_kg": 0
+      },
+      "name": "bodyweight_floor",
+      "set_xp": 1.0
+    },
+    {
+      "components": {
+        "base_xp": 14.315229426830216,
+        "cap_mult": 1.0,
+        "intensity_mult": 0.95,
+        "novelty_mult": 0.7165313105737893,
+        "strength_mult": 1.0,
+        "volume_load": 60
+      },
+      "inputs": {
+        "peak_load": 5,
+        "reps": 12,
+        "session_volume_for_body_part": 5,
+        "weekly_volume_for_body_part": 8,
+        "weight_kg": 5
+      },
+      "name": "stagnant_curl",
+      "set_xp": 9.74444459725257
+    }
+  ],
+  "strength_mult": [
+    {
+      "expected": 1.0,
+      "peak_load": 100,
+      "strength_mult": 1.0,
+      "weight_kg": 100
+    },
+    {
+      "expected": 1.0,
+      "peak_load": 100,
+      "strength_mult": 1.0,
+      "weight_kg": 110
+    },
+    {
+      "expected": 0.7,
+      "peak_load": 100,
+      "strength_mult": 0.7,
+      "weight_kg": 70
+    },
+    {
+      "expected": 0.5,
+      "peak_load": 100,
+      "strength_mult": 0.5,
+      "weight_kg": 50
+    },
+    {
+      "expected": 0.4,
+      "peak_load": 100,
+      "strength_mult": 0.4,
+      "weight_kg": 30
+    },
+    {
+      "expected": 0.4,
+      "peak_load": 100,
+      "strength_mult": 0.4,
+      "weight_kg": 10
+    },
+    {
+      "expected": 1.0,
+      "peak_load": 0,
+      "strength_mult": 1.0,
+      "weight_kg": 50
+    }
+  ],
+  "vitality": {
+    "alpha_down": 0.15351827510938587,
+    "alpha_up": 0.3934693402873666,
+    "comeback_chest_trajectory": [
+      {
+        "chest_vitality_pct": 1.0,
+        "is_layoff": false,
+        "week": 13
+      },
+      {
+        "chest_vitality_pct": 1.0,
+        "is_layoff": false,
+        "week": 26
+      },
+      {
+        "chest_vitality_pct": 1.0,
+        "is_layoff": false,
+        "week": 52
+      },
+      {
+        "chest_vitality_pct": 0.2635971381157268,
+        "is_layoff": true,
+        "week": 60
+      },
+      {
+        "chest_vitality_pct": 0.013123728736940976,
+        "is_layoff": true,
+        "week": 78
+      },
+      {
+        "chest_vitality_pct": 0.6469735088249203,
+        "is_layoff": false,
+        "week": 80
+      },
+      {
+        "chest_vitality_pct": 1.0,
+        "is_layoff": false,
+        "week": 92
+      },
+      {
+        "chest_vitality_pct": 1.0,
+        "is_layoff": false,
+        "week": 104
+      }
+    ],
+    "rebuild_then_decay_trajectory": [
+      {
+        "ewma": 39.346934028736655,
+        "pct": 1.0,
+        "peak": 39.346934028736655,
+        "week": 1,
+        "weekly_volume": 100
+      },
+      {
+        "ewma": 63.212055882855765,
+        "pct": 1.0,
+        "peak": 63.212055882855765,
+        "week": 2,
+        "weekly_volume": 100
+      },
+      {
+        "ewma": 77.68698398515701,
+        "pct": 1.0,
+        "peak": 77.68698398515701,
+        "week": 3,
+        "weekly_volume": 100
+      },
+      {
+        "ewma": 86.46647167633873,
+        "pct": 1.0,
+        "peak": 86.46647167633873,
+        "week": 4,
+        "weekly_volume": 100
+      },
+      {
+        "ewma": 91.79150013761011,
+        "pct": 1.0,
+        "peak": 91.79150013761011,
+        "week": 5,
+        "weekly_volume": 100
+      },
+      {
+        "ewma": 95.0212931632136,
+        "pct": 1.0,
+        "peak": 95.0212931632136,
+        "week": 6,
+        "weekly_volume": 100
+      },
+      {
+        "ewma": 96.98026165776815,
+        "pct": 1.0,
+        "peak": 96.98026165776815,
+        "week": 7,
+        "weekly_volume": 100
+      },
+      {
+        "ewma": 98.16843611112658,
+        "pct": 1.0,
+        "peak": 98.16843611112658,
+        "week": 8,
+        "weekly_volume": 100
+      },
+      {
+        "ewma": 98.88910034617577,
+        "pct": 1.0,
+        "peak": 98.88910034617577,
+        "week": 9,
+        "weekly_volume": 100
+      },
+      {
+        "ewma": 99.32620530009146,
+        "pct": 1.0,
+        "peak": 99.32620530009146,
+        "week": 10,
+        "weekly_volume": 100
+      },
+      {
+        "ewma": 84.07781758926068,
+        "pct": 0.8464817248906141,
+        "peak": 99.32620530009146,
+        "week": 11,
+        "weekly_volume": 0
+      },
+      {
+        "ewma": 71.1703360579958,
+        "pct": 0.7165313105737894,
+        "peak": 99.32620530009146,
+        "week": 12,
+        "weekly_volume": 0
+      },
+      {
+        "ewma": 60.244388827416955,
+        "pct": 0.6065306597126335,
+        "peak": 99.32620530009146,
+        "week": 13,
+        "weekly_volume": 0
+      },
+      {
+        "ewma": 50.995774169612744,
+        "pct": 0.5134171190325921,
+        "peak": 99.32620530009146,
+        "week": 14,
+        "weekly_volume": 0
+      },
+      {
+        "ewma": 43.16699088122602,
+        "pct": 0.43459820850707837,
+        "peak": 99.32620530009146,
+        "week": 15,
+        "weekly_volume": 0
+      },
+      {
+        "ewma": 36.54006889947761,
+        "pct": 0.36787944117144245,
+        "peak": 99.32620530009146,
+        "week": 16,
+        "weekly_volume": 0
+      },
+      {
+        "ewma": 30.930500549651693,
+        "pct": 0.3114032239145978,
+        "peak": 99.32620530009146,
+        "week": 17,
+        "weekly_volume": 0
+      },
+      {
+        "ewma": 26.182103456999254,
+        "pct": 0.2635971381157269,
+        "peak": 99.32620530009146,
+        "week": 18,
+        "weekly_volume": 0
+      },
+      {
+        "ewma": 22.16267209554524,
+        "pct": 0.22313016014842996,
+        "peak": 99.32620530009146,
+        "week": 19,
+        "weekly_volume": 0
+      },
+      {
+        "ewma": 18.760296903622216,
+        "pct": 0.18887560283756197,
+        "peak": 99.32620530009146,
+        "week": 20,
+        "weekly_volume": 0
+      },
+      {
+        "ewma": 15.88024848243818,
+        "pct": 0.15987974607969402,
+        "peak": 99.32620530009146,
+        "week": 21,
+        "weekly_volume": 0
+      },
+      {
+        "ewma": 13.442340127105828,
+        "pct": 0.13533528323661279,
+        "peak": 99.32620530009146,
+        "week": 22,
+        "weekly_volume": 0
+      },
+      {
+        "ewma": 11.378695257358858,
+        "pct": 0.1145588439926878,
+        "peak": 99.32620530009146,
+        "week": 23,
+        "weekly_volume": 0
+      },
+      {
+        "ewma": 9.631857588453776,
+        "pct": 0.09697196786440514,
+        "peak": 99.32620530009146,
+        "week": 24,
+        "weekly_volume": 0
+      },
+      {
+        "ewma": 8.153191425375104,
+        "pct": 0.08208499862389887,
+        "peak": 99.32620530009146,
+        "week": 25,
+        "weekly_volume": 0
+      },
+      {
+        "ewma": 6.901527541114882,
+        "pct": 0.0694834512228016,
+        "peak": 99.32620530009146,
+        "week": 26,
+        "weekly_volume": 0
+      },
+      {
+        "ewma": 5.842016937383004,
+        "pct": 0.058816471642429945,
+        "peak": 99.32620530009146,
+        "week": 27,
+        "weekly_volume": 0
+      },
+      {
+        "ewma": 4.945160573996148,
+        "pct": 0.049787068367863986,
+        "peak": 99.32620530009146,
+        "week": 28,
+        "weekly_volume": 0
+      },
+      {
+        "ewma": 4.1859880525373185,
+        "pct": 0.04214384350927644,
+        "peak": 99.32620530009146,
+        "week": 29,
+        "weekly_volume": 0
+      },
+      {
+        "ewma": 3.543362387083292,
+        "pct": 0.035673993347252436,
+        "peak": 99.32620530009146,
+        "week": 30,
+        "weekly_volume": 0
+      }
+    ],
+    "tau_down_weeks": 6.0,
+    "tau_up_weeks": 2.0
+  },
+  "volume_load": [
+    {
+      "base_xp": 1.0,
+      "reps": 8,
+      "volume_load": 1.0,
+      "weight_kg": 0
+    },
+    {
+      "base_xp": 1.0,
+      "reps": 1,
+      "volume_load": 1.0,
+      "weight_kg": 1
+    },
+    {
+      "base_xp": 8.103282983463814,
+      "reps": 5,
+      "volume_load": 25,
+      "weight_kg": 5
+    },
+    {
+      "base_xp": 27.081828824463557,
+      "reps": 8,
+      "volume_load": 160,
+      "weight_kg": 20
+    },
+    {
+      "base_xp": 40.750112830372316,
+      "reps": 5,
+      "volume_load": 300,
+      "weight_kg": 60
+    },
+    {
+      "base_xp": 77.09185423052514,
+      "reps": 8,
+      "volume_load": 800,
+      "weight_kg": 100
+    },
+    {
+      "base_xp": 50.71215179891399,
+      "reps": 3,
+      "volume_load": 420,
+      "weight_kg": 140
+    },
+    {
+      "base_xp": 31.309021669144823,
+      "reps": 1,
+      "volume_load": 200,
+      "weight_kg": 200
+    }
+  ]
+}

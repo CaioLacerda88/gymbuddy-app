@@ -64,16 +64,19 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 17.0 | Visual Language Foundation (pixel-art — SUPERSEDED by 17.0c) | SUPERSEDED | #101 |
 | 17.0c | Arcane Ascent Material Migration (teardown pixel, rebuild Material Design + app icon + 17.0d polish) | DONE | #105, #106, #107 |
 | 17.0e | Icon Pack Integration (migrate inline SVGs → v3-silhouette asset pack, CC BY 3.0 attribution) | DONE | #108 |
-| 17b | XP & Level System + Retroactive Backfill | DONE | #103 |
-| 17a | Celebration Overlay + Active Logger Hardening | TODO | - |
-| 17c | Weekly Streak + Comeback Bonus | TODO | - |
-| 17d | Character Sheet + Milestone Signal | TODO | - |
-| 17e | Home Recap + First-Week Quest + LVL Line | TODO | - |
-| 17 | Gamification Foundation (Visual, XP, Levels, Streaks, Character, Recap) | IN PROGRESS | - |
-| 18a | Weekly Smart Quests (engine + localized pool) | TODO | - |
-| 18b | Training Stats Panel (radar) | TODO | - |
-| 18 | Gamification Advanced (Quests, Stats Panel) | PLANNED | - |
-| 19 | Nice-to-Have (v2.0+) | BACKLOG | - |
+| 17b | XP & Level System + Retroactive Backfill (placeholder XP math — rebased by Phase 18a) | DONE | #103 |
+| 17a | Celebration Overlay + Active Logger Hardening (overlay choreography rebased into 18c) | SUPERSEDED | - |
+| 17c | Weekly Streak + Comeback Bonus | SUPERSEDED | - |
+| 17d | Character Sheet + Milestone Signal (re-scoped into 18b character sheet + 18d stats deep-dive) | SUPERSEDED | - |
+| 17e | Home Recap + First-Week Quest + LVL Line | SUPERSEDED | - |
+| 17 | Gamification Foundation (visual + XP infra shipped; remaining sub-phases SUPERSEDED by Phase 18 RPG v1) | PARTIAL | #101, #103, #105, #106, #107, #108 |
+| 18a | RPG v1: Schema + XP engine + backfill (foundation) | TODO | - |
+| 18b | RPG v1: Character sheet + rune sigils UI | TODO | - |
+| 18c | RPG v1: Mid-workout overlay rewire + title unlocks | TODO | - |
+| 18d | RPG v1: Stats deep-dive + Vitality nightly job + visual states | TODO | - |
+| 18e | RPG v1: Class system + cross-build titles + final QA pass | TODO | - |
+| 18 | RPG System v1 (per `docs/superpowers/specs/2026-04-25-rpg-system-v1-design.md`) | PLANNED | - |
+| 19 | Deferred RPG v2 + Nice-to-Have (Quests engine, Stats radar, Synergy, PR mini-events, Cardio track, etc.) | BACKLOG | - |
 
 ### Section Index
 
@@ -90,7 +93,9 @@ Read only what you need:
 | Phase 14: Offline Support | Implementing offline-first workout capture |
 | Phase 15: Localization | Implementing pt-BR support |
 | Phase 16: Subscription Monetization | Implementing GPB subscriptions / paywall |
-| Phase 17-18: Gamification | Implementing RPG system |
+| Phase 17: Gamification Foundation (visual + XP infra; remaining sub-phases superseded) | Context on shipped 17.0c / 17b infrastructure |
+| Phase 18: RPG System v1 | Implementing the canonical RPG (rank, vitality, character sheet, classes, titles) — read with `docs/superpowers/specs/2026-04-25-rpg-system-v1-design.md` |
+| Phase 19: Deferred RPG v2 + Nice-to-Have | Cardio track, quests engine, synergy multipliers, etc. |
 | QA Status | Doing QA or review |
 | Verification & Testing | Writing tests |
 | UX Design Direction | Building UI |
@@ -1036,13 +1041,13 @@ RLS: SELECT `auth.uid() = user_id` on all three. No client writes. Service role 
 
 > RPG progression tightly coupled to real training data — "your strength IS your character." Refined from the Phase 17 v1 spec after PO + UX post-mortem of GymLevels, Arise, and competitor teardown (2026-04-22).
 
-### Retention Dependency (from Phase 16 pricing research)
+### Retention Dependency (from Phase 16 pricing research) — UPDATED for RPG v1
 
-Our annual price ($23.99 USD) matches Hevy; Hevy offers a permanent freemium tier. A user comparing the two at trial-end will ask "why pay when Hevy is free?" The answer has to be delivered **inside the 14-day trial**: the RPG progression must feel real within the first 2–3 sessions, not week 3. **Scoping implication:** prioritize mechanics felt immediately (XP on set completion, first-PR celebration, visible LVL bar, week-1 streak nudge) over long-tail mechanics (multi-week quest arcs, deep radar, seasonal content). The **level curve is retuned to `xpForLevel(n) = floor(300 * pow(n, 1.3))`** so a typical trial user hits LVL 8 (not LVL 4) by day 14 — the single highest-impact numeric change.
+Our annual price ($23.99 USD) matches Hevy; Hevy offers a permanent freemium tier. A user comparing the two at trial-end will ask "why pay when Hevy is free?" The answer has to be delivered **inside the 14-day trial**: progression must feel real within the first 2–3 sessions. **Under RPG v1** (Phase 18) this becomes: visible body-part Rank progress on the character sheet within the first session, the first rune awakening on first attributed set per body part, and at least one Rank threshold crossed by mid-trial. The Phase 17 LVL curve (`xpForLevel(n) = floor(300 * pow(n, 1.3))`) is **placeholder** — the new pacing is governed by the Rank curve in design spec §6 (`xp_to_next(n) = 60 × 1.10^(n-1)`), validated by 260-week simulation: Rank 1→20 in ~8 weeks of consistent training. A trial user hits multiple body-part Rank-ups inside 14 days.
 
-### Cross-Phase: Paywall Personalization Hook (consumed by Phase 16b)
+### Cross-Phase: Paywall Personalization Hook (consumed by Phase 16b) — UPDATED for RPG v1
 
-When Phase 16b unparks and wires `PaywallScreen`, the paywall MUST display the user's actual progression — `LVL N`, last PR, current streak — not generic bullet points. Phase 17 exposes `GamificationSummary` from `xp_provider` + `streak_provider` specifically so 16b can read it without re-querying. **This callout is load-bearing: do not let 16b drift back to a stock paywall.**
+When Phase 16b unparks and wires `PaywallScreen`, the paywall MUST display the user's actual progression — under RPG v1 that becomes their **Character Level + dominant body-part Rank + active title**, not the legacy `GamificationSummary` shape. Phase 18b exposes `character_sheet_provider` (composes `rpg_progress_provider` + active title + class), which 16b reads. The legacy `xp_provider` from 17b is preserved as a transitional read-through during Phase 18a→b implementation but slated for removal once the character sheet provider is the canonical source. **This callout is load-bearing: do not let 16b drift back to a stock paywall.**
 
 ### Design Principles (non-negotiable)
 
@@ -1054,16 +1059,13 @@ When Phase 16b unparks and wires `PaywallScreen`, the paywall MUST display the u
 - Variable rewards are tied to **real behavior** (PR, milestone, comeback), never pure chance. No loot boxes.
 - Milestones are **signals** (geometric marks), not collectible badge walls.
 
-### Build Order (dependency-ordered, not priority-ordered)
+### Build Order (historical — preserved for archeology)
 
-1. **17.0** — Visual Language Foundation (theme + typography). No game logic yet; gives every subsequent sub-phase the surface to paint on.
-2. **17b** — XP & Level data layer (migrations + calculator + retroactive backfill). No UI; provides real values for 17a to reveal.
-3. **17a** — Celebration Overlay + Active Logger Hardening. Renders the data 17b produced. First visible payoff.
-4. **17c** — Weekly Streak + Comeback Bonus. Reuses overlay from 17a for the comeback moment.
-5. **17d** — Character Sheet + Milestone Signal. Profile revamp; reads all prior data.
-6. **17e** — Home Recap + First-Week Quest stub + LVL line. Closes the retention loop for returning lifters.
+1. **17.0c (DONE)** — Arcane Ascent Material 3 theme + 12-token palette + app icon. Foundation visual surface, retained.
+2. **17b (DONE)** — Placeholder XP + Saga Intro Overlay infra. Saga Intro Overlay is **kept** as the rebrand-into-saga ritual; placeholder XP math + the `xpForLevel` curve are slated for replacement by Phase 18a.
+3. **17a / 17c / 17d / 17e — SUPERSEDED.** All four sub-phases are absorbed into or dropped by the Phase 18 RPG v1 design (see below). Original specs remain in git history.
 
-Then Phase 18 (Quests engine, Stats radar) extends without reworking foundation.
+Phase 18 (RPG v1) is now the canonical gamification plan. See `docs/superpowers/specs/2026-04-25-rpg-system-v1-design.md` for the full design and §"Phase 18: RPG System v1" below for the implementation decomposition (18a-18e).
 
 ---
 
@@ -1097,298 +1099,273 @@ What was in PR #101 (for git history): 20 palette tokens on `AppColors`, Press-S
 
 ---
 
-### 17a: Celebration Overlay + Active Logger Hardening
+### 17a: Celebration Overlay + Active Logger Hardening — SUPERSEDED by Phase 18 RPG v1
 
-**Goal:** Make XP/PRs/level-ups visible and felt. Harden the active logger so the "I'm in the gym with sweaty hands" moment is contrast-strong.
-
-**Celebration Overlay (`CelebrationOverlay`):**
-
-- Full-screen `#0F0F23` @ 0.96 opacity, dismiss on tap.
-- **Sequential zone reveals** (not simultaneous — reveals are what create awe):
-  1. `XpZone` — counter tweens 0 → total over 600ms (ease-out-cubic), color `#FFFFFF60` → `#00E676`. Haptic `HapticFeedback.mediumImpact()` on final value.
-  2. `PrBand` (if any PR) — amber `#FFD54F` band slides in at 900ms, `NEW RECORD` heroLabel, exercise name + new value (kg × reps). Haptic `HapticFeedback.heavyImpact()`.
-  3. `LevelUpZone` (if level changed) — at 1400ms, green radial glow expands from center, scale-punch 0.8 → 1.1 → 1.0 on "LEVEL UP N → N+1" text, rank label if rank changed.
-- Tap-to-dismiss available after the full sequence completes (dismissible flag flips at 1800ms). Tapping earlier skips to end state (all zones visible, no replay).
-- Reused by 17c for comeback bonus: same overlay, `ComebackZone` slides in replacing PrBand.
-
-**Active Logger Hardening (contrast pass, not a new theme):**
-
-- Completed-set row: 6% `#00E676` tint background + bold white text.
-- Set checkbox: 28dp filled green circle with white checkmark when done; outlined circle when pending.
-- Active set row: 2dp `#00E676` left border.
-- Weight/reps input: `heroNumeric` typography (56pt w900). Input fields become the visually dominant element.
-- Finish Workout button: bottom-zone anchored, `#00E676` fill, 64dp tall, heroLabel "FINISH WORKOUT". Replaces current AppBar action.
-- Mid-session PR chip: when a set breaks a PR, `MidSessionPrChip` slides in from top of logger, 3s visible, text "PR! {exercise} {kg}×{reps}" amber, dismiss on tap or timeout. NON-MODAL — does not interrupt logging. Haptic `selectionClick`.
-- `XpAccumulator` — subtle "+ N XP" number that floats up briefly on each set completion (800ms fade, 20dp translate), next to the set row. Not a counter; just a whisper.
-
-**Acceptance:**
-
-- Finishing a workout shows `CelebrationOverlay` with zones revealing in the defined sequence.
-- PR detection in `17b` triggers the PR band.
-- Level-up detection triggers the Level Up zone.
-- Active logger visually distinct vs current build (screenshot diff on PR).
-- Mid-session PR chip fires correctly and does not block the logger.
-- XP accumulator fires on every set tap and does not cause jank (profile: < 2ms per frame).
-
-**Files:**
-
-- Create: `lib/features/gamification/ui/celebration_overlay.dart`, `lib/features/gamification/ui/overlay_zones/xp_zone.dart`, `pr_band.dart`, `level_up_zone.dart`, `comeback_zone.dart` (used by 17c), `lib/features/workouts/ui/widgets/mid_session_pr_chip.dart`, `xp_accumulator.dart`, `set_checkbox.dart` (extracted), `active_set_row_decorations.dart`
-- Modify: `lib/features/workouts/ui/active_workout_screen.dart` (new logger styling, wire chip + accumulator + finish button), `lib/features/workouts/ui/workout_finish_flow.dart` (show overlay after save)
-
-**Test plan:**
-
-- **Unit:** `test/unit/features/gamification/overlay_sequencer_test.dart` — verify zone reveal timing given breakdowns.
-- **Widget:** `test/widget/features/gamification/celebration_overlay_test.dart` — every zone combination (XP only / XP+PR / XP+LVL / XP+PR+LVL / XP+Comeback). `test/widget/features/workouts/active_workout_screen_logger_test.dart` — active set styling, completed set tint, finish button placement.
-- **E2E:** New spec `test/e2e/specs/celebration-overlay.spec.ts` (tagged `@smoke`) — complete a workout → overlay renders → XP counter visible → dismiss → return to home. Regression case: complete a workout that triggers a PR, verify PR band copy. Regression case: simulate level up by pre-seeding XP close to threshold, verify LEVEL UP zone. Selectors added: `celebrationOverlay`, `xpZoneCounter`, `prBandLabel`, `levelUpLabel`, `finishWorkoutButton` (replaces prior). Existing `specs/workouts.spec.ts` updated: all finish-workout paths now assert overlay appears.
-- **Selector migration:** The `FinishWorkout` action moved from AppBar to bottom sheet — `helpers/selectors.ts` and every workouts spec updated. This is a navigation-flow change per CLAUDE.md E2E rules → full suite run required.
+The celebration-overlay choreography conceptualized here (sequential XP / PR / LEVEL-UP zone reveals) is rebased into **Phase 18c** as the rank-up + title-unlock overlay sequencer, now fed by real Phase 18 XP math instead of placeholder. Active-logger hardening (mid-session PR chip, XP accumulator whisper, finish-workout button placement) remains directionally correct and is folded into 18c's UI work — see Phase 18c file plan. Full content preserved in git history (this file pre-2026-04-25).
 
 ---
 
-### 17c: Weekly Streak + Comeback Bonus
+### 17c: Weekly Streak + Comeback Bonus — SUPERSEDED by Phase 18 RPG v1
 
-**Goal:** Reward consistency without punishment. A missed week never creates shame; a returning user is rewarded.
-
-**Data model:**
-
-- Migration `0030_streaks.sql`:
-  ```sql
-  create table public.user_streaks (
-    user_id uuid primary key references auth.users(id) on delete cascade,
-    current_weeks int not null default 0,
-    longest_weeks int not null default 0,
-    last_active_iso_week text,  -- format: 'YYYY-Www'
-    last_comeback_at timestamptz,
-    updated_at timestamptz not null default now()
-  );
-  ```
-- Procedure `update_streak_on_workout(user_id)` — called from `save_workout` RPC. Computes ISO week; compares to `last_active_iso_week`.
-  - Same week → no change.
-  - Consecutive week → `current_weeks += 1`, update `last_active_iso_week`.
-  - Skipped 1+ weeks AFTER a streak ≥ 2 → trigger **comeback**: set `last_comeback_at = now()`, reset `current_weeks = 1`, flag `xp_events` next workout with `comeback_multiplier=2.0`.
-
-**UI:**
-
-- `WeekStrip` — 7 segments (Mon-Sun), trained=`#00E676`, not-trained=`#2A2A40` (NOT red, NOT empty). Today highlighted with 2dp outline.
-- `StreakBadge` — shown on character sheet (17d) and home line (17e). Format: `{N}w streak` or `—` if 0.
-- `ComebackBanner` — after a comeback is triggered, next time user opens active logger, a non-modal banner at top: "Welcome back. This session earns 2× XP." Dismissible. Shown once per comeback event.
-- Comeback zone in celebration overlay fires on first workout post-comeback.
-
-**Acceptance:**
-
-- Completing first workout of a new ISO week increments streak correctly.
-- Missing a week after a 3-week streak triggers comeback flag, next workout XP doubles and shows comeback zone.
-- WeekStrip reflects current week accurately.
-- No RED color ever appears for missed days. No streak anxiety copy.
-
-**Files:**
-
-- Create: `supabase/migrations/0030_streaks.sql`, `lib/features/gamification/data/streak_repository.dart`, `providers/streak_provider.dart`, `models/streak_state.dart`, `ui/week_strip.dart`, `ui/streak_badge.dart`, `ui/comeback_banner.dart`
-- Modify: `lib/features/gamification/ui/overlay_zones/comeback_zone.dart` (wiring), `save_workout` RPC migration (add streak update call)
-
-**Test plan:**
-
-- **Unit:** `test/unit/features/gamification/iso_week_test.dart`, `streak_calculator_test.dart` — transitions (first week, consecutive, same-week, skip-1, skip-many, comeback trigger, post-comeback reset).
-- **Widget:** `test/widget/features/gamification/week_strip_test.dart` — 7 segments render, today highlighted, correct color map.
-- **E2E:** New spec `test/e2e/specs/streak.spec.ts` (tagged `@smoke`) — test user with seeded prior workout data: opens home, sees streak badge; opens profile, sees week strip with correct segments. Regression: comeback banner renders after simulated skip-week. New test user `streakUser` with fixtures in `fixtures/test-users.ts` seeded via Supabase Admin API. Selectors: `weekStrip`, `weekStripSegment`, `streakBadge`, `comebackBanner`.
+The "saga is permanent, never decays" framing of Phase 18 replaces the weekly-streak loop. Vitality (per §8 of the design spec) is the new conditioning signal — asymmetric rebuild-fast / decay-slow EWMA on real volume. There is no streak counter, no comeback multiplier, no week-strip in the new model. Returning users are visually rewarded by their Vitality runes re-igniting as they retrain, not by an XP multiplier flag. Original spec preserved in git history.
 
 ---
 
-### 17d: Character Sheet + Milestone Signal
+### 17d: Character Sheet + Milestone Signal — SUPERSEDED by Phase 18 RPG v1
 
-**Goal:** Replace the profile screen's generic list with a character-sheet identity layer. Introduce **milestones as signals**, not badges.
-
-**Identity & layout:**
-
-- Profile URL stays `/profile`. Screen restructured into stacked zones:
-  1. **Character Zone** — LVL badge (heroNumeric 72pt), rank glyph (chemistry symbol: `Rk/Fe/Cu/Ag/Au/Pt/◆`), XP progress bar (8dp, `#00E676` fill, shimmer on recent gain), "X,XXX XP to LVL N+1" caption.
-  2. **Highlights Row** — three stat cards: `Total Volume Lifted`, `Heaviest PR`, `Weeks Trained`. Not a 6-stat radar (that's 18b).
-  3. **Week Strip** — from 17c, labeled "This Week".
-  4. **Milestones List** — vertical list (not grid), capped at 20 entries, newest on top, scrollable. See below.
-  5. **Settings access** — unchanged list, moved to bottom.
-
-**Milestone Signal system:**
-
-- Milestones are **timeline entries**, not collectible artifacts. Each entry:
-  - Geometric mark (single glyph): `▲` first PR, `◆` rank promotion, `≡` streak milestone, `●` quest streak, `◯` workout count milestone.
-  - Date line: `Apr 18, 2026`
-  - Short copy: `First bench PR — 80kg × 5`
-  - No "locked" states. No grid view. No percentage-complete. No shame for anything not yet earned.
-- New table `user_milestones (id, user_id, kind, payload jsonb, achieved_at)`. Detector runs in `MilestoneDetector.evaluate(workout, xp_result, streak_result)` and inserts entries on significant events:
-  - First PR ever.
-  - Rank promotion (Iron, Copper, Silver, Gold, Platinum, Diamond).
-  - Streak thresholds: 4w, 12w, 26w, 52w.
-  - Quest-completion streaks (from 18a): 4w, 12w.
-  - Workout count thresholds: 10, 50, 100, 250, 500.
-- Recent milestones (last 3) surface as a "Recent" sub-block in the profile header; the rest scroll in the list.
-
-**Acceptance:**
-
-- Profile screen renders all zones in the stated order.
-- Rank glyph uses chemistry symbols; no ambiguity (Rookie=`Rk`, Iron=`Fe`, Copper=`Cu`, Silver=`Ag`, Gold=`Au`, Platinum=`Pt`, Diamond=`◆`).
-- Milestones insert exactly once per trigger (no duplicates on repeated PRs of the same exercise+weight+reps).
-- Milestone list does not render a grid/matrix under any state.
-- Existing "Profile" E2E flows still pass after restructure; selectors migrate.
-
-**Files:**
-
-- Create: `supabase/migrations/0031_milestones.sql`, `lib/features/gamification/domain/milestone_detector.dart`, `providers/milestones_provider.dart`, `models/milestone.dart`, `lib/features/profile/ui/widgets/character_zone.dart`, `identity_block.dart`, `highlights_row.dart`, `milestone_card.dart`, `milestones_list.dart`, `rank_glyph.dart`
-- Modify: `lib/features/profile/ui/profile_screen.dart` (full restructure), `save_workout` RPC (hook milestone detector)
-
-**Test plan:**
-
-- **Unit:** `test/unit/features/gamification/milestone_detector_test.dart` — every trigger kind, duplicate-guard, payload shape. `test/unit/features/gamification/rank_glyph_test.dart` — rank → symbol mapping.
-- **Widget:** `test/widget/features/profile/character_zone_test.dart`, `milestones_list_test.dart` — renders vertical list only, honors cap, newest-first order, no grid state possible.
-- **E2E:** Existing `specs/profile.spec.ts` updated wholesale (prior selectors removed, new zones asserted). New tests: `should render LVL badge with rank glyph`, `should render milestones as vertical list`, `should not render milestones as grid` (negative assertion). Selectors: `lvlBadge`, `rankGlyph`, `xpProgressBar`, `highlightsRow`, `milestonesList`, `milestoneCard`. Full suite run required — this restructures profile navigation.
+Replaced by Phase 18b (character sheet) + Phase 18d (stats deep-dive). The new character sheet renders six body-part Ranks (1-99) with rune sigils + a derived Character Level + an active title — not LVL/XP/rank-glyph/highlights/milestones. The milestone-timeline concept is deferred indefinitely (Titles in Phase 18 cover the same identity-marker need without a separate detector + table). Original spec preserved in git history.
 
 ---
 
-### 17e: Home Recap + First-Week Quest Stub + LVL Line
+### 17e: Home Recap + First-Week Quest Stub + LVL Line — SUPERSEDED by Phase 18 RPG v1
 
-**Goal:** Close the "returning lifter sees their own work" gap. Fill home dead zone.
-
-**Home subtitle line (replaces date-only subtitle):**
-
-- Format: `[LVL 12]  ·  [14w streak]  ·  Mon, Apr 7`
-- `LastSessionLine` (current ghost file) is **deleted** — replaced by the recap card below.
-- Heights: LVL pill 24dp, separator middot, streak pill 24dp, date text. `heroLabel` typography for the two pills.
-
-**Last Session Recap card (new, anchored below stat cards):**
-
-- `LastSessionRecapCard` — single card, full-width minus 16dp padding.
-- Contents:
-  - Eyebrow: `LAST SESSION  ·  2 DAYS AGO` (heroLabel, muted).
-  - Headline: routine name or `Freestyle` + duration.
-  - Three best-set chips: top 3 sets by estimated 1RM from the session. Chip format: `Bench  80kg × 5`.
-  - Footer: trailing-7d volume delta (`+ 12% vs last week`, green if positive, neutral if flat, muted grey if negative — NEVER red).
-- Tap → opens the session in `/home/history/:workoutId`.
-- Empty state: when user has never logged, card shows `Your saga starts with the first rep.` + prominent "Start a workout" button.
-
-**First-Week Quest (stub, zero-schema):**
-
-- Hardcoded consistency quest for the trial window: "Train 3 times this week — 150 XP bonus."
-- Rendered as `QuestChip` (44dp, `#00E676` border, dismissible on completion only), anchored between stat cards and routine list.
-- Progress computed client-side from `workouts` table filtered to current ISO week. No DB column added — 18a replaces this with full engine.
-
-**Acceptance:**
-
-- Home subtitle shows LVL/streak/date line correctly.
-- Recap card shows accurate best-sets from the latest workout.
-- Empty state renders for first-time users.
-- Quest chip progress reflects ISO-week workout count, dismissible only after target hit, persists across app launches (completion logged to `xp_events` with `source='quest'`).
-- `LastSessionLine` is deleted from the codebase (`grep "LastSessionLine" lib/` returns 0).
-
-**Files:**
-
-- Create: `lib/features/workouts/ui/widgets/last_session_recap_card.dart`, `best_set_chip.dart`, `volume_delta_badge.dart`, `lib/features/gamification/ui/quest_chip.dart`, `lib/features/gamification/domain/first_week_quest.dart`
-- Modify: `lib/features/home/ui/home_screen.dart` (subtitle, inject recap card, inject quest chip)
-- Delete: `lib/features/workouts/ui/widgets/last_session_line.dart`
-
-**Test plan:**
-
-- **Unit:** `test/unit/features/workouts/best_set_selector_test.dart` — picks top 3 by estimated 1RM, ties broken by timestamp. `test/unit/features/gamification/first_week_quest_test.dart` — progress math, ISO-week boundary.
-- **Widget:** `test/widget/features/home/last_session_recap_card_test.dart` — populated, empty, and loading states. `test/widget/features/gamification/quest_chip_test.dart` — progress visual, dismiss-after-completion.
-- **E2E:** New spec `test/e2e/specs/quests.spec.ts` (tagged `@smoke`) — seed user with 0/1/2/3 weekly workouts, verify chip progress; complete third workout, verify chip flips to done state and XP event inserted. Update `specs/home.spec.ts` — assert subtitle format, assert recap card visible, assert quest chip visible. Selectors: `homeSubtitle`, `lvlPill`, `streakPill`, `lastSessionRecapCard`, `bestSetChip`, `questChip`, `questChipProgress`. New test user `questUser`.
-- **Flow-change classification:** Home layout adds new interactive elements (recap card tap, quest chip) → full E2E suite run required per CLAUDE.md.
+Home recap card / best-set chips / volume delta retained directionally but become a Phase 19 nice-to-have. The hardcoded first-week quest is dropped entirely (quests engine moved to deferred Phase 19, see "Deferred RPG v2" backlog). Home subtitle's LVL line will read from Phase 18's derived Character Level once 18b ships — no separate rewire required here. Original spec preserved in git history.
 
 ---
 
-## Phase 18: Gamification Advanced
+## Phase 18: RPG System v1 — the canonical RPG plan
 
-### 18a: Weekly Smart Quests (engine + localized pool)
+> **Source of truth:** `docs/superpowers/specs/2026-04-25-rpg-system-v1-design.md`. That spec carries the math, schema, attribution map, rank curve, vitality formula, class lookup, and 90-title catalog. This section translates the spec into shippable sub-phases. **All decisions in the design spec supersede any earlier RPG/gamification plan in this file.**
 
-**Goal:** Replace 17e's hardcoded first-week quest with a full three-quest-per-week engine.
+### Mental model (one paragraph)
 
-**Data model:**
+Two numbers per body part: **Rank** (1-99, monotonic, the lifetime saga) and **Vitality** (0-100%, asymmetric EWMA on real volume — rebuild fast at τ=2wk, decay slow at τ=6wk; peak permanent). Six body parts in v1 (chest/back/legs/shoulders/arms/core). **Character Level** is derived: `floor((Σranks − 6) / 4) + 1`, capped at 148 theoretical max. **Class** is derived from current Rank distribution (Initiate / Berserker / Bulwark / Sentinel / Pathfinder / Atlas / Anchor / Ascendant). **Titles** unlock at Rank thresholds (78 per-body-part + 7 character-level + 5 cross-build = 90). Cardio is a v2 deferral — schema accepts it day one, no UI surface.
 
-- Migration `0032_weekly_quests.sql`:
-  ```sql
-  create table public.weekly_quests (
-    id uuid primary key default gen_random_uuid(),
-    user_id uuid not null references auth.users(id) on delete cascade,
-    iso_week text not null,  -- 'YYYY-Www'
-    quest_key text not null,  -- references quest_pool.json key
-    quest_type text not null check (quest_type in ('consistency','improvement','exploration')),
-    target_json jsonb not null,
-    progress_json jsonb not null default '{}'::jsonb,
-    completed_at timestamptz,
-    created_at timestamptz not null default now(),
-    unique (user_id, iso_week, quest_type)
-  );
-  create index on public.weekly_quests (user_id, iso_week);
-  ```
-- Migration `0033_weekly_quests_cron.sql` — pg_cron job `generate_weekly_quests` runs Monday 03:00 UTC per user based on `user_prefs.timezone`. Uses Vault secret for Edge Function auth (same pattern as Phase 16 reconciler).
+### Foundation already shipped (Phase 17)
 
-**Quest pool:**
+- **17.0c (PR #105/#106/#107)** — Arcane Ascent Material 3 theme + 12-token palette + app icon. The visual surface RPG paints on.
+- **17b (PR #103)** — `xp_events` table, `award_xp` RPC, `retro_backfill_xp` procedure, `XpCalculator` (placeholder formula `xpForLevel(n) = floor(300 * pow(n, 1.3))`), Saga Intro Overlay, `SagaIntroGate` (Hive first-open gate). **Status:** infrastructure stays; XP math is **placeholder** — Phase 18a replaces the formula and rebases existing `xp_events`/`user_xp` rows via the new backfill (see 18a migration plan). The overlay choreography is reusable as-is for rank-up/title-unlock events in 18c.
 
-- `assets/quests/quest_pool.json` — hand-authored, localized (en, pt-BR). Each entry: `{ key, type, title_l10n, description_l10n, target_schema, xp_reward }`.
-- 18 quests minimum: 6 consistency, 6 improvement, 6 exploration. Examples: `consistency_3x_week`, `improvement_bench_add_2_5kg`, `exploration_try_new_exercise`.
-- Engine picks 1 per type, weighted by recency (don't repeat last week's), constrained by user history (don't assign "add 2.5kg to bench" if they've never benched).
+### Sub-phase decomposition
 
-**UI:**
+```
+18a  Schema + XP engine + backfill          (PR 1; foundation, no user-facing UI changes)
+ │
+18b  Character sheet + rune sigils UI       (PR 2; depends on 18a)
+ │
+18c  Mid-workout overlay rewire + titles    (PR 3; depends on 18a + 18b)
+ │
+18d  Stats deep-dive + Vitality nightly job (PR 4; depends on 18a)
+ │
+18e  Class system + cross-build titles + QA (PR 5; depends on 18a-d)
+```
 
-- Quest chip from 17e extends to render up to 3 chips (horizontal scroll if narrow).
-- Tap chip → quest detail sheet (title, description, progress, XP reward). Dismiss-on-complete animation = small green check + `+75 XP` fly-up.
-
-**Acceptance:**
-
-- Monday 03:00 local time (per user timezone), 3 quests auto-generated for the upcoming ISO week.
-- Same quest never assigned two weeks in a row.
-- Improvement/exploration quests respect user history constraints.
-- Quest completion awards XP via `xp_events (source='quest')`.
-- Localization: pt-BR users see Portuguese quest copy.
-- 17e's hardcoded first-week quest is removed; engine takes over.
-
-**Files:**
-
-- Create: `supabase/migrations/0032_weekly_quests.sql`, `0033_weekly_quests_cron.sql`, `supabase/functions/generate-weekly-quests/index.ts`, `assets/quests/quest_pool.json`, `lib/features/gamification/data/quests_repository.dart`, `providers/quests_provider.dart`, `domain/quest_generator.dart`, `models/quest.dart`, `ui/quest_chip_row.dart`, `ui/quest_detail_sheet.dart`
-- Modify: `lib/features/home/ui/home_screen.dart` (replace stub chip with chip row), delete `lib/features/gamification/domain/first_week_quest.dart`
-- l10n: new keys in `lib/l10n/app_en.arb`, `lib/l10n/app_pt.arb`
-
-**Test plan:**
-
-- **Unit:** `test/unit/features/gamification/quest_generator_test.dart` — constraint handling, no-repeat rule, type distribution. `quest_progress_test.dart` — progress evaluation per type.
-- **Widget:** `test/widget/features/gamification/quest_chip_row_test.dart`, `quest_detail_sheet_test.dart`.
-- **E2E:** Extend `specs/quests.spec.ts` — 3-chip layout, detail sheet open/close, completion flow. Add pt-BR locale case. Selectors: `questChipRow`, `questChipN` (N=0/1/2), `questDetailSheet`, `questXpReward`.
-- **Cron QA:** `qa-engineer` documents Monday-morning verification procedure (trigger cron manually against staging, verify inserts).
+18b and 18d can run in parallel after 18a if dispatched to different agents. 18e is the integration + final-QA closer.
 
 ---
 
-### 18b: Training Stats Panel (radar)
+### 18a: Schema + XP engine + backfill (RPG v1 foundation)
 
-**Goal:** Long-tail stat visualization. Six stats normalized to personal best.
+**Goal:** Land the persistent data model. Every set lifted produces correct `xp_events` rows + correct `body_part_progress` state. Backfill all existing users so their character sheet renders truthfully on day one.
 
-**Stats (each 0–100, normalized per-user):**
+**Schema (per design spec §11):**
 
-- Strength (`#FF6B6B`) — max PR trend.
-- Endurance (`#40C4FF`) — rep volume per session trend.
-- Power (`#FF9F43`) — heavy-set recent frequency.
-- Consistency (`#00E676`) — streak + weekly frequency.
-- Volume (`#9B8DFF`) — total kg trend.
-- Mobility (`#26C6DA`) — movement pattern diversity (unique exercises / month).
+- New tables: `xp_events` (polymorphic event log; replaces the placeholder schema from 17b — see migration plan), `body_part_progress` (per-`(user_id, body_part)` materialized state), `exercise_peak_loads` (drives strength_mult), `earned_titles` (catalog unlocks + active flag).
+- Modifications to `exercises`: add `secondary_muscle_groups JSONB`, `xp_attribution JSONB`, plus the IMMUTABLE helper function `xp_attribution_sum(jsonb)` and CHECK constraint `xp_attribution_sums_to_one`. (The spec's original inline-subquery CHECK is invalid PG; spec was patched to use a helper function — see spec §11.2.)
+- Derived view `character_state` (computed character_level + max_rank + min_rank + lifetime_xp).
 
-**UI:**
+**XP engine (per design spec §4):**
 
-- `TrainingStatsPanel` — initially collapsed on profile. Expand reveals hexagonal `CustomPaint` radar chart + 2×3 grid of stat chips. Animates once per mount (600ms ease-out).
-- Each chip tap → brief explanation sheet (stat definition, current value, trend arrow).
+- `set_xp = volume_load^0.65 × intensity_mult(reps) × strength_mult × novelty_mult × cap_mult`
+- Distribution per body part via `xp_attribution` map.
+- Implementation lives in `lib/features/rpg/domain/xp_calculator.dart` with **pure-function entry points** so unit tests don't need DB. The Postgres path (a `SECURITY DEFINER` RPC `record_set_xp(set_id)`) calls the same logic re-implemented in PL/pgSQL — both implementations covered by parity tests.
+- **Decision (orchestrator-flagged, see review §A.2):** Postgres trigger vs Edge Function. Recommended: **explicit RPC `record_set_xp(set_id)` called from `save_workout` RPC**, NOT a row-level trigger. Reasons: triggers are invisible state, hard to debug, and the spec's <50ms p95 budget is achievable inside the existing transaction. Edge Function adds a network hop + cold-start risk. Final pick deferred to orchestrator/user.
+
+**Vitality:**
+
+- Update path lives in 18d (nightly job). 18a only seeds `vitality_ewma = 0` and `vitality_peak = 0` on `body_part_progress` rows so 18b can render dormant runes for zero-history users.
+
+**Default-exercise attribution map:**
+
+- Migration also INSERTs `xp_attribution` JSON onto every `is_default = true` exercise row per spec §5.2 mappings. **Translation-coverage rule still applies:** any new default exercises added here ship with en+pt translations (the spec doesn't add new defaults, just attribution columns to existing ones — but `scripts/check_exercise_translation_coverage.sh` still runs as a defense-in-depth gate).
+
+**Backfill (the high-risk piece):**
+
+- `backfill_rpg_v1(user_id uuid)` PL/pgSQL procedure replays every historical `sets` row in chronological order, computing XP per the v1 formula and updating `body_part_progress` + `exercise_peak_loads` per row.
+- **Concurrency safety:** procedure takes a `pg_advisory_xact_lock(hashtext('rpg_backfill_' || user_id::text))` so two concurrent runs for the same user serialize.
+- **Timeout safety:** for users with thousands of sets, a single transaction can exceed Supabase's statement timeout. Procedure uses **chunked commits per 500 sets** with a `last_processed_set_id` checkpoint column on a `backfill_progress (user_id, last_set_id, completed_at)` table → idempotent and resumable. (Orchestrator-flagged: see review §A.3.)
+- Existing 17b rows in `xp_events` (placeholder formula) are deleted at backfill start; existing 17b `user_xp.total_xp` is recomputed from the new event stream. **17b's `XpCalculator` and `xpForLevel` curve become dead code after 18a** — flagged for cleanup in 18e.
+
+**Performance budget (spec §12.3):**
+
+- Set-completion path <50ms p95 inside `save_workout` RPC. Validated by `make ci`-tier benchmark against a 100-set test workout.
+- Backfill job <60s for a 5000-set user (chunked).
 
 **Acceptance:**
 
-- Radar chart geometry correct: 6 equal-angle vertices, filled polygon, concentric guide rings at 25/50/75/100.
-- Stats computed from actual workout data; re-calculated on workout save.
-- Collapsed by default on profile; user must expand.
-- No population-relative comparisons, only personal-best normalization.
-- 60fps animation (profile golden-path jank-free).
+- All 4 new tables created with correct PKs/FKs/indexes per spec §11.1.
+- `xp_attribution_sums_to_one` CHECK constraint passes for all default-exercise rows; rejects rows summing >1.01 or <0.99.
+- `record_set_xp(set_id)` RPC computes deltas matching the unit-test parity table.
+- `backfill_rpg_v1(user_id)` is idempotent (re-runs produce no row drift) and resumable (kill mid-run + restart completes).
+- Existing 17b `xp_events` rows are migrated cleanly; no orphaned legacy rows.
+- All RLS policies replicated from existing tables (owner-read, owner-write).
+- `make ci` green.
 
 **Files:**
 
-- Create: `lib/features/gamification/ui/training_stats_panel.dart`, `stat_radar_painter.dart`, `stat_chip.dart`, `stat_explanation_sheet.dart`, `lib/features/gamification/domain/stat_calculator.dart`, `providers/stats_provider.dart`, `models/training_stats.dart`
-- Modify: `lib/features/profile/ui/profile_screen.dart` (inject collapsed panel)
+- Create: `supabase/migrations/00040_rpg_system_v1.sql` (schema + helper fn + CHECK + default-exercise attribution + backfill procedure + cleanup of 17b placeholder rows), `scripts/emergency_rollback_phase18.sql`
+- Create: `lib/features/rpg/data/rpg_repository.dart`, `lib/features/rpg/data/peak_loads_repository.dart`, `lib/features/rpg/domain/xp_calculator.dart`, `xp_distribution.dart`, `rank_curve.dart`, `vitality_calculator.dart` (formulas only — driver lives in 18d), `lib/features/rpg/models/body_part.dart`, `body_part_progress.dart`, `xp_event.dart`, `peak_load.dart`, `attribution.dart`, `lib/features/rpg/providers/rpg_progress_provider.dart`
+- Modify: `supabase/migrations/` add migration; `save_workout` RPC (existing) extended to call `record_set_xp` per inserted set inside the same transaction
+- Delete (in same PR or follow-up cleanup): existing 17b `XpCalculator` if it lives in `features/gamification/domain/`; the saga-intro-overlay infra stays
 
 **Test plan:**
 
-- **Unit:** `test/unit/features/gamification/stat_calculator_test.dart` — one test per stat, boundary cases (new user → 0s; PR user → 100 on Strength).
-- **Widget:** `test/widget/features/gamification/training_stats_panel_test.dart` — collapsed default, expand interaction, 6-axis geometry, no population comparisons present in copy.
-- **E2E:** Extend `specs/profile.spec.ts` — expand panel, verify radar renders, tap stat chip → sheet opens. Selectors: `statsPanelExpand`, `statRadar`, `statChip{Name}`, `statExplanationSheet`.
+- **Unit:** `test/unit/features/rpg/xp_calculator_test.dart` (~40 cases — base formula, intensity table lookup, strength_mult floor/ceiling, novelty exp decay, weekly cap), `attribution_test.dart` (sum-to-one, NULL fallback to primary muscle), `rank_curve_test.dart` (cumulative XP table parity vs spec sample milestones), `vitality_calculator_test.dart` (EWMA up/down asymmetry, peak monotonicity).
+- **Integration:** `test/integration/rpg_record_set_xp_test.dart` against local Supabase: (a) insert set → assert `xp_events` row + `body_part_progress` updated; (b) PG/Dart parity table — same inputs through both paths produce identical XP within 0.01; (c) concurrent INSERT race — 10 simultaneous sets → final `body_part_progress.total_xp` matches sequential sum (idempotency under contention).
+- **Backfill replay test:** `test/integration/rpg_backfill_test.dart` — fixture user with 1500 historical sets, run procedure, assert final state matches reference Python simulator output within 0.01 XP per body part.
+- **Backfill resume test:** kill procedure mid-run via test hook (raise exception after chunk 2 of 4), re-run, assert final state matches single-run baseline.
+- **E2E:** No new specs. Existing flows unaffected (no UI surface yet). Selector impact assessment only.
+- **Migration safety:** dry-run on a hosted DB snapshot before merge.
+
+**Dependencies:** 17b foundation (xp_events table will be replaced; saga-intro-overlay infra retained).
+
+**Open decision for orchestrator (must pick before implementation begins):**
+- Trigger vs RPC for set→xp computation. (Recommendation: RPC inside `save_workout` transaction.)
+- Backfill chunk size (500 default, possibly 1000 if profiling allows).
+
+---
+
+### 18b: Character sheet + rune sigils UI
+
+**Goal:** Replace the existing `/profile` gamification widgets (`_LvlBadge` placeholder + 17b's saga-intro-overlay landing) with the v1 character sheet (spec §13.1).
+
+**UI (spec §13.1 + §13.4 onboarding gate):**
+
+- New screen `/saga` (or extend `/profile` — orchestrator decides; spec leans toward a new "Saga" tab or rebrand of Profile). Layout per spec §13.1: header (active title + Lvl + Class + avatar with rune halo), six body-part rows with progress bar to next rank, dormant Cardio row, three navigation chips (Stats deep-dive / Titles / History).
+- **Rune halo** = average Vitality state across active body parts → drives glow intensity (Dormant / Fading / Active / Radiant per spec §8.4). Avatar is the Arcane Ascent app-icon sigil already shipped.
+- **Per-body-part progress bar** width = `xp_in_current_rank / xp_for_next_rank`. Color reflects that body part's Vitality state, not a single hardcoded color.
+- **No Vitality % shown** on this screen. Number only appears in 18d's deep-dive.
+- **Onboarding gate:** zero-history user sees "dormant" runes with copy "first set awakens this path". First-set-awakens micro-celebration is wired in 18c.
+
+**Files:**
+
+- Create: `lib/features/rpg/ui/character_sheet_screen.dart`, `widgets/rune_halo.dart`, `body_part_rank_row.dart`, `rank_progress_bar.dart`, `class_badge.dart`, `active_title_pill.dart`, `dormant_cardio_row.dart`
+- Create: `lib/features/rpg/providers/character_sheet_provider.dart` (composes `rpg_progress_provider` + active title + derived class — class-derivation logic lands in 18e but stub it here returning "Initiate")
+- Modify: `lib/core/router/app_router.dart` (route + nav tab), `lib/features/profile/ui/profile_screen.dart` (remove `_LvlBadge` placeholder, point users to /saga or restructure)
+- Delete: `_LvlBadge` placeholder from 17b once new sheet is wired
+
+**Test plan:**
+
+- **Widget:** `test/widget/features/rpg/character_sheet_screen_test.dart` (six-body-part layout, dormant-rune zero-history state, radiant-rune full-vitality state, progress-bar percentages), `rune_halo_test.dart` (4 visual states), `body_part_rank_row_test.dart` (rank label + progress).
+- **E2E:** New `test/e2e/specs/saga.spec.ts` (`@smoke`) — login, navigate to /saga, assert character sheet renders, assert rune halo present, assert six body-part rows. Also: zero-history user sees dormant state copy. Update `specs/auth.spec.ts` if onboarding flow now lands on /saga first-time. **This is a navigation-flow change → full E2E suite required.**
+- Selectors added to `helpers/selectors.ts`: `characterSheet`, `runeHalo`, `bodyPartRow{Name}`, `rankProgressBar`, `classBadge`, `activeTitlePill`.
+
+**Dependencies:** 18a (data model + provider).
+
+---
+
+### 18c: Mid-workout overlay rewire + title unlocks
+
+**Goal:** Rebase Phase 17b's saga-intro-overlay choreography onto Phase 18 data — fire on rank-ups, character level-ups, and title unlocks during workout completion. Implements the celebration intent originally specced in 17a, with the new RPG semantics.
+
+**UX (spec §13.2):**
+
+- `RankUpOverlay` — fires per body-part rank-up. Shows `{body part} reached Rank {N}` + the rune sigil for that body part igniting. ~1.1s, dismissible via tap. Reuses 17b's overlay scaffold (same Hive-backed scheduler).
+- **Multiple events queued:** if a single workout produces a body-part rank-up + character-level-up + title unlock, they sequence: rank-up → level-up → title (each ~1.1s, 200ms gap).
+- **Title unlocks** open a half-sheet **after the workout ends**, not mid-workout (per spec §13.2 + Phase 17a UX revision retained). Half-sheet shows the title name, the rank that unlocked it, and an "Equip" button.
+- **First-set-awakens** micro-celebration (spec §13.4): zero-history user finishes their first attributed set per body part → that rune awakens with an 800ms small-screen overlay. Single rune at a time.
+- Active-logger chrome polish (PR chip, XP whisper, finish-button placement) folded in here from 17a's superseded plan, **scoped down**: only ship the mid-session PR chip + finish-button placement. The XP whisper is deferred until 18d (Vitality visual states pass) — overloading the logger with XP numbers fights the "you don't level up your character, you level up your body" principle.
+
+**Files:**
+
+- Create: `lib/features/rpg/ui/overlays/rank_up_overlay.dart`, `level_up_overlay.dart`, `title_unlock_sheet.dart`, `first_awakening_overlay.dart`, `lib/features/rpg/domain/celebration_queue.dart`
+- Create: `lib/features/rpg/data/titles_repository.dart`, `lib/features/rpg/domain/title_unlock_detector.dart` (78 per-body-part titles only in this sub-phase; cross-build + character-level titles arrive in 18e), `lib/features/rpg/models/title.dart`
+- Create: `assets/rpg/titles_v1.json` (78 per-body-part titles per spec §10.1), localized en + pt-BR via `lib/l10n/app_*.arb`
+- Modify: `lib/features/workouts/ui/workout_finish_flow.dart` (queue celebrations from `record_set_xp` deltas), `active_workout_screen.dart` (mid-session PR chip non-modal, finish-button repositioned)
+- Migration: `00041_titles_seed.sql` — INSERT 78 per-body-part title rows into `earned_titles` catalog *(if catalog needs to be queryable; otherwise titles live entirely in the asset JSON + `earned_titles` only logs unlocks)*. **Decision:** asset JSON only — `earned_titles` only stores unlocks, the catalog itself is client-side. Faster, simpler, and pt-BR translations stay in `.arb`.
+
+**Test plan:**
+
+- **Unit:** `celebration_queue_test.dart` (sequencing rank → level → title, no overlap, dismiss-skip-to-end behavior preserved from 17b infra), `title_unlock_detector_test.dart` (every threshold per body part, no double-unlock guard).
+- **Widget:** `rank_up_overlay_test.dart`, `title_unlock_sheet_test.dart` (renders title copy en + pt-BR, equip button toggles `is_active` exactly once via the catalog's UNIQUE INDEX `earned_titles_one_active`).
+- **E2E:** New `test/e2e/specs/rank-up-celebration.spec.ts` (`@smoke`) — seeded user one set away from a rank threshold, complete workout, assert overlay renders + title sheet appears post-finish. Seed second user at first-set state, assert first-awakening overlay. Selectors: `rankUpOverlay`, `levelUpOverlay`, `titleUnlockSheet`, `firstAwakeningOverlay`, `equipTitleButton`. **Flow change → full suite.**
+
+**Dependencies:** 18a (XP deltas come from `record_set_xp`), 18b (character sheet renders the equipped title and rune halo updates).
+
+---
+
+### 18d: Stats deep-dive + Vitality nightly job + visual states
+
+**Goal:** Land the data-curious user surface (live Vitality numbers, 90-day trend, peak loads) and the Vitality nightly EWMA update job.
+
+**Vitality nightly job (spec §8 + §12.2):**
+
+- Edge Function `supabase/functions/vitality-nightly/index.ts` invoked by `pg_cron` at 03:00 UTC daily. For each user with activity in past 7 days:
+  - For each of the six body parts: compute `weekly_volume[bp]` from `xp_events` past 7d, update `vitality_ewma` per spec §8.1 (asymmetric α: τ_up=2wk, τ_down=6wk), bump `vitality_peak = max(peak, ewma)`.
+- **Decision (spec §12.2 says daily, do not move to lazy compute):** retain nightly job. Lazy compute would smear EWMA semantics across irregular reads. Documented in spec §12.2 rationale.
+- Idempotency: `vitality_runs (user_id, run_date PRIMARY KEY)` to dedupe on retries.
+- Performance: spec §12.3 demands <10min for 100k users. We are nowhere near 100k yet, but the function must scale — chunk by `user_id % 10` and run 10 parallel worker invocations to stay within Edge Function timeout limits.
+
+**Stats deep-dive screen (spec §13.3):**
+
+- Route `/saga/stats`. Layout per spec §13.3: live Vitality table (state + %) per body part, 90-day Vitality trend line chart (six body parts overlaid), volume/peak per body part, peak loads per exercise.
+- This is the **only** surface where Vitality % appears as a number. Character sheet stays number-free.
+
+**Visual states (spec §8.4) wired across UI:**
+
+- `RuneVitalityState` enum: `dormant / fading / active / radiant`. Mapped to body-part progress bar colors + rune halo intensity on character sheet.
+- `lib/features/rpg/domain/vitality_state_mapper.dart` is the single source of truth — all other widgets consume it.
+
+**Files:**
+
+- Create: `supabase/functions/vitality-nightly/index.ts`, `supabase/migrations/00042_vitality_cron.sql` (pg_cron job + `vitality_runs` table)
+- Create: `lib/features/rpg/ui/stats_deep_dive_screen.dart`, `widgets/vitality_table.dart`, `vitality_trend_chart.dart`, `peak_loads_table.dart`, `lib/features/rpg/domain/vitality_state_mapper.dart`, `lib/features/rpg/providers/stats_provider.dart`
+- Modify: `lib/features/rpg/ui/character_sheet_screen.dart` (rune halo + progress bars now consume `vitality_state_mapper`), `lib/core/router/app_router.dart` (add `/saga/stats` route)
+
+**Test plan:**
+
+- **Unit:** `vitality_state_mapper_test.dart` (boundary cases at 0/30/70/100), `stats_provider_test.dart`.
+- **Integration:** `test/integration/rpg_vitality_nightly_test.dart` against local Supabase — seed user with controlled set history across 4 weeks, run the nightly procedure manually 4 times (one per week), assert EWMA trajectory matches the Python simulator within 5% (per spec §18 acceptance #6).
+- **Widget:** `stats_deep_dive_screen_test.dart` (live numbers render, chart renders 6 lines).
+- **E2E:** Extend `specs/saga.spec.ts` — navigate to /saga/stats, assert Vitality table + chart present. Selectors: `statsDeepDive`, `vitalityTable`, `vitalityTrendChart`, `peakLoadsTable`.
+
+**Dependencies:** 18a (data), 18b (character sheet rebases its color logic onto the new mapper).
+
+---
+
+### 18e: Class system + cross-build titles + final QA pass
+
+**Goal:** Finish the spec — ship the derived class lookup, the 7 character-level titles + 5 cross-build titles, and run the integration QA gate.
+
+**Class system (spec §9):**
+
+- `lib/features/rpg/domain/class_resolver.dart` — pure function `resolveClass(ranks: Map<BodyPart, int>) → CharacterClass` per §9.2 resolution order: Initiate (max rank < 5) > Ascendant (balanced) > dominant lookup. **Cosmetic only, no mechanical effect** — class label updates in real time on character sheet.
+- 8 classes: Initiate, Berserker, Bulwark, Sentinel, Pathfinder, Atlas, Anchor, Ascendant. (Wayfarer is v2 cardio.)
+
+**Title catalog completion:**
+
+- Add 7 character-level titles (spec §10.2) + 5 cross-build titles (spec §10.3). Detection runs in `title_unlock_detector` extended with new triggers.
+- Cross-build titles include retroactive evaluation — when 18e ships, run a one-time `evaluate_cross_build_titles_for_all_users()` procedure to award them based on existing rank state.
+
+**Final QA pass (per design spec §18 acceptance criteria 1-12):**
+
+- `qa-engineer` runs end-to-end verification of every acceptance bullet — see §18 of the spec.
+- Includes manual replay of a power user's history through the backfill, eyeballing the resulting character sheet for plausibility.
+- E2E full regression run.
+- Performance benchmark: 100-set workout `save_workout` p95 ≤ 50ms (capture in PR).
+
+**Files:**
+
+- Create: `lib/features/rpg/domain/class_resolver.dart`, `cross_build_title_evaluator.dart`, `lib/features/rpg/models/character_class.dart`
+- Create: `assets/rpg/titles_character_level.json`, `assets/rpg/titles_cross_build.json` (localized en + pt-BR via `.arb`)
+- Modify: `lib/features/rpg/providers/character_sheet_provider.dart` (replace stub class with real resolver), `title_unlock_detector.dart` (add character-level + cross-build detection), `lib/features/rpg/ui/character_sheet_screen.dart` (show real class label)
+- Migration: `00043_cross_build_titles_backfill.sql` — one-time procedure to award cross-build titles to existing users
+- Cleanup: delete dead 17b `XpCalculator` / `xpForLevel` curve / placeholder unit tests (full sweep — flagged in 18a)
+
+**Test plan:**
+
+- **Unit:** `class_resolver_test.dart` (every class trigger + Ascendant precedence + Initiate floor), `cross_build_title_evaluator_test.dart` (each of the 5 triggers + boundary cases).
+- **Integration:** `test/integration/rpg_acceptance_test.dart` — synthesizes a fixture user covering every spec §18 acceptance bullet; asserts each.
+- **E2E:** Extend `specs/saga.spec.ts` — class label changes after a body-part rank cross. Add `specs/title-equip.spec.ts` — equip a character-level title, verify display on character sheet header. Selectors: `classBadge`, `titleLibraryButton`, `titleLibrarySheet`.
+- **Performance:** Benchmark logged in PR description per acceptance #2.
+
+**Dependencies:** 18a, 18b, 18c, 18d.
+
+---
+
+### Anti-patterns retained from prior Phase 17/18 (still binding for RPG v1)
+
+The 25-item list below was authored for the superseded 17/18 plan but every item still applies to RPG v1. Re-confirmed against design spec §15 (no premium gating), §13.5 (no leaderboards/social), §13.3 (no population-relative comparisons), §8.4 (no streak flames). Item #11 (no daily streaks) and #12 (no class XP multipliers — class is cosmetic-only) align directly with spec §9 + §13.
 
 ---
 
@@ -1422,13 +1399,24 @@ What was in PR #101 (for git history): 20 palette tokens on `AppColors`, Press-S
 
 ---
 
-## Phase 19: Nice-to-Have (v2.0+)
+## Phase 19: Deferred RPG v2 + Nice-to-Have (v2.0+)
+
+### RPG v2 (deferred — held until post-v1 telemetry justifies build)
+
+| Feature | Source | Notes |
+|---------|--------|-------|
+| Cardio track | RPG spec §16.1 | HR-zone XP weighting + kcal fallback + RPE fallback. Schema accepts cardio events from day one (18a); only the UI surface + cardio-earning paths defer. |
+| Power / Endurance sub-tracks | RPG spec §16.2 | Each body-part Rank splits into Power + Endurance sub-ranks. Needs estimated 1RM model first. |
+| Synergy multipliers | RPG spec §16.3 | "Upper-Body Mastery" cross-body-part bonuses. D2-style. |
+| Rival comparison | RPG spec §16.4 | Friend-only, opt-in, never global. |
+| PR mini-events | RPG spec §16.5 | Enhanced overlay + shareable rune card on 1RM PR. |
+| Weekly Smart Quests engine | Was 18a in superseded plan | 3-quest-per-week generator + localized pool. Replaced by RPG v1 ranks/titles as the retention spine. Reconsider if v1 telemetry shows quests would add value. |
+| Training Stats radar (6-stat) | Was 18b in superseded plan | Replaced by RPG v1's Stats Deep-Dive (18d). Six-axis personal-best radar may return as an alternate visualization. |
+
+### Other nice-to-haves
 
 | Feature | Notes |
 |---------|-------|
-| Character classes | Powerlifter/Athlete/Warrior — cosmetic + stat-weighting only |
-| Light social (opt-in) | Friends list, ranks, monthly challenges. No global feeds |
-| Achievement milestones | Timeline entries, NOT badge collections |
 | Plate calculator | Intermediate lifters think in plates |
 | Body weight tracking | Correlate volume with weight changes |
 | Dark/Light mode toggle | Some users prefer light in bright gyms |
