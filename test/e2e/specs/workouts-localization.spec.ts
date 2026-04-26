@@ -15,6 +15,7 @@ import {
   EXERCISE_PICKER,
   EXERCISE_LOC,
   PROFILE,
+  SAGA,
 } from '../helpers/selectors';
 import { startEmptyWorkout } from '../helpers/workout';
 import { TEST_USERS } from '../fixtures/test-users';
@@ -134,8 +135,11 @@ test.describe('Locale switch during workout', () => {
   test('should reflect new locale for exercise names after switching locale mid-workout (C2)', async ({
     page,
   }) => {
-    // Step 1: Switch locale to pt via Profile → Language (en user starts in en).
+    // Step 1: Switch locale to pt via Profile Settings → Language.
+    // Phase 18b: /profile shows CharacterSheet; language row is on /profile/settings.
     await navigateToTab(page, 'Profile');
+    await page.locator(SAGA.characterSheet).first().waitFor({ state: 'visible', timeout: 10_000 });
+    await page.locator(SAGA.gearIcon).first().click();
     await expect(page.locator(PROFILE.languageRow)).toBeVisible({ timeout: 10_000 });
     await page.click(PROFILE.languageRow);
     await expect(page.locator(PROFILE.languagePickerSheet)).toBeVisible({ timeout: 5_000 });

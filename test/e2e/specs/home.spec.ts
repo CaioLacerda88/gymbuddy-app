@@ -32,6 +32,7 @@ import {
   PROFILE,
   WEEKLY_PLAN,
   FIRST_WORKOUT_CTA,
+  SAGA,
 } from '../helpers/selectors';
 import {
   startEmptyWorkout,
@@ -74,10 +75,10 @@ test.describe('Home screen and navigation', () => {
     await page.click(NAV.routinesTab);
     await page.waitForURL('**/routines**', { timeout: 15_000 });
 
-    // Profile tab.
+    // Profile tab (Phase 18b: shows CharacterSheetScreen).
     await page.click(NAV.profileTab);
     await page.waitForURL('**/profile**', { timeout: 15_000 });
-    await expect(page.locator('text=Log Out')).toBeVisible({ timeout: 15_000 });
+    await page.locator(SAGA.characterSheet).first().waitFor({ state: 'visible', timeout: 15_000 });
 
     // Home tab — verify the ActionHero or status line renders.
     await page.click(NAV.homeTab);
@@ -266,10 +267,14 @@ test.describe('Home screen and navigation', () => {
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
   });
 
-  test('should show user email and Log Out button on profile tab', async ({
+  test('should show user email and Log Out button on profile settings', async ({
     page,
   }) => {
+    // Phase 18b: /profile shows CharacterSheet; email + Log Out are on /profile/settings.
     await navigateToTab(page, 'Profile');
+    await page.locator(SAGA.characterSheet).first().waitFor({ state: 'visible', timeout: 10_000 });
+    await page.locator(SAGA.gearIcon).first().click();
+    await page.locator(SAGA.profileSettingsScreen).first().waitFor({ state: 'visible', timeout: 10_000 });
 
     // The user's email is shown in the identity card.
     await expect(page.locator(`text=${TEST_USERS.fullHome.email}`)).toBeVisible({
@@ -285,7 +290,11 @@ test.describe('Home screen and navigation', () => {
   test('should show kg and lbs options in profile weight unit toggle', async ({
     page,
   }) => {
+    // Phase 18b: weight unit toggle is on /profile/settings.
     await navigateToTab(page, 'Profile');
+    await page.locator(SAGA.characterSheet).first().waitFor({ state: 'visible', timeout: 10_000 });
+    await page.locator(SAGA.gearIcon).first().click();
+    await page.locator(SAGA.profileSettingsScreen).first().waitFor({ state: 'visible', timeout: 10_000 });
 
     await expect(page.locator(PROFILE.kgOption)).toBeVisible({ timeout: 10_000 });
     await expect(page.locator(PROFILE.lbsOption)).toBeVisible({ timeout: 5_000 });

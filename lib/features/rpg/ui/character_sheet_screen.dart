@@ -105,7 +105,11 @@ class _CharacterSheetBody extends StatelessWidget {
             const SizedBox(height: 24),
             _BodyPartRows(entries: sheet.bodyPartProgress),
             const SizedBox(height: 16),
-            const DormantCardioRow(),
+            Semantics(
+              container: true,
+              identifier: 'dormant-cardio-row',
+              child: const DormantCardioRow(),
+            ),
             const SizedBox(height: 24),
             const _CodexNavSection(),
             const SizedBox(height: 32),
@@ -133,14 +137,18 @@ class _SheetHeader extends StatelessWidget {
             child: RuneHalo(state: sheet.haloState),
           ),
           const SizedBox(height: 8),
-          Text(
-            'Lvl ${sheet.characterLevel}',
-            style: GoogleFonts.rajdhani(
-              fontSize: 56,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textCream,
-              height: 1,
-              fontFeatures: const [FontFeature.tabularFigures()],
+          Semantics(
+            container: true,
+            identifier: 'character-level',
+            child: Text(
+              'Lvl ${sheet.characterLevel}',
+              style: GoogleFonts.rajdhani(
+                fontSize: 56,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textCream,
+                height: 1,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
             ),
           ),
           const SizedBox(height: 12),

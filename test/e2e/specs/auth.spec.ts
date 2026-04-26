@@ -14,7 +14,7 @@
 import { test, expect } from '@playwright/test';
 import { waitForAppReady, flutterFill } from '../helpers/app';
 import { login, logout } from '../helpers/auth';
-import { AUTH, NAV } from '../helpers/selectors';
+import { AUTH, NAV, SAGA } from '../helpers/selectors';
 import { TEST_USERS } from '../fixtures/test-users';
 
 // ---------------------------------------------------------------------------
@@ -291,8 +291,11 @@ test.describe('Auth — edge cases', () => {
     await page.click(NAV.routinesTab);
     await expect(page.locator('text=Routines').first()).toBeVisible({ timeout: 15_000 });
 
+    // Phase 18b: /profile shows CharacterSheetScreen; Log Out is on /profile/settings.
     await page.click(NAV.profileTab);
-    await expect(page.locator('text=Log Out')).toBeVisible({ timeout: 15_000 });
+    await page.locator(SAGA.characterSheet).first().waitFor({ state: 'visible', timeout: 15_000 });
+    await page.locator(SAGA.gearIcon).first().click();
+    await page.locator(SAGA.profileSettingsScreen).first().waitFor({ state: 'visible', timeout: 10_000 });
 
     await page.click(NAV.homeTab);
     // Home screen in W8 no longer has a "Start Empty Workout" button.

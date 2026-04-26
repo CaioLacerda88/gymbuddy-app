@@ -78,11 +78,18 @@ Widget _buildTestApp() {
         builder: (context, _) =>
             const Scaffold(body: Center(child: Text('Records Screen'))),
       ),
-      // Manage Data route (needed because profile screen references it).
+      // Manage Data route — Phase 18b moved it to /profile/settings/manage-data.
       GoRoute(
-        path: '/profile/manage-data',
+        path: '/profile/settings',
         builder: (context, _) =>
-            const Scaffold(body: Center(child: Text('Manage Data'))),
+            const Scaffold(body: Center(child: Text('Settings'))),
+        routes: [
+          GoRoute(
+            path: 'manage-data',
+            builder: (context, _) =>
+                const Scaffold(body: Center(child: Text('Manage Data'))),
+          ),
+        ],
       ),
     ],
   );

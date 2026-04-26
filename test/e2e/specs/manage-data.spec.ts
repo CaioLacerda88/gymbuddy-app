@@ -12,7 +12,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { flutterFill, navigateToTab } from '../helpers/app';
 import { login } from '../helpers/auth';
-import { AUTH, NAV, WORKOUT, PROFILE, MANAGE_DATA, PR, HISTORY, HOME } from '../helpers/selectors';
+import { AUTH, NAV, WORKOUT, PROFILE, MANAGE_DATA, PR, HISTORY, HOME, SAGA } from '../helpers/selectors';
 import {
   startEmptyWorkout,
   addExercise,
@@ -152,9 +152,15 @@ async function doWorkoutAndReturnHome(page: Page): Promise<void> {
   await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
 }
 
-/** Navigate to Profile -> Manage Data screen. */
+/** Navigate to Profile Settings -> Manage Data screen.
+ *
+ * Phase 18b: /profile shows CharacterSheetScreen; manage-data route moved to
+ * /profile/settings/manage-data. Navigate via gear icon → settings → manage data.
+ */
 async function openManageData(page: Page): Promise<void> {
   await navigateToTab(page, 'Profile');
+  await page.locator(SAGA.characterSheet).first().waitFor({ state: 'visible', timeout: 10_000 });
+  await page.locator(SAGA.gearIcon).first().click();
   await expect(page.locator(PROFILE.manageData)).toBeVisible({ timeout: 10_000 });
   await page.click(PROFILE.manageData);
   await expect(page.locator(MANAGE_DATA.heading)).toBeVisible({ timeout: 15_000 });
@@ -255,14 +261,18 @@ test.describe('Account deletion', { tag: '@smoke' }, () => {
       await login(page, userEmail, userPassword);
 
       // -- 2. Navigate to Profile -> Manage Data --
-      await page.click(NAV.profileTab);
-      await page.waitForURL('**/profile**', { timeout: 15_000 });
-      await page.waitForTimeout(500);
+      // Phase 18b: /profile now shows CharacterSheetScreen; the Manage Data row
+      // is on /profile/settings (ProfileSettingsScreen). Navigate via gear icon.
+      await navigateToTab(page, 'Profile');
+      await page.locator(SAGA.characterSheet).first().waitFor({ state: 'visible', timeout: 20_000 });
+      await page.locator(SAGA.gearIcon).first().click();
+      await page.locator(SAGA.profileSettingsScreen).first().waitFor({ state: 'visible', timeout: 10_000 });
 
       await page.click(PROFILE.manageData);
-      await page.waitForURL('**/manage-data**', { timeout: 15_000 });
-      await expect(page.locator(MANAGE_DATA.heading)).toBeVisible({
-        timeout: 10_000,
+      // Phase 18b: Flutter web context.push does not trigger waitForURL reliably.
+      // Assert on element visibility instead.
+      await expect(page.locator(MANAGE_DATA.heading).first()).toBeVisible({
+        timeout: 15_000,
       });
 
       // -- 3. Tap "Delete Account" tile --
@@ -395,10 +405,13 @@ test.describe('Manage Data', () => {
     );
   });
 
-  test('should show a Manage Data row in the DATA MANAGEMENT section on Profile screen (MD-001)', async ({
+  test('should show a Manage Data row in the DATA MANAGEMENT section on Profile Settings screen (MD-001)', async ({
     page,
   }) => {
+    // Phase 18b: manage-data row moved to /profile/settings (ProfileSettingsScreen).
     await navigateToTab(page, 'Profile');
+    await page.locator(SAGA.characterSheet).first().waitFor({ state: 'visible', timeout: 10_000 });
+    await page.locator(SAGA.gearIcon).first().click();
 
     await expect(page.locator(PROFILE.manageData)).toBeVisible({
       timeout: 10_000,

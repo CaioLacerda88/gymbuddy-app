@@ -733,6 +733,23 @@ async function seedRpgFreshUser(supabase: SupabaseClient): Promise<void> {
   await supabase.from('exercise_peak_loads').delete().eq('user_id', userId);
   await supabase.from('backfill_progress').delete().eq('user_id', userId);
 
+  // Pre-seed backfill_progress as completed (sets_processed=0, completed_at=NOW).
+  // This prevents the Flutter app's SagaIntroGate from triggering
+  // backfill_rpg_v1 on login (the server-side completed_at guard short-circuits
+  // it). Without this, the RPC might create tiny floating-point XP artifacts
+  // in the full E2E suite, causing isZeroHistory to return false and hiding
+  // the first-set-awakens banner.
+  await supabase.from('backfill_progress').upsert(
+    {
+      user_id: userId,
+      sets_processed: 0,
+      started_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+    },
+    { onConflict: 'user_id' },
+  );
+
   // Upsert profile so the router lands on /home (not /onboarding).
   await supabase.from('profiles').upsert(
     {

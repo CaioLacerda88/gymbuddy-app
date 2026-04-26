@@ -1,16 +1,15 @@
 /**
  * Phase 18a — RPG Foundation E2E tests.
  *
- * These tests validate that the Phase 18a XP engine is observable through the
- * Phase 17b shim: the LVL badge on the home screen reflects `character_state.
- * lifetime_xp` (the sum of body-part XP across the six strength tracks).
+ * These tests validate that the Phase 18a XP engine produces correct state.
  *
- * Observable surface (18a): the `lvl-badge` Semantics node on HomeScreen,
- * which reads from `xpProvider` → `XpRepository.getSummary()` →
- * `character_state.lifetime_xp`.
+ * Observable surface (18b+): the character sheet on /profile shows the current
+ * character level as "Lvl N" in the header. Phase 17b's _LvlBadge was removed
+ * from HomeScreen in Phase 18b — all level-reading now goes through the
+ * character sheet.
  *
  * NOT in scope for 18a: /saga route, character sheet UI, rune sigils, class
- * card, body-part runes. Those land in 18b and 18c.
+ * card, body-part runes. Those landed in 18b and 18c.
  *
  * Test users:
  *   rpgFoundationUser — 12 prior workouts across 6 weeks; LVL > 1 after backfill
@@ -21,7 +20,7 @@
  * E2E conventions:
  *   - Smoke tests (E1, E2, E3): tagged @smoke on the describe block.
  *   - Regression-only (E4, E5, E6): no tag — run in full suite.
- *   - Selectors: all in helpers/selectors.ts (GAMIFICATION block).
+ *   - Selectors: all in helpers/selectors.ts (GAMIFICATION / SAGA block).
  *   - Text input: flutterFill() from helpers/app.ts.
  *   - Each describe block has its own test user.
  */
@@ -37,7 +36,7 @@ import {
   completeSet,
   finishWorkout,
 } from '../helpers/workout';
-import { GAMIFICATION, NAV } from '../helpers/selectors';
+import { GAMIFICATION, NAV, SAGA } from '../helpers/selectors';
 import { TEST_USERS } from '../fixtures/test-users';
 
 // ---------------------------------------------------------------------------
@@ -77,91 +76,33 @@ async function makeUserClient(email: string, password: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Helper: extract the numeric LVL from the lvl-badge aria label.
+// Helper: navigate to /profile (character sheet) and read the "Lvl N" numeral.
 //
-// Flutter emits Semantics(label: 'LVL {n}') on the badge. Playwright exposes
-// this as the accessible name of the flt-semantics element. We read the
-// aria-label JS property (AOM) and parse the number.
+// Phase 18b removed _LvlBadge from HomeScreen. The character sheet on /profile
+// now shows "Lvl N" in the header. We navigate to the Saga tab and read the
+// level from the rendered text.
 // ---------------------------------------------------------------------------
-async function readLvlFromBadge(page: Page): Promise<number> {
-  // Wait for the badge to be visible first.
-  await expect(page.locator(GAMIFICATION.lvlBadge)).toBeVisible({ timeout: 20_000 });
+async function readLvlFromCharacterSheet(page: Page): Promise<number> {
+  // Navigate to /profile (Saga tab) to ensure character sheet is visible.
+  await page.locator(NAV.profileTab).click();
+  await page.waitForURL('**/profile**', { timeout: 15_000 });
 
-  // Flutter 3.41.6 uses AOM — Semantics(label: 'LVL N') does NOT set the
-  // aria-label DOM attribute on flt-semantics elements. The label is exposed
-  // through the browser's computed accessibility tree.
-  //
-  // _LvlBadge renders Semantics(identifier: 'lvl-badge', label: 'LVL $level',
-  // child: Text('LVL $level')). The child Text widget produces a nested
-  // flt-semantics element. We try multiple read strategies:
-  //   1. textContent on the badge element (catches the nested text node)
-  //   2. accessibility.snapshot on the badge element (catches AOM label)
-  //   3. innerText on all flt-semantics children (fallback)
-  //
-  // We re-locate the element on every attempt to avoid stale handles after
-  // a Flutter widget re-render (when xpProvider emits a new value, the old
-  // flt-semantics node is replaced by a new one).
-  // Inner loop: 5 attempts × 200ms = 1s max per outer poll iteration. The
-  // outer poll loop in callers (e.g. expect.poll) iterates more frequently
-  // this way — closer to the desired UX of "fast feedback when badge text
-  // appears" without the 7.5s blackout the original 15×500 schedule caused.
-  for (let attempt = 0; attempt < 5; attempt++) {
-    // Re-locate fresh on each attempt to avoid stale element handle issues.
-    const fresh = page.locator(GAMIFICATION.lvlBadge).first();
+  // Wait for the character sheet body to appear (data state loaded).
+  await expect(page.locator(SAGA.characterSheet)).toBeVisible({ timeout: 30_000 });
 
-    // Strategy 1: textContent of the badge element and all descendants.
-    try {
-      const text = await fresh.evaluate((el) => {
-        // textContent includes ALL text in descendants regardless of CSS.
-        const content = (el as HTMLElement).textContent?.trim() ?? '';
-        if (content) return content;
-        // Also check children of the flt-semantics element.
-        const children = el.querySelectorAll('flt-semantics');
-        for (const child of Array.from(children)) {
-          const childText = (child as HTMLElement).textContent?.trim() ?? '';
-          if (childText) return childText;
-        }
-        return '';
-      });
-      if (text && text.startsWith('LVL ')) {
-        const num = parseInt(text.replace('LVL ', '').trim(), 10);
-        if (!isNaN(num)) return num;
-      }
-    } catch {
-      // Element detached — continue to next attempt.
-    }
-
-    // Strategy 2: accessibility snapshot (AOM label).
-    try {
-      const handle = await fresh.elementHandle();
-      if (handle) {
-        const snapshot = await page.accessibility.snapshot({ root: handle });
-        await handle.dispose();
-        const name = snapshot?.name ?? '';
-        if (name.startsWith('LVL ')) {
-          const num = parseInt(name.replace('LVL ', '').trim(), 10);
-          if (!isNaN(num)) return num;
-        }
-        // Snapshot may have children — walk them.
-        for (const child of snapshot?.children ?? []) {
-          const cName = child.name ?? '';
-          if (cName.startsWith('LVL ')) {
-            const num = parseInt(cName.replace('LVL ', '').trim(), 10);
-            if (!isNaN(num)) return num;
-          }
-        }
-      }
-    } catch {
-      // accessibility.snapshot() may fail if element is detached; ignore.
-    }
-
-    await page.waitForTimeout(200);
-  }
+  // Phase 18b: Flutter canvaskit renders text on a canvas element — Playwright's
+  // `text=` selectors match DOM text nodes, not canvas content. The level numeral
+  // is now wrapped in Semantics(identifier: 'character-level') so it appears in
+  // the Flutter accessibility tree (AOM) and can be read via flt-semantics-identifier.
+  const lvlEl = page.locator(SAGA.characterLevel).first();
+  await lvlEl.waitFor({ state: 'visible', timeout: 15_000 });
+  const label = await lvlEl.getAttribute('aria-label') ?? await lvlEl.textContent({ timeout: 3_000 }) ?? '';
+  const match = label.match(/Lvl (\d+)/);
+  if (match) return parseInt(match[1], 10);
 
   throw new Error(
-    `Could not read LVL number from badge after 5 attempts. ` +
-    `The badge element matched selector '${GAMIFICATION.lvlBadge}' but neither ` +
-    `textContent nor accessibility snapshot yielded 'LVL {n}'.`,
+    `Could not read Lvl number from character sheet. ` +
+    `character-level element was visible but its label was: "${label}"`,
   );
 }
 
@@ -269,19 +210,13 @@ test.describe('RPG foundation — backfill on first login', { tag: '@smoke' }, (
 
     // The LVL badge is rendered by _LvlBadge which reads xpProvider.
     // After login, the backfill runs (SagaIntroGate kicks runRetroBackfill in
-    // a post-frame callback). The badge initially shows LVL 1 (xpProvider
-    // loading state), then re-renders to LVL > 1 once the backfill completes
-    // and ref.invalidateSelf() triggers a provider reload.
-    //
-    // We poll the badge with a generous 60s outer timeout to wait for the
-    // backfill → provider reload → badge re-render cycle to complete. 36 sets
-    // across 12 workouts, each running record_set_xp, may take several seconds.
-    await expect(page.locator(GAMIFICATION.lvlBadge)).toBeVisible({
-      timeout: 45_000,
-    });
+    // a post-frame callback). The character sheet on /profile shows "Lvl N"
+    // once the provider resolves. We poll the sheet with a generous 60s outer
+    // timeout to wait for the backfill → provider reload → sheet re-render cycle.
+    // readLvlFromCharacterSheet navigates to /profile on each call.
 
     // Wait up to 60s for the backfill to run, body_part_progress to populate,
-    // and the badge to update. We verify both the badge AND the DB state.
+    // and the character sheet to update. We verify both the sheet AND the DB state.
     let dbLifetimeXp = 0;
     let finalLvl = 1;
     const pollStart = Date.now();
@@ -289,7 +224,7 @@ test.describe('RPG foundation — backfill on first login', { tag: '@smoke' }, (
     for (let attempt = 0; attempt < 20; attempt++) {
       // Check badge.
       try {
-        finalLvl = await readLvlFromBadge(page);
+        finalLvl = await readLvlFromCharacterSheet(page);
       } catch {
         finalLvl = 1;
       }
@@ -381,10 +316,8 @@ test.describe('RPG foundation — first-workout XP applied', { tag: '@smoke' }, 
       // Overlay absent or transient — badge still rendered behind/without it.
     }
 
-    // Wait for badge to be visible before the workout.
-    await expect(page.locator(GAMIFICATION.lvlBadge)).toBeVisible({
-      timeout: 20_000,
-    });
+    // Ensure we are on the home screen before starting the workout.
+    await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 20_000 });
 
     // Save a bench press workout via the UI.
     await saveSimpleBenchWorkout(page);
@@ -405,11 +338,9 @@ test.describe('RPG foundation — first-workout XP applied', { tag: '@smoke' }, 
     );
     expect(totalXp).toBeGreaterThan(0);
 
-    // (b) UI-side assertion: LVL badge remains visible (no regression to blank/error).
-    await expect(page.locator(GAMIFICATION.lvlBadge)).toBeVisible({
-      timeout: 10_000,
-    });
-    const lvl = await readLvlFromBadge(page);
+    // (b) UI-side assertion: character sheet renders without error and shows
+    // Lvl >= 1 after the workout (no regression to blank/error state).
+    const lvl = await readLvlFromCharacterSheet(page);
     expect(lvl).toBeGreaterThanOrEqual(1);
   });
 });
@@ -583,12 +514,10 @@ test.describe('RPG foundation — re-save no double XP (BUG-RPG-001)', { tag: '@
       await page.locator(GAMIFICATION.step2).waitFor({ state: 'visible', timeout: 5_000 });
       await page.locator(GAMIFICATION.beginButton).click({ timeout: 5_000 });
     } catch {
-      // Overlay absent or transient — badge is still rendered behind it.
+      // Overlay absent or transient — proceed to character sheet check.
     }
-    await expect(page.locator(GAMIFICATION.lvlBadge)).toBeVisible({
-      timeout: 20_000,
-    });
-    const lvl = await readLvlFromBadge(page);
+    // Phase 18b: read level from character sheet on /profile (badge removed).
+    const lvl = await readLvlFromCharacterSheet(page);
     // Fresh user just ran bench × 3 sets — should be LVL >= 1 (no regression to 0).
     expect(lvl).toBeGreaterThanOrEqual(1);
   });
@@ -627,31 +556,29 @@ test.describe('RPG foundation — XP accumulates across workouts', () => {
       // Overlay absent or transient — proceed to badge assertion.
     }
 
-    // Wait for the backfill to complete and the badge to stabilize past LVL 1.
+    // Wait for the backfill to complete and the character sheet to show LVL > 1.
     // rpgFoundationUser has 36 sets of history → lifetime_xp > 738 → LVL 2+.
-    // Poll until badge is stable at LVL > 1, same as E1.
-    await expect(page.locator(GAMIFICATION.lvlBadge)).toBeVisible({
-      timeout: 45_000,
-    });
+    // Poll the character sheet until level stabilizes past LVL 1.
     let lvlBefore = 1;
     await expect.poll(async () => {
       try {
-        lvlBefore = await readLvlFromBadge(page);
+        lvlBefore = await readLvlFromCharacterSheet(page);
         return lvlBefore;
       } catch {
         return 1;
       }
     }, { timeout: 60_000, intervals: [1_000, 2_000, 2_000, 3_000, 5_000] }).toBeGreaterThan(1);
 
+    // Return to home to save an additional workout.
+    await page.locator(NAV.homeTab).click();
+    await page.waitForURL('**/home**', { timeout: 10_000 });
+
     // Save an additional workout.
     await saveSimpleBenchWorkout(page);
 
-    // Allow the badge to update after the save.
+    // Allow the provider to refresh after the save.
     await page.waitForTimeout(3_000);
-    await expect(page.locator(GAMIFICATION.lvlBadge)).toBeVisible({
-      timeout: 10_000,
-    });
-    const lvlAfter = await readLvlFromBadge(page);
+    const lvlAfter = await readLvlFromCharacterSheet(page);
 
     // LVL should be >= before (may not advance if the delta is small; we assert
     // no regression. Strict > is expected but we allow = to avoid flakiness
@@ -667,17 +594,17 @@ test.describe('RPG foundation — XP accumulates across workouts', () => {
 // migration. This test is a stub that documents the dependency — the actual
 // regression is validated by running gamification-intro.spec.ts in CI.
 //
-// We include a minimal smoke check here: the lvl-badge is visible on the
-// sagaIntroUser account after dismissal (same assertion as gamification-intro
-// test 3), verifying the 18a shim returns the correct shape.
+// We include a minimal smoke check here: the character sheet on /profile renders
+// for sagaIntroUser after dismissal, verifying the 18a shim returns the correct
+// shape and the 18b character sheet displays without error.
 // ===========================================================================
 test.describe('RPG foundation — saga intro gate regression (18a-E5)', () => {
-  test('should render LVL badge for sagaIntroUser after intro dismissal (18a-E5 sentinel)', async ({
+  test('should render character sheet for sagaIntroUser after intro dismissal (18a-E5 sentinel)', async ({
     page,
   }) => {
     // sagaIntroUser is the user from gamification-intro.spec.ts.
-    // We re-use it here as a sentinel: if the shim regresses, this user's
-    // LVL badge will fail to render.
+    // We re-use it here as a sentinel: if the shim regresses, the character
+    // sheet will fail to load or show an error state.
     const sagaUser = TEST_USERS.sagaIntroUser;
 
     // Use dismissSagaIntro: false and dismiss manually to avoid the login
@@ -692,16 +619,12 @@ test.describe('RPG foundation — saga intro gate regression (18a-E5)', () => {
       await page.locator(GAMIFICATION.step2).waitFor({ state: 'visible', timeout: 5_000 });
       await page.locator(GAMIFICATION.beginButton).click({ timeout: 5_000 });
     } catch {
-      // Overlay absent or transient — proceed to badge assertion.
+      // Overlay absent or transient — proceed to character sheet check.
     }
 
-    // After login + saga intro dismissal, the LVL badge must be visible.
-    await expect(page.locator(GAMIFICATION.lvlBadge)).toBeVisible({
-      timeout: 20_000,
-    });
-
-    // The badge text must match 'LVL {n}' pattern.
-    const lvl = await readLvlFromBadge(page);
+    // After login + saga intro dismissal, the character sheet must render
+    // with a valid "Lvl N" numeral (Phase 18b surface replaces _LvlBadge).
+    const lvl = await readLvlFromCharacterSheet(page);
     expect(lvl).toBeGreaterThanOrEqual(1);
   });
 });
@@ -887,10 +810,11 @@ test.describe('RPG foundation — compound body-part attribution (18a-E6)', () =
       await page.locator(GAMIFICATION.step2).waitFor({ state: 'visible', timeout: 5_000 });
       await page.locator(GAMIFICATION.beginButton).click({ timeout: 5_000 });
     } catch {
-      // Overlay absent or transient — badge is still rendered behind it.
+      // Overlay absent or transient — proceed to character sheet check.
     }
-    await expect(page.locator(GAMIFICATION.lvlBadge)).toBeVisible({
-      timeout: 20_000,
-    });
+    // Phase 18b: verify XP was awarded by reading the character sheet level.
+    // Even Lvl 1 is correct here (fresh user, 1 set of squat).
+    const lvl = await readLvlFromCharacterSheet(page);
+    expect(lvl).toBeGreaterThanOrEqual(1);
   });
 });
