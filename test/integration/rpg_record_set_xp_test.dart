@@ -24,7 +24,8 @@
 /// 4. **exercise_peak_loads advancement** — new PR advances peak; deload
 ///    does not regress it.
 ///
-/// Run: flutter test test/integration/rpg_record_set_xp_test.dart
+/// Run: flutter test --tags integration test/integration/rpg_record_set_xp_test.dart
+@Tags(['integration'])
 library;
 
 import 'package:flutter_test/flutter_test.dart';

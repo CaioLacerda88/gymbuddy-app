@@ -445,6 +445,19 @@ $$;
 --      total_xp + rank); track delta for return
 --   9. UPSERT exercise_peak_loads if weight > current peak
 
+-- INTENDED USE: ONE-SET-PER-CALL (single-set diagnostic / regression entry
+-- point). Production save_workout calls `record_session_xp_batch` instead,
+-- which keeps an in-memory peaks map + per-bp session/weekly volume arrays
+-- so the strength/novelty/cap multipliers see the up-to-date running state
+-- as the loop advances through the session. `record_set_xp` re-queries
+-- `exercise_peak_loads` and `xp_events` on every call: within a single
+-- transaction those reads ARE visible to subsequent calls (PG ON CONFLICT
+-- DO UPDATE writes are visible to later SELECTs in the same txn), so a
+-- per-set loop would be functionally correct — but it would also pay the
+-- full subquery cost per set (~4ms × N sets dispatch overhead, see
+-- BUG-RPG-004 notes on `record_session_xp_batch`). The concurrent-guard
+-- regression test in `rpg_record_set_xp_test.dart` exercises this path
+-- directly; do NOT revoke the GRANT below or drop this entry point.
 CREATE OR REPLACE FUNCTION public.record_set_xp(p_set_id uuid)
 RETURNS TABLE (
   -- Out-parameter names are prefixed `out_` to avoid clashes with the
@@ -724,26 +737,23 @@ BEGIN
   WHERE id = v_event_id;
 
   -- 9. UPSERT exercise_peak_loads if weight advanced.
+  --    The DO UPDATE branch is gated by `WHERE EXCLUDED.peak_weight >
+  --    exercise_peak_loads.peak_weight` so non-advancing sets (most of
+  --    them — peaks are rare) skip the row update entirely. This keeps
+  --    `updated_at` honest: it advances only when peak actually moved.
+  --    The semantic invariant (peak_weight monotone non-decreasing) is
+  --    preserved by the guard itself.
   INSERT INTO public.exercise_peak_loads (
     user_id, exercise_id, peak_weight, peak_reps, peak_date, updated_at
   ) VALUES (
     v_user_id, v_exercise_id, v_weight, v_reps, v_now, v_now
   )
   ON CONFLICT (user_id, exercise_id) DO UPDATE SET
-    peak_weight = GREATEST(public.exercise_peak_loads.peak_weight, EXCLUDED.peak_weight),
-    -- peak_reps + peak_date are only updated when weight advances; otherwise
-    -- they reflect the heaviest-ever set, not the most-recent.
-    peak_reps   = CASE
-                    WHEN EXCLUDED.peak_weight > public.exercise_peak_loads.peak_weight
-                    THEN EXCLUDED.peak_reps
-                    ELSE public.exercise_peak_loads.peak_reps
-                  END,
-    peak_date   = CASE
-                    WHEN EXCLUDED.peak_weight > public.exercise_peak_loads.peak_weight
-                    THEN EXCLUDED.peak_date
-                    ELSE public.exercise_peak_loads.peak_date
-                  END,
-    updated_at  = v_now;
+    peak_weight = EXCLUDED.peak_weight,
+    peak_reps   = EXCLUDED.peak_reps,
+    peak_date   = EXCLUDED.peak_date,
+    updated_at  = v_now
+  WHERE EXCLUDED.peak_weight > public.exercise_peak_loads.peak_weight;
 
   RETURN;
 END;
@@ -756,6 +766,10 @@ $$;
 -- below. SECURITY DEFINER + EXECUTE grant unchanged for backwards
 -- compatibility.
 REVOKE EXECUTE ON FUNCTION public.record_set_xp(uuid) FROM PUBLIC, anon;
+-- Granted for single-set diagnostic use. Production save_workout uses
+-- record_session_xp_batch which maintains an in-memory peaks map for
+-- correct multi-set strength_mult and per-bp running session/weekly volume
+-- accumulators (avoids re-running the volume subqueries per set).
 GRANT  EXECUTE ON FUNCTION public.record_set_xp(uuid) TO authenticated;
 
 -- ---------------------------------------------------------------------------
@@ -1175,18 +1189,14 @@ BEGIN
   SELECT v_user_id, exercise_id, peak_weight, peak_reps, v_now, v_now
   FROM per_exercise
   ON CONFLICT (user_id, exercise_id) DO UPDATE SET
-    peak_weight = GREATEST(public.exercise_peak_loads.peak_weight, EXCLUDED.peak_weight),
-    peak_reps   = CASE
-                    WHEN EXCLUDED.peak_weight > public.exercise_peak_loads.peak_weight
-                    THEN EXCLUDED.peak_reps
-                    ELSE public.exercise_peak_loads.peak_reps
-                  END,
-    peak_date   = CASE
-                    WHEN EXCLUDED.peak_weight > public.exercise_peak_loads.peak_weight
-                    THEN EXCLUDED.peak_date
-                    ELSE public.exercise_peak_loads.peak_date
-                  END,
-    updated_at  = v_now;
+    -- Same guard as record_set_xp §9: only fire the update when the new
+    -- weight strictly exceeds the existing peak. Skips the row entirely
+    -- when peak didn't advance, keeping updated_at honest.
+    peak_weight = EXCLUDED.peak_weight,
+    peak_reps   = EXCLUDED.peak_reps,
+    peak_date   = EXCLUDED.peak_date,
+    updated_at  = v_now
+  WHERE EXCLUDED.peak_weight > public.exercise_peak_loads.peak_weight;
 END;
 $$;
 
@@ -1960,22 +1970,35 @@ $$;
 -- ---------------------------------------------------------------------------
 --
 -- We DO NOT run backfill_rpg_v1 inside this migration's transaction because
--- backfill_rpg_v1 is a procedure with internal COMMITs — calling it from a
--- transaction would error. Migrations applied through `npx supabase db push`
--- run each migration in its own implicit transaction.
+-- backfill_rpg_v1 is a chunked function: each invocation processes one
+-- chunk and returns progress, and the CLIENT loops until completion (see
+-- §12 — refactored from PROCEDURE because Postgres forbids COMMIT inside
+-- SECURITY DEFINER and PostgREST always wraps RPCs in a transaction).
+-- Driving that loop inline from a single migration transaction would
+-- collapse the chunking model into one giant txn.
 --
 -- Instead, we enqueue each user-id in a sentinel table; the deployer then
--- runs the procedure outside the migration. For tests + local runs, the
--- accompanying integration test calls backfill_rpg_v1 directly per user.
+-- runs the per-user backfill loop outside the migration. For tests + local
+-- runs, the accompanying integration test drives the loop directly per
+-- user via the Dart `RpgRepository.runBackfill` helper.
 --
--- Production handoff: after `npx supabase db push`, run
---   psql ... -c "DO $$ DECLARE r record; BEGIN
+-- Production handoff: after `npx supabase db push`, drive the per-user
+-- chunk loop until each user's `backfill_progress.completed_at` is set.
+-- Inside a DO block this looks like:
+--   psql ... -c "DO \$\$ DECLARE r record; v_done boolean; BEGIN
 --     FOR r IN SELECT user_id FROM public.backfill_progress WHERE completed_at IS NULL LOOP
---       CALL public.backfill_rpg_v1(r.user_id);
+--       v_done := false;
+--       WHILE NOT v_done LOOP
+--         SELECT out_is_complete
+--           INTO v_done
+--           FROM public.backfill_rpg_v1(r.user_id);
+--       END LOOP;
 --     END LOOP;
---   END $$;"
--- The DO block iterates serially per user; multi-user parallelism is a
--- future optimization (advisory-locked per user already; could hand to
+--   END \$\$;"
+-- `backfill_rpg_v1` is a FUNCTION (returns the chunk-progress row), so we
+-- consume it via SELECT ... FROM, not CALL. The inner WHILE loop drives one
+-- user to completion before moving to the next; multi-user parallelism is a
+-- future optimization (advisory-locked per user already; could be handed to
 -- N worker connections).
 --
 -- For now we enqueue every existing user.

@@ -101,7 +101,11 @@ async function readLvlFromBadge(page: Page): Promise<number> {
   // We re-locate the element on every attempt to avoid stale handles after
   // a Flutter widget re-render (when xpProvider emits a new value, the old
   // flt-semantics node is replaced by a new one).
-  for (let attempt = 0; attempt < 15; attempt++) {
+  // Inner loop: 5 attempts × 200ms = 1s max per outer poll iteration. The
+  // outer poll loop in callers (e.g. expect.poll) iterates more frequently
+  // this way — closer to the desired UX of "fast feedback when badge text
+  // appears" without the 7.5s blackout the original 15×500 schedule caused.
+  for (let attempt = 0; attempt < 5; attempt++) {
     // Re-locate fresh on each attempt to avoid stale element handle issues.
     const fresh = page.locator(GAMIFICATION.lvlBadge).first();
 
@@ -151,11 +155,11 @@ async function readLvlFromBadge(page: Page): Promise<number> {
       // accessibility.snapshot() may fail if element is detached; ignore.
     }
 
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(200);
   }
 
   throw new Error(
-    `Could not read LVL number from badge after 15 attempts. ` +
+    `Could not read LVL number from badge after 5 attempts. ` +
     `The badge element matched selector '${GAMIFICATION.lvlBadge}' but neither ` +
     `textContent nor accessibility snapshot yielded 'LVL {n}'.`,
   );

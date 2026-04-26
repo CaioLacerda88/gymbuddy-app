@@ -19,7 +19,8 @@
 ///    same user must produce a correct final state with no XP double-counting
 ///    and exactly one xp_events row per set.
 ///
-/// Run: flutter test test/integration/rpg_backfill_resume_test.dart
+/// Run: flutter test --tags integration test/integration/rpg_backfill_resume_test.dart
+@Tags(['integration'])
 library;
 
 import 'package:flutter_test/flutter_test.dart';

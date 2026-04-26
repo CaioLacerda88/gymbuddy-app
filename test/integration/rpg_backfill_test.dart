@@ -18,7 +18,8 @@
 ///    live `record_set_xp` calls) are cleared on the first chunk and
 ///    re-computed correctly.
 ///
-/// Run: flutter test test/integration/rpg_backfill_test.dart
+/// Run: flutter test --tags integration test/integration/rpg_backfill_test.dart
+@Tags(['integration'])
 library;
 
 import 'package:flutter_test/flutter_test.dart';

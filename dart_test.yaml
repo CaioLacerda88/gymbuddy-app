@@ -1,0 +1,9 @@
+# dart_test config — declares custom tags so package:test does not warn.
+#
+# `integration` tag: marks tests in `test/integration/` that require a live
+# local Supabase instance (`npx supabase start`). They are EXCLUDED from
+# the default `flutter test` run (`make test` and CI) and run separately
+# via `make test-integration` / `flutter test --tags integration`.
+tags:
+  integration:
+    skip: false

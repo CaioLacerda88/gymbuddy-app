@@ -9,7 +9,8 @@
 ///
 /// Requires local Supabase running: `npx supabase start`
 ///
-/// Run: flutter test test/integration/rpg_save_workout_perf_test.dart
+/// Run: flutter test --tags integration test/integration/rpg_save_workout_perf_test.dart
+@Tags(['integration'])
 library;
 
 import 'package:flutter_test/flutter_test.dart';
