@@ -302,29 +302,21 @@ class _ShellScaffold extends ConsumerWidget {
             onDestinationSelected: (index) {
               const routes = ['/home', '/exercises', '/routines', '/profile'];
               final target = routes[index];
-              final current = GoRouterState.of(context).matchedLocation;
 
-              // Re-tapping the active tab should pop back to the branch root
-              // (e.g. /profile/settings → /profile, /saga/stats → /profile).
-              // We compare branch-by-tab-index rather than path-prefix because
-              // the Saga tab spans both /profile and /saga/* sub-routes.
-              final isSameBranch = tabIndex == index;
-              if (isSameBranch) {
-                if (current == target) return; // already at root, no-op
-                final navigator = Navigator.of(context);
-                if (navigator.canPop()) {
-                  // Pushed sub-routes (e.g. via context.push): pop them all
-                  // off until the shell's branch root is exposed again.
-                  navigator.popUntil((r) => r.isFirst);
-                } else {
-                  // Deep-linked into a sub-route with no pop history — fall
-                  // back to an explicit go() so the tab reset still works.
-                  context.go(target);
-                }
-                return;
-              }
-
-              // Different branch entirely.
+              // Always go(target). This replaces the entire match list with
+              // the target branch root, discarding any sub-routes previously
+              // pushed via context.push (e.g. /profile/settings, /saga/stats,
+              // /home/history). The result is consistent "tap tab to return
+              // to branch root" semantics across all tabs.
+              //
+              // We deliberately do NOT add a `current == target` no-op guard.
+              // Inside a ShellRoute, RouteMatchList.uri ignores
+              // ImperativeRouteMatch entries (see go_router match.dart:547),
+              // so a user sitting on /profile/settings reports "currently
+              // /profile" — and a guarded tap would be silently dropped.
+              // Re-going to the same location with no pushed routes is a
+              // cheap no-op for GoRouter (identical match list → no rebuild),
+              // so removing the guard is safe.
               context.go(target);
             },
             destinations: [
