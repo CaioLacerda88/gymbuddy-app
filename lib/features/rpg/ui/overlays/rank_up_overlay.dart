@@ -32,7 +32,11 @@ import '../widgets/body_part_localization.dart';
 /// 200ms gap between overlays and advances after 1.1s; this widget is a
 /// pure presentation surface that runs its tween once.
 class RankUpOverlay extends StatefulWidget {
-  const RankUpOverlay({super.key, required this.bodyPart, required this.newRank});
+  const RankUpOverlay({
+    super.key,
+    required this.bodyPart,
+    required this.newRank,
+  });
 
   final BodyPart bodyPart;
   final int newRank;
@@ -95,15 +99,16 @@ class _RankUpOverlayState extends State<RankUpOverlay>
     );
 
     // 0-200ms: textDim @ 0.3 → heroGold ignition.
-    _ignite = ColorTween(
-      begin: AppColors.textDim.withValues(alpha: 0.3),
-      end: AppColors.heroGold,
-    ).animate(
-      CurvedAnimation(
-        parent: _timeline,
-        curve: const Interval(0, 200 / 1100, curve: Curves.easeIn),
-      ),
-    );
+    _ignite =
+        ColorTween(
+          begin: AppColors.textDim.withValues(alpha: 0.3),
+          end: AppColors.heroGold,
+        ).animate(
+          CurvedAnimation(
+            parent: _timeline,
+            curve: const Interval(0, 200 / 1100, curve: Curves.easeIn),
+          ),
+        );
 
     // 200-500ms: shadow blur 0 → 24, spread 0 → 6 (gold hold beat).
     _shadowBlur = Tween<double>(begin: 0, end: 24).animate(
@@ -120,15 +125,20 @@ class _RankUpOverlayState extends State<RankUpOverlay>
     );
 
     // 500-900ms: heroGold → hotViolet settle.
-    _settle = ColorTween(
-      begin: AppColors.heroGold,
-      end: AppColors.hotViolet.withValues(alpha: 0.9),
-    ).animate(
-      CurvedAnimation(
-        parent: _timeline,
-        curve: const Interval(500 / 1100, 900 / 1100, curve: Curves.decelerate),
-      ),
-    );
+    _settle =
+        ColorTween(
+          begin: AppColors.heroGold,
+          end: AppColors.hotViolet.withValues(alpha: 0.9),
+        ).animate(
+          CurvedAnimation(
+            parent: _timeline,
+            curve: const Interval(
+              500 / 1100,
+              900 / 1100,
+              curve: Curves.decelerate,
+            ),
+          ),
+        );
 
     // 900-1100ms: shadow color fade heroGold → hotViolet.
     _shadowFade = CurvedAnimation(

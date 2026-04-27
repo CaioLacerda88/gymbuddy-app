@@ -19,8 +19,9 @@ import 'package:repsaga/shared/widgets/reward_accent.dart';
 
 import '../../../../helpers/test_material_app.dart';
 
-Widget _wrap(Widget child) =>
-    TestMaterialApp(home: Scaffold(body: Center(child: child)));
+Widget _wrap(Widget child) => TestMaterialApp(
+  home: Scaffold(body: Center(child: child)),
+);
 
 void main() {
   group('RankUpOverlay', () {
@@ -45,9 +46,7 @@ void main() {
 
     testWidgets('renders the body-part name and rank numeral', (tester) async {
       await tester.pumpWidget(
-        _wrap(
-          const RankUpOverlay(bodyPart: BodyPart.chest, newRank: 5),
-        ),
+        _wrap(const RankUpOverlay(bodyPart: BodyPart.chest, newRank: 5)),
       );
       // Mount + first frame.
       await tester.pump();
@@ -60,9 +59,7 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(
-        _wrap(
-          const RankUpOverlay(bodyPart: BodyPart.chest, newRank: 12),
-        ),
+        _wrap(const RankUpOverlay(bodyPart: BodyPart.chest, newRank: 12)),
       );
       await tester.pump();
 
@@ -81,9 +78,7 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(
-        _wrap(
-          const RankUpOverlay(bodyPart: BodyPart.chest, newRank: 5),
-        ),
+        _wrap(const RankUpOverlay(bodyPart: BodyPart.chest, newRank: 5)),
       );
       // Frame 0: not yet — haptic deferred to 200ms peak.
       await tester.pump();
@@ -102,9 +97,7 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(
-        _wrap(
-          const RankUpOverlay(bodyPart: BodyPart.legs, newRank: 20),
-        ),
+        _wrap(const RankUpOverlay(bodyPart: BodyPart.legs, newRank: 20)),
       );
       // 0-1100ms is the full choreography. Pump past it, then unmount.
       await tester.pump();

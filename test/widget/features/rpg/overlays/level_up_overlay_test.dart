@@ -16,8 +16,9 @@ import 'package:repsaga/shared/widgets/reward_accent.dart';
 
 import '../../../../helpers/test_material_app.dart';
 
-Widget _wrap(Widget child) =>
-    TestMaterialApp(home: Scaffold(body: Center(child: child)));
+Widget _wrap(Widget child) => TestMaterialApp(
+  home: Scaffold(body: Center(child: child)),
+);
 
 void main() {
   group('LevelUpOverlay', () {
