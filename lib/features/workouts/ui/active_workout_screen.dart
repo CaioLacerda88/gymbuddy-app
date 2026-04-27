@@ -455,45 +455,42 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
                   ? AppLocalizations.of(context).exitReorderModeTooltip
                   : AppLocalizations.of(context).reorderExercisesTooltip,
             ),
-        ],
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (!_hasCompletedSet)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    AppLocalizations.of(context).completeOneSet,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.5),
-                    ),
+          // Phase 18c §13: Finish button moves from bottomNavigationBar
+          // FilledButton to the AppBar trailing as an OutlinedButton in
+          // hotViolet. Top-right is intentionally hard to reach one-handed
+          // — friction is a feature for a destructive action. The
+          // confirmation dialog is the second gate.
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: Semantics(
+              container: true,
+              identifier: 'workout-finish-btn',
+              child: OutlinedButton(
+                onPressed: _hasCompletedSet ? _onFinish : null,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.hotViolet,
+                  side: const BorderSide(color: AppColors.hotViolet, width: 1),
+                  minimumSize: const Size(0, 44),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-              Semantics(
-                container: true,
-                identifier: 'workout-finish-btn',
-                child: FilledButton.icon(
-                  onPressed: _hasCompletedSet ? _onFinish : null,
-                  icon: const Icon(Icons.check_circle),
-                  label: Text(AppLocalizations.of(context).finishWorkout),
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 56),
-                    textStyle: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
+                child: Text(
+                  AppLocalizations.of(context).finishButtonLabel,
+                  style: AppTextStyles.headline.copyWith(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.04 * 13,
+                    color: _hasCompletedSet
+                        ? AppColors.hotViolet
+                        : AppColors.textDim,
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
       body: widget.state.exercises.isEmpty
           ? _EmptyWorkoutBody(onAddExercise: _onAddExercise)
@@ -1157,7 +1154,9 @@ class _AddExerciseFab extends StatelessWidget {
           foregroundColor: theme.colorScheme.onPrimary,
           elevation: 0,
           icon: const Icon(Icons.add_rounded),
-          label: Text(AppLocalizations.of(context).addExercise),
+          // Phase 18c: FAB freed up from "Finish" → repurposed for
+          // "Add exercise" mid-session (genuinely thumb-reach action).
+          label: Text(AppLocalizations.of(context).addExerciseFabLabel),
         ),
       ),
     );
