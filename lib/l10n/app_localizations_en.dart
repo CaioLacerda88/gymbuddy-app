@@ -1546,6 +1546,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'Earn your first title by ranking up a body part.';
 
   @override
+  String titlesProgressLabel(int earned, int total) {
+    return '$earned of $total earned';
+  }
+
+  @override
+  String titlesRowRankThreshold(int rank) {
+    return 'Rank $rank';
+  }
+
+  @override
   String get title_chest_r5_initiate_of_the_forge_name =>
       'Initiate of the Forge';
 

@@ -1554,6 +1554,16 @@ class AppLocalizationsPt extends AppLocalizations {
       'Conquiste seu primeiro título subindo de rank em algum grupo muscular.';
 
   @override
+  String titlesProgressLabel(int earned, int total) {
+    return '$earned de $total conquistados';
+  }
+
+  @override
+  String titlesRowRankThreshold(int rank) {
+    return 'Rank $rank';
+  }
+
+  @override
   String get title_chest_r5_initiate_of_the_forge_name => 'Iniciado da Forja';
 
   @override

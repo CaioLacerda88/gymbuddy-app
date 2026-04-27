@@ -1303,6 +1303,21 @@
   "@titlesScreenTitle": { "description": "Phase 18c titles screen AppBar title." },
   "titlesEmptyState": "Earn your first title by ranking up a body part.",
   "@titlesEmptyState": { "description": "Phase 18c titles screen empty-state copy when no titles have been unlocked yet." },
+  "titlesProgressLabel": "{earned} of {total} earned",
+  "@titlesProgressLabel": {
+    "description": "Phase 18c titles screen progress header — earned vs total catalog count.",
+    "placeholders": {
+      "earned": { "type": "int", "example": "12" },
+      "total": { "type": "int", "example": "78" }
+    }
+  },
+  "titlesRowRankThreshold": "Rank {rank}",
+  "@titlesRowRankThreshold": {
+    "description": "Phase 18c titles screen per-row rank threshold breadcrumb (under each title name).",
+    "placeholders": {
+      "rank": { "type": "int", "example": "5" }
+    }
+  },
 
   "title_chest_r5_initiate_of_the_forge_name": "Initiate of the Forge",
   "@title_chest_r5_initiate_of_the_forge_name": { "description": "Phase 18c chest R5 title display name." },

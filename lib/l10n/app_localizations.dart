@@ -2768,6 +2768,18 @@ abstract class AppLocalizations {
   /// **'Earn your first title by ranking up a body part.'**
   String get titlesEmptyState;
 
+  /// Phase 18c titles screen progress header — earned vs total catalog count.
+  ///
+  /// In en, this message translates to:
+  /// **'{earned} of {total} earned'**
+  String titlesProgressLabel(int earned, int total);
+
+  /// Phase 18c titles screen per-row rank threshold breadcrumb (under each title name).
+  ///
+  /// In en, this message translates to:
+  /// **'Rank {rank}'**
+  String titlesRowRankThreshold(int rank);
+
   /// Phase 18c chest R5 title display name.
   ///
   /// In en, this message translates to:

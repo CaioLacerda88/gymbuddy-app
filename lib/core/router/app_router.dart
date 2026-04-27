@@ -26,6 +26,7 @@ import '../../features/profile/ui/manage_data_screen.dart';
 import '../../features/profile/ui/profile_settings_screen.dart';
 import '../../features/rpg/ui/character_sheet_screen.dart';
 import '../../features/rpg/ui/saga_stub_screen.dart';
+import '../../features/rpg/ui/titles_screen.dart';
 import '../../features/routines/ui/create_routine_screen.dart';
 import '../../features/routines/ui/routine_list_screen.dart';
 import '../../features/personal_records/domain/pr_detection_service.dart';
@@ -226,8 +227,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/saga/titles',
-            builder: (context, state) =>
-                SagaStubScreen(title: AppLocalizations.of(context).titlesLabel),
+            builder: (context, state) => const TitlesScreen(),
           ),
           GoRoute(
             path: '/plan/week',

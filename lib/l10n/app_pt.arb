@@ -512,6 +512,8 @@
   "celebrationOverflowLabel": "{count, plural, one{Mais 1 rank — abrir Saga} other{Mais {count} ranks — abrir Saga}}",
   "titlesScreenTitle": "Títulos",
   "titlesEmptyState": "Conquiste seu primeiro título subindo de rank em algum grupo muscular.",
+  "titlesProgressLabel": "{earned} de {total} conquistados",
+  "titlesRowRankThreshold": "Rank {rank}",
 
   "title_chest_r5_initiate_of_the_forge_name": "Iniciado da Forja",
   "title_chest_r5_initiate_of_the_forge_flavor": "Primeira fagulha bateu no ferro.",
