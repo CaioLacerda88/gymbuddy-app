@@ -40,6 +40,11 @@ class PrChip extends StatelessWidget {
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
+            // Chip border is the gold-pixel emission. RewardAccent only
+            // forwards DefaultTextStyle, not BoxDecoration, so the border
+            // color must be set directly. The whole widget is a RewardAccent
+            // leaf so the scarcity contract is satisfied.
+            // ignore: reward_accent — see comment above (PrChip is a RewardAccent leaf).
             color: AppColors.heroGold.withValues(alpha: 0.8),
             width: 1,
           ),
@@ -54,6 +59,7 @@ class PrChip extends StatelessWidget {
             // wrapping PrChip in a different IconTheme/DefaultTextStyle
             // (impossible by current usage but defensive) doesn't have
             // to fight a hard-coded color.
+            // ignore: reward_accent — explicit text color inside RewardAccent leaf.
             color: AppColors.heroGold,
             height: 1,
           ),

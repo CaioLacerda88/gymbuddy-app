@@ -102,6 +102,7 @@ class _RankUpOverlayState extends State<RankUpOverlay>
     _ignite =
         ColorTween(
           begin: AppColors.textDim.withValues(alpha: 0.3),
+          // ignore: reward_accent — ColorTween end value drives the rune-stamp ignition; tween targets cannot route through RewardAccent.
           end: AppColors.heroGold,
         ).animate(
           CurvedAnimation(
@@ -127,6 +128,7 @@ class _RankUpOverlayState extends State<RankUpOverlay>
     // 500-900ms: heroGold → hotViolet settle.
     _settle =
         ColorTween(
+          // ignore: reward_accent — ColorTween begin value is the gold-hold beat; tween sources cannot route through RewardAccent.
           begin: AppColors.heroGold,
           end: AppColors.hotViolet.withValues(alpha: 0.9),
         ).animate(
@@ -184,8 +186,10 @@ class _RankUpOverlayState extends State<RankUpOverlay>
         final t = _timeline.value * 1100;
         final Color sigilColor;
         if (t < 200) {
+          // ignore: reward_accent — null-safety fallback for the ignite ColorTween; the animated value already routes through the rune-stamp reward surface.
           sigilColor = _ignite.value ?? AppColors.heroGold;
         } else if (t < 500) {
+          // ignore: reward_accent — gold-hold beat (200-500ms) is the rank-up reward emission; computed Color value cannot route through RewardAccent.
           sigilColor = AppColors.heroGold;
         } else if (t < 900) {
           sigilColor = _settle.value ?? AppColors.hotViolet;
@@ -196,6 +200,7 @@ class _RankUpOverlayState extends State<RankUpOverlay>
         // Shadow color cross-fade from heroGold @ 0.5 to hotViolet @ 0.45
         // during the 900-1100ms tail.
         final shadowColor = Color.lerp(
+          // ignore: reward_accent — Color.lerp source is the rank-up halo emission; lerp endpoints cannot route through RewardAccent.
           AppColors.heroGold.withValues(alpha: 0.5),
           AppColors.hotViolet.withValues(alpha: 0.45),
           _shadowFade.value,
@@ -263,6 +268,11 @@ class _RankUpCard extends StatelessWidget {
         color: AppColors.surface2,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
+          // Overlay card border is part of the gold ignition moment.
+          // RewardAccent forwards DefaultTextStyle only, not BoxDecoration.
+          // The whole RankUpOverlay is the rank-up reward surface so direct
+          // heroGold use is the contract here.
+          // ignore: reward_accent — see comment above (RankUpOverlay is a reward surface).
           color: AppColors.heroGold.withValues(alpha: 0.6),
           width: 1,
         ),
@@ -310,6 +320,11 @@ class _RankUpCard extends StatelessWidget {
                   RewardAccent(
                     child: Text(
                       '$rank',
+                      // Explicit color inside the RewardAccent child keeps
+                      // the numeral gold even if a future ancestor merges a
+                      // different DefaultTextStyle before RewardAccent's own
+                      // merge runs.
+                      // ignore: reward_accent — explicit color inside RewardAccent child.
                       style: const TextStyle(color: AppColors.heroGold),
                     ),
                   ),

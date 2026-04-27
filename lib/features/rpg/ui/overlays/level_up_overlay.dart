@@ -76,11 +76,13 @@ class _LevelUpOverlayState extends State<LevelUpOverlay>
             color: AppColors.surface2,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
+              // ignore: reward_accent — overlay card is the level-up reward surface; BoxDecoration cannot route through RewardAccent.
               color: AppColors.heroGold.withValues(alpha: 0.6),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
+                // ignore: reward_accent — gold halo is the level-up reward emission; BoxShadow cannot route through RewardAccent.
                 color: AppColors.heroGold.withValues(alpha: 0.45),
                 blurRadius: 28,
                 spreadRadius: 4,
@@ -98,6 +100,7 @@ class _LevelUpOverlayState extends State<LevelUpOverlay>
                   '${widget.newLevel}',
                   style: AppTextStyles.display.copyWith(
                     fontSize: 64,
+                    // ignore: reward_accent — explicit color inside the RewardAccent child guarantees the numeral renders gold.
                     color: AppColors.heroGold,
                     height: 1.0,
                   ),
