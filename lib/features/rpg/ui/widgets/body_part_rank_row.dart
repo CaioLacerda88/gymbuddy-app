@@ -7,6 +7,7 @@ import '../../../../l10n/app_localizations.dart';
 import '../../models/body_part.dart';
 import '../../models/character_sheet_state.dart';
 import '../../models/vitality_state.dart';
+import 'body_part_localization.dart';
 import 'rank_stamp.dart';
 import 'xp_progress_hairline.dart';
 
@@ -169,21 +170,7 @@ String _muscleAsset(BodyPart bodyPart) {
   }
 }
 
-String _localizedName(BodyPart bodyPart, AppLocalizations l10n) {
-  switch (bodyPart) {
-    case BodyPart.chest:
-      return l10n.muscleGroupChest;
-    case BodyPart.back:
-      return l10n.muscleGroupBack;
-    case BodyPart.legs:
-      return l10n.muscleGroupLegs;
-    case BodyPart.shoulders:
-      return l10n.muscleGroupShoulders;
-    case BodyPart.arms:
-      return l10n.muscleGroupArms;
-    case BodyPart.core:
-      return l10n.muscleGroupCore;
-    case BodyPart.cardio:
-      return l10n.muscleGroupCardio;
-  }
-}
+// Body-part display name lookup is shared with the celebration overlays via
+// `body_part_localization.dart`.
+String _localizedName(BodyPart bodyPart, AppLocalizations l10n) =>
+    localizedBodyPartName(bodyPart, l10n);

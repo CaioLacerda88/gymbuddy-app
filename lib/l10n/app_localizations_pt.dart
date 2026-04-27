@@ -1503,6 +1503,9 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get rankWord => 'RANK';
+
+  @override
   String levelUpHeading(int level) {
     return 'NÍVEL $level';
   }

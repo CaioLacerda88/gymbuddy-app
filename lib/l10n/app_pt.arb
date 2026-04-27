@@ -500,6 +500,7 @@
   "sagaRankDiamond": "DIAMANTE",
 
   "rankUpHeading": "{bodyPart} · RANK {rank}",
+  "rankWord": "RANK",
   "levelUpHeading": "NÍVEL {level}",
   "firstAwakeningHeading": "{bodyPart} DESPERTA",
   "titleUnlockRankLabel": "TÍTULO DE {bodyPart} · RANK {rank}",
