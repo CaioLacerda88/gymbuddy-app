@@ -1490,11 +1490,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sagaRankDiamond => 'DIAMOND';
 
   @override
-  String rankUpHeading(String bodyPart, int rank) {
-    return '$bodyPart · RANK $rank';
-  }
-
-  @override
   String get rankWord => 'RANK';
 
   @override

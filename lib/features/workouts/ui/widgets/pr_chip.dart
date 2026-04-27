@@ -54,13 +54,6 @@ class PrChip extends StatelessWidget {
           style: AppTextStyles.display.copyWith(
             fontSize: 11,
             fontWeight: FontWeight.w700,
-            // RewardAccent's DefaultTextStyle.merge will paint heroGold;
-            // we pass null here so the merge wins and so a future caller
-            // wrapping PrChip in a different IconTheme/DefaultTextStyle
-            // (impossible by current usage but defensive) doesn't have
-            // to fight a hard-coded color.
-            // ignore: reward_accent — explicit text color inside RewardAccent leaf.
-            color: AppColors.heroGold,
             height: 1,
           ),
         ),

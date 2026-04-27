@@ -317,17 +317,7 @@ class _RankUpCard extends StatelessWidget {
                     '$bodyPartName · ${l10n.rankWord} ',
                     style: const TextStyle(color: AppColors.textCream),
                   ),
-                  RewardAccent(
-                    child: Text(
-                      '$rank',
-                      // Explicit color inside the RewardAccent child keeps
-                      // the numeral gold even if a future ancestor merges a
-                      // different DefaultTextStyle before RewardAccent's own
-                      // merge runs.
-                      // ignore: reward_accent — explicit color inside RewardAccent child.
-                      style: const TextStyle(color: AppColors.heroGold),
-                    ),
-                  ),
+                  RewardAccent(child: Text('$rank')),
                 ],
               ),
             ),

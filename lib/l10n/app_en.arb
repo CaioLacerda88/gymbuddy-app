@@ -1250,14 +1250,6 @@
   "sagaRankDiamond": "DIAMOND",
   "@sagaRankDiamond": { "description": "Rank name: diamond" },
 
-  "rankUpHeading": "{bodyPart} · RANK {rank}",
-  "@rankUpHeading": {
-    "description": "Phase 18c rank-up overlay headline. Body part rendered uppercase upstream; rank numeral wrapped in RewardAccent (heroGold).",
-    "placeholders": {
-      "bodyPart": { "type": "String", "example": "CHEST" },
-      "rank": { "type": "int", "example": "5" }
-    }
-  },
   "rankWord": "RANK",
   "@rankWord": { "description": "Phase 18c standalone uppercase noun for the rank-up overlay composition (body-part / RANK / numeral). The rank-up overlay needs to wrap only the numeral in RewardAccent, so the heading is composed from three pieces rather than rendered as one localized string." },
   "levelUpHeading": "LEVEL {level}",

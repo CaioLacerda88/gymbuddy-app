@@ -87,14 +87,6 @@ void main() {
       'setTypeAbbrDropset', // D
       'setTypeAbbrFailure', // F
       'or', // OU (different but short)
-      // Phase 18c — composed-string heading. The actual emission path
-      // ([RankUpOverlay]) builds the heading from three pieces: body-part
-      // name (localized via [BodyPartL10n]), the standalone [rankWord]
-      // ("RANK"/"RANK" — established Brazilian gym loanword, see line 503
-      // of app_pt.arb), and the rank numeral. This ARB key exists for
-      // completeness but is unused; PT == EN intentionally because the
-      // placeholders + the loanword "RANK" leave nothing to translate.
-      'rankUpHeading',
     };
 
     /// Pattern for format-only strings (only placeholders and punctuation).

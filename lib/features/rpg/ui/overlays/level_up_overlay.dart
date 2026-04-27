@@ -100,8 +100,6 @@ class _LevelUpOverlayState extends State<LevelUpOverlay>
                   '${widget.newLevel}',
                   style: AppTextStyles.display.copyWith(
                     fontSize: 64,
-                    // ignore: reward_accent — explicit color inside the RewardAccent child guarantees the numeral renders gold.
-                    color: AppColors.heroGold,
                     height: 1.0,
                   ),
                 ),

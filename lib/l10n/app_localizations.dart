@@ -2690,12 +2690,6 @@ abstract class AppLocalizations {
   /// **'DIAMOND'**
   String get sagaRankDiamond;
 
-  /// Phase 18c rank-up overlay headline. Body part rendered uppercase upstream; rank numeral wrapped in RewardAccent (heroGold).
-  ///
-  /// In en, this message translates to:
-  /// **'{bodyPart} · RANK {rank}'**
-  String rankUpHeading(String bodyPart, int rank);
-
   /// Phase 18c standalone uppercase noun for the rank-up overlay composition (body-part / RANK / numeral). The rank-up overlay needs to wrap only the numeral in RewardAccent, so the heading is composed from three pieces rather than rendered as one localized string.
   ///
   /// In en, this message translates to:

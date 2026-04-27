@@ -499,7 +499,6 @@
   "sagaRankPlatinum": "PLATINA",
   "sagaRankDiamond": "DIAMANTE",
 
-  "rankUpHeading": "{bodyPart} · RANK {rank}",
   "rankWord": "RANK",
   "levelUpHeading": "NÍVEL {level}",
   "firstAwakeningHeading": "{bodyPart} DESPERTA",
