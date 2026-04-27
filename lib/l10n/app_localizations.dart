@@ -2689,6 +2689,1014 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'DIAMOND'**
   String get sagaRankDiamond;
+
+  /// Phase 18c rank-up overlay headline. Body part rendered uppercase upstream; rank numeral wrapped in RewardAccent (heroGold).
+  ///
+  /// In en, this message translates to:
+  /// **'{bodyPart} · RANK {rank}'**
+  String rankUpHeading(String bodyPart, int rank);
+
+  /// Phase 18c character level-up overlay headline. Numeral 64sp Rajdhani 700 in heroGold.
+  ///
+  /// In en, this message translates to:
+  /// **'LEVEL {level}'**
+  String levelUpHeading(int level);
+
+  /// Phase 18c first-awakening overlay copy (zero-history onboarding moment, 800ms).
+  ///
+  /// In en, this message translates to:
+  /// **'{bodyPart} AWAKENS'**
+  String firstAwakeningHeading(String bodyPart);
+
+  /// Phase 18c title-unlock half-sheet rank label (small caps tracking line above the title name).
+  ///
+  /// In en, this message translates to:
+  /// **'{bodyPart} · RANK {rank} TITLE'**
+  String titleUnlockRankLabel(String bodyPart, int rank);
+
+  /// Phase 18c title-unlock half-sheet primary CTA.
+  ///
+  /// In en, this message translates to:
+  /// **'EQUIP TITLE'**
+  String get equipTitleButton;
+
+  /// Phase 18c label on the title-unlock half-sheet when the title is already the active one.
+  ///
+  /// In en, this message translates to:
+  /// **'EQUIPPED'**
+  String get equippedLabel;
+
+  /// Phase 18c inline mid-set PR chip label (heroGold via RewardAccent). Identical in both locales.
+  ///
+  /// In en, this message translates to:
+  /// **'PR'**
+  String get prChipLabel;
+
+  /// Phase 18c active-workout AppBar trailing OutlinedButton label.
+  ///
+  /// In en, this message translates to:
+  /// **'FINISH'**
+  String get finishButtonLabel;
+
+  /// Phase 18c active-workout FAB label (replaces the Finish-FAB, freed by moving Finish to the AppBar).
+  ///
+  /// In en, this message translates to:
+  /// **'Add exercise'**
+  String get addExerciseFabLabel;
+
+  /// Phase 18c condensed overflow card after the cap-at-3 rule trims rank-ups. Tapping opens the Saga screen.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{1 more rank-up — open Saga} other{{count} more rank-ups — open Saga}}'**
+  String celebrationOverflowLabel(int count);
+
+  /// Phase 18c titles screen AppBar title.
+  ///
+  /// In en, this message translates to:
+  /// **'Titles'**
+  String get titlesScreenTitle;
+
+  /// Phase 18c titles screen empty-state copy when no titles have been unlocked yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Earn your first title by ranking up a body part.'**
+  String get titlesEmptyState;
+
+  /// Phase 18c chest R5 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Initiate of the Forge'**
+  String get title_chest_r5_initiate_of_the_forge_name;
+
+  /// Phase 18c chest R5 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'First sparks struck against iron.'**
+  String get title_chest_r5_initiate_of_the_forge_flavor;
+
+  /// Phase 18c chest R10 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Plate-Bearer'**
+  String get title_chest_r10_plate_bearer_name;
+
+  /// Phase 18c chest R10 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'The bar trusts your collarbone now.'**
+  String get title_chest_r10_plate_bearer_flavor;
+
+  /// Phase 18c chest R15 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Forge-Marked'**
+  String get title_chest_r15_forge_marked_name;
+
+  /// Phase 18c chest R15 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Heat lives where your sternum meets the iron.'**
+  String get title_chest_r15_forge_marked_flavor;
+
+  /// Phase 18c chest R20 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Iron-Chested'**
+  String get title_chest_r20_iron_chested_name;
+
+  /// Phase 18c chest R20 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Plate after plate, the rib-cage answers.'**
+  String get title_chest_r20_iron_chested_flavor;
+
+  /// Phase 18c chest R25 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Anvil-Heart'**
+  String get title_chest_r25_anvil_heart_name;
+
+  /// Phase 18c chest R25 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Hammered, never bent.'**
+  String get title_chest_r25_anvil_heart_flavor;
+
+  /// Phase 18c chest R30 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Forge-Born'**
+  String get title_chest_r30_forge_born_name;
+
+  /// Phase 18c chest R30 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Older lifters look for the cracks. There aren\'t any.'**
+  String get title_chest_r30_forge_born_flavor;
+
+  /// Phase 18c chest R40 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Bulwark-Chested'**
+  String get title_chest_r40_bulwark_chested_name;
+
+  /// Phase 18c chest R40 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Walls do not flex. Neither do you.'**
+  String get title_chest_r40_bulwark_chested_flavor;
+
+  /// Phase 18c chest R50 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Forge-Plated'**
+  String get title_chest_r50_forge_plated_name;
+
+  /// Phase 18c chest R50 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Armour the bar wears down to your shape.'**
+  String get title_chest_r50_forge_plated_flavor;
+
+  /// Phase 18c chest R60 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Anvil-Forged'**
+  String get title_chest_r60_anvil_forged_name;
+
+  /// Phase 18c chest R60 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Ten thousand reps, one shape.'**
+  String get title_chest_r60_anvil_forged_flavor;
+
+  /// Phase 18c chest R70 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Forge-Heart'**
+  String get title_chest_r70_forge_heart_name;
+
+  /// Phase 18c chest R70 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'The fire kept burning where most went out.'**
+  String get title_chest_r70_forge_heart_flavor;
+
+  /// Phase 18c chest R80 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Heart of the Forge'**
+  String get title_chest_r80_heart_of_forge_name;
+
+  /// Phase 18c chest R80 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Without you, the steel goes cold.'**
+  String get title_chest_r80_heart_of_forge_flavor;
+
+  /// Phase 18c chest R90 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Forge-Untouched'**
+  String get title_chest_r90_forge_untouched_name;
+
+  /// Phase 18c chest R90 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Heat passes through. Nothing marks you.'**
+  String get title_chest_r90_forge_untouched_flavor;
+
+  /// Phase 18c chest R99 terminal title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'The Anvil'**
+  String get title_chest_r99_the_anvil_name;
+
+  /// Phase 18c chest R99 terminal title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Every plate in this gym took its shape from you.'**
+  String get title_chest_r99_the_anvil_flavor;
+
+  /// Phase 18c back R5 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Lattice-Touched'**
+  String get title_back_r5_lattice_touched_name;
+
+  /// Phase 18c back R5 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Wings begin under the skin first.'**
+  String get title_back_r5_lattice_touched_flavor;
+
+  /// Phase 18c back R10 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Wing-Marked'**
+  String get title_back_r10_wing_marked_name;
+
+  /// Phase 18c back R10 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'The shadow on the floor is wider than yesterday.'**
+  String get title_back_r10_wing_marked_flavor;
+
+  /// Phase 18c back R15 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Rope-Hauler'**
+  String get title_back_r15_rope_hauler_name;
+
+  /// Phase 18c back R15 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Whatever\'s hanging, you\'re pulling.'**
+  String get title_back_r15_rope_hauler_flavor;
+
+  /// Phase 18c back R20 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Lat-Crowned'**
+  String get title_back_r20_lat_crowned_name;
+
+  /// Phase 18c back R20 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Two slabs hold up the silhouette.'**
+  String get title_back_r20_lat_crowned_flavor;
+
+  /// Phase 18c back R25 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Talon-Backed'**
+  String get title_back_r25_talon_backed_name;
+
+  /// Phase 18c back R25 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'The bar comes down because you said so.'**
+  String get title_back_r25_talon_backed_flavor;
+
+  /// Phase 18c back R30 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Wing-Spread'**
+  String get title_back_r30_wing_spread_name;
+
+  /// Phase 18c back R30 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Doorways notice you now.'**
+  String get title_back_r30_wing_spread_flavor;
+
+  /// Phase 18c back R40 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Lattice-Hauled'**
+  String get title_back_r40_lattice_hauled_name;
+
+  /// Phase 18c back R40 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Iron rises and the lattice answers.'**
+  String get title_back_r40_lattice_hauled_flavor;
+
+  /// Phase 18c back R50 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Wing-Crowned'**
+  String get title_back_r50_wing_crowned_name;
+
+  /// Phase 18c back R50 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'The bar bows. The wings rise.'**
+  String get title_back_r50_wing_crowned_flavor;
+
+  /// Phase 18c back R60 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Lattice-Spread'**
+  String get title_back_r60_lattice_spread_name;
+
+  /// Phase 18c back R60 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Cathedral rafters built one rep at a time.'**
+  String get title_back_r60_lattice_spread_flavor;
+
+  /// Phase 18c back R70 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Wing-Storm'**
+  String get title_back_r70_wing_storm_name;
+
+  /// Phase 18c back R70 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Air moves when you do.'**
+  String get title_back_r70_wing_storm_flavor;
+
+  /// Phase 18c back R80 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Wing of Storms'**
+  String get title_back_r80_wing_of_storms_name;
+
+  /// Phase 18c back R80 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'The kind of back weather forms around.'**
+  String get title_back_r80_wing_of_storms_flavor;
+
+  /// Phase 18c back R90 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Sky-Lattice'**
+  String get title_back_r90_sky_lattice_name;
+
+  /// Phase 18c back R90 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'What holds up the heavens, on you.'**
+  String get title_back_r90_sky_lattice_flavor;
+
+  /// Phase 18c back R99 terminal title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'The Lattice'**
+  String get title_back_r99_the_lattice_name;
+
+  /// Phase 18c back R99 terminal title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Every cable in the gym answers to you.'**
+  String get title_back_r99_the_lattice_flavor;
+
+  /// Phase 18c legs R5 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Ground-Walker'**
+  String get title_legs_r5_ground_walker_name;
+
+  /// Phase 18c legs R5 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'The earth knows your weight.'**
+  String get title_legs_r5_ground_walker_flavor;
+
+  /// Phase 18c legs R10 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Stone-Stepper'**
+  String get title_legs_r10_stone_stepper_name;
+
+  /// Phase 18c legs R10 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Boulders move when you sit down.'**
+  String get title_legs_r10_stone_stepper_flavor;
+
+  /// Phase 18c legs R15 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Pillar-Apprentice'**
+  String get title_legs_r15_pillar_apprentice_name;
+
+  /// Phase 18c legs R15 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'The columns are learning your name.'**
+  String get title_legs_r15_pillar_apprentice_flavor;
+
+  /// Phase 18c legs R20 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Pillar-Walker'**
+  String get title_legs_r20_pillar_walker_name;
+
+  /// Phase 18c legs R20 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Two columns where there used to be limbs.'**
+  String get title_legs_r20_pillar_walker_flavor;
+
+  /// Phase 18c legs R25 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Quarry-Strider'**
+  String get title_legs_r25_quarry_strider_name;
+
+  /// Phase 18c legs R25 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Stone is just where you start.'**
+  String get title_legs_r25_quarry_strider_flavor;
+
+  /// Phase 18c legs R30 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Mountain-Strider'**
+  String get title_legs_r30_mountain_strider_name;
+
+  /// Phase 18c legs R30 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Up is just another set.'**
+  String get title_legs_r30_mountain_strider_flavor;
+
+  /// Phase 18c legs R40 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Stone-Strider'**
+  String get title_legs_r40_stone_strider_name;
+
+  /// Phase 18c legs R40 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'The ground splits before it stops you.'**
+  String get title_legs_r40_stone_strider_flavor;
+
+  /// Phase 18c legs R50 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Mountain-Footed'**
+  String get title_legs_r50_mountain_footed_name;
+
+  /// Phase 18c legs R50 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Foundations shift around your stance.'**
+  String get title_legs_r50_mountain_footed_flavor;
+
+  /// Phase 18c legs R60 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Mountain-Rooted'**
+  String get title_legs_r60_mountain_rooted_name;
+
+  /// Phase 18c legs R60 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Storms break before they move you.'**
+  String get title_legs_r60_mountain_rooted_flavor;
+
+  /// Phase 18c legs R70 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Pillar-Footed'**
+  String get title_legs_r70_pillar_footed_name;
+
+  /// Phase 18c legs R70 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Architecture\'s job, on a body.'**
+  String get title_legs_r70_pillar_footed_flavor;
+
+  /// Phase 18c legs R80 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Pillar of Storms'**
+  String get title_legs_r80_pillar_of_storms_name;
+
+  /// Phase 18c legs R80 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Wind shears around. You stay.'**
+  String get title_legs_r80_pillar_of_storms_flavor;
+
+  /// Phase 18c legs R90 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Mountain-Untouched'**
+  String get title_legs_r90_mountain_untouched_name;
+
+  /// Phase 18c legs R90 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Erosion takes a million years. You take one more set.'**
+  String get title_legs_r90_mountain_untouched_flavor;
+
+  /// Phase 18c legs R99 terminal title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'The Pillar'**
+  String get title_legs_r99_the_pillar_name;
+
+  /// Phase 18c legs R99 terminal title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Take you out and the ceiling falls.'**
+  String get title_legs_r99_the_pillar_flavor;
+
+  /// Phase 18c shoulders R5 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Burden-Tester'**
+  String get title_shoulders_r5_burden_tester_name;
+
+  /// Phase 18c shoulders R5 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'First weight overhead — the sky noticed.'**
+  String get title_shoulders_r5_burden_tester_flavor;
+
+  /// Phase 18c shoulders R10 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Yoke-Apprentice'**
+  String get title_shoulders_r10_yoke_apprentice_name;
+
+  /// Phase 18c shoulders R10 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Iron rests on you and stays put.'**
+  String get title_shoulders_r10_yoke_apprentice_flavor;
+
+  /// Phase 18c shoulders R15 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Sky-Reach'**
+  String get title_shoulders_r15_sky_reach_name;
+
+  /// Phase 18c shoulders R15 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Arms find ceiling without thinking.'**
+  String get title_shoulders_r15_sky_reach_flavor;
+
+  /// Phase 18c shoulders R20 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Atlas-Touched'**
+  String get title_shoulders_r20_atlas_touched_name;
+
+  /// Phase 18c shoulders R20 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Old myths recognise the shape.'**
+  String get title_shoulders_r20_atlas_touched_flavor;
+
+  /// Phase 18c shoulders R25 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Sky-Vaulter'**
+  String get title_shoulders_r25_sky_vaulter_name;
+
+  /// Phase 18c shoulders R25 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Up is where the bar lives.'**
+  String get title_shoulders_r25_sky_vaulter_flavor;
+
+  /// Phase 18c shoulders R30 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Yoke-Crowned'**
+  String get title_shoulders_r30_yoke_crowned_name;
+
+  /// Phase 18c shoulders R30 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'What sits on you stays decoration.'**
+  String get title_shoulders_r30_yoke_crowned_flavor;
+
+  /// Phase 18c shoulders R40 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Atlas-Carried'**
+  String get title_shoulders_r40_atlas_carried_name;
+
+  /// Phase 18c shoulders R40 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'The world is not as heavy as it claims.'**
+  String get title_shoulders_r40_atlas_carried_flavor;
+
+  /// Phase 18c shoulders R50 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Sky-Yoked'**
+  String get title_shoulders_r50_sky_yoked_name;
+
+  /// Phase 18c shoulders R50 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'The horizon hangs from your traps.'**
+  String get title_shoulders_r50_sky_yoked_flavor;
+
+  /// Phase 18c shoulders R60 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Sky-Vaulted'**
+  String get title_shoulders_r60_sky_vaulted_name;
+
+  /// Phase 18c shoulders R60 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Arms make space where there wasn\'t any.'**
+  String get title_shoulders_r60_sky_vaulted_flavor;
+
+  /// Phase 18c shoulders R70 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Sky-Held'**
+  String get title_shoulders_r70_sky_held_name;
+
+  /// Phase 18c shoulders R70 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop you and the clouds fall.'**
+  String get title_shoulders_r70_sky_held_flavor;
+
+  /// Phase 18c shoulders R80 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Sky-Sundered'**
+  String get title_shoulders_r80_sky_sundered_name;
+
+  /// Phase 18c shoulders R80 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'What you press splits the dome.'**
+  String get title_shoulders_r80_sky_sundered_flavor;
+
+  /// Phase 18c shoulders R90 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Sky-Untouched'**
+  String get title_shoulders_r90_sky_untouched_name;
+
+  /// Phase 18c shoulders R90 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Storms pass overhead. You don\'t bow.'**
+  String get title_shoulders_r90_sky_untouched_flavor;
+
+  /// Phase 18c shoulders R99 terminal title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'The Atlas'**
+  String get title_shoulders_r99_the_atlas_name;
+
+  /// Phase 18c shoulders R99 terminal title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'All the weight of the heavens. Light work.'**
+  String get title_shoulders_r99_the_atlas_flavor;
+
+  /// Phase 18c arms R5 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Vein-Stirrer'**
+  String get title_arms_r5_vein_stirrer_name;
+
+  /// Phase 18c arms R5 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'The blood remembers the curl.'**
+  String get title_arms_r5_vein_stirrer_flavor;
+
+  /// Phase 18c arms R10 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Iron-Fingered'**
+  String get title_arms_r10_iron_fingered_name;
+
+  /// Phase 18c arms R10 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'What you grip, you keep.'**
+  String get title_arms_r10_iron_fingered_flavor;
+
+  /// Phase 18c arms R15 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Sinew-Drawn'**
+  String get title_arms_r15_sinew_drawn_name;
+
+  /// Phase 18c arms R15 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Cables, cords, ropes — they answer.'**
+  String get title_arms_r15_sinew_drawn_flavor;
+
+  /// Phase 18c arms R20 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Marrow-Cleaver'**
+  String get title_arms_r20_marrow_cleaver_name;
+
+  /// Phase 18c arms R20 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Each rep cuts deeper than the last.'**
+  String get title_arms_r20_marrow_cleaver_flavor;
+
+  /// Phase 18c arms R25 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Steel-Sleeved'**
+  String get title_arms_r25_steel_sleeved_name;
+
+  /// Phase 18c arms R25 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Sleeves can\'t keep up. Stop trying.'**
+  String get title_arms_r25_steel_sleeved_flavor;
+
+  /// Phase 18c arms R30 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Sinew-Sworn'**
+  String get title_arms_r30_sinew_sworn_name;
+
+  /// Phase 18c arms R30 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'The fibres don\'t quit before you do.'**
+  String get title_arms_r30_sinew_sworn_flavor;
+
+  /// Phase 18c arms R40 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Iron-Knuckled'**
+  String get title_arms_r40_iron_knuckled_name;
+
+  /// Phase 18c arms R40 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'The handle bends first.'**
+  String get title_arms_r40_iron_knuckled_flavor;
+
+  /// Phase 18c arms R50 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Steel-Forged'**
+  String get title_arms_r50_steel_forged_name;
+
+  /// Phase 18c arms R50 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Hammered into the shape that lifts.'**
+  String get title_arms_r50_steel_forged_flavor;
+
+  /// Phase 18c arms R60 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Sinew-Bound'**
+  String get title_arms_r60_sinew_bound_name;
+
+  /// Phase 18c arms R60 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Cables ran out of slack years ago.'**
+  String get title_arms_r60_sinew_bound_flavor;
+
+  /// Phase 18c arms R70 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Iron-Sleeved'**
+  String get title_arms_r70_iron_sleeved_name;
+
+  /// Phase 18c arms R70 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Knuckle to shoulder, all of it carries.'**
+  String get title_arms_r70_iron_sleeved_flavor;
+
+  /// Phase 18c arms R80 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Sinew of Storms'**
+  String get title_arms_r80_sinew_of_storms_name;
+
+  /// Phase 18c arms R80 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Lightning learns its shape from yours.'**
+  String get title_arms_r80_sinew_of_storms_flavor;
+
+  /// Phase 18c arms R90 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Iron-Untouched'**
+  String get title_arms_r90_iron_untouched_name;
+
+  /// Phase 18c arms R90 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Plate slides on. Plate slides off. The arm doesn\'t move.'**
+  String get title_arms_r90_iron_untouched_flavor;
+
+  /// Phase 18c arms R99 terminal title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'The Sinew'**
+  String get title_arms_r99_the_sinew_name;
+
+  /// Phase 18c arms R99 terminal title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Whatever needs lifting in this gym, you lift it.'**
+  String get title_arms_r99_the_sinew_flavor;
+
+  /// Phase 18c core R5 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Spine-Tested'**
+  String get title_core_r5_spine_tested_name;
+
+  /// Phase 18c core R5 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'First brace held — bar stayed level.'**
+  String get title_core_r5_spine_tested_flavor;
+
+  /// Phase 18c core R10 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Core-Forged'**
+  String get title_core_r10_core_forged_name;
+
+  /// Phase 18c core R10 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Mid-line locked, ribs to hips.'**
+  String get title_core_r10_core_forged_flavor;
+
+  /// Phase 18c core R15 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Pillar-Spined'**
+  String get title_core_r15_pillar_spined_name;
+
+  /// Phase 18c core R15 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'The bar can lean. You don\'t.'**
+  String get title_core_r15_pillar_spined_flavor;
+
+  /// Phase 18c core R20 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Iron-Belted'**
+  String get title_core_r20_iron_belted_name;
+
+  /// Phase 18c core R20 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Belt\'s a formality at this point.'**
+  String get title_core_r20_iron_belted_flavor;
+
+  /// Phase 18c core R25 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Stonewall'**
+  String get title_core_r25_stonewall_name;
+
+  /// Phase 18c core R25 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Air goes in. Force comes out.'**
+  String get title_core_r25_stonewall_flavor;
+
+  /// Phase 18c core R30 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Diamond-Spine'**
+  String get title_core_r30_diamond_spine_name;
+
+  /// Phase 18c core R30 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Compressed enough times, things turn to gem.'**
+  String get title_core_r30_diamond_spine_flavor;
+
+  /// Phase 18c core R40 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Anchor-Belted'**
+  String get title_core_r40_anchor_belted_name;
+
+  /// Phase 18c core R40 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Whatever the load, the trunk holds.'**
+  String get title_core_r40_anchor_belted_flavor;
+
+  /// Phase 18c core R50 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Stone-Cored'**
+  String get title_core_r50_stone_cored_name;
+
+  /// Phase 18c core R50 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Hit the centre. Hit a wall.'**
+  String get title_core_r50_stone_cored_flavor;
+
+  /// Phase 18c core R60 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Marrow-Carved'**
+  String get title_core_r60_marrow_carved_name;
+
+  /// Phase 18c core R60 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Each rep cut a notch into bone.'**
+  String get title_core_r60_marrow_carved_flavor;
+
+  /// Phase 18c core R70 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Stone-Spined'**
+  String get title_core_r70_stone_spined_name;
+
+  /// Phase 18c core R70 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'The vertebrae stack like masonry.'**
+  String get title_core_r70_stone_spined_flavor;
+
+  /// Phase 18c core R80 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Spine of Storms'**
+  String get title_core_r80_spine_of_storms_name;
+
+  /// Phase 18c core R80 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Wind through trees. Trunk doesn\'t move.'**
+  String get title_core_r80_spine_of_storms_flavor;
+
+  /// Phase 18c core R90 title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Marrow-Untouched'**
+  String get title_core_r90_marrow_untouched_name;
+
+  /// Phase 18c core R90 title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Whatever cracks the body, it stops at the centre.'**
+  String get title_core_r90_marrow_untouched_flavor;
+
+  /// Phase 18c core R99 terminal title display name.
+  ///
+  /// In en, this message translates to:
+  /// **'The Spine'**
+  String get title_core_r99_the_spine_name;
+
+  /// Phase 18c core R99 terminal title flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold the bar like a chapel beam.'**
+  String get title_core_r99_the_spine_flavor;
 }
 
 class _AppLocalizationsDelegate

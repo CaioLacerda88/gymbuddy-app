@@ -1488,4 +1488,597 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sagaRankDiamond => 'DIAMOND';
+
+  @override
+  String rankUpHeading(String bodyPart, int rank) {
+    return '$bodyPart · RANK $rank';
+  }
+
+  @override
+  String levelUpHeading(int level) {
+    return 'LEVEL $level';
+  }
+
+  @override
+  String firstAwakeningHeading(String bodyPart) {
+    return '$bodyPart AWAKENS';
+  }
+
+  @override
+  String titleUnlockRankLabel(String bodyPart, int rank) {
+    return '$bodyPart · RANK $rank TITLE';
+  }
+
+  @override
+  String get equipTitleButton => 'EQUIP TITLE';
+
+  @override
+  String get equippedLabel => 'EQUIPPED';
+
+  @override
+  String get prChipLabel => 'PR';
+
+  @override
+  String get finishButtonLabel => 'FINISH';
+
+  @override
+  String get addExerciseFabLabel => 'Add exercise';
+
+  @override
+  String celebrationOverflowLabel(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count more rank-ups — open Saga',
+      one: '1 more rank-up — open Saga',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get titlesScreenTitle => 'Titles';
+
+  @override
+  String get titlesEmptyState =>
+      'Earn your first title by ranking up a body part.';
+
+  @override
+  String get title_chest_r5_initiate_of_the_forge_name =>
+      'Initiate of the Forge';
+
+  @override
+  String get title_chest_r5_initiate_of_the_forge_flavor =>
+      'First sparks struck against iron.';
+
+  @override
+  String get title_chest_r10_plate_bearer_name => 'Plate-Bearer';
+
+  @override
+  String get title_chest_r10_plate_bearer_flavor =>
+      'The bar trusts your collarbone now.';
+
+  @override
+  String get title_chest_r15_forge_marked_name => 'Forge-Marked';
+
+  @override
+  String get title_chest_r15_forge_marked_flavor =>
+      'Heat lives where your sternum meets the iron.';
+
+  @override
+  String get title_chest_r20_iron_chested_name => 'Iron-Chested';
+
+  @override
+  String get title_chest_r20_iron_chested_flavor =>
+      'Plate after plate, the rib-cage answers.';
+
+  @override
+  String get title_chest_r25_anvil_heart_name => 'Anvil-Heart';
+
+  @override
+  String get title_chest_r25_anvil_heart_flavor => 'Hammered, never bent.';
+
+  @override
+  String get title_chest_r30_forge_born_name => 'Forge-Born';
+
+  @override
+  String get title_chest_r30_forge_born_flavor =>
+      'Older lifters look for the cracks. There aren\'t any.';
+
+  @override
+  String get title_chest_r40_bulwark_chested_name => 'Bulwark-Chested';
+
+  @override
+  String get title_chest_r40_bulwark_chested_flavor =>
+      'Walls do not flex. Neither do you.';
+
+  @override
+  String get title_chest_r50_forge_plated_name => 'Forge-Plated';
+
+  @override
+  String get title_chest_r50_forge_plated_flavor =>
+      'Armour the bar wears down to your shape.';
+
+  @override
+  String get title_chest_r60_anvil_forged_name => 'Anvil-Forged';
+
+  @override
+  String get title_chest_r60_anvil_forged_flavor =>
+      'Ten thousand reps, one shape.';
+
+  @override
+  String get title_chest_r70_forge_heart_name => 'Forge-Heart';
+
+  @override
+  String get title_chest_r70_forge_heart_flavor =>
+      'The fire kept burning where most went out.';
+
+  @override
+  String get title_chest_r80_heart_of_forge_name => 'Heart of the Forge';
+
+  @override
+  String get title_chest_r80_heart_of_forge_flavor =>
+      'Without you, the steel goes cold.';
+
+  @override
+  String get title_chest_r90_forge_untouched_name => 'Forge-Untouched';
+
+  @override
+  String get title_chest_r90_forge_untouched_flavor =>
+      'Heat passes through. Nothing marks you.';
+
+  @override
+  String get title_chest_r99_the_anvil_name => 'The Anvil';
+
+  @override
+  String get title_chest_r99_the_anvil_flavor =>
+      'Every plate in this gym took its shape from you.';
+
+  @override
+  String get title_back_r5_lattice_touched_name => 'Lattice-Touched';
+
+  @override
+  String get title_back_r5_lattice_touched_flavor =>
+      'Wings begin under the skin first.';
+
+  @override
+  String get title_back_r10_wing_marked_name => 'Wing-Marked';
+
+  @override
+  String get title_back_r10_wing_marked_flavor =>
+      'The shadow on the floor is wider than yesterday.';
+
+  @override
+  String get title_back_r15_rope_hauler_name => 'Rope-Hauler';
+
+  @override
+  String get title_back_r15_rope_hauler_flavor =>
+      'Whatever\'s hanging, you\'re pulling.';
+
+  @override
+  String get title_back_r20_lat_crowned_name => 'Lat-Crowned';
+
+  @override
+  String get title_back_r20_lat_crowned_flavor =>
+      'Two slabs hold up the silhouette.';
+
+  @override
+  String get title_back_r25_talon_backed_name => 'Talon-Backed';
+
+  @override
+  String get title_back_r25_talon_backed_flavor =>
+      'The bar comes down because you said so.';
+
+  @override
+  String get title_back_r30_wing_spread_name => 'Wing-Spread';
+
+  @override
+  String get title_back_r30_wing_spread_flavor => 'Doorways notice you now.';
+
+  @override
+  String get title_back_r40_lattice_hauled_name => 'Lattice-Hauled';
+
+  @override
+  String get title_back_r40_lattice_hauled_flavor =>
+      'Iron rises and the lattice answers.';
+
+  @override
+  String get title_back_r50_wing_crowned_name => 'Wing-Crowned';
+
+  @override
+  String get title_back_r50_wing_crowned_flavor =>
+      'The bar bows. The wings rise.';
+
+  @override
+  String get title_back_r60_lattice_spread_name => 'Lattice-Spread';
+
+  @override
+  String get title_back_r60_lattice_spread_flavor =>
+      'Cathedral rafters built one rep at a time.';
+
+  @override
+  String get title_back_r70_wing_storm_name => 'Wing-Storm';
+
+  @override
+  String get title_back_r70_wing_storm_flavor => 'Air moves when you do.';
+
+  @override
+  String get title_back_r80_wing_of_storms_name => 'Wing of Storms';
+
+  @override
+  String get title_back_r80_wing_of_storms_flavor =>
+      'The kind of back weather forms around.';
+
+  @override
+  String get title_back_r90_sky_lattice_name => 'Sky-Lattice';
+
+  @override
+  String get title_back_r90_sky_lattice_flavor =>
+      'What holds up the heavens, on you.';
+
+  @override
+  String get title_back_r99_the_lattice_name => 'The Lattice';
+
+  @override
+  String get title_back_r99_the_lattice_flavor =>
+      'Every cable in the gym answers to you.';
+
+  @override
+  String get title_legs_r5_ground_walker_name => 'Ground-Walker';
+
+  @override
+  String get title_legs_r5_ground_walker_flavor =>
+      'The earth knows your weight.';
+
+  @override
+  String get title_legs_r10_stone_stepper_name => 'Stone-Stepper';
+
+  @override
+  String get title_legs_r10_stone_stepper_flavor =>
+      'Boulders move when you sit down.';
+
+  @override
+  String get title_legs_r15_pillar_apprentice_name => 'Pillar-Apprentice';
+
+  @override
+  String get title_legs_r15_pillar_apprentice_flavor =>
+      'The columns are learning your name.';
+
+  @override
+  String get title_legs_r20_pillar_walker_name => 'Pillar-Walker';
+
+  @override
+  String get title_legs_r20_pillar_walker_flavor =>
+      'Two columns where there used to be limbs.';
+
+  @override
+  String get title_legs_r25_quarry_strider_name => 'Quarry-Strider';
+
+  @override
+  String get title_legs_r25_quarry_strider_flavor =>
+      'Stone is just where you start.';
+
+  @override
+  String get title_legs_r30_mountain_strider_name => 'Mountain-Strider';
+
+  @override
+  String get title_legs_r30_mountain_strider_flavor =>
+      'Up is just another set.';
+
+  @override
+  String get title_legs_r40_stone_strider_name => 'Stone-Strider';
+
+  @override
+  String get title_legs_r40_stone_strider_flavor =>
+      'The ground splits before it stops you.';
+
+  @override
+  String get title_legs_r50_mountain_footed_name => 'Mountain-Footed';
+
+  @override
+  String get title_legs_r50_mountain_footed_flavor =>
+      'Foundations shift around your stance.';
+
+  @override
+  String get title_legs_r60_mountain_rooted_name => 'Mountain-Rooted';
+
+  @override
+  String get title_legs_r60_mountain_rooted_flavor =>
+      'Storms break before they move you.';
+
+  @override
+  String get title_legs_r70_pillar_footed_name => 'Pillar-Footed';
+
+  @override
+  String get title_legs_r70_pillar_footed_flavor =>
+      'Architecture\'s job, on a body.';
+
+  @override
+  String get title_legs_r80_pillar_of_storms_name => 'Pillar of Storms';
+
+  @override
+  String get title_legs_r80_pillar_of_storms_flavor =>
+      'Wind shears around. You stay.';
+
+  @override
+  String get title_legs_r90_mountain_untouched_name => 'Mountain-Untouched';
+
+  @override
+  String get title_legs_r90_mountain_untouched_flavor =>
+      'Erosion takes a million years. You take one more set.';
+
+  @override
+  String get title_legs_r99_the_pillar_name => 'The Pillar';
+
+  @override
+  String get title_legs_r99_the_pillar_flavor =>
+      'Take you out and the ceiling falls.';
+
+  @override
+  String get title_shoulders_r5_burden_tester_name => 'Burden-Tester';
+
+  @override
+  String get title_shoulders_r5_burden_tester_flavor =>
+      'First weight overhead — the sky noticed.';
+
+  @override
+  String get title_shoulders_r10_yoke_apprentice_name => 'Yoke-Apprentice';
+
+  @override
+  String get title_shoulders_r10_yoke_apprentice_flavor =>
+      'Iron rests on you and stays put.';
+
+  @override
+  String get title_shoulders_r15_sky_reach_name => 'Sky-Reach';
+
+  @override
+  String get title_shoulders_r15_sky_reach_flavor =>
+      'Arms find ceiling without thinking.';
+
+  @override
+  String get title_shoulders_r20_atlas_touched_name => 'Atlas-Touched';
+
+  @override
+  String get title_shoulders_r20_atlas_touched_flavor =>
+      'Old myths recognise the shape.';
+
+  @override
+  String get title_shoulders_r25_sky_vaulter_name => 'Sky-Vaulter';
+
+  @override
+  String get title_shoulders_r25_sky_vaulter_flavor =>
+      'Up is where the bar lives.';
+
+  @override
+  String get title_shoulders_r30_yoke_crowned_name => 'Yoke-Crowned';
+
+  @override
+  String get title_shoulders_r30_yoke_crowned_flavor =>
+      'What sits on you stays decoration.';
+
+  @override
+  String get title_shoulders_r40_atlas_carried_name => 'Atlas-Carried';
+
+  @override
+  String get title_shoulders_r40_atlas_carried_flavor =>
+      'The world is not as heavy as it claims.';
+
+  @override
+  String get title_shoulders_r50_sky_yoked_name => 'Sky-Yoked';
+
+  @override
+  String get title_shoulders_r50_sky_yoked_flavor =>
+      'The horizon hangs from your traps.';
+
+  @override
+  String get title_shoulders_r60_sky_vaulted_name => 'Sky-Vaulted';
+
+  @override
+  String get title_shoulders_r60_sky_vaulted_flavor =>
+      'Arms make space where there wasn\'t any.';
+
+  @override
+  String get title_shoulders_r70_sky_held_name => 'Sky-Held';
+
+  @override
+  String get title_shoulders_r70_sky_held_flavor =>
+      'Drop you and the clouds fall.';
+
+  @override
+  String get title_shoulders_r80_sky_sundered_name => 'Sky-Sundered';
+
+  @override
+  String get title_shoulders_r80_sky_sundered_flavor =>
+      'What you press splits the dome.';
+
+  @override
+  String get title_shoulders_r90_sky_untouched_name => 'Sky-Untouched';
+
+  @override
+  String get title_shoulders_r90_sky_untouched_flavor =>
+      'Storms pass overhead. You don\'t bow.';
+
+  @override
+  String get title_shoulders_r99_the_atlas_name => 'The Atlas';
+
+  @override
+  String get title_shoulders_r99_the_atlas_flavor =>
+      'All the weight of the heavens. Light work.';
+
+  @override
+  String get title_arms_r5_vein_stirrer_name => 'Vein-Stirrer';
+
+  @override
+  String get title_arms_r5_vein_stirrer_flavor =>
+      'The blood remembers the curl.';
+
+  @override
+  String get title_arms_r10_iron_fingered_name => 'Iron-Fingered';
+
+  @override
+  String get title_arms_r10_iron_fingered_flavor => 'What you grip, you keep.';
+
+  @override
+  String get title_arms_r15_sinew_drawn_name => 'Sinew-Drawn';
+
+  @override
+  String get title_arms_r15_sinew_drawn_flavor =>
+      'Cables, cords, ropes — they answer.';
+
+  @override
+  String get title_arms_r20_marrow_cleaver_name => 'Marrow-Cleaver';
+
+  @override
+  String get title_arms_r20_marrow_cleaver_flavor =>
+      'Each rep cuts deeper than the last.';
+
+  @override
+  String get title_arms_r25_steel_sleeved_name => 'Steel-Sleeved';
+
+  @override
+  String get title_arms_r25_steel_sleeved_flavor =>
+      'Sleeves can\'t keep up. Stop trying.';
+
+  @override
+  String get title_arms_r30_sinew_sworn_name => 'Sinew-Sworn';
+
+  @override
+  String get title_arms_r30_sinew_sworn_flavor =>
+      'The fibres don\'t quit before you do.';
+
+  @override
+  String get title_arms_r40_iron_knuckled_name => 'Iron-Knuckled';
+
+  @override
+  String get title_arms_r40_iron_knuckled_flavor => 'The handle bends first.';
+
+  @override
+  String get title_arms_r50_steel_forged_name => 'Steel-Forged';
+
+  @override
+  String get title_arms_r50_steel_forged_flavor =>
+      'Hammered into the shape that lifts.';
+
+  @override
+  String get title_arms_r60_sinew_bound_name => 'Sinew-Bound';
+
+  @override
+  String get title_arms_r60_sinew_bound_flavor =>
+      'Cables ran out of slack years ago.';
+
+  @override
+  String get title_arms_r70_iron_sleeved_name => 'Iron-Sleeved';
+
+  @override
+  String get title_arms_r70_iron_sleeved_flavor =>
+      'Knuckle to shoulder, all of it carries.';
+
+  @override
+  String get title_arms_r80_sinew_of_storms_name => 'Sinew of Storms';
+
+  @override
+  String get title_arms_r80_sinew_of_storms_flavor =>
+      'Lightning learns its shape from yours.';
+
+  @override
+  String get title_arms_r90_iron_untouched_name => 'Iron-Untouched';
+
+  @override
+  String get title_arms_r90_iron_untouched_flavor =>
+      'Plate slides on. Plate slides off. The arm doesn\'t move.';
+
+  @override
+  String get title_arms_r99_the_sinew_name => 'The Sinew';
+
+  @override
+  String get title_arms_r99_the_sinew_flavor =>
+      'Whatever needs lifting in this gym, you lift it.';
+
+  @override
+  String get title_core_r5_spine_tested_name => 'Spine-Tested';
+
+  @override
+  String get title_core_r5_spine_tested_flavor =>
+      'First brace held — bar stayed level.';
+
+  @override
+  String get title_core_r10_core_forged_name => 'Core-Forged';
+
+  @override
+  String get title_core_r10_core_forged_flavor =>
+      'Mid-line locked, ribs to hips.';
+
+  @override
+  String get title_core_r15_pillar_spined_name => 'Pillar-Spined';
+
+  @override
+  String get title_core_r15_pillar_spined_flavor =>
+      'The bar can lean. You don\'t.';
+
+  @override
+  String get title_core_r20_iron_belted_name => 'Iron-Belted';
+
+  @override
+  String get title_core_r20_iron_belted_flavor =>
+      'Belt\'s a formality at this point.';
+
+  @override
+  String get title_core_r25_stonewall_name => 'Stonewall';
+
+  @override
+  String get title_core_r25_stonewall_flavor => 'Air goes in. Force comes out.';
+
+  @override
+  String get title_core_r30_diamond_spine_name => 'Diamond-Spine';
+
+  @override
+  String get title_core_r30_diamond_spine_flavor =>
+      'Compressed enough times, things turn to gem.';
+
+  @override
+  String get title_core_r40_anchor_belted_name => 'Anchor-Belted';
+
+  @override
+  String get title_core_r40_anchor_belted_flavor =>
+      'Whatever the load, the trunk holds.';
+
+  @override
+  String get title_core_r50_stone_cored_name => 'Stone-Cored';
+
+  @override
+  String get title_core_r50_stone_cored_flavor => 'Hit the centre. Hit a wall.';
+
+  @override
+  String get title_core_r60_marrow_carved_name => 'Marrow-Carved';
+
+  @override
+  String get title_core_r60_marrow_carved_flavor =>
+      'Each rep cut a notch into bone.';
+
+  @override
+  String get title_core_r70_stone_spined_name => 'Stone-Spined';
+
+  @override
+  String get title_core_r70_stone_spined_flavor =>
+      'The vertebrae stack like masonry.';
+
+  @override
+  String get title_core_r80_spine_of_storms_name => 'Spine of Storms';
+
+  @override
+  String get title_core_r80_spine_of_storms_flavor =>
+      'Wind through trees. Trunk doesn\'t move.';
+
+  @override
+  String get title_core_r90_marrow_untouched_name => 'Marrow-Untouched';
+
+  @override
+  String get title_core_r90_marrow_untouched_flavor =>
+      'Whatever cracks the body, it stops at the centre.';
+
+  @override
+  String get title_core_r99_the_spine_name => 'The Spine';
+
+  @override
+  String get title_core_r99_the_spine_flavor =>
+      'Hold the bar like a chapel beam.';
 }
