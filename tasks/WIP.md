@@ -4,6 +4,214 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ---
 
+## Phase 18c — RPG v1: Mid-Workout Overlay Rewire + Title Unlocks
+
+**Branch:** `feature/phase18c-mid-workout-overlays` (created off main @ f7f05ee)
+**Reference:** PLAN.md Phase 18c (lines 1183-1209), design spec `docs/superpowers/specs/2026-04-25-rpg-system-v1-design.md` §13.2 + §13.4 + §10.1 + §8.4
+**Depends on:** 18a (PR #112, merged) — `record_set_xp` returns deltas; 18b (PR #113, merged) — character sheet renders equipped title + rune halo states
+
+### Decisions locked from product-owner + ui-ux-critic kickoff
+
+**Celebration queue mechanics (PO + critic):**
+
+- **Cap at 3 overlays max** per workout finish. Beyond 3, render a non-modal condensed card "N more rank-ups — open Saga" (3s auto-dismiss, tappable, opens `/profile`). Reasoning: 6 body-part rank-ups + level-up + title = 10s of overlays = churn risk for the lifter who wants to log and leave.
+- **Causal queue order kept per spec:** rank-ups (highest body-part rank first as tiebreaker) → character level-up → title unlock (half-sheet, post-workout). Don't re-order to identity weight; the causal narrative reads cleaner.
+- **Inter-event gap:** 200ms between overlays. Each overlay 1.1s. Dismissible via tap, but auto-advance at 1.1s without requiring tap.
+- **Rest timer + set logging must NOT block** behind overlays. Rank-up overlays fire on workout finish, not between sets — but defensive: if any overlay surface is invoked mid-workout, it must not capture pointer events on the rest timer or the set entry row.
+
+**RankUpOverlay (Direction B — "Rune Stamp"):**
+
+- Layout: centered card on `surface2`, 280dp wide, `kRadiusMd` corners, 1px `heroGold @ 0.6` border. Backdrop dims to `abyss @ 0.72` via `ModalBarrier` `FadeTransition` (180ms `Curves.easeOut`).
+- Card entry: scale 0.88→1.0, 220ms `Curves.easeOutBack` (slight overshoot for weight, no bounce).
+- Rune sigil (60dp body-part icon from `AppMuscleIcons`) three-stage `ColorTween`:
+  - 0–200ms: `textDim @ 0.3` → `heroGold @ 1.0` (`Curves.easeIn`) — ignition spark
+  - 200–500ms: hold `heroGold`; `BoxShadow` blur 0→24, spread 0→6 (`heroGold @ 0.5`, `Curves.easeOut`)
+  - 500–900ms: `heroGold @ 1.0` → `hotViolet @ 0.9` (`Curves.decelerate`) — settle
+  - 900–1100ms: `BoxShadow` color cross-fades `heroGold @ 0.5` → `hotViolet @ 0.45` (matches RuneHalo Active steady state for visual continuity)
+- Copy: "{BODY PART} · RANK {N}" — Rajdhani 700 28sp, body-part name in `textCream`, rank numeral wrapped in `RewardAccent` for `heroGold`. Optional flavor line in Inter 400 14sp `textDim`.
+- Haptic: `HapticFeedback.mediumImpact()` at t=200ms (peak gold). Heavier than RuneHalo's `lightImpact` because rank-up is permanent.
+- All `heroGold` pixels MUST flow through `RewardAccent` (scarcity contract from 17.0c).
+
+**LevelUpOverlay differentiation (locked, total separation from RankUpOverlay):**
+
+- **Glyph:** the level numeral itself, Rajdhani 700 64sp, no icon. (RankUp uses body-part rune.)
+- **Chromatic register:** pure `heroGold` throughout — no settle into `hotViolet`. Character level is cumulative, never resets.
+- **Entry axis:** `SlideTransition` `Offset(0.08, 0)` → `Offset.zero`, 200ms `Curves.easeOutCubic`. (RankUp uses scale.)
+- **No backdrop dim** on level-up — stacking dim layers when already in queue is oppressive.
+- **Haptic:** `HapticFeedback.heavyImpact()` at t=0. (RankUp = medium at peak; LevelUp = heavy at entry.)
+- **Copy:** "LEVEL {N}" Rajdhani 600 24sp `textCream` beneath the numeral. No flavor.
+
+**TitleUnlockSheet (post-workout half-sheet, "artifact" not "Material modal"):**
+
+- Background: `surface2` flat, NO gradient. Faint `AppIcons.hero` SVG watermark at 180dp, `textDim @ 0.04`, bottom-right, `IgnorePointer`.
+- Drag handle: 32×3dp pill in `hair` color (replaces white default).
+- Reading order top-to-bottom: rank label → title name → flavor → equip button.
+  - Rank label: "{BODY PART} · RANK {N} TITLE" Inter 600 13sp uppercase 0.12em tracking, `hotViolet`.
+  - Title name: Rajdhani 700 32sp `textCream` centered. NOT Cinzel (overhead unjustified for transient sheet).
+  - Flavor: Inter 400 14sp `textDim` 1.5 line-height. Max 2 lines, truncate (don't expand sheet).
+  - Equip: filled `OutlinedButton` (no — filled `ElevatedButton`), full width, `primaryViolet` background, `textCream` foreground, "EQUIP TITLE" Rajdhani 600 13sp uppercase. 56dp height. If already equipped: outlined `hotViolet` "EQUIPPED" non-interactive (or tap → character sheet).
+- **First-ever title only:** wrap title name in `RewardAccent` for `heroGold`. Subsequent titles stay `textCream`.
+- Sheet height: `DraggableScrollableSheet` fixed at 0.45 (`initialChildSize = minChildSize = maxChildSize = 0.45`). NO free-drag — content is fixed-length and free-drag invites accidental dismiss.
+- Dismiss: tap outside or back gesture. Equip button persists `is_active` via `earned_titles_one_active` UNIQUE INDEX.
+
+**Persistence — earned-but-not-equipped titles (PO addition, scope expansion):**
+
+- The Titles screen (currently `SagaStubScreen` from 18b's codex nav row) gets upgraded in 18c to a functional list of earned titles, each row with an Equip/Equipped toggle. This is the re-entry point for users who dismissed the post-workout half-sheet without equipping.
+- Stats deep-dive remains stubbed for 18d.
+
+**FirstAwakeningOverlay (zero-history onboarding, 800ms):**
+
+- Centered card, 240dp wide (narrower than RankUp's 280dp — physically smaller, semantically smaller).
+- Background: `surface2`, `hotViolet @ 0.25` border. NO backdrop dim (800ms too short to dim and recover eyes). Single `BoxShadow` `hotViolet @ 0.30` blur 20.
+- Rune sigil 48dp (smaller than RankUp's 60dp). `ColorTween` `textDim @ 0.15` → `hotViolet @ 1.0` over full 800ms `Curves.easeOut` — slow linear ignition, no peak/settle staging.
+- Copy: "{BODY PART} AWAKENS" Rajdhani 600 18sp. No flavor, no rank number.
+- Entry: `ScaleTransition` 0.92→1.0 (200ms `Curves.easeOut`) + `FadeTransition` 0→1 (150ms simultaneous).
+- Exit: `FadeTransition` 1→0 (200ms `Curves.easeIn`) starting at t=600ms.
+- Haptic: `HapticFeedback.lightImpact()` at t=0.
+- **No tap dismissal** — `IgnorePointer` over the card during the 800ms window. Reaction time would not allow intentional tap anyway.
+- **Throttle (PO):** **1 overlay per session max**, fires only for the first body part the user touches. Subsequent body-part awakenings in the same session are silent rune-state changes (Dormant→Active via the character sheet, no overlay). Lifetime cap: this is functionally a session-1 + session-2 device since by session 2 most users have no Dormant body parts left.
+- Connection to RuneHalo Radiant: ends at `hotViolet` matching the RuneHalo Active steady state — perceptual bridge to the character sheet.
+
+**Mid-session PR chip:**
+
+- Inline in the set row (Strong/Hevy pattern). Right-aligned, 28dp height (no row height expansion).
+- Fires on **set commit**, NOT on input — typing weight 100→105→110 must not flash the chip mid-keystroke.
+- Visual: pill chip, `surface` background, 1px `heroGold @ 0.8` border (via `RewardAccent`), text "PR" Rajdhani 700 11sp `heroGold` (via `RewardAccent`). No icon, no haptic, no animation. Persists for full session.
+- All `heroGold` pixels flow through `RewardAccent` per scarcity contract.
+- **Haptic explicitly NOT used** — preserved for Radiant rune state + rank-up + level-up. Diluting haptic on every PR cheapens the signal.
+
+**Finish-button placement:**
+
+- Move to AppBar trailing as `OutlinedButton` (not text — too easy to mis-tap; not filled — competes with set-entry CTA).
+- `hotViolet` border + text, "FINISH" Rajdhani 600 13sp. 44dp tap target.
+- Top-right is intentionally hard to reach one-handed — friction is the feature for a destructive action. Confirmation dialog is the second gate.
+- FAB position freed up for "Add exercise" (genuinely mid-session, benefits from thumb-reach).
+
+**Title catalog editorial pass (PO finding, must happen before titles_v1.json ships):**
+
+- Audit and revise titles ending in `-Lord`, `-King`, `-Master`, `-Eternal`, `-Sworn` at Ranks 40-90 across all six body parts. Compound-noun titles only. No borrowed-status suffixes unless terminal Rank 99 (and even then prefer noun fragment).
+- Editorial principle: titles describe what the body part DOES or has BECOME, not the rank achieved. "Iron-Chested" passes; "Forge-Lord" fails.
+- Anchor examples (legs): Rank 5 "Ground-Walker" ✓, Rank 40 "Stone-Strider" (preferred over "Pillar-Sworn"), Rank 99 "The Pillar" ✓.
+- pt-BR translations: must use Brazilian gym vocabulary (`malhado`, `pegada`, `raiz`), NOT direct word-for-word renders. Engage native speaker review during qa-engineer gate.
+
+**Anti-patterns to reject (critic, locked):**
+
+1. **Particle bursts** on rank-up. Replace: three-stage color tween IS the celebration. Color change is zero-cognitive-load state communication.
+2. **Gradient backgrounds** on TitleUnlockSheet. Replace: flat `surface2` + low-opacity rune watermark. Archaeological texture, not promotional gradient.
+3. **Animated/typewriter title text entry** on TitleUnlockSheet. Replace: standard Material slide-up (300ms `Curves.fastOutSlowIn`), content visible at frame one. Stillness is confidence.
+
+### Implementation checklist (tech-lead)
+
+- [ ] Verify CI green on main (already confirmed at f7f05ee).
+- [ ] **Models (in order):**
+  - [ ] `lib/features/rpg/models/title.dart` — Freezed: id, slug, body_part, rank_threshold, en_name, en_flavor (nullable). pt-BR via `app_pt.arb` lookup.
+  - [ ] `lib/features/rpg/models/celebration_event.dart` — sealed class `CelebrationEvent` with subtypes: `RankUpEvent`, `LevelUpEvent`, `TitleUnlockEvent`, `FirstAwakeningEvent`. Carries rank, body part, title slug, etc.
+- [ ] **Catalog asset:**
+  - [ ] `assets/rpg/titles_v1.json` — 78 per-body-part titles (~13 per body part). Apply editorial pass: revise -Lord/-King/-Master/-Eternal/-Sworn at Ranks 40-90.
+  - [ ] Localize `name` + `flavor` via `app_en.arb` + `app_pt.arb` keys: `title_{slug}_name`, `title_{slug}_flavor`. JSON references slug only; copy lives in arb.
+  - [ ] Register asset in `pubspec.yaml`.
+- [ ] **Domain logic:**
+  - [ ] `lib/features/rpg/domain/title_unlock_detector.dart` — given body-part rank deltas from `record_set_xp`, returns list of newly-unlocked title slugs per body part. Guards against double-unlock (consults `earned_titles` table for already-earned slugs).
+  - [ ] `lib/features/rpg/domain/celebration_queue.dart` — takes `CelebrationEvent` list, applies cap-at-3 rule, returns ordered queue + optional condensed-card payload (`N more rank-ups`). Handles dismiss-to-skip-end semantics from 17b scaffold.
+  - [ ] `lib/features/rpg/data/titles_repository.dart` — loads `titles_v1.json`, exposes `lookup(slug)`, `forBodyPart(part)`, persistence to `earned_titles` table (insert on unlock, set `is_active` on equip with UNIQUE INDEX guard).
+  - [ ] `lib/features/rpg/providers/earned_titles_provider.dart` — `Stream` of earned titles for current user; powers the Titles screen list.
+- [ ] **Overlay widgets (TDD per widget — write failing widget test first):**
+  - [ ] `lib/features/rpg/ui/overlays/rank_up_overlay.dart` — Direction B Rune Stamp choreography. Use `TickerProviderStateMixin` (multi-controller pattern from 18b's `_RadiantHalo`).
+  - [ ] `lib/features/rpg/ui/overlays/level_up_overlay.dart` — slide-from-right entry, `heroGold` hold (no settle), heavy haptic at t=0.
+  - [ ] `lib/features/rpg/ui/overlays/first_awakening_overlay.dart` — 800ms compressed choreography, no dim, `IgnorePointer` over card.
+  - [ ] `lib/features/rpg/ui/overlays/title_unlock_sheet.dart` — `DraggableScrollableSheet` fixed at 0.45, watermark via `Stack` + `IgnorePointer` SVG, fixed copy hierarchy.
+  - [ ] `lib/features/rpg/ui/overlays/celebration_overflow_card.dart` — non-modal "N more rank-ups — open Saga" 3s auto-dismiss tappable card.
+- [ ] **Active-workout chrome:**
+  - [ ] Modify `lib/features/workouts/ui/active_workout_screen.dart` — move Finish button to AppBar trailing as `OutlinedButton`, free FAB for "Add exercise". Confirmation dialog gate retained.
+  - [ ] New widget `lib/features/workouts/ui/widgets/pr_chip.dart` — inline pill, fires on set commit (NOT on weight/reps input change), `RewardAccent` wraps `heroGold`. Persists for session.
+  - [ ] Modify the set-row widget (find via grep `SetRow`/`set_row.dart`) to render PR chip when `isPR == true` after commit.
+- [ ] **Workout finish flow:**
+  - [ ] Modify `lib/features/workouts/ui/workout_finish_flow.dart` (or wherever the finish handler lives — verify file exists; if not, add the orchestration to `ActiveWorkoutNotifier._finishOnline`) to:
+    1. Pull deltas from `record_set_xp` response (rank-ups, level-up, title-unlock candidates).
+    2. Run `TitleUnlockDetector` against deltas.
+    3. Build `CelebrationQueue` (cap-at-3 rule applied), separating rank/level overlays from title half-sheet.
+    4. Show overlays via 17b's Hive-backed scheduler in sequence.
+    5. After last overlay, present `TitleUnlockSheet` if any titles unlocked.
+    6. After sheet dismiss (or if no title), navigate to summary as today.
+- [ ] **Titles screen upgrade (was stub, now functional):**
+  - [ ] Modify `lib/features/rpg/ui/saga_stub_screen.dart` OR create new `lib/features/rpg/ui/titles_screen.dart` — scrollable list grouped by body part. Each row: title name + rank threshold + Equip/Equipped toggle. Tap toggle → set `is_active` (UNIQUE INDEX guard handles concurrent equip).
+  - [ ] Update `codex_nav_row` for "Titles" to route to `/profile/titles` (or whatever route the app uses for the saga sub-screens — verify against `app_router.dart`).
+  - [ ] Stats deep-dive remains stubbed for 18d — keep it pointing at `SagaStubScreen` with "coming soon" copy.
+- [ ] **First-awakening session-throttle:**
+  - [ ] State in `ActiveWorkoutNotifier`: `_firstAwakeningFiredThisSession: bool`. Reset on workout start, set true after first overlay.
+  - [ ] Logic gates the FirstAwakeningOverlay invocation on this flag + the body-part's prior `lifetime_xp == 0` check.
+- [ ] **L10n additions** to `app_en.arb` + `app_pt.arb`:
+  - [ ] `rankUpHeading` ("{bodyPart} · Rank {n}") — pt-BR equivalent with native gym voice.
+  - [ ] `levelUpHeading` ("Level {n}") — pt-BR equivalent.
+  - [ ] `firstAwakeningHeading` ("{bodyPart} awakens") — pt-BR equivalent.
+  - [ ] `equipTitleButton` ("Equip Title" / "Equipar Título").
+  - [ ] `equippedLabel` ("Equipped" / "Equipado").
+  - [ ] `prChipLabel` ("PR" — same in both).
+  - [ ] `finishButtonLabel` ("Finish" / "Finalizar").
+  - [ ] `celebrationOverflowLabel` ("{n} more rank-ups — open Saga" / pt-BR).
+  - [ ] `titlesScreenTitle` ("Titles" / "Títulos").
+  - [ ] All 78 title `name` + `flavor` keys from `titles_v1.json` slug list.
+  - [ ] Run `make gen` after editing arb files.
+- [ ] **Make ci** passes (format + analyze + test + android build).
+
+### Test plan (qa-engineer)
+
+- [ ] **Unit tests:**
+  - [ ] `celebration_queue_test.dart`:
+    - rank-up + level-up + title sequence in causal order
+    - cap-at-3 yields condensed card with overflow count
+    - dismiss-skip-to-end clears entire queue (preserved from 17b infra)
+    - empty-event-list → no overlays, no card
+    - rank-up sort tiebreaker by highest body-part rank
+  - [ ] `title_unlock_detector_test.dart`:
+    - every threshold per body part triggers exactly one title at the rank boundary
+    - already-earned titles (via `earned_titles` mock) are excluded
+    - cross-body-part unlocks return distinct entries
+- [ ] **Widget tests:**
+  - [ ] `rank_up_overlay_test.dart` — three-stage color verified at frames 0, 200, 500, 900, 1100ms; copy renders body-part + rank; `RewardAccent` wraps gold pixels; haptic fires once at t=200ms (mock `HapticFeedback.mediumImpact`).
+  - [ ] `level_up_overlay_test.dart` — slide entry, gold hold (no settle assertion), `heavyImpact` at t=0, copy "LEVEL {N}" renders.
+  - [ ] `first_awakening_overlay_test.dart` — 800ms total runtime, no backdrop dim widget present, `IgnorePointer` engaged during window, fade-out begins at t=600ms.
+  - [ ] `title_unlock_sheet_test.dart` — fixed 0.45 height, watermark `IgnorePointer`, copy en + pt-BR, equip toggles `is_active` exactly once. First-ever title wrapped in `RewardAccent`; subsequent in `textCream`.
+  - [ ] `celebration_overflow_card_test.dart` — auto-dismiss at 3s, tap routes to `/profile`, copy renders count.
+  - [ ] `pr_chip_test.dart` — fires on commit, NOT on input change; persists in row after commit; `RewardAccent` wraps gold; no haptic invoked.
+  - [ ] `titles_screen_test.dart` — list grouped by body part, equip toggle updates `is_active`, equipped row shows "EQUIPPED" outlined state.
+- [ ] **Goldens:**
+  - [ ] `rank_up_overlay_golden_test.dart` — frame at peak gold (t=400ms) and settled state (t=1100ms).
+  - [ ] `title_unlock_sheet_golden_test.dart` — first-ever title (with `RewardAccent`) and subsequent title (without).
+- [ ] **Selectors** in `test/e2e/helpers/selectors.ts`:
+  - `rankUpOverlay`, `levelUpOverlay`, `titleUnlockSheet`, `firstAwakeningOverlay`, `celebrationOverflowCard`
+  - `equipTitleButton`, `equippedTitleLabel`
+  - `prChip`, `finishButton`, `addExerciseFab`
+  - `titlesScreen`, `titleRow.{slug}` (or generic `titleRow` with index)
+- [ ] **E2E `test/e2e/specs/rank-up-celebration.spec.ts` (`@smoke`):**
+  - login as seeded user one set away from Chest Rank 5 → complete workout → assert RankUpOverlay renders with correct body-part + rank → assert auto-advances by 1.1s (no tap)
+  - login as seeded user simultaneously hitting body-part rank-up + character level-up + title unlock → assert sequence rank → level → titleSheet → equip button works
+  - login as seeded `rpgFreshUser` (zero history) → log first set → assert FirstAwakeningOverlay fires once, no overlay on second body part touched same session
+  - login as seeded user 4-rank-ups state → assert 3 overlays + condensed card with "1 more"
+  - tap PR set → assert `prChip` appears inline, persists for session
+  - tap Finish in AppBar → confirmation dialog → confirm → workout summary
+- [ ] **E2E test users to add** to `test/e2e/fixtures/test-users.ts` + `global-setup.ts` seeding:
+  - `rpgRankUpThreshold` — pre-seeded to one set away from Chest Rank 5 (or equivalent computable threshold)
+  - `rpgMultiCelebration` — pre-seeded such that one workout triggers rank + level + title
+  - `rpgOverflowQueue` — pre-seeded for 4+ rank-ups in one finish (capacity test)
+  - reuse `rpgFreshUser` (already exists in fixtures) for first-awakening
+- [ ] **Update affected specs:** any spec touching `ActiveWorkoutScreen` chrome (workout completion flow, finish button position, FAB, set-row right gutter) — re-verify selectors after PR chip + finish-button repositioning. Specifically: `workouts.spec.ts`, `crash-recovery.spec.ts`, anything with `finishWorkout` selector.
+- [ ] **Full E2E regression** required — overlay scheduling + finish-button reposition is a flow change. All 197+ tests must pass.
+- [ ] **pt-BR copy review:** run a separate pass with native speaker (or careful manual review) on 78 title names + flavor lines + new overlay copy. Brazilian gym vocabulary, not translation-by-dictionary.
+
+### Acceptance (orchestrator gate)
+
+- [ ] `make ci` green
+- [ ] Full E2E green locally (`FLUTTER_APP_URL= npx playwright test`)
+- [ ] Goldens reviewed by orchestrator
+- [ ] pt-BR title copy reviewed (native gym voice, not literal translations)
+- [ ] Reviewer signs off (no Blockers, all Important addressed in same cycle per "no deferring" rule)
+- [ ] PR squash-merged
+- [ ] PLAN.md Phase 18c row → DONE + PR number; Phase 18c detailed spec condensed to 5-7 bullets
+- [ ] WIP.md Phase 18c section removed
+
+---
+
 ## Phase 16 — Subscription Monetization — PARKED (2026-04-22)
 
 **Why parked:** Phase 16 keeps hitting external blockers (Brazilian merchant account, Play Console → upload signed AAB required before subscription product can be created, license-tester account setup). Phase 17 gamification is fully internal code work with no external gates and produces the retention moat that makes Phase 16's paywall pitch compelling. Decision: ship Phase 17 (Gamification) before resuming 16b/c/d.
