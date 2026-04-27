@@ -13,6 +13,7 @@ import '../../../profile/providers/profile_providers.dart';
 import '../../models/exercise_set.dart';
 import '../../models/set_type.dart';
 import '../../providers/notifiers/active_workout_notifier.dart';
+import 'pr_chip.dart';
 
 /// Displays a single set within an exercise card during an active workout.
 ///
@@ -25,6 +26,7 @@ class SetRow extends ConsumerStatefulWidget {
     this.onCompleted,
     this.lastSet,
     this.isNew = false,
+    this.isPrCandidate = false,
     super.key,
   });
 
@@ -40,6 +42,14 @@ class SetRow extends ConsumerStatefulWidget {
   /// Whether this set was just added. When true, the completion checkbox
   /// is locked for 600ms to prevent accidental taps from thumb drift.
   final bool isNew;
+
+  /// Phase 18c, spec §13: when `true`, the inline [PrChip] renders to the
+  /// right of the reps stepper. Set by the parent (active workout screen)
+  /// only AFTER set commit — typing weight/reps mid-keystroke must not
+  /// flash the chip. The parent computes candidacy via
+  /// [isPrCandidateAfterCommit] and persists the chip for the rest of the
+  /// session (chip persistence == set stays committed).
+  final bool isPrCandidate;
 
   @override
   ConsumerState<SetRow> createState() => _SetRowState();
@@ -324,6 +334,17 @@ class _SetRowState extends ConsumerState<SetRow> {
                     ),
                   ),
                 ),
+
+                // Inline PR chip — rendered only when the parent has marked
+                // the set as a PR candidate AFTER commit. Wrapped in
+                // [SizedBox] with a fixed-height container so the row's
+                // overall height does not shift when the chip appears
+                // (spec §13: "no row height expansion").
+                if (widget.isPrCandidate)
+                  const Padding(
+                    padding: EdgeInsets.only(left: 4, right: 4),
+                    child: PrChip(),
+                  ),
 
                 // Completion checkbox
                 Semantics(

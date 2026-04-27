@@ -15,6 +15,7 @@ import '../models/active_workout_state.dart';
 import '../models/exercise_set.dart';
 import '../models/weight_unit.dart';
 import '../models/set_type.dart';
+import '../utils/pr_candidate.dart';
 import '../utils/set_defaults.dart';
 import '../../exercises/models/exercise.dart';
 import '../../personal_records/models/personal_record.dart';
@@ -23,6 +24,8 @@ import '../../profile/providers/profile_providers.dart';
 import '../../personal_records/models/record_type.dart';
 import '../../personal_records/ui/widgets/pr_type_icon.dart';
 import '../../routines/providers/notifiers/routine_list_notifier.dart';
+import '../../rpg/providers/earned_titles_provider.dart';
+import '../../rpg/ui/celebration_player.dart';
 import '../../weekly_plan/providers/weekly_plan_provider.dart';
 import '../providers/workout_providers.dart';
 import '../providers/workout_history_providers.dart';
@@ -310,6 +313,35 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
             duration: const Duration(seconds: 4),
           ),
         );
+      }
+
+      // Phase 18c celebration playback. Online finishes only — offline
+      // queues no overlays per spec §13 (the user isn't watching). The
+      // notifier built the queue inside `finishWorkout`; we read it once
+      // via the consume getter so a hot-reload doesn't re-fire.
+      if (!wasSavedOffline && mounted) {
+        final celebration = notifier.consumeLastCelebration();
+        if (celebration != null) {
+          // Whether the user already had earned titles BEFORE this finish.
+          // The player uses this to decide which unlock — if any — gets the
+          // first-ever heroGold treatment on the half-sheet.
+          final priorEarned = ref.read(earnedTitlesProvider).value ?? const [];
+          final hasPriorEarnedTitles = priorEarned.isNotEmpty;
+          final catalog = ref.read(titleCatalogProvider).value ?? const [];
+          await CelebrationPlayer.play(
+            context,
+            result: celebration,
+            catalog: catalog,
+            hasPriorEarnedTitles: hasPriorEarnedTitles,
+            onEquipTitle: (title) async {
+              final repo = ref.read(titlesRepositoryProvider);
+              await repo.equipTitle(title.slug);
+              ref.invalidate(earnedTitlesProvider);
+              ref.invalidate(equippedTitleSlugProvider);
+            },
+          );
+          if (!mounted) return;
+        }
       }
 
       // Determine if we should prompt to add this routine to the plan.
@@ -942,6 +974,16 @@ class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
                     ? lastSets[index]
                     : null;
                 final isNew = _newSetIds.contains(s.id);
+                // Phase 18c PR chip: parent owns candidacy because the
+                // detection needs the full set list for this exercise +
+                // the prior session's set list, neither of which the row
+                // itself can synthesize. The chip is presentational only;
+                // see [isPrCandidateAfterCommit] for the heuristic.
+                final isPrCandidate = isPrCandidateAfterCommit(
+                  set: s,
+                  allSetsThisExercise: activeExercise.sets,
+                  lastWorkoutSets: lastSets,
+                );
                 return SetRow(
                   key: ValueKey(s.id),
                   set: s,
@@ -949,6 +991,7 @@ class _ExerciseCardState extends ConsumerState<_ExerciseCard> {
                   onCompleted: _onSetCompleted,
                   lastSet: lastSet,
                   isNew: isNew,
+                  isPrCandidate: isPrCandidate,
                 );
               }),
             ],

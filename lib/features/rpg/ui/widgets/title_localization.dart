@@ -9,7 +9,7 @@ class TitleCopy {
 
 /// Slug → localized name + flavor lookup. Mirrors `assets/rpg/titles_v1.json`.
 ///
-/// **Why a switch instead of reflection or a Map<String, Function>:**
+/// **Why a switch instead of reflection or a `Map<String, Function>`:**
 ///   * `flutter gen-l10n` generates one getter per arb key — `String get
 ///     title_chest_r5_initiate_of_the_forge_name => …`. Dart has no
 ///     compile-time reflection, and tear-off references would force the
