@@ -66,6 +66,9 @@ flutter:
     - assets/icons/google_logo.svg
     - assets/icons/v3-silhouette/
     - assets/legal/
+    # Phase 18c: per-body-part title catalog (78 entries). Slugs only — display
+    # copy lives in lib/l10n/app_*.arb keyed by `title_{slug}_name|_flavor`.
+    - assets/rpg/titles_v1.json
     # Bundled Rajdhani (display) + Inter (body) TTFs. google_fonts picks these
     # up via its asset-manifest lookup (lib/src/google_fonts_base.dart) and
     # skips the CDN entirely — faster first paint on slow networks and makes
