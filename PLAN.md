@@ -71,7 +71,7 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 17e | Home Recap + First-Week Quest + LVL Line | SUPERSEDED | - |
 | 17 | Gamification Foundation (visual + XP infra shipped; remaining sub-phases SUPERSEDED by Phase 18 RPG v1) | PARTIAL | #101, #103, #105, #106, #107, #108 |
 | 18a | RPG v1: Schema + XP engine + backfill (foundation) | DONE | #112 |
-| 18b | RPG v1: Character sheet + rune sigils UI | TODO | - |
+| 18b | RPG v1: Character sheet + rune sigils UI | DONE | #113 |
 | 18c | RPG v1: Mid-workout overlay rewire + title unlocks | TODO | - |
 | 18d | RPG v1: Stats deep-dive + Vitality nightly job + visual states | TODO | - |
 | 18e | RPG v1: Class system + cross-build titles + final QA pass | TODO | - |
@@ -1168,32 +1168,15 @@ Two numbers per body part: **Rank** (1-99, monotonic, the lifetime saga) and **V
 
 ---
 
-### 18b: Character sheet + rune sigils UI
+### 18b: Character sheet + rune sigils UI — DONE (PR #113)
 
-**Goal:** Replace the existing `/profile` gamification widgets (`_LvlBadge` placeholder + 17b's saga-intro-overlay landing) with the v1 character sheet (spec §13.1).
-
-**UI (spec §13.1 + §13.4 onboarding gate):**
-
-- New screen `/saga` (or extend `/profile` — orchestrator decides; spec leans toward a new "Saga" tab or rebrand of Profile). Layout per spec §13.1: header (active title + Lvl + Class + avatar with rune halo), six body-part rows with progress bar to next rank, dormant Cardio row, three navigation chips (Stats deep-dive / Titles / History).
-- **Rune halo** = average Vitality state across active body parts → drives glow intensity (Dormant / Fading / Active / Radiant per spec §8.4). Avatar is the Arcane Ascent app-icon sigil already shipped.
-- **Per-body-part progress bar** width = `xp_in_current_rank / xp_for_next_rank`. Color reflects that body part's Vitality state, not a single hardcoded color.
-- **No Vitality % shown** on this screen. Number only appears in 18d's deep-dive.
-- **Onboarding gate:** zero-history user sees "dormant" runes with copy "first set awakens this path". First-set-awakens micro-celebration is wired in 18c.
-
-**Files:**
-
-- Create: `lib/features/rpg/ui/character_sheet_screen.dart`, `widgets/rune_halo.dart`, `body_part_rank_row.dart`, `rank_progress_bar.dart`, `class_badge.dart`, `active_title_pill.dart`, `dormant_cardio_row.dart`
-- Create: `lib/features/rpg/providers/character_sheet_provider.dart` (composes `rpg_progress_provider` + active title + derived class — class-derivation logic lands in 18e but stub it here returning "Initiate")
-- Modify: `lib/core/router/app_router.dart` (route + nav tab), `lib/features/profile/ui/profile_screen.dart` (remove `_LvlBadge` placeholder, point users to /saga or restructure)
-- Delete: `_LvlBadge` placeholder from 17b once new sheet is wired
-
-**Test plan:**
-
-- **Widget:** `test/widget/features/rpg/character_sheet_screen_test.dart` (six-body-part layout, dormant-rune zero-history state, radiant-rune full-vitality state, progress-bar percentages), `rune_halo_test.dart` (4 visual states), `body_part_rank_row_test.dart` (rank label + progress).
-- **E2E:** New `test/e2e/specs/saga.spec.ts` (`@smoke`) — login, navigate to /saga, assert character sheet renders, assert rune halo present, assert six body-part rows. Also: zero-history user sees dormant state copy. Update `specs/auth.spec.ts` if onboarding flow now lands on /saga first-time. **This is a navigation-flow change → full E2E suite required.**
-- Selectors added to `helpers/selectors.ts`: `characterSheet`, `runeHalo`, `bodyPartRow{Name}`, `rankProgressBar`, `classBadge`, `activeTitlePill`.
-
-**Dependencies:** 18a (data model + provider).
+- **Profile tab → Saga.** `/profile` now resolves to `CharacterSheetScreen`; legacy account/locale/sign-out/manage-data moved to `/profile/settings` reachable via gear icon. Tab label: "Saga" (en + pt-BR). `_LvlBadge` placeholder from 17b deleted.
+- **Layout:** rune halo + Lvl 56sp + class badge slot + active title pill → hexagonal Vitality radar (CustomPainter, 6 axes, fill opacity ∝ rank/99) → six asymmetric codex rows (trained expanded, untrained collapsed) → dormant Cardio row → three full-width codex nav rows (Stats / Titles / History). Stats + Titles route to `SagaStubScreen` (filled by 18d/18c); History routes to existing `/history`.
+- **Four rune halo glow states** per spec §8.4: Dormant (12% opacity, slow rotate), Fading (cold `primaryViolet` ring, breathing pulse), Active (static `hotViolet`, two-layer shadow), Radiant (`heroGold` via `RewardAccent`, sweep highlight, +10% size, `HapticFeedback.lightImpact()` once on first paint).
+- **Class badge ships day-1** with placeholder "The iron will name you." / "O ferro lhe dará um nome." (real class derivation deferred to 18e). First-set-awakens banner renders only when `lifetime_xp == 0`; disappears after first online workout via `ref.invalidate(rpgProgressProvider)` in `ActiveWorkoutNotifier._finishOnline` (review-found Blocker, fixed in `055a4e3`).
+- **Tab re-tap fix** (knock-on benefit): `_ShellScaffold.onDestinationSelected` now calls `context.go(target)` unconditionally — previously the `current == target` guard silently dropped re-taps when on a pushed sub-route because `RouteMatchList.uri` ignores `ImperativeRouteMatch` entries. Affects all four branches.
+- **Tests shipped:** 1919 unit/widget pass (+17 new RPG tier including 4-test Radiant haptic group + 2 vitality_radar goldens at `test/widget/features/rpg/widgets/goldens/`); new `test/e2e/specs/saga.spec.ts` (S1–S7 `@smoke`, all green); full Playwright suite 196/197 → 197/197 after the router fix unblocked the locale-switch flow.
+- **L10n** added 9 new keys (`sagaTabLabel`, `classSlotPlaceholder`, `dormantCardioCopy`, `firstSetAwakensCopy`, `statsDeepDiveLabel`, `titlesLabel`, `historyLabel`, `comingSoonStub`, `settingsLabel`) — full en + pt-BR coverage.
 
 ---
 
