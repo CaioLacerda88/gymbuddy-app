@@ -122,6 +122,60 @@ abstract class AppLocalizations {
   /// **'Profile'**
   String get navProfile;
 
+  /// Bottom navigation label for the character-sheet (Saga) tab — replaces 'Profile'.
+  ///
+  /// In en, this message translates to:
+  /// **'Saga'**
+  String get sagaTabLabel;
+
+  /// Day-1 copy for the class-badge slot on the character sheet, before any class has been derived (Phase 18e).
+  ///
+  /// In en, this message translates to:
+  /// **'The iron will name you.'**
+  String get classSlotPlaceholder;
+
+  /// Subtitle on the dormant Cardio row of the character sheet — communicates that cardio is intentionally not yet active.
+  ///
+  /// In en, this message translates to:
+  /// **'Cardio runes awaken in a future chapter.'**
+  String get dormantCardioCopy;
+
+  /// Inline banner shown on the character sheet when the user has zero lifetime XP (Phase 18b onboarding gate).
+  ///
+  /// In en, this message translates to:
+  /// **'Your first set awakens this path.'**
+  String get firstSetAwakensCopy;
+
+  /// Codex nav row label for the Stats deep-dive sub-screen (Phase 18d).
+  ///
+  /// In en, this message translates to:
+  /// **'Stats deep-dive'**
+  String get statsDeepDiveLabel;
+
+  /// Codex nav row label for the Titles sub-screen (Phase 18c).
+  ///
+  /// In en, this message translates to:
+  /// **'Titles'**
+  String get titlesLabel;
+
+  /// Codex nav row label for the workout-history sub-screen.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get historyLabel;
+
+  /// Placeholder copy for sub-screens whose full implementation lands in a later phase.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming soon.'**
+  String get comingSoonStub;
+
+  /// App bar title for the profile-settings sub-screen reachable via the gear icon on the character sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settingsLabel;
+
   /// Save button label
   ///
   /// In en, this message translates to:

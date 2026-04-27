@@ -23,7 +23,9 @@ import '../../features/gamification/ui/saga_intro_gate.dart';
 import '../../features/workouts/models/active_workout_state.dart';
 import '../../features/workouts/providers/workout_providers.dart';
 import '../../features/profile/ui/manage_data_screen.dart';
-import '../../features/profile/ui/profile_screen.dart';
+import '../../features/profile/ui/profile_settings_screen.dart';
+import '../../features/rpg/ui/character_sheet_screen.dart';
+import '../../features/rpg/ui/saga_stub_screen.dart';
 import '../../features/routines/ui/create_routine_screen.dart';
 import '../../features/routines/ui/routine_list_screen.dart';
 import '../../features/personal_records/domain/pr_detection_service.dart';
@@ -202,13 +204,30 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/profile',
-            builder: (context, state) => const ProfileScreen(),
+            builder: (context, state) => const CharacterSheetScreen(),
             routes: [
               GoRoute(
-                path: 'manage-data',
-                builder: (context, state) => const ManageDataScreen(),
+                path: 'settings',
+                builder: (context, state) => const ProfileSettingsScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'manage-data',
+                    builder: (context, state) => const ManageDataScreen(),
+                  ),
+                ],
               ),
             ],
+          ),
+          GoRoute(
+            path: '/saga/stats',
+            builder: (context, state) => SagaStubScreen(
+              title: AppLocalizations.of(context).statsDeepDiveLabel,
+            ),
+          ),
+          GoRoute(
+            path: '/saga/titles',
+            builder: (context, state) =>
+                SagaStubScreen(title: AppLocalizations.of(context).titlesLabel),
           ),
           GoRoute(
             path: '/plan/week',
@@ -242,7 +261,11 @@ class _ShellScaffold extends ConsumerWidget {
     if (location.startsWith('/home')) return 0;
     if (location.startsWith('/exercises')) return 1;
     if (location.startsWith('/routines')) return 2;
-    if (location.startsWith('/profile')) return 3;
+    // /profile is the Saga character sheet; /saga/* sub-routes (stats/titles)
+    // are stubs that also belong to the Saga tab visually.
+    if (location.startsWith('/profile') || location.startsWith('/saga')) {
+      return 3;
+    }
     return -1;
   }
 
@@ -279,10 +302,21 @@ class _ShellScaffold extends ConsumerWidget {
             onDestinationSelected: (index) {
               const routes = ['/home', '/exercises', '/routines', '/profile'];
               final target = routes[index];
-              // Guard against rapid tab switching: skip navigation when the
-              // target route already matches the current location.
-              final current = GoRouterState.of(context).matchedLocation;
-              if (current == target) return;
+
+              // Always go(target). This replaces the entire match list with
+              // the target branch root, discarding any sub-routes previously
+              // pushed via context.push (e.g. /profile/settings, /saga/stats,
+              // /home/history). The result is consistent "tap tab to return
+              // to branch root" semantics across all tabs.
+              //
+              // We deliberately do NOT add a `current == target` no-op guard.
+              // Inside a ShellRoute, RouteMatchList.uri ignores
+              // ImperativeRouteMatch entries (see go_router match.dart:547),
+              // so a user sitting on /profile/settings reports "currently
+              // /profile" — and a guarded tap would be silently dropped.
+              // Re-going to the same location with no pushed routes is a
+              // cheap no-op for GoRouter (identical match list → no rebuild),
+              // so removing the guard is safe.
               context.go(target);
             },
             destinations: [
@@ -334,7 +368,7 @@ class _ShellScaffold extends ConsumerWidget {
                     svg: AppIcons.hero,
                     color: AppColors.hotViolet,
                   ),
-                  label: AppLocalizations.of(context).navProfile,
+                  label: AppLocalizations.of(context).sagaTabLabel,
                   tooltip: '',
                 ),
               ),

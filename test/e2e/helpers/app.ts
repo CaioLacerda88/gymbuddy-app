@@ -14,7 +14,7 @@
  */
 
 import { Page, expect } from '@playwright/test';
-import { GAMIFICATION, NAV, PROFILE } from './selectors';
+import { GAMIFICATION, NAV, PROFILE, SAGA } from './selectors';
 
 /**
  * Wait for the Flutter app to finish its initial load.
@@ -286,8 +286,13 @@ export async function setLocale(
   page: Page,
   locale: 'en' | 'pt',
 ): Promise<void> {
-  // Ensure we're on the Profile tab so the language row is in view.
+  // Phase 18b: /profile now shows CharacterSheetScreen; the language row is on
+  // /profile/settings (ProfileSettingsScreen). Navigate to the Saga tab first,
+  // then open settings via the gear icon before tapping the language row.
   await navigateToTab(page, 'Profile');
+  await page.locator(SAGA.characterSheet).first().waitFor({ state: 'visible', timeout: 15_000 });
+  await page.locator(SAGA.gearIcon).first().click();
+  await page.locator(SAGA.profileSettingsScreen).first().waitFor({ state: 'visible', timeout: 10_000 });
 
   // Open the language picker sheet.
   await page.locator(PROFILE.languageRow).first().click({ timeout: 15_000 });

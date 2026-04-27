@@ -17,7 +17,7 @@ import 'package:repsaga/features/auth/providers/auth_providers.dart';
 import 'package:repsaga/features/personal_records/providers/pr_providers.dart';
 import 'package:repsaga/features/profile/models/profile.dart';
 import 'package:repsaga/features/profile/providers/profile_providers.dart';
-import 'package:repsaga/features/profile/ui/profile_screen.dart';
+import 'package:repsaga/features/profile/ui/profile_settings_screen.dart';
 import 'package:repsaga/features/workouts/providers/workout_history_providers.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:mocktail/mocktail.dart';
@@ -55,7 +55,7 @@ class _FakeProfileNotifier extends AsyncNotifier<Profile?>
 }
 
 // ---------------------------------------------------------------------------
-// Helper — wraps ProfileScreen in a GoRouter with target routes
+// Helper — wraps ProfileSettingsScreen in a GoRouter with target routes
 // ---------------------------------------------------------------------------
 
 Widget _buildTestApp() {
@@ -64,7 +64,7 @@ Widget _buildTestApp() {
     routes: [
       GoRoute(
         path: '/profile',
-        builder: (context, _) => const Scaffold(body: ProfileScreen()),
+        builder: (context, _) => const Scaffold(body: ProfileSettingsScreen()),
       ),
       GoRoute(
         path: '/home/history',
@@ -78,11 +78,18 @@ Widget _buildTestApp() {
         builder: (context, _) =>
             const Scaffold(body: Center(child: Text('Records Screen'))),
       ),
-      // Manage Data route (needed because profile screen references it).
+      // Manage Data route — Phase 18b moved it to /profile/settings/manage-data.
       GoRoute(
-        path: '/profile/manage-data',
+        path: '/profile/settings',
         builder: (context, _) =>
-            const Scaffold(body: Center(child: Text('Manage Data'))),
+            const Scaffold(body: Center(child: Text('Settings'))),
+        routes: [
+          GoRoute(
+            path: 'manage-data',
+            builder: (context, _) =>
+                const Scaffold(body: Center(child: Text('Manage Data'))),
+          ),
+        ],
       ),
     ],
   );

@@ -19,7 +19,7 @@
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth';
 import { navigateToTab } from '../helpers/app';
-import { PROFILE, PROFILE_WEEKLY_GOAL } from '../helpers/selectors';
+import { PROFILE, PROFILE_WEEKLY_GOAL, SAGA } from '../helpers/selectors';
 import { TEST_USERS } from '../fixtures/test-users';
 
 // ---------------------------------------------------------------------------
@@ -28,7 +28,12 @@ import { TEST_USERS } from '../fixtures/test-users';
 test.describe('Profile — weekly goal', { tag: '@smoke' }, () => {
   test.beforeEach(async ({ page }) => {
     await login(page, TEST_USERS.smokeProfileWeeklyGoal.email, TEST_USERS.smokeProfileWeeklyGoal.password);
+    // Phase 18b: /profile now shows CharacterSheetScreen. The weekly goal row is
+    // on /profile/settings (ProfileSettingsScreen). Navigate via the gear icon.
     await navigateToTab(page, 'Profile');
+    await page.locator(SAGA.characterSheet).first().waitFor({ state: 'visible', timeout: 10_000 });
+    await page.locator(SAGA.gearIcon).first().click();
+    await page.locator(SAGA.profileSettingsScreen).first().waitFor({ state: 'visible', timeout: 10_000 });
   });
 
   // ---------------------------------------------------------------------------

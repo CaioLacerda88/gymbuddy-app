@@ -33,10 +33,10 @@ test.describe('Gamification intro', { tag: '@smoke' }, () => {
   // Test 1: 3-step overlay appears on first mount and can be dismissed.
   //
   // Flow: login → overlay step 0 visible → NEXT → step 1 → NEXT → step 2
-  //       → BEGIN → overlay gone → home nav visible → lvl-badge shows LVL 1.
+  //       → BEGIN → overlay gone → home nav visible (shell intact).
   //
-  // The sagaIntroUser has zero workout history so retro_backfill_xp produces
-  // 0 XP and the badge shows LVL 1.
+  // Phase 18b: _LvlBadge removed from HomeScreen. The sagaIntroUser has zero
+  // workout history. After dismissal the shell renders without crash.
   // --------------------------------------------------------------------------
   test('should show saga intro overlay on first mount and advance through all 3 steps to dismiss', async ({
     page,
@@ -87,10 +87,10 @@ test.describe('Gamification intro', { tag: '@smoke' }, () => {
     });
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 5_000 });
 
-    // LVL badge is visible. Fresh user with no history → LVL 1.
-    await expect(page.locator(GAMIFICATION.lvlBadge)).toBeVisible({
-      timeout: 10_000,
-    });
+    // Phase 18b: _LvlBadge was removed from HomeScreen in favour of the
+    // full character sheet on /profile. After the overlay dismisses, the home
+    // navigation must be accessible (the shell renders with no badge crash).
+    await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 10_000 });
   });
 
   // --------------------------------------------------------------------------
@@ -121,13 +121,11 @@ test.describe('Gamification intro', { tag: '@smoke' }, () => {
     // The router redirects to /home because the user is still authenticated.
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 20_000 });
 
-    // Wait for xpProvider to resolve and the LVL badge to render — this means
-    // SagaIntroGate finished its decision and chose NOT to show the overlay
-    // (Hive flag gate suppressed it). Asserting badge visible before asserting
+    // Wait for the home screen to settle (nav tabs are the presence signal now
+    // that _LvlBadge was removed in Phase 18b — the character sheet on /profile
+    // is the canonical XP surface). Asserting homeTab visible before asserting
     // overlay absent prevents the race where the app is still initializing.
-    await expect(page.locator(GAMIFICATION.lvlBadge)).toBeVisible({
-      timeout: 15_000,
-    });
+    await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 5_000 });
 
     // Overlay must NOT re-appear — the Hive flag gate in SagaIntroGate
     // (hasSeenSagaIntroForUser) must suppress it.
@@ -137,14 +135,13 @@ test.describe('Gamification intro', { tag: '@smoke' }, () => {
   });
 
   // --------------------------------------------------------------------------
-  // Test 3: LVL badge is visible on HomeScreen after login.
+  // Test 3: Home navigation renders correctly after saga intro dismissal.
   //
-  // A minimal visibility check: after the saga intro flow completes, the
-  // LVL badge placeholder rendered by _LvlBadge is present on the home screen.
-  // This exercises the xpProvider → currentLevelOrDefault → badge path without
-  // caring about the exact XP value (that depends on the user's history).
+  // Phase 18b removed _LvlBadge from HomeScreen (superseded by the character
+  // sheet on /profile). After overlay dismissal the shell must render with the
+  // bottom nav visible and no crash. Level is shown on the Saga tab instead.
   // --------------------------------------------------------------------------
-  test('should render LVL badge on home screen after saga intro dismissal', async ({
+  test('should render home navigation correctly after saga intro dismissal', async ({
     page,
   }) => {
     await login(
@@ -156,9 +153,8 @@ test.describe('Gamification intro', { tag: '@smoke' }, () => {
 
     await dismissSagaIntroOverlay(page);
 
-    // LVL badge must be present on HomeScreen.
-    await expect(page.locator(GAMIFICATION.lvlBadge)).toBeVisible({
-      timeout: 10_000,
-    });
+    // Phase 18b: _LvlBadge was removed from HomeScreen. After overlay dismissal
+    // the home navigation must render correctly (no crash, no blank screen).
+    await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 10_000 });
   });
 });

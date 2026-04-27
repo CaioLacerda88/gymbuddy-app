@@ -23,6 +23,7 @@ import '../../../gamification/providers/xp_provider.dart';
 import '../../../personal_records/domain/pr_detection_service.dart';
 import '../../../personal_records/providers/pr_providers.dart';
 import '../../../profile/providers/profile_providers.dart';
+import '../../../rpg/providers/rpg_progress_provider.dart';
 import '../../../weekly_plan/providers/weekly_plan_provider.dart';
 import '../../data/workout_local_storage.dart';
 import '../../data/workout_repository.dart';
@@ -737,9 +738,21 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
       // whose detail sheet is re-opened this session reflects the newly
       // saved sets. Invalidating the whole family is correct — a finished
       // workout may touch any exercise, and the family is small per user.
+      //
+      // RPG state: `save_workout` RPC awards XP via `record_set_xp` in the
+      // same transaction, so by the time we get here `lifetime_xp` and
+      // per-body-part rows are durable server-side. Invalidate so the Saga
+      // tab + first-set-awakens banner reflect the new state on next watch
+      // (no app restart required). Co-located here with the other post-save
+      // invalidations so no future contributor adds a side-effect that
+      // forgets to refresh one of them.
+      //
+      // Offline saves haven't committed XP yet — the queued `save_workout`
+      // action will trigger this same provider's reactivity once it flushes.
       if (!savedOffline) {
         _repo.incrementCachedWorkoutCount(_userId);
         ref.invalidate(exerciseProgressProvider);
+        ref.invalidate(rpgProgressProvider);
       }
 
       // PR detection: read existing records from local cache (never network),

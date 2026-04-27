@@ -16,8 +16,15 @@ import '../providers/crash_reports_enabled_provider.dart';
 import '../providers/profile_providers.dart';
 import 'widgets/language_picker_sheet.dart';
 
-class ProfileScreen extends ConsumerWidget {
-  const ProfileScreen({super.key});
+/// Profile settings sub-screen — pushed from the character sheet's gear icon.
+///
+/// Carries the entire pre-Phase-18b `/profile` content (display name editor,
+/// stats row, locale picker, weight unit, weekly goal, manage data, legal,
+/// crash reports, sign out). The character sheet (`/profile`) replaced the
+/// previous identity surface; this screen preserves all the account/account
+/// preferences functionality 1:1 — no behavioural changes intended.
+class ProfileSettingsScreen extends ConsumerWidget {
+  const ProfileSettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -26,176 +33,186 @@ class ProfileScreen extends ConsumerWidget {
     final profileAsync = ref.watch(profileProvider);
     final email = ref.watch(authRepositoryProvider).currentUser?.email ?? '';
 
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 16),
-            Semantics(
-              container: true,
-              identifier: 'profile-heading',
-              child: Text(l10n.profile, style: theme.textTheme.headlineMedium),
-            ),
-            const SizedBox(height: 32),
-            // Identity card
-            profileAsync.when(
-              data: (profile) => _IdentityCard(
-                displayName: profile?.displayName,
-                email: email,
-                onEditName: () =>
-                    _showEditNameDialog(context, ref, profile?.displayName),
+    return Scaffold(
+      appBar: AppBar(title: Text(l10n.settingsLabel)),
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 8),
+              Semantics(
+                container: true,
+                identifier: 'profile-heading',
+                child: Text(
+                  l10n.profile,
+                  style: theme.textTheme.headlineMedium,
+                ),
               ),
-              loading: () => const _IdentityCard(
-                displayName: null,
-                email: '',
-                loading: true,
+              const SizedBox(height: 24),
+              // Identity card
+              profileAsync.when(
+                data: (profile) => _IdentityCard(
+                  displayName: profile?.displayName,
+                  email: email,
+                  onEditName: () =>
+                      _showEditNameDialog(context, ref, profile?.displayName),
+                ),
+                loading: () => const _IdentityCard(
+                  displayName: null,
+                  email: '',
+                  loading: true,
+                ),
+                error: (_, _) =>
+                    const _IdentityCard(displayName: null, email: ''),
               ),
-              error: (_, _) =>
-                  const _IdentityCard(displayName: null, email: ''),
-            ),
-            const SizedBox(height: 24),
-            // Stats section
-            const _StatsRow(),
-            const SizedBox(height: 32),
-            // Weight unit section
-            Text(
-              l10n.weightUnit,
-              style: theme.textTheme.titleMedium,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 12),
-            profileAsync.when(
-              data: (profile) =>
-                  _WeightUnitToggle(weightUnit: profile?.weightUnit ?? 'kg'),
-              loading: () => const _WeightUnitToggle(weightUnit: 'kg'),
-              error: (_, _) => const _WeightUnitToggle(weightUnit: 'kg'),
-            ),
-            const SizedBox(height: 24),
-            // Weekly goal section
-            Semantics(
-              container: true,
-              identifier: 'profile-goal-label',
-              child: Text(l10n.weeklyGoal, style: theme.textTheme.titleMedium),
-            ),
-            const SizedBox(height: 12),
-            profileAsync.when(
-              data: (profile) => _WeeklyGoalRow(
-                frequency: profile?.trainingFrequencyPerWeek ?? 3,
+              const SizedBox(height: 24),
+              // Stats section
+              const _StatsRow(),
+              const SizedBox(height: 32),
+              // Weight unit section
+              Text(
+                l10n.weightUnit,
+                style: theme.textTheme.titleMedium,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              loading: () => const _WeeklyGoalRow(frequency: 3),
-              error: (_, _) => const _WeeklyGoalRow(frequency: 3),
-            ),
-            const SizedBox(height: 32),
-            // Preferences section
-            Text(
-              l10n.preferences,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+              const SizedBox(height: 12),
+              profileAsync.when(
+                data: (profile) =>
+                    _WeightUnitToggle(weightUnit: profile?.weightUnit ?? 'kg'),
+                loading: () => const _WeightUnitToggle(weightUnit: 'kg'),
+                error: (_, _) => const _WeightUnitToggle(weightUnit: 'kg'),
               ),
-            ),
-            const SizedBox(height: 8),
-            _LanguageRow(locale: ref.watch(localeProvider)),
-            const SizedBox(height: 32),
-            // Data management section
-            Text(
-              l10n.dataManagement,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+              const SizedBox(height: 24),
+              // Weekly goal section
+              Semantics(
+                container: true,
+                identifier: 'profile-goal-label',
+                child: Text(
+                  l10n.weeklyGoal,
+                  style: theme.textTheme.titleMedium,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Material(
-              color: theme.cardTheme.color ?? theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(kRadiusMd),
-              child: InkWell(
+              const SizedBox(height: 12),
+              profileAsync.when(
+                data: (profile) => _WeeklyGoalRow(
+                  frequency: profile?.trainingFrequencyPerWeek ?? 3,
+                ),
+                loading: () => const _WeeklyGoalRow(frequency: 3),
+                error: (_, _) => const _WeeklyGoalRow(frequency: 3),
+              ),
+              const SizedBox(height: 32),
+              // Preferences section
+              Text(
+                l10n.preferences,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                ),
+              ),
+              const SizedBox(height: 8),
+              _LanguageRow(locale: ref.watch(localeProvider)),
+              const SizedBox(height: 32),
+              // Data management section
+              Text(
+                l10n.dataManagement,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Material(
+                color: theme.cardTheme.color ?? theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(kRadiusMd),
-                onTap: () => context.go('/profile/manage-data'),
-                // No container: true — identifier merges into the parent InkWell's
-                // semantics node so Playwright can click-target it.
-                child: Semantics(
-                  identifier: 'profile-manage-data',
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            l10n.manageData,
-                            style: theme.textTheme.titleMedium,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(kRadiusMd),
+                  onTap: () => context.push('/profile/settings/manage-data'),
+                  // No container: true — identifier merges into the parent InkWell's
+                  // semantics node so Playwright can click-target it.
+                  child: Semantics(
+                    identifier: 'profile-manage-data',
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              l10n.manageData,
+                              style: theme.textTheme.titleMedium,
+                            ),
                           ),
-                        ),
-                        Icon(
-                          Icons.chevron_right,
-                          color: theme.colorScheme.onSurface.withValues(
-                            alpha: 0.3,
+                          Icon(
+                            Icons.chevron_right,
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.3,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
-            // Legal section
-            Text(
-              l10n.legal,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
-              ),
-            ),
-            const SizedBox(height: 8),
-            _LegalTile(
-              title: l10n.privacyPolicy,
-              icon: Icons.privacy_tip_outlined,
-              onTap: () => context.push('/privacy-policy'),
-            ),
-            const SizedBox(height: 8),
-            _LegalTile(
-              title: l10n.termsOfService,
-              icon: Icons.description_outlined,
-              onTap: () => context.push('/terms-of-service'),
-            ),
-            const SizedBox(height: 24),
-            // Privacy section
-            Text(
-              l10n.privacySection,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Material(
-              color: theme.cardTheme.color ?? theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(kRadiusMd),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 4,
-                ),
-                child: SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(l10n.sendCrashReports),
-                  subtitle: Text(l10n.crashReportsSubtitle),
-                  value: ref.watch(crashReportsEnabledProvider),
-                  onChanged: (value) {
-                    ref
-                        .read(crashReportsEnabledProvider.notifier)
-                        .setEnabled(value);
-                  },
+              const SizedBox(height: 24),
+              // Legal section
+              Text(
+                l10n.legal,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
-            // Logout button
-            const _LogoutButton(),
-          ],
+              const SizedBox(height: 8),
+              _LegalTile(
+                title: l10n.privacyPolicy,
+                icon: Icons.privacy_tip_outlined,
+                onTap: () => context.push('/privacy-policy'),
+              ),
+              const SizedBox(height: 8),
+              _LegalTile(
+                title: l10n.termsOfService,
+                icon: Icons.description_outlined,
+                onTap: () => context.push('/terms-of-service'),
+              ),
+              const SizedBox(height: 24),
+              // Privacy section
+              Text(
+                l10n.privacySection,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Material(
+                color: theme.cardTheme.color ?? theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(kRadiusMd),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
+                  child: SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(l10n.sendCrashReports),
+                    subtitle: Text(l10n.crashReportsSubtitle),
+                    value: ref.watch(crashReportsEnabledProvider),
+                    onChanged: (value) {
+                      ref
+                          .read(crashReportsEnabledProvider.notifier)
+                          .setEnabled(value);
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Logout button
+              const _LogoutButton(),
+            ],
+          ),
         ),
       ),
     );

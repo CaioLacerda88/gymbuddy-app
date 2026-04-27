@@ -9,7 +9,7 @@
  */
 
 import { Page, expect } from '@playwright/test';
-import { AUTH, GAMIFICATION, NAV } from './selectors';
+import { AUTH, GAMIFICATION, NAV, SAGA } from './selectors';
 import { dismissSagaIntroOverlay, waitForAppReady, flutterFill } from './app';
 
 /**
@@ -65,15 +65,24 @@ export async function login(
 }
 
 /**
- * Log out by navigating to the Profile tab and confirming in the dialog.
+ * Log out by navigating to the Profile tab, opening settings, then confirming.
  *
- * Flow: Profile tab → "Log Out" button → confirmation dialog → "Log Out" (last).
+ * Phase 18b: /profile now shows CharacterSheetScreen. The "Log Out" button
+ * moved to /profile/settings (ProfileSettingsScreen), reached via the gear icon
+ * in the character sheet's AppBar.
+ *
+ * Flow: Saga tab → gear icon → Settings → "Log Out" → confirmation dialog → "Log Out".
  * After logout the router redirects to /login.
  */
 export async function logout(page: Page): Promise<void> {
   await page.click(NAV.profileTab);
 
-  // Click the "Log Out" button on the profile screen.
+  // Wait for CharacterSheetScreen to load, then navigate to settings.
+  await page.locator(SAGA.characterSheet).first().waitFor({ state: 'visible', timeout: 10_000 });
+  await page.locator(SAGA.gearIcon).first().click();
+  await page.locator(SAGA.profileSettingsScreen).first().waitFor({ state: 'visible', timeout: 10_000 });
+
+  // Click the "Log Out" button on the profile settings screen.
   await page.click('text=Log Out');
 
   // A confirmation dialog appears. Click the "Log Out" button inside the dialog

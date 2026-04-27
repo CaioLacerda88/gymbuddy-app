@@ -4,6 +4,75 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ---
 
+## Phase 18b — RPG v1: Character Sheet + Rune Sigils UI
+
+**Branch:** `feature/phase18b-character-sheet` (to be created off main @ 57437e7)
+**Reference:** PLAN.md Phase 18b (lines 1171-1196), design spec `docs/superpowers/specs/2026-04-25-rpg-system-v1-design.md` §13.1 + §13.4 + §8.4
+**Depends on:** 18a (PR #112, merged) — `character_state`, `body_part_progress`, `rpg_progress_provider`
+
+### Decisions locked from product-owner + ui-ux-critic kickoff
+
+- **Nav placement:** Profile tab → "Saga" (rebrand). `/profile` → `CharacterSheetScreen`. Account/settings → sub-screen reachable from a gear icon in the sheet's app bar. Tab icon stays `AppIcons.hero`.
+- **Class badge slot:** Always visible. Day-1 copy: **"The iron will name you."** (en) / pt-BR localized. Class derivation logic lands in 18e — stub provider returns `null` and the slot renders the placeholder copy until then. **Do NOT default to "Initiate" (reads as finished state).**
+- **Rune halo glow states (§8.4):** Four states must be distinguishable via shape + motion + color, not just intensity:
+  - **Dormant:** sigil at 12% opacity, slow 8s rotation, no glow ring.
+  - **Fading:** full sigil, desaturated `primaryViolet` ring, breathing pulse 0.6→1.0 spread, period 3s.
+  - **Active:** static `hotViolet` ring, two-layer `boxShadow` (no animation — opens between sets, conserves attention).
+  - **Radiant:** `heroGold` ring + sigil 10% larger + sweep highlight via `CustomPainter` once per 4-5s + single haptic on first paint.
+- **Body-part layout direction:** Direction B+C hybrid. **Hexagonal radar** (CustomPainter, six vertices = body parts, fill opacity ∝ rank) under the avatar as the identity moment. Below the radar, **codex rows** with rune sigil (24dp, Vitality-state colored) + body-part name + rank stamp (Rajdhani 700 in `surface2` circle, border = Vitality color) + hairline XP-progress marker (NOT a filled bar). Six rows in a single column, NOT split.
+- **Day-1 vaporware-risk mitigation:** Asymmetric awakening — body parts the user has trained render at full row size; untrained ones collapse to a compressed secondary zone. After first workout, trained parts expand. Day-0 onboarding still reads "first set awakens this path".
+- **Nav chips → codex rows:** "Stats deep-dive / Titles / History" rendered as three full-width tappable rows with Rajdhani label + right-chevron, NOT Material `Chip`s. (Targets are 18d, 18c, History — Stats and Titles will be stub-routed for 18b; History exists already via `/history`.)
+
+### Implementation checklist (tech-lead)
+
+- [ ] Branch `feature/phase18b-character-sheet` from main; verify CI green on main first.
+- [ ] **Provider:** `lib/features/rpg/providers/character_sheet_provider.dart` — composes `rpg_progress_provider` + `active_title_provider` (stub returning `null` for now) + `class_provider` (stub returning `null`). Returns immutable `CharacterSheetState` with: lvl, lifetime_xp, six body-part progress entries (rank, vitality_state, xp_in_rank, xp_for_next_rank), active_title (nullable), class (nullable).
+- [ ] **Models:** `lib/features/rpg/models/character_sheet_state.dart` (Freezed), `vitality_state.dart` (enum + extension mapping 0-100 → Dormant/Fading/Active/Radiant per §8.4 thresholds).
+- [ ] **Widgets (in dependency order):**
+  - [ ] `widgets/rune_halo.dart` — 4 glow states, AnimationController per state, lightweight (no Lottie). Single `BoxDecoration` + optional `CustomPainter` for Radiant sweep.
+  - [ ] `widgets/vitality_radar.dart` — hexagonal `CustomPainter`, 6 vertices, fill opacity ∝ rank/99. Day-0 = perfect minimum hexagon (looks intentional, not empty).
+  - [ ] `widgets/rank_stamp.dart` — circular badge, Rajdhani 700, border in Vitality color.
+  - [ ] `widgets/xp_progress_hairline.dart` — 1px line + dot marker at xp_in_rank/xp_for_next_rank.
+  - [ ] `widgets/body_part_rank_row.dart` — composes rune sigil + name + rank stamp + hairline. Untrained variant = compressed height.
+  - [ ] `widgets/dormant_cardio_row.dart` — separate widget, distinct "coming in v2" treatment.
+  - [ ] `widgets/active_title_pill.dart` — reads from provider, hides when null.
+  - [ ] `widgets/class_badge.dart` — slot always rendered; day-1 placeholder copy "The iron will name you." (en) + pt-BR.
+  - [ ] `widgets/codex_nav_row.dart` — full-width tappable row replacing nav chips. Three instances on the screen.
+- [ ] **Screen:** `lib/features/rpg/ui/character_sheet_screen.dart` — composes header (rune halo + lvl + class badge + active title pill) → vitality radar → six body-part rows (asymmetric: trained expanded, untrained compressed) → dormant Cardio row → three codex nav rows. App bar gear icon → `/profile/settings` sub-route.
+- [ ] **Profile sub-screen:** Move existing profile content (display name, locale switcher, sign-out, etc.) to `lib/features/profile/ui/profile_settings_screen.dart`. Route: `/profile/settings`.
+- [ ] **Router:** `lib/core/router/app_router.dart` — `/profile` now resolves to `CharacterSheetScreen`; `/profile/settings` to `ProfileSettingsScreen`. Tab label changes to "Saga" (en) / "Saga" (pt-BR — same word). Tab icon unchanged.
+- [ ] **Delete:** `_LvlBadge` placeholder from 17b (now superseded by full character sheet).
+- [ ] **l10n:** Add to `app_en.arb` + `app_pt.arb`: `sagaTabLabel`, `classSlotPlaceholder` ("The iron will name you." / pt-BR equivalent), `dormantCardioCopy`, `firstSetAwakensCopy` (zero-history body-part hint), `statsDeepDiveLabel`, `titlesLabel`, `historyLabel`. Run `make gen` after adding.
+- [ ] **make ci** must pass: format + analyze + test + android build.
+
+### Test plan (qa-engineer)
+
+- [ ] **Widget tests:**
+  - [ ] `character_sheet_screen_test.dart` — six body-part rows render; dormant zero-history state shows compressed rows + first-set-awakens copy; full-vitality state shows Radiant halo.
+  - [ ] `rune_halo_test.dart` — 4 visual states (each renders distinct widgets/colors; pump animation frame to assert motion).
+  - [ ] `body_part_rank_row_test.dart` — rank stamp, hairline progress, untrained-collapse variant.
+  - [ ] `vitality_radar_test.dart` — golden test of perfect-min hexagon (day-0) + a skewed shape (mock state).
+  - [ ] `class_badge_test.dart` — placeholder copy shows when class is null; class name shows when set (use a manual override).
+- [ ] **Selectors:** Add to `test/e2e/helpers/selectors.ts`: `characterSheet`, `runeHalo`, `vitalityRadar`, `bodyPartRow.{chest,back,legs,shoulders,arms,core}`, `rankStamp`, `classBadge`, `activeTitlePill`, `dormantCardioRow`, `codexNav.{stats,titles,history}`, `sagaTab`.
+- [ ] **E2E `test/e2e/specs/saga.spec.ts` (`@smoke`):**
+  - [ ] login as `rpgFreshUser` → navigate via Saga tab → assert `characterSheet` visible, `runeHalo` visible, six body-part rows visible, class badge shows placeholder copy.
+  - [ ] login as `rpgFoundationUser` → assert at least one body-part row shows non-zero rank, radar hexagon is non-uniform.
+  - [ ] tap "Stats deep-dive" codex nav → asserts route attempt (will land on stub for 18b — accept any non-error state).
+  - [ ] gear icon in app bar → settings sub-screen → display name visible (was on /profile before).
+- [ ] **Update `auth.spec.ts`** if onboarding lands on /saga: re-verify final destination after sign-up.
+- [ ] **Full e2e regression** — navigation change is a flow change. All 190+ tests must pass. (Replace stale `_LvlBadge` selectors if any tests referenced them.)
+- [ ] **Removed from suite:** any test asserting `_LvlBadge` text/role.
+
+### Acceptance (orchestrator gate)
+
+- [ ] `make ci` green
+- [ ] Full e2e green locally (`FLUTTER_APP_URL= npx playwright test`)
+- [ ] Reviewer signs off (no Blockers, all Important addressed in same cycle per "no deferring" rule)
+- [ ] PR squash-merged
+- [ ] PLAN.md Phase 18b row → DONE + PR number; Phase 18b detailed spec condensed to 5-7 bullets
+- [ ] WIP.md Phase 18b section removed
+
+---
 
 ## Phase 16 — Subscription Monetization — PARKED (2026-04-22)
 

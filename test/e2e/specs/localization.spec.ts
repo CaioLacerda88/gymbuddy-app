@@ -40,7 +40,7 @@
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth';
 import { navigateToTab, setLocale, waitForAppReady } from '../helpers/app';
-import { NAV, PROFILE, EXERCISE_LIST, LOCALIZATION } from '../helpers/selectors';
+import { NAV, PROFILE, EXERCISE_LIST, LOCALIZATION, SAGA } from '../helpers/selectors';
 import { TEST_USERS } from '../fixtures/test-users';
 
 // ---------------------------------------------------------------------------
@@ -77,8 +77,12 @@ test.describe('Localization — pt-BR server-seeded boot', { tag: '@smoke' }, ()
     await expect(page.locator(EXERCISE_LIST.heading).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.locator('text=Exercícios').first()).toBeVisible({ timeout: 10_000 });
 
-    // Navigate to Profile — multiple labels must be Portuguese.
+    // Navigate to the Saga tab (formerly Profile) then open Settings via gear icon.
+    // Phase 18b: /profile now shows CharacterSheetScreen; legacy profile content
+    // (heading "Perfil", language row, etc.) moved to /profile/settings.
     await navigateToTab(page, 'Profile');
+    await expect(page.locator(SAGA.characterSheet).first()).toBeVisible({ timeout: 10_000 });
+    await page.locator(SAGA.gearIcon).first().click();
     await expect(page.locator(PROFILE.heading).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.locator('text=Perfil').first()).toBeVisible({ timeout: 10_000 });
   });
@@ -97,8 +101,10 @@ test.describe('Localization — pt-BR server-seeded boot', { tag: '@smoke' }, ()
   // -------------------------------------------------------------------------
   test('should show pt-BR nav labels after locale reconciliation', async ({ page }) => {
     // Navigate away (forces reconciliation to run while navigating).
+    // Phase 18b: Saga tab shows CharacterSheet — navigate there to trigger
+    // reconciliation, then navigate to Home to check nav label translations.
     await navigateToTab(page, 'Profile');
-    await expect(page.locator(PROFILE.heading).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator(SAGA.characterSheet).first()).toBeVisible({ timeout: 10_000 });
 
     // Navigate back to Home.
     await navigateToTab(page, 'Home');
@@ -122,8 +128,13 @@ test.describe('Localization — pt-BR server-seeded boot', { tag: '@smoke' }, ()
   // We assert three of these to cover the heading, a section label, and a
   // row label without being exhaustive.
   // -------------------------------------------------------------------------
-  test('should render profile screen labels in Portuguese', async ({ page }) => {
+  test('should render profile settings screen labels in Portuguese', async ({ page }) => {
+    // Phase 18b: /profile shows CharacterSheetScreen; settings are at /profile/settings.
+    // Open settings via gear icon to reach the screen that contains "Perfil" heading,
+    // "Unidade de Peso" weight-unit label, and "Idioma" language row.
     await navigateToTab(page, 'Profile');
+    await expect(page.locator(SAGA.characterSheet).first()).toBeVisible({ timeout: 10_000 });
+    await page.locator(SAGA.gearIcon).first().click();
 
     await expect(page.locator(PROFILE.heading).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.locator('text=Perfil').first()).toBeVisible({ timeout: 10_000 });
@@ -157,7 +168,10 @@ test.describe('Localization — pt-BR server-seeded boot', { tag: '@smoke' }, ()
   test('should render member-since date in pt-BR abbreviated month format', async ({
     page,
   }) => {
+    // Phase 18b: "Membro desde" stat card is on ProfileSettingsScreen (/profile/settings).
     await navigateToTab(page, 'Profile');
+    await expect(page.locator(SAGA.characterSheet).first()).toBeVisible({ timeout: 10_000 });
+    await page.locator(SAGA.gearIcon).first().click();
 
     // "Membro desde" is the pt-BR label for the stat card.
     await expect(page.locator('text=Membro desde').first()).toBeVisible({ timeout: 10_000 });
@@ -182,11 +196,11 @@ test.describe('Localization — pt-BR server-seeded boot', { tag: '@smoke' }, ()
   test('should switch from pt-BR to English and render English screen headings', async ({
     page,
   }) => {
-    // Confirm we start in pt-BR by checking the Profile heading.
+    // Confirm we start in pt-BR by checking the character sheet (Saga tab).
     await navigateToTab(page, 'Profile');
-    await expect(page.locator('text=Perfil').first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator(SAGA.characterSheet).first()).toBeVisible({ timeout: 10_000 });
 
-    // Switch to English via the language picker.
+    // Switch to English via the language picker (navigates to /profile/settings internally).
     await setLocale(page, 'en');
 
     // Navigate to Exercises — heading must now be English.
@@ -233,8 +247,11 @@ test.describe('Localization — en-default language picker switch', { tag: '@smo
     await navigateToTab(page, 'Exercises');
     await expect(page.locator('text=Exercícios').first()).toBeVisible({ timeout: 10_000 });
 
-    // Also verify Profile screen is Portuguese.
+    // Also verify the ProfileSettingsScreen is Portuguese (navigate via gear icon).
+    // Phase 18b: /profile shows CharacterSheet; settings at /profile/settings.
     await navigateToTab(page, 'Profile');
+    await page.locator(SAGA.characterSheet).first().waitFor({ state: 'visible', timeout: 10_000 });
+    await page.locator(SAGA.gearIcon).first().click();
     await expect(page.locator('text=Perfil').first()).toBeVisible({ timeout: 10_000 });
     await expect(page.locator('text=Unidade de Peso').first()).toBeVisible({ timeout: 10_000 });
 

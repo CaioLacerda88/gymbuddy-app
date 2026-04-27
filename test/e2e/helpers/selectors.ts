@@ -643,6 +643,65 @@ export const FIRST_WORKOUT_CTA = {
 } as const;
 
 // ---------------------------------------------------------------------------
+// Saga — CharacterSheetScreen + sub-screens (Phase 18b)
+//
+// The Saga (formerly Profile) tab now lands on CharacterSheetScreen at /profile.
+// All character-sheet elements use Semantics(identifier: ...) wrappers so
+// Playwright can target them via flt-semantics-identifier selectors.
+// ---------------------------------------------------------------------------
+export const SAGA = {
+  /** CharacterSheetScreen body container — Semantics(identifier: 'character-sheet') */
+  characterSheet: '[flt-semantics-identifier="character-sheet"]',
+  /** RuneHalo widget in header — Semantics(identifier: 'rune-halo') */
+  runeHalo: '[flt-semantics-identifier="rune-halo"]',
+  /**
+   * Character level numeral "Lvl N" — Semantics(identifier: 'character-level').
+   * Text is rendered via GoogleFonts on a canvas in canvaskit mode, so
+   * `text=` selectors won't match. Use this identifier + textContent() to
+   * read the numeric level from the AOM label.
+   */
+  characterLevel: '[flt-semantics-identifier="character-level"]',
+  /** VitalityRadar canvas — Semantics(identifier: 'vitality-radar') */
+  vitalityRadar: '[flt-semantics-identifier="vitality-radar"]',
+  /** Per-body-part rank row — Semantics(identifier: 'body-part-row-{slug}') */
+  bodyPartRow: (slug: 'chest' | 'back' | 'legs' | 'shoulders' | 'arms' | 'core') =>
+    `[flt-semantics-identifier="body-part-row-${slug}"]`,
+  /** ClassBadge slot — Semantics(identifier: 'class-badge') */
+  classBadge: '[flt-semantics-identifier="class-badge"]',
+  /** ActiveTitlePill — Semantics(identifier: 'active-title-pill') */
+  activeTitlePill: '[flt-semantics-identifier="active-title-pill"]',
+  /** DormantCardioRow — Semantics(identifier: 'dormant-cardio-row') */
+  dormantCardioRow: '[flt-semantics-identifier="dormant-cardio-row"]',
+  /** First-set-awakens onboarding banner — Semantics(identifier: 'first-set-awakens-banner') */
+  firstSetAwakensBanner: '[flt-semantics-identifier="first-set-awakens-banner"]',
+  /** Codex nav rows — Semantics(identifier: 'codex-nav-{section}') */
+  codexNavStats: '[flt-semantics-identifier="codex-nav-stats"]',
+  codexNavTitles: '[flt-semantics-identifier="codex-nav-titles"]',
+  codexNavHistory: '[flt-semantics-identifier="codex-nav-history"]',
+  /**
+   * RankStamp circle badge inside a BodyPartRankRow (expanded rows only).
+   * Semantics is inherited from the parent body-part-row container. There is no
+   * per-stamp identifier. Use `SAGA.bodyPartRow(slug)` to scope assertion to a
+   * specific body part, then look for a descendant with rank text if needed.
+   * This entry documents the current implementation — direct targeting is not
+   * supported until a per-stamp identifier is added.
+   *
+   * Note: the WIP contract listed `rankStamp` as a selector to add; this is the
+   * accurate representation of what the DOM exposes today.
+   */
+  // rankStamp: not selectable by identifier in this release (no per-stamp Semantics)
+  /** Gear-icon settings button in CharacterSheetScreen AppBar — Semantics(identifier: 'saga-settings-btn') */
+  gearIcon: '[flt-semantics-identifier="saga-settings-btn"]',
+  /** ProfileSettingsScreen root — identified by PROFILE.heading ('profile-heading') */
+  profileSettingsScreen: '[flt-semantics-identifier="profile-heading"]',
+  /** SagaStubScreen body — Semantics(identifier: 'saga-stub-screen').
+   *  Locale-independent (was previously `text=Coming soon.`, which broke
+   *  pt-BR because the localized copy is "Em breve.").
+   */
+  sagaStubScreen: '[flt-semantics-identifier="saga-stub-screen"]',
+} as const;
+
+// ---------------------------------------------------------------------------
 // Gamification intro — SagaIntroOverlay + LVL badge (Phase 17b)
 //
 // SagaIntroOverlay wraps each step in Semantics(identifier: 'saga-intro-step-{n}')
@@ -683,8 +742,8 @@ export const LOCALIZATION = {
   ptNavExercises: 'role=tab[name="Exercícios"]',
   /** pt-BR nav tab — "Rotinas" (Routines) */
   ptNavRoutines: 'role=tab[name="Rotinas"]',
-  /** pt-BR nav tab — "Perfil" (Profile) */
-  ptNavProfile: 'role=tab[name="Perfil"]',
+  /** pt-BR nav tab — "Saga" (same word in both en and pt-BR; Phase 18b renamed Profile → Saga) */
+  ptNavProfile: 'role=tab[name="Saga"]',
 } as const;
 
 // ---------------------------------------------------------------------------

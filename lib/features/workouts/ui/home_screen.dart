@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/radii.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../gamification/providers/xp_provider.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../../routines/models/routine.dart';
 import '../../routines/providers/notifiers/routine_list_notifier.dart';
@@ -56,8 +54,6 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _LvlBadge(),
-            SizedBox(height: 8),
             HomeStatusLine(),
             SizedBox(height: 16),
             PendingSyncBadge(),
@@ -72,33 +68,6 @@ class HomeScreen extends StatelessWidget {
             _HomeRoutinesList(),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// LVL badge placeholder (Phase 17b)
-//
-// Minimal Semantics-tagged widget that watches xpProvider and renders
-// "LVL {n}" text in the home AppBar area. Full styling and animation land
-// in Phase 17e; this placeholder exists so the E2E spec can observe the
-// SagaIntroGate working end-to-end.
-// ---------------------------------------------------------------------------
-
-class _LvlBadge extends ConsumerWidget {
-  const _LvlBadge();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final summaryAsync = ref.watch(xpProvider);
-    final level = currentLevelOrDefault(summaryAsync);
-    return Semantics(
-      identifier: 'lvl-badge',
-      label: 'LVL $level',
-      child: Text(
-        'LVL $level',
-        style: AppTextStyles.label.copyWith(color: AppColors.hotViolet),
       ),
     );
   }
