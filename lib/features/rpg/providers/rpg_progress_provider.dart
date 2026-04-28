@@ -123,12 +123,18 @@ class RpgProgressNotifier extends AsyncNotifier<RpgProgressSnapshot> {
   /// after `save_workout` returns — the RPC writes happen inside the same
   /// transaction so by the time it returns, the new state is durable.
   ///
+  /// Returns the freshly-fetched snapshot directly so callers can use it
+  /// without racing against any concurrent in-flight [build] that might
+  /// overwrite [state] with pre-save data after this method returns.
+  ///
   /// Idempotent: calling twice with no intervening writes produces the
   /// same snapshot. Idempotency-via-comparison: callers don't need a
   /// guard flag.
-  Future<void> refreshAfterSave() async {
+  Future<RpgProgressSnapshot> refreshAfterSave() async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(_load);
+    final result = await AsyncValue.guard(_load);
+    state = result;
+    return result.value ?? RpgProgressSnapshot.empty;
   }
 
   /// Driver for the migration-scheduled retroactive backfill. Called once

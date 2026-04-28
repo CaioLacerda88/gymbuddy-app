@@ -153,8 +153,13 @@ export async function addExercise(
  */
 export async function setWeight(page: Page, value: string): Promise<void> {
   // The weight value has a Semantics label like "Weight value: 0 kg. Tap to enter weight."
-  // Click the first matching weight button to open the "Enter weight" dialog.
-  await page.locator('role=button[name*="Weight value"]').first().click();
+  // Click the LAST matching weight button to open the "Enter weight" dialog.
+  //
+  // Why .last(): WeightStepper is rendered for ALL sets regardless of completion
+  // state. After completing sets from earlier exercises, their weight buttons
+  // remain in DOM. The most recently added (uncompleted) set is always last in
+  // DOM order. Using .first() incorrectly targets a completed set's button.
+  await page.locator('role=button[name*="Weight value"]').last().click();
 
   // Wait for the OK button to confirm the dialog is open. We avoid using
   // `text=Enter weight` because the weight button's own semantics label
@@ -185,8 +190,13 @@ export async function setWeight(page: Page, value: string): Promise<void> {
  */
 export async function setReps(page: Page, value: string): Promise<void> {
   // The reps value has a Semantics label like "Reps value: 0. Tap to enter reps."
-  // Click the first matching reps button to open the "Enter reps" dialog.
-  await page.locator('role=button[name*="Reps value"]').first().click();
+  // Click the LAST matching reps button to open the "Enter reps" dialog.
+  //
+  // Why .last(): RepsStepper is rendered for ALL sets regardless of completion
+  // state. After completing sets from earlier exercises, their reps buttons
+  // remain in DOM. The most recently added (uncompleted) set is always last in
+  // DOM order. Using .first() incorrectly targets a completed set's button.
+  await page.locator('role=button[name*="Reps value"]').last().click();
 
   // Wait for the OK button to confirm the dialog is open. We avoid using
   // `text=Enter reps` because the reps button's own semantics label

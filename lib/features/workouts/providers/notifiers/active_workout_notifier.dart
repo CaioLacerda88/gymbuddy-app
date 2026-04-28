@@ -23,6 +23,10 @@ import '../../../gamification/providers/xp_provider.dart';
 import '../../../personal_records/domain/pr_detection_service.dart';
 import '../../../personal_records/providers/pr_providers.dart';
 import '../../../profile/providers/profile_providers.dart';
+import '../../../rpg/domain/celebration_event_builder.dart';
+import '../../../rpg/domain/celebration_queue.dart';
+import '../../../rpg/models/celebration_event.dart';
+import '../../../rpg/providers/earned_titles_provider.dart';
 import '../../../rpg/providers/rpg_progress_provider.dart';
 import '../../../weekly_plan/providers/weekly_plan_provider.dart';
 import '../../data/workout_local_storage.dart';
@@ -111,6 +115,8 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
   /// e.g. "Workout — Wed Apr 2".
   Future<void> startWorkout([String? name]) async {
     state = const AsyncLoading();
+    _firstAwakeningFiredThisSession = false;
+    _lastCelebration = null;
     state = await AsyncValue.guard(() async {
       final userId = _userId;
       final workout = await _repo.createActiveWorkout(
@@ -138,6 +144,8 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
   /// Start a workout pre-populated from a routine template.
   Future<void> startFromRoutine(RoutineStartConfig config) async {
     state = const AsyncLoading();
+    _firstAwakeningFiredThisSession = false;
+    _lastCelebration = null;
     state = await AsyncValue.guard(() async {
       final userId = _userId;
       final workout = await _repo.createActiveWorkout(
@@ -608,6 +616,43 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
   /// "Will sync when back online" banner on the finish screen.
   bool savedOffline = false;
 
+  /// Session-throttle for the first-awakening overlay (Phase 18c, spec §13).
+  ///
+  /// Reset to `false` when a workout STARTS (not when the app starts, not
+  /// when a workout finishes). Set to `true` immediately after the builder
+  /// emits a [FirstAwakeningEvent] so any sibling body part that wakes in
+  /// the same finish stays silent — the overlay is an onboarding moment,
+  /// not a churn event.
+  ///
+  /// **Why on the notifier and not in the builder:** the throttle is a
+  /// session-level invariant the orchestrator owns. Putting it on the
+  /// builder would conflate "did we already show this" (notifier state)
+  /// with "what events does the diff produce" (pure function). Phase 18b's
+  /// rune-state change covers the second-and-later body-part awakenings
+  /// silently via the character sheet.
+  bool _firstAwakeningFiredThisSession = false;
+
+  /// Result of the most recent online finish's celebration build, or `null`
+  /// when the last finish was offline-queued (no overlays play offline) or
+  /// produced no events.
+  ///
+  /// One-shot consumption: the active-workout screen reads this via
+  /// [consumeLastCelebration] immediately after `finishWorkout` returns.
+  /// The screen is responsible for playing the queue + overflow card; the
+  /// notifier does not own playback timing.
+  CelebrationQueueResult? _lastCelebration;
+
+  /// Read and clear the queued celebration produced by the last finish.
+  ///
+  /// One-shot: subsequent calls return `null` until the next finish runs.
+  /// This prevents accidental re-play after a hot-reload or a screen
+  /// rebuild where the consumer reads the field twice.
+  CelebrationQueueResult? consumeLastCelebration() {
+    final result = _lastCelebration;
+    _lastCelebration = null;
+    return result;
+  }
+
   /// Finish the active workout, save to server, detect PRs, and return results.
   ///
   /// When the network save fails, the workout is enqueued for offline sync
@@ -622,6 +667,25 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
     _lastValidState = current;
     _cancelRequested = false;
     savedOffline = false;
+    _lastCelebration = null;
+
+    // Capture the pre-finish RPG snapshot + earned-title slug set BEFORE the
+    // save call. The post-finish snapshot (read after `record_set_xp`
+    // commits inside the same transaction as `save_workout`) is diffed
+    // against this to derive rank-up / level-up / first-awakening /
+    // title-unlock events. Reading `.value` (which returns `T?` on
+    // [AsyncValue]) is safe — these providers are AsyncNotifiers that
+    // always have a current snapshot once the user is authenticated, but a
+    // brand-new install pre-first-fetch should gracefully fall through to
+    // "empty pre" so the very first workout still emits the awakening
+    // overlay.
+    final preSnapshot =
+        ref.read(rpgProgressProvider).value ?? RpgProgressSnapshot.empty;
+    final preEarnedSlugs = ref
+        .read(earnedTitlesProvider)
+        .value
+        ?.map((e) => e.title.slug)
+        .toSet();
 
     // Capture workout data BEFORE setting loading state.
     final exercises = current.exercises;
@@ -741,18 +805,23 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
       //
       // RPG state: `save_workout` RPC awards XP via `record_set_xp` in the
       // same transaction, so by the time we get here `lifetime_xp` and
-      // per-body-part rows are durable server-side. Invalidate so the Saga
-      // tab + first-set-awakens banner reflect the new state on next watch
-      // (no app restart required). Co-located here with the other post-save
+      // per-body-part rows are durable server-side. We explicitly refresh
+      // the snapshot (instead of just invalidating) so the post-snapshot
+      // is durable BEFORE we diff against the pre-snapshot to build
+      // celebration events. Co-located here with the other post-save
       // invalidations so no future contributor adds a side-effect that
       // forgets to refresh one of them.
       //
       // Offline saves haven't committed XP yet — the queued `save_workout`
-      // action will trigger this same provider's reactivity once it flushes.
+      // action will re-trigger this same flow once it flushes (and no
+      // celebrations play offline, per spec §13: the user isn't watching).
       if (!savedOffline) {
         _repo.incrementCachedWorkoutCount(_userId);
         ref.invalidate(exerciseProgressProvider);
-        ref.invalidate(rpgProgressProvider);
+        await _buildAndStashCelebration(
+          preSnapshot: preSnapshot,
+          preEarnedSlugs: preEarnedSlugs ?? const <String>{},
+        );
       }
 
       // PR detection: read existing records from local cache (never network),
@@ -970,6 +1039,81 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
     _isFinishing = false;
 
     return prResult;
+  }
+
+  /// Refresh the RPG progress + earned-titles providers post-save, then diff
+  /// against the captured pre-snapshot to build the celebration queue.
+  ///
+  /// Stashes the result on [_lastCelebration] for the screen to consume via
+  /// [consumeLastCelebration]. Sets [_firstAwakeningFiredThisSession] to
+  /// `true` when the queue contains an awakening event so subsequent
+  /// finishes in the same session stay silent (PO throttle, spec §13).
+  ///
+  /// **Why this is a separate private method:** finish-flow celebration is
+  /// orthogonal to PR detection, weekly-plan, and analytics. Inlining it
+  /// into `finishWorkout`'s already-100-line `AsyncValue.guard` block would
+  /// hide the dependency on `preSnapshot`/`preEarnedSlugs` — extracting it
+  /// makes the data flow explicit (pre/post snapshots in, queue out) and
+  /// keeps the orchestration testable in isolation.
+  ///
+  /// **Failure handling:** any error here (catalog asset load, snapshot
+  /// refresh) is logged and silently swallowed — celebration playback is
+  /// non-essential UI polish, NOT a workout-save invariant. The save has
+  /// already committed by the time this runs.
+  Future<void> _buildAndStashCelebration({
+    required RpgProgressSnapshot preSnapshot,
+    required Set<String> preEarnedSlugs,
+  }) async {
+    try {
+      // Refresh the snapshot first so the post-state is durable before we
+      // diff. `refreshAfterSave` re-fetches both `body_part_progress` and
+      // the `character_state` view inside the same call, and returns the
+      // fresh snapshot directly to avoid a race where a concurrent in-flight
+      // initial build() might overwrite the provider state with pre-save data
+      // after refreshAfterSave completes.
+      final postSnapshot = await ref
+          .read(rpgProgressProvider.notifier)
+          .refreshAfterSave();
+      ref.invalidate(earnedTitlesProvider);
+
+      // Catalog is asset-only and cached after first load — this future
+      // resolves synchronously after the first call.
+      final catalog = await ref.read(titleCatalogProvider.future);
+
+      final events = CelebrationEventBuilder.build(
+        pre: preSnapshot,
+        post: postSnapshot,
+        catalog: catalog,
+        alreadyEarnedSlugs: preEarnedSlugs,
+        suppressFirstAwakening: _firstAwakeningFiredThisSession,
+      );
+
+      if (events.isEmpty) {
+        _lastCelebration = null;
+        return;
+      }
+
+      final result = CelebrationQueue.build(events: events);
+
+      // Throttle book-keeping: if the queue contains an awakening, the
+      // overlay will play once the screen consumes the result, so flip the
+      // flag now to prevent a second awakening in the same session even if
+      // the screen never actually renders it (e.g. user backgrounds the
+      // app mid-celebration).
+      final hasAwakening = result.queue.any((e) => e is FirstAwakeningEvent);
+      if (hasAwakening) {
+        _firstAwakeningFiredThisSession = true;
+      }
+
+      _lastCelebration = result;
+    } catch (e, st) {
+      log(
+        'Celebration build failed: $e\n$st',
+        name: 'ActiveWorkoutNotifier',
+        level: 900,
+      );
+      _lastCelebration = null;
+    }
   }
 
   /// Persist the current state to Hive.

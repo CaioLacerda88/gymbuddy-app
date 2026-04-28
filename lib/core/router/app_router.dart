@@ -26,6 +26,7 @@ import '../../features/profile/ui/manage_data_screen.dart';
 import '../../features/profile/ui/profile_settings_screen.dart';
 import '../../features/rpg/ui/character_sheet_screen.dart';
 import '../../features/rpg/ui/saga_stub_screen.dart';
+import '../../features/rpg/ui/titles_screen.dart';
 import '../../features/routines/ui/create_routine_screen.dart';
 import '../../features/routines/ui/routine_list_screen.dart';
 import '../../features/personal_records/domain/pr_detection_service.dart';
@@ -34,6 +35,7 @@ import '../../features/personal_records/ui/pr_list_screen.dart';
 import '../../features/workouts/ui/active_workout_screen.dart';
 import '../../features/workouts/ui/home_screen.dart';
 import '../../features/weekly_plan/ui/plan_management_screen.dart';
+import '../../features/rpg/providers/rpg_progress_provider.dart';
 import '../../features/workouts/ui/workout_detail_screen.dart';
 import '../../features/routines/models/routine.dart';
 import '../../features/workouts/ui/workout_history_screen.dart';
@@ -42,8 +44,6 @@ import '../../shared/widgets/offline_banner.dart';
 import '../theme/app_theme.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authStateProvider);
-
   return GoRouter(
     initialLocation: '/splash',
     refreshListenable: _RouterRefreshListenable(ref),
@@ -55,6 +55,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
     redirect: (context, state) {
+      // Read authState inside the redirect callback (not at routerProvider
+      // construction time) so GoRouter is never recreated on auth events.
+      // _RouterRefreshListenable already watches authStateProvider and calls
+      // notifyListeners() to trigger redirect re-evaluation when auth changes.
+      final authState = ref.read(authStateProvider);
       final isLoading = authState.isLoading;
       final isLoggedIn = authState.value?.session != null;
       final needsOnboarding = ref.read(needsOnboardingProvider);
@@ -226,8 +231,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/saga/titles',
-            builder: (context, state) =>
-                SagaStubScreen(title: AppLocalizations.of(context).titlesLabel),
+            builder: (context, state) => const TitlesScreen(),
           ),
           GoRoute(
             path: '/plan/week',
@@ -275,6 +279,17 @@ class _ShellScaffold extends ConsumerWidget {
     final isOnline = ref.watch(isOnlineProvider);
     ref.watch(cacheRefreshProvider);
     ref.watch(syncServiceProvider);
+    // Eagerly warm up RPG progress so it is ready when finishWorkout runs the
+    // pre/post snapshot diff. Without this, the provider is lazy and only
+    // initialised when the Saga screen is opened — causing the pre-snapshot
+    // to be empty for users who finish a workout without visiting Saga first.
+    //
+    // We use `ref.listen` (no-op handler) instead of `ref.watch` so a change
+    // in `rpgProgressProvider` does not rebuild the shell scaffold. The
+    // shell renders no RPG state directly; rebuilding it on every XP delta
+    // would invalidate the bottom-nav state for zero visual benefit. The
+    // listen subscription is enough to keep the provider alive.
+    ref.listen(rpgProgressProvider, (_, _) {});
     final tabIndex = _currentIndex(context);
     // When on a non-tab route (e.g. /records, /plan/week), pass index 0 to
     // satisfy NavigationBar's range requirement but hide the indicator so no

@@ -1,15 +1,23 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Stub for the user's currently equipped title (Phase 18b).
+import 'earned_titles_provider.dart';
+
+/// The slug of the user's currently equipped title, or null if no title is
+/// active or the data is still loading.
 ///
-/// Phase 18c ships title detection, an `earned_titles` repository, and the
-/// equip flow. Until then this provider returns `null` so the character sheet
-/// can render the active-title pill slot conditionally without referencing
-/// not-yet-built infrastructure. When 18c lands, this file is replaced by an
-/// `AsyncNotifier<String?>` reading from `earned_titles` (where
-/// `is_active = true`).
+/// This provider bridges the async [equippedTitleSlugProvider] into a
+/// synchronous `String?` consumed by [characterSheetProvider] (which is a
+/// pure-transform `Provider` rather than an `AsyncNotifier`). Using `.value`
+/// on the `AsyncValue` means:
+///   * `AsyncLoading` → null  (character sheet renders placeholder title slot)
+///   * `AsyncData(null)` → null (no title equipped — slot hidden)
+///   * `AsyncData("slug")` → "slug" (title pill rendered with localized name)
+///   * `AsyncError` → null (graceful: title slot hidden on fetch failure)
 ///
-/// Returning `null` (not a "default" string) is deliberate — the slot is
-/// hidden when no title is equipped per spec §13.1, and any "Initiate"-style
-/// fallback would mis-read as a real-but-equipped title.
-final activeTitleProvider = Provider<String?>((ref) => null);
+/// **Invalidation:** callers that equip a title MUST call
+/// `ref.invalidate(equippedTitleSlugProvider)` so this provider rebuilds
+/// with fresh data. The active-workout equip flow in
+/// `active_workout_screen.dart` already does this.
+final activeTitleProvider = Provider<String?>((ref) {
+  return ref.watch(equippedTitleSlugProvider).value;
+});
