@@ -72,7 +72,7 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 17 | Gamification Foundation (visual + XP infra shipped; remaining sub-phases SUPERSEDED by Phase 18 RPG v1) | PARTIAL | #101, #103, #105, #106, #107, #108 |
 | 18a | RPG v1: Schema + XP engine + backfill (foundation) | DONE | #112 |
 | 18b | RPG v1: Character sheet + rune sigils UI | DONE | #113 |
-| 18c | RPG v1: Mid-workout overlay rewire + title unlocks | TODO | - |
+| 18c | RPG v1: Mid-workout overlay rewire + title unlocks | DONE | #114 |
 | 18d | RPG v1: Stats deep-dive + Vitality nightly job + visual states | TODO | - |
 | 18e | RPG v1: Class system + cross-build titles + final QA pass | TODO | - |
 | 18 | RPG System v1 (per `docs/superpowers/specs/2026-04-25-rpg-system-v1-design.md`) | PLANNED | - |
@@ -1180,33 +1180,15 @@ Two numbers per body part: **Rank** (1-99, monotonic, the lifetime saga) and **V
 
 ---
 
-### 18c: Mid-workout overlay rewire + title unlocks
+### 18c: Mid-workout overlay rewire + title unlocks — DONE (PR #114)
 
-**Goal:** Rebase Phase 17b's saga-intro-overlay choreography onto Phase 18 data — fire on rank-ups, character level-ups, and title unlocks during workout completion. Implements the celebration intent originally specced in 17a, with the new RPG semantics.
-
-**UX (spec §13.2):**
-
-- `RankUpOverlay` — fires per body-part rank-up. Shows `{body part} reached Rank {N}` + the rune sigil for that body part igniting. ~1.1s, dismissible via tap. Reuses 17b's overlay scaffold (same Hive-backed scheduler).
-- **Multiple events queued:** if a single workout produces a body-part rank-up + character-level-up + title unlock, they sequence: rank-up → level-up → title (each ~1.1s, 200ms gap).
-- **Title unlocks** open a half-sheet **after the workout ends**, not mid-workout (per spec §13.2 + Phase 17a UX revision retained). Half-sheet shows the title name, the rank that unlocked it, and an "Equip" button.
-- **First-set-awakens** micro-celebration (spec §13.4): zero-history user finishes their first attributed set per body part → that rune awakens with an 800ms small-screen overlay. Single rune at a time.
-- Active-logger chrome polish (PR chip, XP whisper, finish-button placement) folded in here from 17a's superseded plan, **scoped down**: only ship the mid-session PR chip + finish-button placement. The XP whisper is deferred until 18d (Vitality visual states pass) — overloading the logger with XP numbers fights the "you don't level up your character, you level up your body" principle.
-
-**Files:**
-
-- Create: `lib/features/rpg/ui/overlays/rank_up_overlay.dart`, `level_up_overlay.dart`, `title_unlock_sheet.dart`, `first_awakening_overlay.dart`, `lib/features/rpg/domain/celebration_queue.dart`
-- Create: `lib/features/rpg/data/titles_repository.dart`, `lib/features/rpg/domain/title_unlock_detector.dart` (78 per-body-part titles only in this sub-phase; cross-build + character-level titles arrive in 18e), `lib/features/rpg/models/title.dart`
-- Create: `assets/rpg/titles_v1.json` (78 per-body-part titles per spec §10.1), localized en + pt-BR via `lib/l10n/app_*.arb`
-- Modify: `lib/features/workouts/ui/workout_finish_flow.dart` (queue celebrations from `record_set_xp` deltas), `active_workout_screen.dart` (mid-session PR chip non-modal, finish-button repositioned)
-- Migration: `00041_titles_seed.sql` — INSERT 78 per-body-part title rows into `earned_titles` catalog *(if catalog needs to be queryable; otherwise titles live entirely in the asset JSON + `earned_titles` only logs unlocks)*. **Decision:** asset JSON only — `earned_titles` only stores unlocks, the catalog itself is client-side. Faster, simpler, and pt-BR translations stay in `.arb`.
-
-**Test plan:**
-
-- **Unit:** `celebration_queue_test.dart` (sequencing rank → level → title, no overlap, dismiss-skip-to-end behavior preserved from 17b infra), `title_unlock_detector_test.dart` (every threshold per body part, no double-unlock guard).
-- **Widget:** `rank_up_overlay_test.dart`, `title_unlock_sheet_test.dart` (renders title copy en + pt-BR, equip button toggles `is_active` exactly once via the catalog's UNIQUE INDEX `earned_titles_one_active`).
-- **E2E:** New `test/e2e/specs/rank-up-celebration.spec.ts` (`@smoke`) — seeded user one set away from a rank threshold, complete workout, assert overlay renders + title sheet appears post-finish. Seed second user at first-set state, assert first-awakening overlay. Selectors: `rankUpOverlay`, `levelUpOverlay`, `titleUnlockSheet`, `firstAwakeningOverlay`, `equipTitleButton`. **Flow change → full suite.**
-
-**Dependencies:** 18a (XP deltas come from `record_set_xp`), 18b (character sheet renders the equipped title and rune halo updates).
+- Shipped `CelebrationPlayer` orchestrator + `CelebrationQueue` sequencing rank-up → level-up → title (1.1s each, 200ms gap), reusing the 17b overlay scaffold but driven by Phase 18 XP deltas.
+- 78 per-body-part titles in `assets/rpg/titles_v1.json` (en + pt-BR via `.arb`), unlock detection client-side, `earned_titles` rows persisted via UPSERT through `titles_repository.dart`. Cross-build + character-level titles still queued for 18e.
+- Title unlock half-sheet renders post-workout with "Equip" CTA (single active title enforced by `earned_titles_one_active` unique index). Sheet `isDismissible: true` per spec §13.2. Migration `00041_earned_titles_insert_policy.sql` adds the missing `earned_titles_insert_own` RLS policy.
+- Overflow card (spec §13.2 "more events than time") holds 4s with localized "Tap to continue" hint; tap routes to `/profile` via new `CelebrationPlayResult { userTappedOverflow }` contract. AOM tap dispatch fixed by promoting outer `Semantics` to `container + button + onTap` (mirrors `GradientButton`).
+- Use-after-dispose hardening: `_ActiveWorkoutBodyState` captures `shouldPrompt` and `rootContext` before the finish `await`; post-disposal callbacks (equip-title, plan-prompt) read providers via `ProviderScope.containerOf(rootContext)` instead of the disposed `ref`. `_isFinishHandled` file-level guard prevents postFrameCallback from racing celebration playback.
+- Tests: 4 new widget tests in `celebration_player_test.dart` (queue sequencing, overflow auto-dismiss vs tap, sheet dismissal); E2E `specs/rank-up-celebration.spec.ts` with dedicated seeded users for rank-up, title-unlock, and overflow-tap-to-saga paths; full regression run (184/204 first-attempt pass — 8 hard failures + 12 flakies all pre-existing baseline, captured in `test/e2e/FLAKY_TESTS.md`).
+- Active-logger chrome polish kept scoped per spec §13.2: mid-session PR chip + finish-button placement only. XP whisper deferred to 18d alongside Vitality visual states.
 
 ---
 
