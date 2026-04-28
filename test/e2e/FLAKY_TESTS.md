@@ -35,12 +35,10 @@ These tests pass on retry #1 with current waits but fail intermittently on first
 | 11 | `specs/manage-data.spec.ts` | MD-007 | Same family as MD-005 | Same | Open — unowned |
 | 12 | `specs/personal-records.spec.ts` | new-PR celebration | PR celebration overlay timing | Same family as #7 | Open — unowned |
 | 13 | `specs/workouts.spec.ts` | full-journey smoke | Multi-step navigation race | Multiple `waitForTimeout` polls in helper chain | Open — unowned |
-| 14 | `specs/workouts.spec.ts` | navigate-after-finish | Post-finish nav race | Likely related to the celebration → navigation handshake (Phase 18c hardened the canonical path; this test may need re-verification) | Open — verify Phase 18c didn't fix it |
+| 14 | `specs/workouts.spec.ts` | navigate-after-finish | Under `--repeat-each=10` hits Supabase `sign_in_sign_ups` rate limit (30/5 min); auth returns "Wrong email or password" from repeat 3 onward. Phase 18c DID fix the original nav-timing bug — test passes 5/5 in independent runs. | Under `--repeat-each=10` hammers rate limit — test-infra issue. Raise `sign_in_sign_ups` in supabase/config.toml or restructure to use per-repeat users. |
 | 15 | `specs/workouts.spec.ts` | decimal-weight round-trip (WK-023) | Locale-dependent decimal parsing flake | en/pt locale switching mid-test | Open — unowned |
-| 16 | `specs/crash-recovery.spec.ts` | HOME-004 | Post-finish nav timing | Same family as #14 | Open — verify Phase 18c didn't fix it |
-| 17 | `specs/home.spec.ts` | last-session-line | Home dashboard rebuild after workout finish | Riverpod refresh ordering on /home | Open — unowned |
-| 18 | `specs/home.spec.ts` | history-nav | Same family as #17 | Same | Open — unowned |
-| 19 | `specs/home.spec.ts` | quick-workout | Same family as #17 | Same | Open — unowned |
+| 18 | `specs/home.spec.ts` | history-nav | Under `--repeat-each=10` (state accumulation): `NAV.homeTab` not visible after `dismissCelebrationIfPresent` at repeat 5. `fullHome` user accumulates workouts across repeats → heavier XP calculation → home ActionHero loads slower. Passes 5/5 in independent runs. | Test-infra: `dismissCelebrationIfPresent` returns without waiting for home screen to fully initialize. Add `waitForURL('**/home**')` + `waitForSelector` on status-line after dismissal, or raise home-state assertion timeout beyond 15s. |
+| 19 | `specs/home.spec.ts` | quick-workout | Same root cause as #18 — `home-quick-workout` not visible after `dismissCelebrationIfPresent` at repeat 4 (workers=2) / repeat 7 (workers=1). Passes 5/5 independently. | Same fix as #18. |
 | 20 | `specs/exercises-localization.spec.ts` | A1 / A2 / B1 (3 tests) | Locale switch flush timing | Translation cache vs localized name fetch race | Open — unowned |
 | 21 | `specs/exercises.spec.ts` | clear-search | Search-input clear race | Flutter web hidden input proxy event ordering | Open — unowned |
 
@@ -62,7 +60,7 @@ For any flake or hard failure, the systematic approach:
 Suggested order based on user-impact-during-flake and ease-of-investigation:
 
 1. **personal-records + rpg-foundation** (#7, #8, #12) — same family. Fixing them likely unblocks several Phase 18c-adjacent tests and validates the celebration→DB write path.
-2. **post-finish nav family** (#14, #16, #17, #18, #19) — Phase 18c hardened the canonical celebration→nav handshake. These may already be fixed; needs verification.
+2. **post-finish nav family** (#18, #19 remain; #14, #16, #17 discharged 2026-04-28) — #16 (HOME-004) and #17 (last-session-line) passed 10/10 at `--repeat-each=10 --retries=0`. #14 (navigate-after-finish) passes 5/5 in independent runs — Phase 18c fixed the nav bug; residual `--repeat-each` failure is Supabase rate-limiting in the local instance (`sign_in_sign_ups = 30`). #18 and #19 still fail 1/10 under `--repeat-each=10` due to `fullHome` user state accumulation across repeats; passes reliably in normal CI runs.
 3. **manage-data** (#5, #6, #9, #10, #11) — same family. Reset-all + account-deletion likely share an auth/storage flush race.
 4. **offline-sync** (#1–#4) — service worker / IndexedDB area, deepest investigation, unique skill set.
 5. **workouts decimal + exercises localization** (#15, #20, #21) — locale/i18n family.

@@ -14,7 +14,7 @@
  */
 
 import { Page, expect } from '@playwright/test';
-import { GAMIFICATION, NAV, PROFILE, SAGA } from './selectors';
+import { GAMIFICATION, NAV, PR, PROFILE, SAGA } from './selectors';
 
 /**
  * Wait for the Flutter app to finish its initial load.
@@ -342,6 +342,45 @@ export async function dismissSagaIntroOverlay(page: Page): Promise<void> {
   await expect(page.locator(GAMIFICATION.step0)).not.toBeVisible({
     timeout: 5_000,
   });
+}
+
+/**
+ * Dismiss the PR/first-workout celebration screen if the app navigated to it.
+ *
+ * Replaces the common racy pattern of checking `PR.firstWorkoutHeading` /
+ * `PR.newPRHeading` visibility. Both identifiers are placed on widgets inside
+ * a `ScaleTransition` that starts at scale=0 — Flutter removes them from the
+ * accessibility tree while the animation runs, so `isVisible()` races against
+ * the animation and returns `false` even when the screen IS shown. This causes
+ * the test to skip the "Continue" click and then time out waiting for `nav-home`
+ * because the PR screen is still blocking.
+ *
+ * This helper uses waitForURL with a glob pattern that matches the
+ * /pr-celebration route, which is immune to the animation state because the
+ * URL changes synchronously with the route push. PR.continueButton
+ * (pr-continue-btn) is outside the ScaleTransition so it is reliably visible
+ * once the URL contains /pr-celebration.
+ *
+ * @param page    - Playwright page.
+ * @param timeout - How long to wait for the celebration URL (ms). Default 20 s.
+ */
+export async function dismissCelebrationIfPresent(
+  page: Page,
+  timeout = 20_000,
+): Promise<void> {
+  const onCelebration = await page
+    .waitForURL('**/pr-celebration**', { timeout })
+    .then(() => true)
+    .catch(() => false);
+
+  if (onCelebration) {
+    // The Continue button is outside the ScaleTransition and is always reachable
+    // once we are on the /pr-celebration route.
+    await expect(page.locator(PR.continueButton)).toBeVisible({ timeout: 10_000 });
+    await page.click(PR.continueButton);
+    // Wait for the celebration route to leave before the caller continues.
+    await page.waitForURL(/\/(home|profile)/, { timeout: 15_000 });
+  }
 }
 
 /**

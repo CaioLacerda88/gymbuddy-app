@@ -9,9 +9,9 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { waitForAppReady } from '../helpers/app';
+import { dismissCelebrationIfPresent, waitForAppReady } from '../helpers/app';
 import { login } from '../helpers/auth';
-import { NAV, WORKOUT, HOME, PR, HISTORY, FIRST_WORKOUT_CTA } from '../helpers/selectors';
+import { NAV, WORKOUT, HOME, HISTORY, FIRST_WORKOUT_CTA } from '../helpers/selectors';
 import {
   startEmptyWorkout,
   addExercise,
@@ -69,20 +69,8 @@ test.describe('Workouts', { tag: '@smoke' }, () => {
 
     // After finishing, either the PR celebration or the home screen must
     // appear. Both indicate a successful save. Neither should be a 404 error.
-    const isCelebration = await page
-      .locator('text=First Workout Complete!')
-      .isVisible({ timeout: 15_000 })
-      .catch(() => false);
-
-    const isNewPR = await page
-      .locator('text=NEW PR')
-      .isVisible({ timeout: 5_000 })
-      .catch(() => false);
-
-    if (isCelebration || isNewPR) {
-      // Dismiss the celebration screen.
-      await page.click('text=Continue');
-    }
+    // Use URL-based detection to avoid the ScaleTransition visibility race.
+    await dismissCelebrationIfPresent(page);
 
     // We must end up on the Home screen — proves navigation completed.
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 20_000 });
@@ -150,16 +138,9 @@ test.describe('Workouts', { tag: '@smoke' }, () => {
     await finishWorkout(page);
 
     // After finishing, the app navigates to the PR celebration screen (first
-    // workout) or back to Home. Either way we wait for the celebration or
-    // Home tab to become visible.
-    const isPRScreen = await page
-      .locator('text=First Workout Complete!')
-      .isVisible({ timeout: 15_000 })
-      .catch(() => false);
-
-    if (isPRScreen) {
-      await page.click('text=Continue');
-    }
+    // workout) or back to Home. Use URL-based detection to avoid the
+    // ScaleTransition visibility race on PR heading identifiers.
+    await dismissCelebrationIfPresent(page);
 
     // We should now be on the Home screen.
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
@@ -177,20 +158,9 @@ test.describe('Workouts', { tag: '@smoke' }, () => {
     await completeSet(page, 0);
     await finishWorkout(page);
 
-    // Dismiss PR / celebration screen if shown (first workout or NEW PR).
-    const isCelebration = await page
-      .locator('text=First Workout Complete!')
-      .isVisible({ timeout: 10_000 })
-      .catch(() => false);
-
-    const isNewPR = await page
-      .locator('text=NEW PR')
-      .isVisible({ timeout: 5_000 })
-      .catch(() => false);
-
-    if (isCelebration || isNewPR) {
-      await page.click('text=Continue');
-    }
+    // Dismiss PR / celebration screen if shown. Uses URL-based detection to
+    // avoid the ScaleTransition visibility race.
+    await dismissCelebrationIfPresent(page);
 
     // Back on Home — the contextual stat cells should be visible.
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
@@ -596,17 +566,11 @@ test.describe('Workout logging', () => {
     await finishWorkout(page);
 
     // App must navigate to either the PR celebration screen or home.
-    // Check both simultaneously to avoid sequential timeouts on CI.
-    const celebrationScreen = page
-      .locator(PR.firstWorkoutHeading)
-      .or(page.locator(PR.newPRHeading));
-    const onCelebration = await celebrationScreen
-      .isVisible({ timeout: 20_000 })
-      .catch(() => false);
-
-    if (onCelebration) {
-      await page.click(PR.continueButton);
-    }
+    // Use URL-based detection to avoid the ScaleTransition visibility race
+    // on PR.firstWorkoutHeading / PR.newPRHeading (both live inside a
+    // ScaleTransition that starts at scale=0, making them temporarily
+    // invisible to Playwright's isVisible() check).
+    await dismissCelebrationIfPresent(page);
 
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
   });
@@ -677,18 +641,9 @@ test.describe('Workout logging', () => {
     await completeSet(page, 0);
     await finishWorkout(page);
 
-    // Dismiss PR celebration if shown — check both simultaneously to avoid
-    // sequential timeouts on CI.
-    const celebrationScreen2 = page
-      .locator(PR.firstWorkoutHeading)
-      .or(page.locator(PR.newPRHeading));
-    const onCelebration2 = await celebrationScreen2
-      .isVisible({ timeout: 20_000 })
-      .catch(() => false);
-
-    if (onCelebration2) {
-      await page.click(PR.continueButton);
-    }
+    // Dismiss PR celebration if shown. Uses URL-based detection to avoid the
+    // ScaleTransition visibility race on PR.firstWorkoutHeading / PR.newPRHeading.
+    await dismissCelebrationIfPresent(page);
 
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
 

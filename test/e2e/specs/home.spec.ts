@@ -21,13 +21,12 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { navigateToTab } from '../helpers/app';
+import { dismissCelebrationIfPresent, navigateToTab } from '../helpers/app';
 import { login } from '../helpers/auth';
 import {
   NAV,
   HOME,
   WORKOUT,
-  PR,
   HISTORY,
   PROFILE,
   WEEKLY_PLAN,
@@ -110,17 +109,9 @@ test.describe('Home screen and navigation', () => {
     await completeSet(page, 0);
     await finishWorkout(page);
 
-    // Dismiss celebration if shown.
-    const celebrationScreen = page
-      .locator(PR.firstWorkoutHeading)
-      .or(page.locator(PR.newPRHeading));
-    const onCelebration = await celebrationScreen
-      .isVisible({ timeout: 20_000 })
-      .catch(() => false);
-
-    if (onCelebration) {
-      await page.click(PR.continueButton);
-    }
+    // Dismiss celebration if shown. Uses URL-based detection to avoid the
+    // ScaleTransition visibility race on PR.firstWorkoutHeading / PR.newPRHeading.
+    await dismissCelebrationIfPresent(page);
 
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
 
@@ -141,16 +132,9 @@ test.describe('Home screen and navigation', () => {
     await completeSet(page, 0);
     await finishWorkout(page);
 
-    const celebrationScreen = page
-      .locator(PR.firstWorkoutHeading)
-      .or(page.locator(PR.newPRHeading));
-    const onCelebration = await celebrationScreen
-      .isVisible({ timeout: 20_000 })
-      .catch(() => false);
-
-    if (onCelebration) {
-      await page.click(PR.continueButton);
-    }
+    // Dismiss celebration if shown. Uses URL-based detection to avoid the
+    // ScaleTransition visibility race on PR.firstWorkoutHeading / PR.newPRHeading.
+    await dismissCelebrationIfPresent(page);
 
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
 
@@ -175,16 +159,9 @@ test.describe('Home screen and navigation', () => {
     await completeSet(page, 0);
     await finishWorkout(page);
 
-    const celebrationScreen = page
-      .locator(PR.firstWorkoutHeading)
-      .or(page.locator(PR.newPRHeading));
-    const onCelebration = await celebrationScreen
-      .isVisible({ timeout: 20_000 })
-      .catch(() => false);
-
-    if (onCelebration) {
-      await page.click(PR.continueButton);
-    }
+    // Dismiss celebration if shown. Uses URL-based detection to avoid the
+    // ScaleTransition visibility race on PR.firstWorkoutHeading / PR.newPRHeading.
+    await dismissCelebrationIfPresent(page);
 
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
 
@@ -208,16 +185,9 @@ test.describe('Home screen and navigation', () => {
     await completeSet(page, 0);
     await finishWorkout(page);
 
-    const celebrationScreen = page
-      .locator(PR.firstWorkoutHeading)
-      .or(page.locator(PR.newPRHeading));
-    const onCelebration = await celebrationScreen
-      .isVisible({ timeout: 20_000 })
-      .catch(() => false);
-
-    if (onCelebration) {
-      await page.click(PR.continueButton);
-    }
+    // Dismiss celebration if shown. Uses URL-based detection to avoid the
+    // ScaleTransition visibility race on PR.firstWorkoutHeading / PR.newPRHeading.
+    await dismissCelebrationIfPresent(page);
 
     await expect(page.locator(HOME.planYourWeek)).toBeVisible({ timeout: 15_000 });
     await page.click(HOME.planYourWeek);
@@ -239,16 +209,9 @@ test.describe('Home screen and navigation', () => {
     await completeSet(page, 0);
     await finishWorkout(page);
 
-    const celebrationScreen = page
-      .locator(PR.firstWorkoutHeading)
-      .or(page.locator(PR.newPRHeading));
-    const onCelebration = await celebrationScreen
-      .isVisible({ timeout: 20_000 })
-      .catch(() => false);
-
-    if (onCelebration) {
-      await page.click(PR.continueButton);
-    }
+    // Dismiss celebration if shown. Uses URL-based detection to avoid the
+    // ScaleTransition visibility race on PR.firstWorkoutHeading / PR.newPRHeading.
+    await dismissCelebrationIfPresent(page);
 
     await expect(page.locator(HOME.quickWorkout)).toBeVisible({ timeout: 15_000 });
     await page.click(HOME.quickWorkout);
