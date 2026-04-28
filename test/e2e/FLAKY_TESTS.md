@@ -21,8 +21,8 @@ These tests do not recover on retry. Each one is either a real prod regression w
 | 4 | `specs/offline-sync.spec.ts` | OFFLINE-007 | pre-Phase-18c | TBD | Same family | Open — unowned |
 | 5 | `specs/manage-data.spec.ts` | account-deletion smoke | pre-Phase-18c | TBD | Likely RLS/cascade timing or auth-state flush after deletion | Open — unowned |
 | 6 | `specs/manage-data.spec.ts` | MD-010 Reset All | pre-Phase-18c | TBD | Same family as account-deletion | Open — unowned |
-| 7 | `specs/personal-records.spec.ts` | first-workout celebration | pre-Phase-18c | TBD | PR detection + post-workout celebration timing race | Open — unowned |
-| 8 | `specs/rpg-foundation.spec.ts` | 18a-E2 first-workout XP | pre-Phase-18c | TBD | Server-side XP record race vs client-side polling | Open — unowned |
+| 7 | `specs/personal-records.spec.ts` | first-workout celebration | pre-Phase-18c | TEST-INFRA | PR detection + post-workout celebration timing race | DISCHARGED 2026-04-28 — Family 2 `dismissCelebrationIfPresent` helper fixed the ScaleTransition animation race; passes 20/20 at `--repeat-each=20 --retries=0` |
+| 8 | `specs/rpg-foundation.spec.ts` | 18a-E2 first-workout XP | pre-Phase-18c | TEST-INFRA | Server-side XP record race vs client-side polling | DISCHARGED 2026-04-28 — Test already uses deterministic `offline-pending-badge` detach wait + admin DB assertion; passes 20/20 at `--repeat-each=20 --retries=0` |
 
 ## Flaky (recovers on retry, but unstable)
 
@@ -33,7 +33,7 @@ These tests pass on retry #1 with current waits but fail intermittently on first
 | 9 | `specs/manage-data.spec.ts` | MD-005 | Selector race after data reset | Missing wait on post-reset reload | Open — unowned |
 | 10 | `specs/manage-data.spec.ts` | MD-006 | Same family as MD-005 | Same | Open — unowned |
 | 11 | `specs/manage-data.spec.ts` | MD-007 | Same family as MD-005 | Same | Open — unowned |
-| 12 | `specs/personal-records.spec.ts` | new-PR celebration | PR celebration overlay timing | Same family as #7 | Open — unowned |
+| 12 | `specs/personal-records.spec.ts` | new-PR celebration | PR celebration overlay timing | DISCHARGED 2026-04-28 — Root cause was test timeout (60s) exceeded under `--repeat-each` state accumulation, not a celebration race. Two-workout tests (`trigger NEW PR celebration`, `more reps at same weight`, `detect PR for each exercise`) now use `test.slow()` (180s). Passes 20/20 at `--repeat-each=20 --retries=0` |
 | 13 | `specs/workouts.spec.ts` | full-journey smoke | Multi-step navigation race | Multiple `waitForTimeout` polls in helper chain | Open — unowned |
 | 14 | `specs/workouts.spec.ts` | navigate-after-finish | Under `--repeat-each=10` hits Supabase `sign_in_sign_ups` rate limit (30/5 min); auth returns "Wrong email or password" from repeat 3 onward. Phase 18c DID fix the original nav-timing bug — test passes 5/5 in independent runs. | Under `--repeat-each=10` hammers rate limit — test-infra issue. Raise `sign_in_sign_ups` in supabase/config.toml or restructure to use per-repeat users. |
 | 15 | `specs/workouts.spec.ts` | decimal-weight round-trip (WK-023) | Locale-dependent decimal parsing flake | en/pt locale switching mid-test | Open — unowned |

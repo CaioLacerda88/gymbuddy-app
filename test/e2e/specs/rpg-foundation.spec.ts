@@ -27,6 +27,7 @@
 
 import { test, expect, type Page } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
+import { dismissCelebrationIfPresent } from '../helpers/app';
 import { login } from '../helpers/auth';
 import {
   startEmptyWorkout,
@@ -125,29 +126,8 @@ async function saveSimpleBenchWorkout(page: Page): Promise<void> {
   await finishWorkout(page);
 
   // Handle PR celebration overlay if it appears (first bench press sets a PR).
-  // Wait for either the celebration or the home nav.
-  const celebrationOrHome = page.locator(
-    `${NAV.homeTab}, role=button[name*="Dismiss"], role=button[name*="See PRs"], text="DONE"`,
-  );
-  try {
-    await celebrationOrHome.first().waitFor({ state: 'visible', timeout: 10_000 });
-    // If the nav tab is already visible, we're done. Otherwise dismiss celebration.
-    const navVisible = await page.locator(NAV.homeTab).isVisible({ timeout: 1_000 }).catch(() => false);
-    if (!navVisible) {
-      // Dismiss via Done button or tap anywhere on celebration.
-      const doneBtn = page.locator('text="DONE"').first();
-      const hasDone = await doneBtn.isVisible({ timeout: 2_000 }).catch(() => false);
-      if (hasDone) {
-        await doneBtn.click();
-      } else {
-        // Tap the center to dismiss.
-        const viewport = page.viewportSize() ?? { width: 1280, height: 720 };
-        await page.mouse.click(viewport.width / 2, viewport.height / 2);
-      }
-    }
-  } catch {
-    // Already on home — no celebration overlay appeared.
-  }
+  // Uses URL-based detection to avoid the ScaleTransition animation race.
+  await dismissCelebrationIfPresent(page);
 
   // Ensure we're back on the home screen.
   await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
@@ -324,8 +304,20 @@ test.describe('RPG foundation — first-workout XP applied', { tag: '@smoke' }, 
 
     // (a) DB-side assertion: body_part_progress must have rows with total_xp > 0.
     // The save_workout RPC calls record_session_xp_batch → inserts xp_events
-    // → updates body_part_progress. Allow a few seconds for the RPC to complete.
-    await page.waitForTimeout(2_000);
+    // → updates body_part_progress.
+    //
+    // Under repeat-each runs the workout may land in the offline sync queue
+    // (Hive → local Supabase write). We wait for the pending-sync banner to
+    // disappear before querying the DB — this is a deterministic signal that
+    // the Supabase write (and therefore record_session_xp_batch) has completed.
+    // Falls back to a 5s timeout poll so a fresh user with no banner history
+    // doesn't block indefinitely.
+    await page
+      .locator('[flt-semantics-identifier="offline-pending-badge"]')
+      .waitFor({ state: 'detached', timeout: 8_000 })
+      .catch(() => {
+        // Badge never appeared (clean write, no offline queue) — fine.
+      });
     const { data: progress } = await admin
       .from('body_part_progress')
       .select('body_part, total_xp')
