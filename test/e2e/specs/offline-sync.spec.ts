@@ -44,7 +44,7 @@ import {
   setReps,
   completeSet,
 } from '../helpers/workout';
-import { NAV, OFFLINE } from '../helpers/selectors';
+import { NAV, OFFLINE, WORKOUT } from '../helpers/selectors';
 import { TEST_USERS } from '../fixtures/test-users';
 import { SEED_EXERCISES } from '../fixtures/test-exercises';
 
@@ -117,10 +117,13 @@ test.describe('Offline sync', { tag: '@smoke' }, () => {
     // ActiveWorkoutNotifier enqueues the workout in Hive.
     await blockSupabaseRest(page);
 
-    await page.click('text=Finish Workout');
+    // Phase 18c moved "Finish Workout" from the bottom bar to an AppBar
+    // trailing "FINISH" OutlinedButton. Use the stable semantics identifier
+    // instead of the old text= selector which no longer matches.
+    await page.click(WORKOUT.finishButton);
 
     // The finish confirmation dialog appears — confirm save.
-    const dialogFinish = page.locator('text=Save & Finish');
+    const dialogFinish = page.locator(WORKOUT.dialogFinishButton);
     await expect(dialogFinish).toBeVisible({ timeout: 8_000 });
     await dialogFinish.click();
 
@@ -171,10 +174,11 @@ test.describe('Offline sync', { tag: '@smoke' }, () => {
     // Block REST just before finishing so the save gets queued.
     await blockSupabaseRest(page);
 
-    await page.click('text=Finish Workout');
-    const dialogFinish = page.locator('text=Save & Finish');
-    await expect(dialogFinish).toBeVisible({ timeout: 8_000 });
-    await dialogFinish.click();
+    // Phase 18c moved "Finish Workout" to the AppBar trailing "FINISH" button.
+    await page.click(WORKOUT.finishButton);
+    const dialogFinish2 = page.locator(WORKOUT.dialogFinishButton);
+    await expect(dialogFinish2).toBeVisible({ timeout: 8_000 });
+    await dialogFinish2.click();
 
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 20_000 });
 
@@ -296,10 +300,11 @@ test.describe('Offline sync — badge interaction', () => {
     // Block REST just before finishing so the save gets queued.
     await blockSupabaseRest(page);
 
-    await page.click('text=Finish Workout');
-    const dialogFinish = page.locator('text=Save & Finish');
-    await expect(dialogFinish).toBeVisible({ timeout: 8_000 });
-    await dialogFinish.click();
+    // Phase 18c moved "Finish Workout" to the AppBar trailing "FINISH" button.
+    await page.click(WORKOUT.finishButton);
+    const dialogFinish3 = page.locator(WORKOUT.dialogFinishButton);
+    await expect(dialogFinish3).toBeVisible({ timeout: 8_000 });
+    await dialogFinish3.click();
 
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 20_000 });
 
@@ -382,10 +387,11 @@ test.describe('Offline sync — badge interaction', () => {
     // Block REST just before finishing so the save gets queued.
     await blockSupabaseRest(page);
 
-    await page.click('text=Finish Workout');
-    const dialogFinish = page.locator('text=Save & Finish');
-    await expect(dialogFinish).toBeVisible({ timeout: 8_000 });
-    await dialogFinish.click();
+    // Phase 18c moved "Finish Workout" to the AppBar trailing "FINISH" button.
+    await page.click(WORKOUT.finishButton);
+    const dialogFinish4 = page.locator(WORKOUT.dialogFinishButton);
+    await expect(dialogFinish4).toBeVisible({ timeout: 8_000 });
+    await dialogFinish4.click();
 
     // Navigation must complete to Home within the timeout.
     // The PR celebration screen is NOT expected here (requires server response).
