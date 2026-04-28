@@ -208,6 +208,62 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ---
 
+## E2E Flaky-Test Cleanup — QA-led debt burndown
+
+**Branch:** `fix/e2e-flaky-cleanup` — to be created off `main` AFTER Phase 18c (PR #114) merges. Do NOT branch off `feature/phase18c-mid-workout-overlays` — that carries unrelated changes.
+**Source of truth:** `test/e2e/FLAKY_TESTS.md` (durable register, 8 hard failures + 12 flakies as of PR #114)
+**Owner:** `qa-engineer` agent leads. `tech-lead` only invoked when a flake is classified as a real `lib/**` race or lazy-init bug.
+**Goal:** converge `FLAKY_TESTS.md` to zero entries. Full E2E suite passes at `--retries=0`.
+
+### Why this is a separate branch
+
+Mixing flaky-test fixes into feature PRs muddies the diff and slows reviews. Each fix here is its own targeted change; small commits, clear blast radius, easy to revert if a "fix" turns out to introduce a new flake. Lands as its own PR (or a sequence of small PRs by family) rather than a single mega-PR.
+
+### Workflow per investigation (qa-engineer)
+
+For each entry in `FLAKY_TESTS.md`, in priority order:
+
+1. **Reproduce** — `--repeat-each=10 --retries=0 --grep "<test name>"`. Confirm consistent vs intermittent vs already-fixed.
+2. **Capture** — stderr (`2>&1`), screenshot, browser console (`page.on('console')`).
+3. **Classify** the failure mode (per qa-engineer.md lane rule):
+   - **TEST-INFRA** — missing `waitFor*`, fixture/seed isolation gap, helper assumes ordering, locale leak, Playwright config: **FIX IT** in this branch. Commit per family.
+   - **PROD-CODE** — real race in Riverpod refresh, lazy init, swallowed exception, navigation racing dialog: **STOP**, write bug report, hand back to tech-lead. Tech-lead patches `lib/**` on a sub-branch off `fix/e2e-flaky-cleanup` (or its own `fix/<bug>` branch) and merges back before QA proceeds.
+4. **Fix** — deterministic wait > timeout polling. `waitForSelector`/`waitForURL`/`waitForResponse` over `waitForTimeout(N)`.
+5. **Verify** — `--repeat-each=20 --retries=0` against the fix. 20/20 stable before claiming "fixed."
+6. **Discharge** — remove `@flaky` tag, delete entry from `FLAKY_TESTS.md`, commit with rationale.
+
+### Backlog (priority order from FLAKY_TESTS.md)
+
+- [ ] **Family 1 — personal-records + rpg-foundation** (entries #7, #8, #12). Likely shared cause: PR detection + post-workout celebration write race. Expected to also unblock several Phase 18c-adjacent tests.
+- [ ] **Family 2 — post-finish nav** (entries #14, #16, #17, #18, #19). Phase 18c hardened the celebration→nav handshake; **first action: re-run these to verify they're already fixed.** If yes, mass-discharge. If no, deep-dive timing.
+- [ ] **Family 3 — manage-data** (entries #5, #6, #9, #10, #11). Account-deletion + Reset All; suspected auth/storage flush race.
+- [ ] **Family 4 — offline-sync** (entries #1–#4). Service worker / IndexedDB on Flutter web; deepest investigation, unique skill set.
+- [ ] **Family 5 — locale + decimal** (entries #15, #20, #21). i18n/l10n cache vs name-fetch ordering.
+
+### Lane discipline (HARD RULE — applies across all families)
+
+`qa-engineer` writes test-infra fixes only (`test/e2e/**`, helpers, fixtures, seeders). Any patch to `lib/**` MUST go to `tech-lead` via bug report. The single exception remains `Semantics(identifier: …)` wrappers added purely as e2e selector hooks — anything else is the wrong agent.
+
+When `qa-engineer` hands back to `tech-lead`, the fix lands either:
+- Directly on `fix/e2e-flaky-cleanup` (if scoped enough to bundle), OR
+- On its own `fix/<symptom>` branch that merges into `fix/e2e-flaky-cleanup` before the family's PR opens.
+
+Orchestrator decides per-handoff which is cleaner.
+
+### Acceptance
+
+- [ ] All 5 families discharged OR each remaining entry has a documented "won't fix — flagged platform issue" with justification
+- [ ] `test/e2e/FLAKY_TESTS.md` reduced to zero open entries (or only documented platform-issue entries)
+- [ ] Full E2E suite passes at `--retries=0` for **5 consecutive runs across 3 different days**
+- [ ] `qa-engineer.md` Stage 3 (`@flaky` retry bucket) becomes vestigial — tag remains for future use but the current bucket is empty
+- [ ] PR (or sequence of PRs by family) merged to `main`
+
+### Status
+
+**Queued.** Cannot start until PR #114 (Phase 18c) merges so the branch can fork off a clean `main` that already contains `FLAKY_TESTS.md` and the staged-run conventions.
+
+---
+
 ## Phase 16 — Subscription Monetization — PARKED (2026-04-22)
 
 **Why parked:** Phase 16 keeps hitting external blockers (Brazilian merchant account, Play Console → upload signed AAB required before subscription product can be created, license-tester account setup). Phase 17 gamification is fully internal code work with no external gates and produces the retention moat that makes Phase 16's paywall pitch compelling. Decision: ship Phase 17 (Gamification) before resuming 16b/c/d.
