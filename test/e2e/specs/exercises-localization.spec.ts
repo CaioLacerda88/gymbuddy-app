@@ -62,8 +62,19 @@ test.describe('Exercise list localization', { tag: '@smoke' }, () => {
     // Search for the pt name of Barbell Bench Press ("Supino" — starts with S,
     // off-screen in the initial A-sorted viewport).
     // Use identifier-based searchInput (locale-independent, pt aria-label = "Buscar exercícios").
+    //
+    // Flake fix (#20/A1): register the waitForResponse promise BEFORE flutterFill
+    // so we never miss the RPC response that fires as soon as the debounce expires
+    // (~300ms). The old waitForTimeout(800) raced CI latency — replacing with a
+    // deterministic waitForResponse on fn_search_exercises_localized eliminates
+    // the race regardless of network / worker load. Timeout of 15s accommodates
+    // cold Supabase containers in local and CI environments.
+    const searchResponsePromise = page.waitForResponse(
+      (resp) => resp.url().includes('fn_search_exercises_localized') && resp.status() === 200,
+      { timeout: 15_000 },
+    );
     await flutterFill(page, EXERCISE_LIST.searchInput, ptBenchName.substring(0, 6));
-    await page.waitForTimeout(800);
+    await searchResponsePromise;
     await expect(
       page.locator(EXERCISE_LOC.exerciseCard(ptBenchName, 'pt')).first(),
     ).toBeVisible({ timeout: 10_000 });
@@ -82,8 +93,15 @@ test.describe('Exercise list localization', { tag: '@smoke' }, () => {
 
     // Search for the pt name of Barbell Bench Press.
     // Use identifier-based searchInput (locale-independent — pt label is "Buscar exercícios").
+    //
+    // Flake fix (#20/A2): same deterministic waitForResponse pattern as A1.
+    // Register before flutterFill so we don't miss the Supabase RPC response.
+    const searchResponsePromise = page.waitForResponse(
+      (resp) => resp.url().includes('fn_search_exercises_localized') && resp.status() === 200,
+      { timeout: 15_000 },
+    );
     await flutterFill(page, EXERCISE_LIST.searchInput, ptBenchName.substring(0, 8));
-    await page.waitForTimeout(800);
+    await searchResponsePromise;
 
     const card = page
       .locator(EXERCISE_LOC.exerciseCard(ptBenchName, 'pt'))
@@ -265,8 +283,13 @@ test.describe('Exercise list pt locale filters and search', () => {
   }) => {
     const ptBenchName = EXERCISE_NAMES.barbell_bench_press.pt;
 
+    // Flake fix (#20/B1): same deterministic waitForResponse pattern as A1/A2.
+    const searchResponsePromise = page.waitForResponse(
+      (resp) => resp.url().includes('fn_search_exercises_localized') && resp.status() === 200,
+      { timeout: 15_000 },
+    );
     await flutterFill(page, EXERCISE_LIST.searchInput, 'supino');
-    await page.waitForTimeout(800);
+    await searchResponsePromise;
 
     // At least one result must appear containing the pt bench press name.
     await expect(

@@ -34,7 +34,7 @@ For each entry in `FLAKY_TESTS.md`, in priority order:
 - [ ] **Family 2 — post-finish nav** (entries #14, #16, #17, #18, #19). Phase 18c hardened the celebration→nav handshake; **first action: re-run these to verify they're already fixed.** If yes, mass-discharge. If no, deep-dive timing.
 - [ ] **Family 3 — manage-data** (entries #5, #6, #9, #10, #11). Account-deletion + Reset All; suspected auth/storage flush race.
 - [ ] **Family 4 — offline-sync** (entries #1–#4). Service worker / IndexedDB on Flutter web; deepest investigation, unique skill set.
-- [ ] **Family 5 — locale + decimal** (entries #15, #20, #21). i18n/l10n cache vs name-fetch ordering.
+- [x] **Family 5 — locale + decimal** (entries #15, #20, #21). DISCHARGED 2026-04-28. #15: URL-wait after history card tap; #20: waitForResponse on fn_search_exercises_localized; #21: waitFor attached on input proxy. All 100/100 at --repeat-each=20 --retries=0.
 
 ### Lane discipline (HARD RULE — applies across all families)
 

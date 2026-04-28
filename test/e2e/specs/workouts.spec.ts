@@ -660,12 +660,28 @@ test.describe('Workout logging', () => {
     await expect(page.locator(HISTORY.heading)).toBeVisible({ timeout: 15_000 });
 
     // Tap the most recent workout card to open its detail.
+    //
+    // Flake fix (#15): the WorkoutHistory screen loads from Hive cache first
+    // (no network round-trip). The detail also loads from cache. The race was
+    // that history-list cards are rendered asynchronously even from cache under
+    // Riverpod's AsyncValue stream — a card might flicker briefly visible before
+    // the list fully settles. Use expect(firstHistoryCard).toBeVisible() with a
+    // generous timeout to wait for the list to stabilise, then wait for the URL
+    // to change to a /workout/ detail route before asserting text content.
+    // This eliminates the race between the SPA route push and the Riverpod
+    // provider rebuilding the set rows with the persisted weight data.
     const firstHistoryCard = page.locator('role=button[name*="Workout"]').first();
-    await expect(firstHistoryCard).toBeVisible({ timeout: 10_000 });
+    await expect(firstHistoryCard).toBeVisible({ timeout: 15_000 });
     await firstHistoryCard.click();
 
+    // Wait for the SPA to navigate to the workout detail route before asserting.
+    // The router pushes /home/history/{workoutId} on card tap. Waiting for the
+    // URL change ensures Riverpod has fetched (or restored from cache) the detail
+    // data, so the set rows are guaranteed to exist before text=22.5 is checked.
+    await page.waitForURL(/\/home\/history\//, { timeout: 15_000 });
+
     // The workout detail screen must display "22.5" as the logged weight.
-    await expect(page.locator('text=22.5')).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('text=22.5')).toBeVisible({ timeout: 15_000 });
   });
 
   test('should open detail bottom sheet when tapping exercise name during active workout (EX-DETAIL-001)', async ({
