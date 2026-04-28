@@ -1534,6 +1534,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get celebrationOverflowTapHint => 'Tap to continue';
+
+  @override
   String get titlesScreenTitle => 'Titles';
 
   @override

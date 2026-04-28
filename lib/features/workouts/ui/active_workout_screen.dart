@@ -44,6 +44,20 @@ import 'widgets/set_row.dart';
 /// exists at any time.
 bool _isShowingDiscardDialog = false;
 
+/// File-level guard: true while [_ActiveWorkoutBodyState._onFinish] owns the
+/// post-save navigation (celebration overlays → context.go).
+///
+/// When the notifier transitions to [AsyncData(null)] (workout committed),
+/// [ActiveWorkoutScreen.build] adds a postFrameCallback that calls
+/// `context.go('/home')`. Without a guard, that callback fires concurrently
+/// with [CelebrationPlayer.play], which dismisses the celebration dialog
+/// immediately via GoRouter's full-stack replacement.
+///
+/// [_onFinish] sets this flag before starting the celebration and clears it
+/// after navigation — the postFrameCallback checks the flag and yields
+/// control to [_onFinish] when true.
+bool _isFinishHandled = false;
+
 /// Full-screen active workout experience.
 ///
 /// Displayed outside the shell route (no bottom nav). Watches
@@ -62,8 +76,11 @@ class ActiveWorkoutScreen extends ConsumerWidget {
 
     if (displayState == null && !asyncState.isLoading) {
       // Workout was finished or discarded -- navigate home.
+      // Guard: _onFinish owns navigation during post-save celebration playback.
+      // Yielding here prevents the postFrameCallback from dismissing dialogs
+      // shown by CelebrationPlayer via GoRouter's full-stack replacement.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (context.mounted) context.go('/home');
+        if (context.mounted && !_isFinishHandled) context.go('/home');
       });
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -271,11 +288,43 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
                 ?.name
           : null;
 
+      // Evaluate the plan-prompt condition NOW while this State is still
+      // mounted and `ref` is valid. After `await notifier.finishWorkout()`
+      // the notifier transitions to AsyncData(null), which disposes
+      // _ActiveWorkoutBodyState (and invalidates `ref`). Calling
+      // ref.read(weeklyPlanProvider) on a disposed ref throws a
+      // StateError, crashing _onFinish and leaving the URL stuck on
+      // /workout/active. We capture the result synchronously here and use
+      // the pre-computed bool throughout the rest of the method.
+      final shouldPrompt = _shouldShowPlanPrompt(routineId);
+
+      // Capture the root navigator's context NOW — while this State is still
+      // mounted and in the widget tree — for use after the save completes.
+      // When the save commits the notifier transitions to AsyncData(null),
+      // which causes ActiveWorkoutScreen.build() to rebuild without
+      // _ActiveWorkoutBody, disposing this State and invalidating `context`.
+      // The root navigator (mounted at app startup) stays alive for the full
+      // app session, so rootContext remains valid for showDialog calls and
+      // GoRouter navigation even after this State is disposed.
+      final rootContext = Navigator.of(context, rootNavigator: true).context;
+
+      // Claim navigation ownership before awaiting the save. When the save
+      // commits, the notifier transitions to AsyncData(null) and the outer
+      // ActiveWorkoutScreen.build() adds a postFrameCallback that calls
+      // context.go('/home'). That callback checks _isFinishHandled — while
+      // true, it yields navigation to this method so celebration overlays can
+      // play uninterrupted (GoRouter's go() does a full-stack replacement
+      // which would instantly pop any showDialog overlay).
+      _isFinishHandled = true;
       final prResult = await notifier.finishWorkout(notes: result.notes);
-      if (!mounted) return;
+      if (!mounted) {
+        _isFinishHandled = false;
+        return;
+      }
 
       final state = ref.read(activeWorkoutProvider);
       if (state.hasError) {
+        _isFinishHandled = false;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(AppLocalizations.of(context).failedToSaveWorkout),
@@ -319,6 +368,12 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
       // queues no overlays per spec §13 (the user isn't watching). The
       // notifier built the queue inside `finishWorkout`; we read it once
       // via the consume getter so a hot-reload doesn't re-fire.
+      //
+      // [celebrationResult] carries `userTappedOverflow` — when the user
+      // explicitly tapped the overflow card we route to `/profile` (Saga)
+      // instead of the default home/PR-celebration flow. The user made an
+      // explicit nav choice; honor it.
+      var userTappedOverflow = false;
       if (!wasSavedOffline && mounted) {
         final celebration = notifier.consumeLastCelebration();
         if (celebration != null) {
@@ -328,42 +383,74 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
           final priorEarned = ref.read(earnedTitlesProvider).value ?? const [];
           final hasPriorEarnedTitles = priorEarned.isNotEmpty;
           final catalog = ref.read(titleCatalogProvider).value ?? const [];
-          await CelebrationPlayer.play(
-            context,
+          final celebrationResult = await CelebrationPlayer.play(
+            rootContext, // ignore: use_build_context_synchronously — root navigator context stays alive for full app session; intentionally used across async gaps (see rootContext capture comment above)
             result: celebration,
             catalog: catalog,
             hasPriorEarnedTitles: hasPriorEarnedTitles,
             onEquipTitle: (title) async {
-              final repo = ref.read(titlesRepositoryProvider);
+              // Use ProviderScope.containerOf(rootContext) instead of
+              // `ref` because this callback fires inside CelebrationPlayer
+              // after _ActiveWorkoutBodyState may be disposed (invalidating
+              // the ConsumerStatefulWidget's ref). rootContext is the root
+              // navigator's context which stays alive for the full app
+              // session.
+              final container = ProviderScope.containerOf(rootContext);
+              final repo = container.read(titlesRepositoryProvider);
               await repo.equipTitle(title.slug);
-              ref.invalidate(earnedTitlesProvider);
-              ref.invalidate(equippedTitleSlugProvider);
+              container.invalidate(earnedTitlesProvider);
+              container.invalidate(equippedTitleSlugProvider);
             },
           );
-          if (!mounted) return;
+          userTappedOverflow = celebrationResult.userTappedOverflow;
         }
       }
 
-      // Determine if we should prompt to add this routine to the plan.
-      final shouldPrompt = _shouldShowPlanPrompt(routineId);
+      // Release navigation ownership right before the final transition so
+      // any Riverpod-triggered postFrameCallback that fires after context.go
+      // does not double-navigate (the screen is leaving anyway).
+      _isFinishHandled = false;
 
-      // Navigate to PR celebration if there are new records, otherwise go home.
-      if (prResult != null && prResult.hasNewRecords) {
-        context.go(
-          '/pr-celebration',
-          extra: {
-            'result': prResult,
-            'exerciseNames': exerciseNames,
-            if (shouldPrompt) 'planPromptRoutineId': routineId,
-            if (shouldPrompt) 'planPromptRoutineName': routineName,
-          },
-        );
-      } else if (shouldPrompt) {
-        await _showPlanPromptAndGoHome(routineId!, routineName!);
-      } else {
-        context.go('/home');
-      }
+      if (!rootContext.mounted) return;
+
+      // Defer the route transition by one frame. CelebrationPlayer.play now
+      // awaits the overflow card's user-tap-or-timeout completer, so by the
+      // time we reach this point the card is gone. We still post-frame the
+      // navigation as defensive scheduling: any post-await microtask
+      // (Riverpod listeners, analytics, etc.) gets a clean frame boundary
+      // before the route teardown begins.
+      //
+      // Overflow-card tap takes precedence over PR celebration and the
+      // plan-prompt: the user tapped a card that explicitly says "open
+      // Saga", so honoring that nav choice trumps the default flow. They
+      // can still see PRs from the records tab.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!rootContext.mounted) return;
+        if (userTappedOverflow) {
+          rootContext.go('/profile');
+        } else if (prResult != null && prResult.hasNewRecords) {
+          rootContext.go(
+            '/pr-celebration',
+            extra: {
+              'result': prResult,
+              'exerciseNames': exerciseNames,
+              if (shouldPrompt) 'planPromptRoutineId': routineId,
+              if (shouldPrompt) 'planPromptRoutineName': routineName,
+            },
+          );
+        } else if (shouldPrompt) {
+          // Fire-and-forget: dialog lives on a separate Overlay subtree, so
+          // we don't need to await it here. The dialog handles its own
+          // navigate-home on dismiss.
+          unawaited(
+            _showPlanPromptAndGoHome(rootContext, routineId!, routineName!),
+          );
+        } else {
+          rootContext.go('/home');
+        }
+      });
     } finally {
+      _isFinishHandled = false;
       _finishing = false;
     }
   }
@@ -380,20 +467,35 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
   }
 
   /// Shows the add-to-plan prompt, then navigates home.
+  ///
+  /// **Why we read providers via [ProviderScope.containerOf] instead of `ref`:**
+  /// this method is invoked from a `postFrameCallback` after [_onFinish] has
+  /// awaited [CelebrationPlayer.play]. By that point the workout notifier has
+  /// transitioned to `AsyncData(null)`, [ActiveWorkoutScreen.build] has
+  /// rebuilt without [_ActiveWorkoutBody], and this State is disposed —
+  /// touching `ref` would throw [StateError]. The root navigator context
+  /// stays alive for the full app session, so its container is the safe
+  /// access path. (`navContext.mounted` guards are inert here because the
+  /// root navigator never unmounts; they're left in place defensively for
+  /// the post-prompt step where the user may have backgrounded the app.)
   Future<void> _showPlanPromptAndGoHome(
+    BuildContext navContext,
     String routineId,
     String routineName,
   ) async {
     final shouldAdd = await showAddToPlanPrompt(
-      context,
+      navContext,
       routineName: routineName,
     );
-    if (!mounted) return;
+    if (!navContext.mounted) return;
     if (shouldAdd == true) {
-      await ref.read(weeklyPlanProvider.notifier).addRoutineToPlan(routineId);
+      final container = ProviderScope.containerOf(navContext);
+      await container
+          .read(weeklyPlanProvider.notifier)
+          .addRoutineToPlan(routineId);
     }
-    if (!mounted) return;
-    context.go('/home');
+    if (!navContext.mounted) return;
+    navContext.go('/home');
   }
 
   Future<void> _onAddExercise() async {

@@ -106,49 +106,52 @@ class _FirstAwakeningOverlayState extends State<FirstAwakeningOverlay>
       animation: _timeline,
       builder: (context, _) {
         final fadeAlpha = _entryFade.value * _exitFade.value;
-        return Opacity(
-          opacity: fadeAlpha.clamp(0.0, 1.0),
-          child: Transform.scale(
-            scale: _scale.value,
-            child: IgnorePointer(
-              child: Container(
-                width: 240,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 24,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.surface2,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppColors.hotViolet.withValues(alpha: 0.25),
-                    width: 1,
+        return Semantics(
+          identifier: 'first-awakening-overlay',
+          child: Opacity(
+            opacity: fadeAlpha.clamp(0.0, 1.0),
+            child: Transform.scale(
+              scale: _scale.value,
+              child: IgnorePointer(
+                child: Container(
+                  width: 240,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 24,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.hotViolet.withValues(alpha: 0.30),
-                      blurRadius: 20,
+                  decoration: BoxDecoration(
+                    color: AppColors.surface2,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.hotViolet.withValues(alpha: 0.25),
+                      width: 1,
                     ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    AppIcons.render(
-                      _sigilAssetFor(widget.bodyPart),
-                      color: _ignite.value ?? AppColors.hotViolet,
-                      size: 48,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      l10n.firstAwakeningHeading(bodyPartName),
-                      style: AppTextStyles.headline.copyWith(
-                        fontSize: 18,
-                        color: AppColors.textCream,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.hotViolet.withValues(alpha: 0.30),
+                        blurRadius: 20,
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AppIcons.render(
+                        _sigilAssetFor(widget.bodyPart),
+                        color: _ignite.value ?? AppColors.hotViolet,
+                        size: 48,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        l10n.firstAwakeningHeading(bodyPartName),
+                        style: AppTextStyles.headline.copyWith(
+                          fontSize: 18,
+                          color: AppColors.textCream,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

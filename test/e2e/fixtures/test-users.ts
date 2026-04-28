@@ -219,4 +219,50 @@ export const TEST_USERS = {
     email: 'e2e-rpg-fresh@test.local',
     password: 'TestPassword123!',
   },
+
+  // -------------------------------------------------------------------------
+  // Phase 18c — Rank-up celebration / overlay tests
+  // -------------------------------------------------------------------------
+
+  // rpgRankUpThreshold: chest body_part_progress pre-seeded to
+  // (cumulativeXpForRank(5) - 1 set worth of XP). Completing one chest set
+  // during the test crosses the Rank 5 boundary and fires a RankUpOverlay.
+  // Rank 5 cumulative XP = 60 × (1.10^4 − 1) / 0.10 ≈ 278.46 XP.
+  // We seed to 270 XP (≈ 8 XP below threshold); one working set of bench
+  // press at moderate weight earns ~10–15 XP and reliably triggers the rank-up.
+  rpgRankUpThreshold: {
+    email: 'e2e-rpg-rank-up-threshold@test.local',
+    password: 'TestPassword123!',
+  },
+
+  // rpgMultiCelebration: pre-seeded such that a single workout finish triggers
+  // a chest rank-up + character level-up + title unlock simultaneously.
+  // Seeding: chest at rank 4 threshold (≈ 187 XP) so +1 working set of bench
+  // press yields rank 5. At rank 5 a title unlocks for chest. Character level
+  // = floor((chest_rank_sum - N_active) / 4) + 1; with chest at 5 and
+  // all others at 1, level = floor((5+1+1+1+1+1 - 6) / 4) + 1 = floor(5/4) + 1 = 2.
+  // We pre-seed arms, back, legs, shoulders, core at rank 1 (0 XP each) and
+  // chest at rank 4 boundary (≈ 187 XP). One chest set → chest rank 5 →
+  // title unlock + level 2 → full multi-event queue.
+  rpgMultiCelebration: {
+    email: 'e2e-rpg-multi-celebration@test.local',
+    password: 'TestPassword123!',
+  },
+
+  // rpgOverflowQueue: 6 body-parts each pre-seeded 1 XP below their next
+  // rank threshold. One workout with 1 set per body part → 6 rank-ups in one
+  // finish → cap-at-3 fires + CelebrationOverflowCard shows "3 more rank-ups".
+  // (Queue: 3 shown, 3 overflow, overflow count = 3 displayed as "3 more rank-ups".)
+  rpgOverflowQueue: {
+    email: 'e2e-rpg-overflow-queue@test.local',
+    password: 'TestPassword123!',
+  },
+
+  // rpgOverflowTapCard: dedicated user for the "tap overflow card → /profile"
+  // test case. Isolated from rpgOverflowQueue so that --repeat-each=2 with 2
+  // workers never races on XP state between the auto-dismiss and tap-card tests.
+  rpgOverflowTapCard: {
+    email: 'e2e-rpg-overflow-tap@test.local',
+    password: 'TestPassword123!',
+  },
 } as const;

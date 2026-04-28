@@ -1542,6 +1542,9 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get celebrationOverflowTapHint => 'Toque para continuar';
+
+  @override
   String get titlesScreenTitle => 'Títulos';
 
   @override

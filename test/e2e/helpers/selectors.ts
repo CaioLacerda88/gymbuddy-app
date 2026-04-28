@@ -702,6 +702,57 @@ export const SAGA = {
 } as const;
 
 // ---------------------------------------------------------------------------
+// Phase 18c — Mid-workout overlays + title unlocks
+//
+// All overlay widgets and the TitlesScreen have Semantics(identifier: ...)
+// wrappers added in the QA gate for Phase 18c.
+// ---------------------------------------------------------------------------
+export const CELEBRATION = {
+  /** RankUpOverlay card — Semantics(identifier: 'rank-up-overlay') */
+  rankUpOverlay: '[flt-semantics-identifier="rank-up-overlay"]',
+  /** LevelUpOverlay root — Semantics(identifier: 'level-up-overlay') */
+  levelUpOverlay: '[flt-semantics-identifier="level-up-overlay"]',
+  /** TitleUnlockSheet root — Semantics(identifier: 'title-unlock-sheet') */
+  titleUnlockSheet: '[flt-semantics-identifier="title-unlock-sheet"]',
+  /** FirstAwakeningOverlay root — Semantics(identifier: 'first-awakening-overlay') */
+  firstAwakeningOverlay: '[flt-semantics-identifier="first-awakening-overlay"]',
+  /** CelebrationOverflowCard root — Semantics(identifier: 'celebration-overflow-card') */
+  celebrationOverflowCard: '[flt-semantics-identifier="celebration-overflow-card"]',
+  /**
+   * EQUIP TITLE ElevatedButton — targeted by accessible role+name.
+   * Using role=button rather than flt-semantics-identifier because the
+   * button is a child node inside a Semantics container; the identifier
+   * lands on the container (group role) while the actual tap-action is on
+   * the ElevatedButton's merged semantics node (button role).
+   */
+  equipTitleButton: 'role=button[name="EQUIP TITLE"]',
+  /** "EQUIPPED" badge inside a TitleRow — Semantics(identifier: 'equipped-title-label') */
+  equippedTitleLabel: '[flt-semantics-identifier="equipped-title-label"]',
+  /** PR chip inline in set row — Semantics(identifier: 'workout-pr-chip') */
+  prChip: '[flt-semantics-identifier="workout-pr-chip"]',
+  /**
+   * Finish button in AppBar trailing (Phase 18c reposition from bottom bar).
+   * Semantics(identifier: 'workout-finish-btn') — same identifier as before,
+   * just physically moved to AppBar trailing OutlinedButton.
+   * Existing WORKOUT.finishButton selector continues to work unchanged.
+   */
+  finishButton: '[flt-semantics-identifier="workout-finish-btn"]',
+  /**
+   * "Add exercise" FAB (Phase 18c: FAB freed from Finish, repurposed for addExercise).
+   * Semantics(identifier: 'workout-add-exercise') — same identifier as before.
+   * Existing WORKOUT.addExerciseFab selector continues to work unchanged.
+   */
+  addExerciseFab: '[flt-semantics-identifier="workout-add-exercise"]',
+  /** TitlesScreen root — Semantics(identifier: 'titles-screen') */
+  titlesScreen: '[flt-semantics-identifier="titles-screen"]',
+  /**
+   * Individual title row by slug — Semantics(identifier: 'title-row-{slug}').
+   * Example: CELEBRATION.titleRow('ground_walker')
+   */
+  titleRow: (slug: string) => `[flt-semantics-identifier="title-row-${slug}"]`,
+} as const;
+
+// ---------------------------------------------------------------------------
 // Gamification intro — SagaIntroOverlay + LVL badge (Phase 17b)
 //
 // SagaIntroOverlay wraps each step in Semantics(identifier: 'saga-intro-step-{n}')

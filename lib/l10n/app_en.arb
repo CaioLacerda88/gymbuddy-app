@@ -1291,6 +1291,8 @@
       "count": { "type": "int", "example": "2" }
     }
   },
+  "celebrationOverflowTapHint": "Tap to continue",
+  "@celebrationOverflowTapHint": { "description": "Phase 18c muted hint below the overflow card copy that signals the entire card is tappable to dismiss and continue." },
   "titlesScreenTitle": "Titles",
   "@titlesScreenTitle": { "description": "Phase 18c titles screen AppBar title." },
   "titlesEmptyState": "Earn your first title by ranking up a body part.",

@@ -65,58 +65,61 @@ class _LevelUpOverlayState extends State<LevelUpOverlay>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return SlideTransition(
-      position: _slide,
-      child: FadeTransition(
-        opacity: _fade,
-        child: Container(
-          width: 280,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-          decoration: BoxDecoration(
-            color: AppColors.surface2,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              // ignore: reward_accent — overlay card is the level-up reward surface; BoxDecoration cannot route through RewardAccent.
-              color: AppColors.heroGold.withValues(alpha: 0.6),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                // ignore: reward_accent — gold halo is the level-up reward emission; BoxShadow cannot route through RewardAccent.
-                color: AppColors.heroGold.withValues(alpha: 0.45),
-                blurRadius: 28,
-                spreadRadius: 4,
+    return Semantics(
+      identifier: 'level-up-overlay',
+      child: SlideTransition(
+        position: _slide,
+        child: FadeTransition(
+          opacity: _fade,
+          child: Container(
+            width: 280,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+            decoration: BoxDecoration(
+              color: AppColors.surface2,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                // ignore: reward_accent — overlay card is the level-up reward surface; BoxDecoration cannot route through RewardAccent.
+                color: AppColors.heroGold.withValues(alpha: 0.6),
+                width: 1,
               ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // The glyph IS the numeral. 64sp Rajdhani 700 in heroGold,
-              // wrapped in RewardAccent so the gold pixel emission is
-              // grouped with its narrative.
-              RewardAccent(
-                child: Text(
-                  '${widget.newLevel}',
-                  style: AppTextStyles.display.copyWith(
-                    fontSize: 64,
-                    height: 1.0,
+              boxShadow: [
+                BoxShadow(
+                  // ignore: reward_accent — gold halo is the level-up reward emission; BoxShadow cannot route through RewardAccent.
+                  color: AppColors.heroGold.withValues(alpha: 0.45),
+                  blurRadius: 28,
+                  spreadRadius: 4,
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // The glyph IS the numeral. 64sp Rajdhani 700 in heroGold,
+                // wrapped in RewardAccent so the gold pixel emission is
+                // grouped with its narrative.
+                RewardAccent(
+                  child: Text(
+                    '${widget.newLevel}',
+                    style: AppTextStyles.display.copyWith(
+                      fontSize: 64,
+                      height: 1.0,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                // l10n.levelUpHeading produces "LEVEL {n}" / "NÍVEL {n}";
-                // we already render the numeral in gold above, so this row
-                // shows only the noun in cream. Strip the numeral by
-                // splitting on the first digit.
-                _stripNumeral(l10n.levelUpHeading(widget.newLevel)),
-                style: AppTextStyles.headline.copyWith(
-                  fontSize: 24,
-                  color: AppColors.textCream,
+                const SizedBox(height: 8),
+                Text(
+                  // l10n.levelUpHeading produces "LEVEL {n}" / "NÍVEL {n}";
+                  // we already render the numeral in gold above, so this row
+                  // shows only the noun in cream. Strip the numeral by
+                  // splitting on the first digit.
+                  _stripNumeral(l10n.levelUpHeading(widget.newLevel)),
+                  style: AppTextStyles.headline.copyWith(
+                    fontSize: 24,
+                    color: AppColors.textCream,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -2750,6 +2750,12 @@ abstract class AppLocalizations {
   /// **'{count, plural, one{1 more rank-up — open Saga} other{{count} more rank-ups — open Saga}}'**
   String celebrationOverflowLabel(int count);
 
+  /// Phase 18c muted hint below the overflow card copy that signals the entire card is tappable to dismiss and continue.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to continue'**
+  String get celebrationOverflowTapHint;
+
   /// Phase 18c titles screen AppBar title.
   ///
   /// In en, this message translates to:

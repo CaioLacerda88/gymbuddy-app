@@ -71,19 +71,22 @@ class _TitlesScreenState extends ConsumerState<TitlesScreen> {
     final catalogAsync = ref.watch(titleCatalogProvider);
     final earnedAsync = ref.watch(earnedTitlesProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.titlesScreenTitle)),
-      body: catalogAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => _ErrorState(message: '$error'),
-        data: (catalog) {
-          return earnedAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => _ErrorState(message: '$error'),
-            data: (earned) =>
-                _Body(catalog: catalog, earned: earned, onTapEarned: _equip),
-          );
-        },
+    return Semantics(
+      identifier: 'titles-screen',
+      child: Scaffold(
+        appBar: AppBar(title: Text(l10n.titlesScreenTitle)),
+        body: catalogAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => _ErrorState(message: '$error'),
+          data: (catalog) {
+            return earnedAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, _) => _ErrorState(message: '$error'),
+              data: (earned) =>
+                  _Body(catalog: catalog, earned: earned, onTapEarned: _equip),
+            );
+          },
+        ),
       ),
     );
   }
@@ -284,71 +287,80 @@ class _TitleRow extends StatelessWidget {
     final isEarned = earned != null;
     final nameColor = isEarned ? AppColors.textCream : AppColors.textDim;
 
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: isActive
-              ? AppColors.surface2
-              : AppColors.surface.withValues(alpha: 0.6),
-          borderRadius: BorderRadius.circular(8),
-          border: isActive
-              ? Border.all(color: AppColors.hotViolet, width: 1)
-              : null,
-        ),
-        margin: const EdgeInsets.only(bottom: 6),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    copy?.name ?? title.slug,
-                    style: AppTextStyles.headline.copyWith(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: nameColor,
+    return Semantics(
+      identifier: 'title-row-${title.slug}',
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: isActive
+                ? AppColors.surface2
+                : AppColors.surface.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(8),
+            border: isActive
+                ? Border.all(color: AppColors.hotViolet, width: 1)
+                : null,
+          ),
+          margin: const EdgeInsets.only(bottom: 6),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      copy?.name ?? title.slug,
+                      style: AppTextStyles.headline.copyWith(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: nameColor,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    l10n.titlesRowRankThreshold(title.rankThreshold),
-                    style: AppTextStyles.label.copyWith(
-                      fontSize: 11,
-                      color: AppColors.textDim,
-                      letterSpacing: 0.08 * 11,
+                    const SizedBox(height: 2),
+                    Text(
+                      l10n.titlesRowRankThreshold(title.rankThreshold),
+                      style: AppTextStyles.label.copyWith(
+                        fontSize: 11,
+                        color: AppColors.textDim,
+                        letterSpacing: 0.08 * 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isActive)
+                Semantics(
+                  identifier: 'equipped-title-label',
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.hotViolet.withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      l10n.equippedLabel,
+                      style: AppTextStyles.label.copyWith(
+                        fontSize: 11,
+                        color: AppColors.hotViolet,
+                        letterSpacing: 0.12 * 11,
+                      ),
                     ),
                   ),
-                ],
-              ),
-            ),
-            if (isActive)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.hotViolet.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(4),
+                )
+              else if (!isEarned)
+                Icon(
+                  Icons.lock_outline,
+                  size: 16,
+                  color: AppColors.textDim.withValues(alpha: 0.6),
                 ),
-                child: Text(
-                  l10n.equippedLabel,
-                  style: AppTextStyles.label.copyWith(
-                    fontSize: 11,
-                    color: AppColors.hotViolet,
-                    letterSpacing: 0.12 * 11,
-                  ),
-                ),
-              )
-            else if (!isEarned)
-              Icon(
-                Icons.lock_outline,
-                size: 16,
-                color: AppColors.textDim.withValues(alpha: 0.6),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );

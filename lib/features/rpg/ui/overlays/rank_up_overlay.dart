@@ -219,17 +219,20 @@ class _RankUpOverlayState extends State<RankUpOverlay>
                 ),
               ),
             ),
-            // Card.
-            Transform.scale(
-              scale: _cardScale.value,
-              child: _RankUpCard(
-                bodyPartName: bodyPartName,
-                rank: widget.newRank,
-                sigilAsset: _sigilAssetFor(widget.bodyPart),
-                sigilColor: sigilColor,
-                shadowBlur: _shadowBlur.value,
-                shadowSpread: _shadowSpread.value,
-                shadowColor: shadowColor,
+            // Card. Semantics identifier lets Playwright detect the overlay.
+            Semantics(
+              identifier: 'rank-up-overlay',
+              child: Transform.scale(
+                scale: _cardScale.value,
+                child: _RankUpCard(
+                  bodyPartName: bodyPartName,
+                  rank: widget.newRank,
+                  sigilAsset: _sigilAssetFor(widget.bodyPart),
+                  sigilColor: sigilColor,
+                  shadowBlur: _shadowBlur.value,
+                  shadowSpread: _shadowSpread.value,
+                  shadowColor: shadowColor,
+                ),
               ),
             ),
           ],

@@ -71,6 +71,13 @@ const TEST_USERS = [
   // Phase 18a — RPG foundation e2e tests
   'e2e-rpg-foundation@test.local',
   'e2e-rpg-fresh@test.local',
+  // Phase 18c — celebration overlay e2e tests
+  'e2e-rpg-rank-up-threshold@test.local',
+  'e2e-rpg-multi-celebration@test.local',
+  'e2e-rpg-overflow-queue@test.local',
+  // Dedicated user for overflow card tap-to-/profile test (isolated from
+  // rpgOverflowQueue to prevent cross-worker XP races under --repeat-each).
+  'e2e-rpg-overflow-tap@test.local',
 ];
 
 /**
@@ -760,7 +767,392 @@ async function seedRpgFreshUser(supabase: SupabaseClient): Promise<void> {
     { onConflict: 'id' },
   );
 
+  // Seed peak loads for the two exercises used in S3 so strength_mult = 1.0
+  // on the first workout attempt. Without peak loads, the RPC uses peak=0
+  // and advances peak to the current weight before computing strength_mult —
+  // that works correctly (strength_mult = 1.0 per the RPC comment) but the
+  // timing of the peak-load upsert inside save_workout can occasionally cause
+  // the second save in the same test run to fail XP attribution, making S3
+  // flaky on first run. Seeding peaks up-front makes the run deterministic.
+  const { data: benchRows } = await supabase
+    .from('exercises').select('id').eq('slug', 'barbell_bench_press').eq('is_default', true).limit(1);
+  const benchIdFresh = benchRows?.[0]?.id;
+  if (benchIdFresh) {
+    await supabase.from('exercise_peak_loads').upsert(
+      { user_id: userId, exercise_id: benchIdFresh, peak_weight: 60, peak_reps: 5, peak_date: new Date().toISOString() },
+      { onConflict: 'user_id,exercise_id' },
+    );
+  }
+  const { data: squatRows } = await supabase
+    .from('exercises').select('id').eq('slug', 'barbell_squat').eq('is_default', true).limit(1);
+  const squatIdFresh = squatRows?.[0]?.id;
+  if (squatIdFresh) {
+    await supabase.from('exercise_peak_loads').upsert(
+      { user_id: userId, exercise_id: squatIdFresh, peak_weight: 80, peak_reps: 5, peak_date: new Date().toISOString() },
+      { onConflict: 'user_id,exercise_id' },
+    );
+  }
+
   console.log('[global-setup] Cleaned and seeded profile for rpgFreshUser');
+}
+
+/**
+ * Seed rpgRankUpThreshold user:
+ * chest body_part_progress at ~270 XP (Rank 5 threshold ≈ 278.46 XP).
+ * One working bench-press set earns ~10-15 XP and crosses the boundary.
+ *
+ * Also seeds a prior minimal workout so the app lands in lapsed state
+ * (Quick workout entry point visible).
+ *
+ * Idempotent: skips if body_part_progress row for chest already exists.
+ */
+async function seedRpgRankUpThresholdUser(supabase: SupabaseClient): Promise<void> {
+  const email = 'e2e-rpg-rank-up-threshold@test.local';
+  const userId = await getUserId(supabase, email);
+  if (!userId) return;
+
+  // Delete workouts first so record_session_xp_batch sees zero historical sets
+  // on every run. The cascade chain (workouts → workout_exercises → sets) removes
+  // all child rows automatically. Without this, the XP novelty discount grows on
+  // each subsequent run and may prevent the rank-threshold from being crossed.
+  await supabase.from('workouts').delete().eq('user_id', userId);
+
+  // Clean RPG tables every run so XP state is deterministic.
+  await supabase.from('xp_events').delete().eq('user_id', userId);
+  await supabase.from('body_part_progress').delete().eq('user_id', userId);
+  await supabase.from('exercise_peak_loads').delete().eq('user_id', userId);
+  await supabase.from('backfill_progress').delete().eq('user_id', userId);
+  await supabase.from('earned_titles').delete().eq('user_id', userId);
+
+  // Mark backfill as completed so SagaIntroGate doesn't re-run it.
+  await supabase.from('backfill_progress').upsert(
+    {
+      user_id: userId,
+      sets_processed: 0,
+      started_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+    },
+    { onConflict: 'user_id' },
+  );
+
+  // Upsert profile so router lands on /home.
+  await supabase.from('profiles').upsert(
+    { id: userId, display_name: 'Rank Up Threshold User', fitness_level: 'intermediate' },
+    { onConflict: 'id' },
+  );
+
+  // Seed chest body_part_progress at rank 2 with 120 XP.
+  // Rank 3 cumulative threshold = 126 XP (60 × (1.10² − 1) / 0.10).
+  // One bench press set earns ~8–12 XP for chest → crosses rank 3.
+  // No title is awarded at rank 3 (first title at rank 5), so the
+  // celebration queue contains only a FirstAwakeningOverlay (shoulders
+  // awakens from bench secondary XP) + a RankUpOverlay — no title sheet
+  // that would block navigation and fail S1.
+  // Character level with chest=2, others=1: floor((2+5-6)/4)+1 = 1.
+  // After chest→3: floor((3+5-6)/4)+1 = 1. No level-up. Clean queue.
+  const bodyParts = ['chest', 'back', 'legs', 'shoulders', 'arms', 'core'];
+  for (const bp of bodyParts) {
+    const xp = bp === 'chest' ? 120 : 0;
+    const rank = bp === 'chest' ? 2 : 1;
+    const { error } = await supabase.from('body_part_progress').upsert(
+      { user_id: userId, body_part: bp, total_xp: xp, rank },
+      { onConflict: 'user_id,body_part' },
+    );
+    if (error) {
+      console.log(`[global-setup] Warning: could not seed body_part_progress (${bp}) for rpgRankUpThreshold: ${error.message}`);
+    }
+  }
+
+  // Seed peak load for bench press so strength_mult = 1.0 (weight = peak).
+  const { data: benchExercises } = await supabase
+    .from('exercises').select('id').eq('slug', 'barbell_bench_press').eq('is_default', true).limit(1);
+  const benchId = benchExercises?.[0]?.id;
+  if (benchId) {
+    await supabase.from('exercise_peak_loads').upsert(
+      { user_id: userId, exercise_id: benchId, peak_weight: 80, peak_reps: 5, peak_date: new Date().toISOString() },
+      { onConflict: 'user_id,exercise_id' },
+    );
+  }
+
+  // Seed one prior minimal workout so the app shows Quick workout (lapsed state).
+  await seedMinimalWorkout(supabase, userId);
+
+  console.log('[global-setup] Seeded rpgRankUpThresholdUser (chest at 120 XP, rank 2 → crosses rank 3 on bench set)');
+}
+
+/**
+ * Seed rpgMultiCelebration user:
+ * chest at rank 4 boundary (≈ 187 XP); all others at rank 1 (0 XP).
+ * One chest set → chest rank 5 + character level 2 + chest Rank 5 title unlock.
+ *
+ * Rank 4 threshold = 60 × (1.10^3 - 1) / 0.10 ≈ 198.6 XP.
+ * We seed chest at 185 XP so one working set reliably crosses rank 4 → 5.
+ */
+async function seedRpgMultiCelebrationUser(supabase: SupabaseClient): Promise<void> {
+  const email = 'e2e-rpg-multi-celebration@test.local';
+  const userId = await getUserId(supabase, email);
+  if (!userId) return;
+
+  // Delete workouts first so record_session_xp_batch sees zero historical sets
+  // on every run. The cascade (workouts → workout_exercises → sets) removes all
+  // child rows automatically. personal_records.set_id is set to NULL by the FK
+  // ON DELETE SET NULL rule — the explicit personal_records delete below then
+  // removes the now-nulled records before re-seeding fresh ones.
+  await supabase.from('workouts').delete().eq('user_id', userId);
+
+  await supabase.from('xp_events').delete().eq('user_id', userId);
+  await supabase.from('body_part_progress').delete().eq('user_id', userId);
+  await supabase.from('exercise_peak_loads').delete().eq('user_id', userId);
+  await supabase.from('personal_records').delete().eq('user_id', userId);
+  await supabase.from('backfill_progress').delete().eq('user_id', userId);
+  await supabase.from('earned_titles').delete().eq('user_id', userId);
+
+  await supabase.from('backfill_progress').upsert(
+    {
+      user_id: userId,
+      sets_processed: 0,
+      started_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+    },
+    { onConflict: 'user_id' },
+  );
+
+  await supabase.from('profiles').upsert(
+    { id: userId, display_name: 'Multi Celebration User', fitness_level: 'intermediate' },
+    { onConflict: 'id' },
+  );
+
+  // chest at 185 XP (rank 3, near rank-4 threshold 198.6 XP → add one set → rank 4? No).
+  // Actually we need rank 4 → 5. Rank 5 cumulative ≈ 278.46 XP.
+  // Rank 4 starts at cumulative 198.6 XP. We seed chest at 270 XP (rank 4, near R5).
+  // Then: character level with chest=4, others=1:
+  //   level = floor((4 + 5×1 - 6) / 4) + 1 = floor(3/4) + 1 = 1
+  // After rank-up to 5: level = floor((5 + 5×1 - 6) / 4) + 1 = floor(4/4) + 1 = 2
+  // So seeding chest at 270 XP → one set → chest R5 + level 2 + title unlock.
+  const bodyParts = ['chest', 'back', 'legs', 'shoulders', 'arms', 'core'];
+  for (const bp of bodyParts) {
+    const xp = bp === 'chest' ? 270 : 0;
+    const rank = bp === 'chest' ? 4 : 1;
+    const { error } = await supabase.from('body_part_progress').upsert(
+      { user_id: userId, body_part: bp, total_xp: xp, rank },
+      { onConflict: 'user_id,body_part' },
+    );
+    if (error) {
+      console.log(`[global-setup] Warning: body_part_progress seed error (${bp}) for rpgMultiCelebration: ${error.message}`);
+    }
+  }
+
+  const { data: benchExercises } = await supabase
+    .from('exercises').select('id').eq('slug', 'barbell_bench_press').eq('is_default', true).limit(1);
+  const benchId = benchExercises?.[0]?.id;
+  if (benchId) {
+    await supabase.from('exercise_peak_loads').upsert(
+      { user_id: userId, exercise_id: benchId, peak_weight: 80, peak_reps: 5, peak_date: new Date().toISOString() },
+      { onConflict: 'user_id,exercise_id' },
+    );
+    // Seed prior personal records for all three record types so the workout
+    // finish does NOT trigger pr-celebration navigation (bench at 80kg/5
+    // produces max_weight=80, max_reps=5, max_volume=400 — all already known).
+    const benchAchievedAt = new Date(Date.now() - 86_400_000).toISOString();
+    await supabase.from('personal_records').insert([
+      { user_id: userId, exercise_id: benchId, record_type: 'max_weight', value: 80, reps: 5, achieved_at: benchAchievedAt },
+      { user_id: userId, exercise_id: benchId, record_type: 'max_reps', value: 5, achieved_at: benchAchievedAt },
+      { user_id: userId, exercise_id: benchId, record_type: 'max_volume', value: 400, achieved_at: benchAchievedAt },
+    ]);
+  }
+
+  await seedMinimalWorkout(supabase, userId);
+
+  console.log('[global-setup] Seeded rpgMultiCelebrationUser (chest 270 XP / rank 4, others rank 1)');
+}
+
+/**
+ * Seed rpgOverflowQueue user:
+ * All 6 body-parts each seeded 8 XP below their respective rank thresholds.
+ * One set per body part → 6 rank-ups in a single workout finish.
+ * CelebrationQueue cap-at-3 fires: 3 overlays shown + overflow card "3 more rank-ups".
+ *
+ * Each body part is seeded at the XP level for its current rank - 1 set below
+ * the next rank threshold. We use rank 4 → 5 boundary (≈ 270 XP) for all 6
+ * body parts for simplicity. Each body part needs a different exercise so
+ * XP attribution hits the right body part.
+ */
+async function seedRpgOverflowQueueUser(supabase: SupabaseClient): Promise<void> {
+  const email = 'e2e-rpg-overflow-queue@test.local';
+  const userId = await getUserId(supabase, email);
+  if (!userId) return;
+
+  // Delete workouts first so record_session_xp_batch sees zero historical sets
+  // on every run (fixes seed-depletion bug: novelty discount from prior-run sets
+  // reduced XP below the rank-4 threshold on the 2nd+ run, preventing overflow).
+  // The cascade chain (workouts → workout_exercises → sets) removes children
+  // automatically. personal_records.set_id is nulled by ON DELETE SET NULL.
+  await supabase.from('workouts').delete().eq('user_id', userId);
+
+  await supabase.from('xp_events').delete().eq('user_id', userId);
+  await supabase.from('body_part_progress').delete().eq('user_id', userId);
+  await supabase.from('exercise_peak_loads').delete().eq('user_id', userId);
+  await supabase.from('personal_records').delete().eq('user_id', userId);
+  await supabase.from('backfill_progress').delete().eq('user_id', userId);
+  await supabase.from('earned_titles').delete().eq('user_id', userId);
+
+  await supabase.from('backfill_progress').upsert(
+    {
+      user_id: userId,
+      sets_processed: 0,
+      started_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+    },
+    { onConflict: 'user_id' },
+  );
+
+  await supabase.from('profiles').upsert(
+    { id: userId, display_name: 'Overflow Queue User', fitness_level: 'intermediate' },
+    { onConflict: 'id' },
+  );
+
+  // All 6 body parts seeded at rank 3, 196 XP (2.6 XP below R4 threshold ≈ 198.6).
+  // Raised from 190 XP to 196 XP to reduce the novelty-discount risk: a single
+  // working set must earn only ~2.6 XP per body part to cross rank 4, ensuring
+  // the threshold is reached reliably even with novelty discounting.
+  //
+  // The S4 test uses bench_press (chest), barbell_squat (legs),
+  // barbell_bent_over_row (back), and overhead_press (shoulders) — 4 primary
+  // exercises. Secondary XP attribution also pushes arms and core over the
+  // rank-4 threshold, so all 6 body parts rank up in the single workout.
+  //
+  // Rank 4 threshold = 60 × (1.10³ − 1) / 0.10 ≈ 198.6 XP. No titles at rank 4
+  // (first title at rank 5), so titles do NOT eat into the cap-at-3 budget.
+  //
+  // CelebrationQueue with 6 rank-ups + 1 level-up + 0 titles:
+  //   closersCount = 1 (level-up), rankUpCapacity = 3 − 1 = 2
+  //   queue = [top-2 rank-ups, level-up], overflow = 4 remaining rank-ups.
+  // The test checks: 2 rank-up overlays, 1 level-up overlay, overflow card (4).
+  const bodyParts = ['chest', 'back', 'legs', 'shoulders', 'arms', 'core'];
+  for (const bp of bodyParts) {
+    const { error } = await supabase.from('body_part_progress').upsert(
+      { user_id: userId, body_part: bp, total_xp: 196, rank: 3 },
+      { onConflict: 'user_id,body_part' },
+    );
+    if (error) {
+      console.log(`[global-setup] Warning: body_part_progress seed error (${bp}) for rpgOverflowQueue: ${error.message}`);
+    }
+  }
+
+  // Seed peak loads and prior personal records for the 4 exercises used in S4.
+  // Peak loads keep strength_mult = 1.0; personal records prevent pr-celebration
+  // navigation after workout finish (the app only navigates to /pr-celebration
+  // when prResult.hasNewRecords is true — no record exists means any set is a PR).
+  const exerciseSlugs: Record<string, { slug: string; peak: number }> = {
+    chest:     { slug: 'barbell_bench_press',   peak: 80 },
+    legs:      { slug: 'barbell_squat',          peak: 80 },
+    back:      { slug: 'barbell_bent_over_row',  peak: 70 },
+    shoulders: { slug: 'overhead_press',         peak: 50 },
+  };
+  for (const { slug, peak } of Object.values(exerciseSlugs)) {
+    const { data: exRows } = await supabase
+      .from('exercises').select('id').eq('slug', slug).eq('is_default', true).limit(1);
+    const exId = exRows?.[0]?.id;
+    if (exId) {
+      await supabase.from('exercise_peak_loads').upsert(
+        { user_id: userId, exercise_id: exId, peak_weight: peak, peak_reps: 5, peak_date: new Date().toISOString() },
+        { onConflict: 'user_id,exercise_id' },
+      );
+      // Seed prior personal records for all three record types so workout
+      // finish does not trigger pr-celebration navigation (any set at the
+      // seeded weight/reps would otherwise register as a new max_reps or
+      // max_volume record even when max_weight is already known).
+      const achievedAt = new Date(Date.now() - 86_400_000).toISOString();
+      await supabase.from('personal_records').insert([
+        { user_id: userId, exercise_id: exId, record_type: 'max_weight', value: peak, reps: 5, achieved_at: achievedAt },
+        { user_id: userId, exercise_id: exId, record_type: 'max_reps', value: 5, achieved_at: achievedAt },
+        { user_id: userId, exercise_id: exId, record_type: 'max_volume', value: peak * 5, achieved_at: achievedAt },
+      ]);
+    }
+  }
+
+  await seedMinimalWorkout(supabase, userId);
+
+  console.log('[global-setup] Seeded rpgOverflowQueueUser (all 6 body parts at rank 3, 196 XP — rank 4 boundary, no titles)');
+}
+
+/**
+ * Seed rpgOverflowTapCard user — identical seeding contract to rpgOverflowQueue
+ * but on a dedicated user. This prevents cross-worker XP state races when
+ * --repeat-each=2 runs the auto-dismiss test (S4) and the tap-card test (S4b)
+ * on parallel workers: each test now operates on its own user.
+ */
+async function seedRpgOverflowTapCardUser(supabase: SupabaseClient): Promise<void> {
+  const email = 'e2e-rpg-overflow-tap@test.local';
+  const userId = await getUserId(supabase, email);
+  if (!userId) return;
+
+  await supabase.from('workouts').delete().eq('user_id', userId);
+  await supabase.from('xp_events').delete().eq('user_id', userId);
+  await supabase.from('body_part_progress').delete().eq('user_id', userId);
+  await supabase.from('exercise_peak_loads').delete().eq('user_id', userId);
+  await supabase.from('personal_records').delete().eq('user_id', userId);
+  await supabase.from('backfill_progress').delete().eq('user_id', userId);
+  await supabase.from('earned_titles').delete().eq('user_id', userId);
+
+  await supabase.from('backfill_progress').upsert(
+    {
+      user_id: userId,
+      sets_processed: 0,
+      started_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+    },
+    { onConflict: 'user_id' },
+  );
+
+  await supabase.from('profiles').upsert(
+    { id: userId, display_name: 'Overflow Tap User', fitness_level: 'intermediate' },
+    { onConflict: 'id' },
+  );
+
+  // All 6 body parts at rank 3, 196 XP (2.6 XP below R4 threshold ~198.6).
+  const bodyParts = ['chest', 'back', 'legs', 'shoulders', 'arms', 'core'];
+  for (const bp of bodyParts) {
+    const { error } = await supabase.from('body_part_progress').upsert(
+      { user_id: userId, body_part: bp, total_xp: 196, rank: 3 },
+      { onConflict: 'user_id,body_part' },
+    );
+    if (error) {
+      console.log(`[global-setup] Warning: body_part_progress seed error (${bp}) for rpgOverflowTapCard: ${error.message}`);
+    }
+  }
+
+  const exerciseSlugs: Record<string, { slug: string; peak: number }> = {
+    chest:     { slug: 'barbell_bench_press',   peak: 80 },
+    legs:      { slug: 'barbell_squat',          peak: 80 },
+    back:      { slug: 'barbell_bent_over_row',  peak: 70 },
+    shoulders: { slug: 'overhead_press',         peak: 50 },
+  };
+  for (const { slug, peak } of Object.values(exerciseSlugs)) {
+    const { data: exRows } = await supabase
+      .from('exercises').select('id').eq('slug', slug).eq('is_default', true).limit(1);
+    const exId = exRows?.[0]?.id;
+    if (exId) {
+      await supabase.from('exercise_peak_loads').upsert(
+        { user_id: userId, exercise_id: exId, peak_weight: peak, peak_reps: 5, peak_date: new Date().toISOString() },
+        { onConflict: 'user_id,exercise_id' },
+      );
+      const achievedAt = new Date(Date.now() - 86_400_000).toISOString();
+      await supabase.from('personal_records').insert([
+        { user_id: userId, exercise_id: exId, record_type: 'max_weight', value: peak, reps: 5, achieved_at: achievedAt },
+        { user_id: userId, exercise_id: exId, record_type: 'max_reps', value: 5, achieved_at: achievedAt },
+        { user_id: userId, exercise_id: exId, record_type: 'max_volume', value: peak * 5, achieved_at: achievedAt },
+      ]);
+    }
+  }
+
+  await seedMinimalWorkout(supabase, userId);
+
+  console.log('[global-setup] Seeded rpgOverflowTapCardUser (all 6 body parts at rank 3, 196 XP — rank 4 boundary, no titles)');
 }
 
 async function globalSetup(): Promise<void> {
@@ -865,6 +1257,12 @@ async function globalSetup(): Promise<void> {
     // the overlay appears on first login. Also cleans xp_events / user_xp
     // so retro_backfill_xp has a deterministic outcome.
     'e2e-saga-intro@test.local',
+    // Phase 18c celebration overlay users — XP state is re-seeded by
+    // dedicated seed functions below, but we clean workouts/PRs here first.
+    'e2e-rpg-rank-up-threshold@test.local',
+    'e2e-rpg-multi-celebration@test.local',
+    'e2e-rpg-overflow-queue@test.local',
+    'e2e-rpg-overflow-tap@test.local',
   ];
 
   for (const email of freshStateUsers) {
@@ -1376,6 +1774,12 @@ async function globalSetup(): Promise<void> {
   // ── Phase 18a: seed RPG foundation + fresh users ─────────────────────
   await seedRpgFoundationUser(supabase);
   await seedRpgFreshUser(supabase);
+
+  // ── Phase 18c: seed celebration overlay test users ────────────────────
+  await seedRpgRankUpThresholdUser(supabase);
+  await seedRpgMultiCelebrationUser(supabase);
+  await seedRpgOverflowQueueUser(supabase);
+  await seedRpgOverflowTapCardUser(supabase);
 
   console.log('[global-setup] Done.');
 }

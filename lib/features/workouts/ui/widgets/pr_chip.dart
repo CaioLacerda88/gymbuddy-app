@@ -31,30 +31,33 @@ class PrChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return RewardAccent(
-      child: Container(
-        height: 28,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            // Chip border is the gold-pixel emission. RewardAccent only
-            // forwards DefaultTextStyle, not BoxDecoration, so the border
-            // color must be set directly. The whole widget is a RewardAccent
-            // leaf so the scarcity contract is satisfied.
-            // ignore: reward_accent — see comment above (PrChip is a RewardAccent leaf).
-            color: AppColors.heroGold.withValues(alpha: 0.8),
-            width: 1,
+    return Semantics(
+      identifier: 'workout-pr-chip',
+      child: RewardAccent(
+        child: Container(
+          height: 28,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              // Chip border is the gold-pixel emission. RewardAccent only
+              // forwards DefaultTextStyle, not BoxDecoration, so the border
+              // color must be set directly. The whole widget is a RewardAccent
+              // leaf so the scarcity contract is satisfied.
+              // ignore: reward_accent — see comment above (PrChip is a RewardAccent leaf).
+              color: AppColors.heroGold.withValues(alpha: 0.8),
+              width: 1,
+            ),
           ),
-        ),
-        child: Text(
-          l10n.prChipLabel,
-          style: AppTextStyles.display.copyWith(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            height: 1,
+          child: Text(
+            l10n.prChipLabel,
+            style: AppTextStyles.display.copyWith(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              height: 1,
+            ),
           ),
         ),
       ),

@@ -80,107 +80,119 @@ class TitleUnlockSheet extends StatelessWidget {
       ),
     );
 
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: AppColors.surface2,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      child: Stack(
-        children: [
-          // Rune watermark — bottom-right, decorative, IgnorePointer guards
-          // the equip-button hit region from a misalignment-induced miss.
-          Positioned(
-            right: -24,
-            bottom: -24,
-            child: IgnorePointer(
-              child: Opacity(
-                opacity: 0.04,
-                child: AppIcons.render(
-                  AppIcons.hero,
-                  color: AppColors.textDim,
-                  size: 180,
+    return Semantics(
+      identifier: 'title-unlock-sheet',
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: AppColors.surface2,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        child: Stack(
+          children: [
+            // Rune watermark — bottom-right, decorative, IgnorePointer guards
+            // the equip-button hit region from a misalignment-induced miss.
+            Positioned(
+              right: -24,
+              bottom: -24,
+              child: IgnorePointer(
+                child: Opacity(
+                  opacity: 0.04,
+                  child: AppIcons.render(
+                    AppIcons.hero,
+                    color: AppColors.textDim,
+                    size: 180,
+                  ),
                 ),
               ),
             ),
-          ),
-          // Foreground content.
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Drag handle pill.
-                Center(
-                  child: Container(
-                    width: 32,
-                    height: 3,
-                    decoration: BoxDecoration(
-                      color: AppColors.hair,
-                      borderRadius: BorderRadius.circular(1.5),
+            // Foreground content.
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Drag handle pill.
+                  Center(
+                    child: Container(
+                      width: 32,
+                      height: 3,
+                      decoration: BoxDecoration(
+                        color: AppColors.hair,
+                        borderRadius: BorderRadius.circular(1.5),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 24),
-                // Rank label — "{BODY PART} · RANK {N} TITLE" via the
-                // localized arb template, hotViolet, uppercase, tracking.
-                Text(
-                  l10n.titleUnlockRankLabel(bodyPartName, title.rankThreshold),
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.label.copyWith(
-                    fontSize: 13,
-                    color: AppColors.hotViolet,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Title name. First-ever titles render in heroGold via
-                // RewardAccent; subsequent titles stay in textCream so the
-                // gold scarcity budget isn't depleted.
-                if (isFirstEver) RewardAccent(child: nameText) else nameText,
-                if (copy != null) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 24),
+                  // Rank label — "{BODY PART} · RANK {N} TITLE" via the
+                  // localized arb template, hotViolet, uppercase, tracking.
                   Text(
-                    copy.flavor,
+                    l10n.titleUnlockRankLabel(
+                      bodyPartName,
+                      title.rankThreshold,
+                    ),
                     textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.body.copyWith(
-                      fontSize: 14,
-                      color: AppColors.textDim,
-                      height: 1.5,
+                    style: AppTextStyles.label.copyWith(
+                      fontSize: 13,
+                      color: AppColors.hotViolet,
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  // Title name. First-ever titles render in heroGold via
+                  // RewardAccent; subsequent titles stay in textCream so the
+                  // gold scarcity budget isn't depleted.
+                  if (isFirstEver) RewardAccent(child: nameText) else nameText,
+                  if (copy != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      copy.flavor,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 14,
+                        color: AppColors.textDim,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  // Equip CTA. 56dp height, filled primaryViolet, label
+                  // "EQUIP TITLE" Rajdhani 600 13sp uppercase.
+                  // The E2E selector targets this via role=button[name="EQUIP TITLE"]
+                  // rather than flt-semantics-identifier to ensure the actual
+                  // button action node is clicked (not a wrapper container).
+                  Semantics(
+                    identifier: 'equip-title-button',
+                    child: SizedBox(
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: onEquip,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryViolet,
+                          foregroundColor: AppColors.textCream,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          l10n.equipTitleButton,
+                          style: AppTextStyles.headline.copyWith(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.12 * 13,
+                            color: AppColors.textCream,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                 ],
-                const SizedBox(height: 24),
-                // Equip CTA. 56dp height, filled primaryViolet, label
-                // "EQUIP TITLE" Rajdhani 600 13sp uppercase.
-                SizedBox(
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: onEquip,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryViolet,
-                      foregroundColor: AppColors.textCream,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Text(
-                      l10n.equipTitleButton,
-                      style: AppTextStyles.headline.copyWith(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.12 * 13,
-                        color: AppColors.textCream,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

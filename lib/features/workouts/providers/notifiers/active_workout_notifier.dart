@@ -1067,12 +1067,14 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
     try {
       // Refresh the snapshot first so the post-state is durable before we
       // diff. `refreshAfterSave` re-fetches both `body_part_progress` and
-      // the `character_state` view inside the same call.
-      await ref.read(rpgProgressProvider.notifier).refreshAfterSave();
+      // the `character_state` view inside the same call, and returns the
+      // fresh snapshot directly to avoid a race where a concurrent in-flight
+      // initial build() might overwrite the provider state with pre-save data
+      // after refreshAfterSave completes.
+      final postSnapshot = await ref
+          .read(rpgProgressProvider.notifier)
+          .refreshAfterSave();
       ref.invalidate(earnedTitlesProvider);
-
-      final postSnapshot =
-          ref.read(rpgProgressProvider).value ?? RpgProgressSnapshot.empty;
 
       // Catalog is asset-only and cached after first load — this future
       // resolves synchronously after the first call.
@@ -1104,9 +1106,9 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
       }
 
       _lastCelebration = result;
-    } catch (e) {
+    } catch (e, st) {
       log(
-        'Celebration build failed: $e',
+        'Celebration build failed: $e\n$st',
         name: 'ActiveWorkoutNotifier',
         level: 900,
       );

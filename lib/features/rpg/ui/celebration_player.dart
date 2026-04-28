@@ -28,10 +28,21 @@ import 'overlays/title_unlock_sheet.dart';
 ///     for a 3-event queue: ~3.5s + the title sheet which is user-dismissed.
 ///   * The [TitleUnlockSheet] is shown via [showModalBottomSheet] after all
 ///     overlays have played; the player awaits its dismissal so the caller
-///     navigates only after the user has seen the title.
-///   * The overflow card (when present) is shown *after* the title sheet,
-///     fire-and-forget — the card auto-dismisses at 3s and the player
-///     returns immediately so the screen can navigate.
+///     navigates only after the user has seen the title. The sheet is
+///     **barrier-dismissable** (tap outside) — users who skip the inline
+///     equip can re-equip from the Titles screen. Drag-to-dismiss stays
+///     **disabled** so the fixed 0.45 height isn't compromised by a stray
+///     swipe.
+///   * The overflow card (when present) is shown *after* the title sheet
+///     and is **awaited** — the player blocks on a [Completer] that resolves
+///     on the first of either user tap or the 4s auto-dismiss timer. The
+///     completer carries a `bool`: `true` when the user explicitly tapped
+///     the card (caller should route to `/profile`), `false` on auto-
+///     dismiss (caller follows its default post-finish flow). Once the
+///     completer fires, the [OverlayEntry] is removed and the player
+///     returns so the screen can navigate. This guarantees the user
+///     actually sees the card on real devices (without the await, the
+///     post-frame navigation tore down the overlay before paint).
 ///
 /// **Why the title sheet always comes last:** spec §13.2 reads "rank-ups →
 /// level-up → title is the crown." Having the sheet block navigation lets
@@ -42,6 +53,39 @@ import 'overlays/title_unlock_sheet.dart';
 /// **Failure handling:** any overlay dismiss races (user backgrounds the
 /// app, rapid pop) are absorbed by [Navigator.maybePop] guards. The player
 /// never throws — celebration playback is non-essential UI polish.
+///
+/// **Return value contract:** [CelebrationPlayer.play] returns a
+/// [CelebrationPlayResult]. Callers that need to react to the user's choice
+/// at the overflow card (e.g., route them to `/profile` instead of `/home`)
+/// inspect [CelebrationPlayResult.userTappedOverflow]. Empty queues, no-
+/// overflow flows, and auto-dismissed overflow cards all return
+/// `userTappedOverflow == false` — the caller's default flow stays correct
+/// without explicit branching.
+
+/// Result value for [CelebrationPlayer.play].
+///
+/// Callers consume this to decide post-celebration navigation. The bool is
+/// the only field today; the class shape leaves room for future signals
+/// (e.g., title equipped during sheet, overflow body parts list) without
+/// breaking the call site.
+class CelebrationPlayResult {
+  const CelebrationPlayResult({required this.userTappedOverflow});
+
+  /// True when the user explicitly tapped the overflow card during this
+  /// playback. Caller convention: route to `/profile` (Saga) so the user
+  /// can see the rank-ups that didn't fit in the cap-at-3 queue. False on
+  /// auto-dismiss, no-overflow runs, and empty queues.
+  final bool userTappedOverflow;
+
+  static const CelebrationPlayResult notTapped = CelebrationPlayResult(
+    userTappedOverflow: false,
+  );
+
+  static const CelebrationPlayResult tapped = CelebrationPlayResult(
+    userTappedOverflow: true,
+  );
+}
+
 class CelebrationPlayer {
   const CelebrationPlayer._();
 
@@ -66,14 +110,16 @@ class CelebrationPlayer {
   ///
   /// [onEquipTitle] is the equip callback wired into the title sheet. The
   /// player does not invoke it directly — [TitleUnlockSheet] does, on tap.
-  static Future<void> play(
+  static Future<CelebrationPlayResult> play(
     BuildContext context, {
     required CelebrationQueueResult result,
     required List<rpg.Title> catalog,
     required bool hasPriorEarnedTitles,
     required Future<void> Function(rpg.Title title) onEquipTitle,
   }) async {
-    if (result.queue.isEmpty && result.overflow == null) return;
+    if (result.queue.isEmpty && result.overflow == null) {
+      return CelebrationPlayResult.notTapped;
+    }
 
     // Split the queue: non-title overlays play sequentially via showDialog;
     // title unlocks accumulate and render as bottom sheets at the end.
@@ -92,7 +138,7 @@ class CelebrationPlayer {
     //    completion handshake so the user cannot accidentally jam the
     //    sequence by tapping outside the barrier.
     for (var i = 0; i < overlayEvents.length; i++) {
-      if (!context.mounted) return;
+      if (!context.mounted) return CelebrationPlayResult.notTapped;
       await _playOverlay(context, event: overlayEvents[i]);
       if (i < overlayEvents.length - 1) {
         await Future<void>.delayed(interEventGap);
@@ -102,8 +148,10 @@ class CelebrationPlayer {
     // 2) Title-unlock half-sheets — one at a time. First-ever flag is
     //    true for the very first earned title (the screen passes
     //    `hasPriorEarnedTitles` based on the pre-finish snapshot).
+    //    Sheet is barrier-dismissable; users who skip equip can re-equip
+    //    from the Titles screen.
     for (var i = 0; i < titles.length; i++) {
-      if (!context.mounted) return;
+      if (!context.mounted) return CelebrationPlayResult.notTapped;
       final event = titles[i];
       final entry = _resolveCatalog(
         catalog,
@@ -120,13 +168,24 @@ class CelebrationPlayer {
       );
     }
 
-    // 3) Overflow card — fire-and-forget, auto-dismisses at 3s. The player
-    //    does NOT await this so the caller can navigate immediately after
-    //    the title sheet closes.
+    // 3) Overflow card — awaited until the user taps OR the 4s auto-dismiss
+    //    timer fires, whichever comes first. The card runs on its own
+    //    [OverlayEntry] above the active route; awaiting its lifetime keeps
+    //    the active-workout route alive long enough for the user to
+    //    actually read the card. The completer resolves to `true` when the
+    //    user tapped (caller routes to /profile) and `false` on auto-
+    //    dismiss (caller follows its default post-finish flow).
     final overflow = result.overflow;
     if (overflow != null && context.mounted) {
-      _showOverflowCard(context, remainingRankUps: overflow.remainingRankUps);
+      final tapped = await _showOverflowCard(
+        context,
+        remainingRankUps: overflow.remainingRankUps,
+      );
+      return tapped
+          ? CelebrationPlayResult.tapped
+          : CelebrationPlayResult.notTapped;
     }
+    return CelebrationPlayResult.notTapped;
   }
 
   // ---------------------------------------------------------------------------
@@ -201,9 +260,16 @@ class CelebrationPlayer {
     required bool isFirstEver,
     required Future<void> Function(rpg.Title title) onEquip,
   }) async {
+    // Spec §13.2: tap outside or back gesture dismisses. Drag-to-dismiss
+    // stays disabled so the fixed 0.45 height isn't compromised by an
+    // accidental swipe. showModalBottomSheet completes with `null` when
+    // the user dismisses via the barrier — the player handles that the
+    // same as completion (the loop advances to the next title or the
+    // overflow card).
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      enableDrag: false,
       backgroundColor: Colors.transparent,
       barrierColor: AppColors.abyss.withValues(alpha: 0.72),
       builder: (sheetContext) => DraggableScrollableSheet(
@@ -215,21 +281,54 @@ class CelebrationPlayer {
           title: title,
           isFirstEver: isFirstEver,
           onEquip: () async {
-            await onEquip(title);
-            if (sheetContext.mounted) Navigator.of(sheetContext).maybePop();
+            try {
+              await onEquip(title);
+            } finally {
+              // Always pop the modal regardless of whether onEquip succeeds
+              // or throws — swallowed exceptions inside onEquip must not leave
+              // the sheet permanently open. rootNavigator: true is required so
+              // we pop from the root navigator (which pushed this modal) rather
+              // than a nested ShellRoute navigator that has no route to pop.
+              if (sheetContext.mounted) {
+                final nav = Navigator.of(sheetContext, rootNavigator: true);
+                if (nav.canPop()) nav.pop();
+              }
+            }
           },
         ),
       ),
     );
   }
 
-  static void _showOverflowCard(
+  /// Insert the overflow card into the root [Overlay] and resolve once the
+  /// user taps OR the card's auto-dismiss timer fires — whichever happens
+  /// first. Returns `true` for an explicit tap (caller routes to /profile),
+  /// `false` for auto-dismiss. The two paths share a single [Completer] so
+  /// neither double-resolves and neither leaks the [OverlayEntry].
+  static Future<bool> _showOverflowCard(
     BuildContext context, {
     required int remainingRankUps,
   }) {
-    final overlay = Overlay.maybeOf(context, rootOverlay: true);
-    if (overlay == null) return;
+    // Use the root Navigator's overlay directly. We can't use
+    // `Overlay.maybeOf(context, rootOverlay: true)` here because the caller
+    // typically passes the root-navigator's *own* context (via
+    // `Navigator.of(context, rootNavigator: true).context`), and that
+    // Navigator's context is *above* its Overlay child in the element tree —
+    // `Overlay.maybeOf` walks ancestors and would return null.
+    final overlay = Navigator.maybeOf(context, rootNavigator: true)?.overlay;
+    if (overlay == null) return Future<bool>.value(false);
+
+    final completer = Completer<bool>();
     late OverlayEntry entry;
+
+    void resolve({required bool tapped}) {
+      // Idempotent: tap and timer can race, but only the first wins. The
+      // OverlayEntry is removed exactly once.
+      if (completer.isCompleted) return;
+      if (entry.mounted) entry.remove();
+      completer.complete(tapped);
+    }
+
     entry = OverlayEntry(
       builder: (_) => Positioned(
         left: 16,
@@ -240,18 +339,15 @@ class CelebrationPlayer {
             color: Colors.transparent,
             child: CelebrationOverflowCard(
               overflowCount: remainingRankUps,
-              onTap: () {
-                entry.remove();
-              },
-              onAutoDismiss: () {
-                if (entry.mounted) entry.remove();
-              },
+              onTap: () => resolve(tapped: true),
+              onAutoDismiss: () => resolve(tapped: false),
             ),
           ),
         ),
       ),
     );
     overlay.insert(entry);
+    return completer.future;
   }
 
   static rpg.Title _resolveCatalog(

@@ -23,7 +23,7 @@ import { test, expect } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 import { login } from '../helpers/auth';
 import { navigateToTab } from '../helpers/app';
-import { SAGA, NAV, HISTORY } from '../helpers/selectors';
+import { SAGA, NAV, HISTORY, CELEBRATION } from '../helpers/selectors';
 import { TEST_USERS } from '../fixtures/test-users';
 
 function makeAdminClient() {
@@ -223,18 +223,20 @@ test.describe('Saga — navigation', { tag: '@smoke' }, () => {
     await expect(page.locator(SAGA.sagaStubScreen).first()).toBeVisible({ timeout: 15_000 });
   });
 
-  // S6: Titles codex nav row → titles stub screen.
+  // S6: Titles codex nav row → titles screen (functional list, Phase 18c upgrade).
   //
-  // CodexNavRow with semanticIdentifier 'codex-nav-titles' calls context.push('/saga/titles').
-  // SagaStubScreen renders l10n.comingSoonStub = "Coming soon.".
-  test('should navigate to titles stub screen when tapping Titles codex nav row (S6)', async ({
+  // CodexNavRow with semanticIdentifier 'codex-nav-titles' calls context.push('/profile/titles').
+  // Phase 18c upgraded /profile/titles from SagaStubScreen to TitlesScreen (functional list).
+  // TitlesScreen root uses Semantics(identifier: 'titles-screen').
+  test('should navigate to titles screen when tapping Titles codex nav row (S6)', async ({
     page,
   }) => {
     await page.locator(SAGA.codexNavTitles).first().scrollIntoViewIfNeeded();
     await page.locator(SAGA.codexNavTitles).first().click();
 
     // Flutter web pushes the route via context.push — assert on visible content.
-    await expect(page.locator(SAGA.sagaStubScreen).first()).toBeVisible({ timeout: 15_000 });
+    // Phase 18c: TitlesScreen uses 'titles-screen' identifier (not 'saga-stub-screen').
+    await expect(page.locator(CELEBRATION.titlesScreen).first()).toBeVisible({ timeout: 15_000 });
   });
 
   // S7: History codex nav row → workout history screen.

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
@@ -68,7 +69,11 @@ class TitlesRepository extends BaseRepository {
   /// the rest of the app lifetime — the catalog never mutates at runtime.
   static List<Title>? _catalogCache;
 
-  /// Visible-for-test reset hook. Production code never calls this.
+  /// Visible-for-test reset hook. Production code never calls this — the
+  /// `@visibleForTesting` annotation keeps it out of IDE autocomplete in
+  /// app code while staying available to widget/unit tests that need a
+  /// fresh asset read between cases.
+  @visibleForTesting
   static void debugResetCatalogCache() {
     _catalogCache = null;
   }
@@ -158,16 +163,23 @@ class TitlesRepository extends BaseRepository {
     });
   }
 
-  /// Equip a title. Atomically clears the prior `is_active = true` row and
-  /// sets the new one — the UNIQUE INDEX `earned_titles_one_active` would
-  /// otherwise reject the second UPDATE.
+  /// Equip a title. Clears any prior `is_active = true` row, then upserts the
+  /// new row — INSERT if the title has never been equipped/earned, UPDATE if it
+  /// already has a row. The UNIQUE INDEX `earned_titles_one_active` enforces the
+  /// at-most-one-active invariant across both the clear and the upsert.
   ///
-  /// **Phase 18c v1 implementation:** two sequential UPDATEs. Race with a
-  /// concurrent equip from another device would surface a `23505` from the
-  /// second statement, which `mapException` translates to
-  /// [DatabaseException]. Phase 18d may swap this for a server-side
-  /// `equip_title(title_id)` RPC for atomicity, but the UNIQUE INDEX is the
-  /// real safety net either way.
+  /// **Why UPSERT instead of plain UPDATE:** Phase 18a planned server-side
+  /// title-row creation inside `record_set_xp`, but that code path was never
+  /// implemented (migration 00041 adds the INSERT RLS policy that makes this
+  /// safe). The first time a user equips a title from the celebration overlay
+  /// there is no pre-existing `earned_titles` row — the UPSERT creates it.
+  ///
+  /// **Race safety:** a concurrent equip from another device would surface a
+  /// `23505` from the UPSERT's ON CONFLICT clause if two INSERTs race on the
+  /// same primary key, which `mapException` translates to [DatabaseException].
+  /// The UNIQUE INDEX is the real safety net; the two-statement implementation
+  /// is the v1 approach pending a server-side `equip_title(title_id)` RPC
+  /// (Phase 18d).
   Future<void> equipTitle(String slug) {
     return mapException(() async {
       final user = _client.auth.currentUser;
@@ -180,12 +192,13 @@ class TitlesRepository extends BaseRepository {
           .eq('user_id', user.id)
           .eq('is_active', true);
 
-      // Set the new active row.
-      await _client
-          .from('earned_titles')
-          .update({'is_active': true})
-          .eq('user_id', user.id)
-          .eq('title_id', slug);
+      // Upsert the new active row. INSERT if no row exists for this title yet
+      // (first equip from the celebration overlay), UPDATE otherwise.
+      await _client.from('earned_titles').upsert({
+        'user_id': user.id,
+        'title_id': slug,
+        'is_active': true,
+      }, onConflict: 'user_id,title_id');
     });
   }
 
