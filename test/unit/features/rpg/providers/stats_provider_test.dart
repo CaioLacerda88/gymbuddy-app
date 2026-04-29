@@ -526,6 +526,47 @@ void main() {
       );
       expect(state.peakLoadsByBodyPart, isEmpty);
     });
+
+    test(
+      'peaks for cardio exercises are excluded from peak loads (v1 cardio gate)',
+      () {
+        // v1 (Phase 18d) does not route cardio peaks through the deep-dive.
+        // The mapping `_muscleGroupToBodyPart(cardio)` returns null at the
+        // source so cardio rows are dropped before they enter the map —
+        // not silently allocated to `BodyPart.cardio` and then dropped
+        // downstream by [PeakLoadsTable]'s `activeBodyParts.where(...)`
+        // filter (which would silently regress when Phase 19 adds cardio
+        // attribution). Mixing in a chest peak proves the bench (other
+        // groups still flow).
+        final peaks = [
+          _peak(exerciseId: 'run', weight: 0, reps: 0),
+          _peak(exerciseId: 'bench', weight: 100, reps: 5),
+        ];
+        final exercises = {
+          'run': _exercise(
+            id: 'run',
+            name: 'Treadmill Run',
+            mg: ex.MuscleGroup.cardio,
+          ),
+          'bench': _exercise(
+            id: 'bench',
+            name: 'Bench Press',
+            mg: ex.MuscleGroup.chest,
+          ),
+        };
+        final state = assembleStatsState(
+          now: now,
+          snapshot: RpgProgressSnapshot.empty,
+          events: const [],
+          peaks: peaks,
+          exercisesById: exercises,
+        );
+
+        // Only chest is in the map — cardio is gated off at `_muscleGroupToBodyPart`.
+        expect(state.peakLoadsByBodyPart.keys.toSet(), {BodyPart.chest});
+        expect(state.peakLoadsByBodyPart.containsKey(BodyPart.cardio), isFalse);
+      },
+    );
   });
 
   group('StatsDeepDiveState.empty', () {

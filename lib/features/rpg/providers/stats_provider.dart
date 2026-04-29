@@ -369,7 +369,12 @@ BodyPart? _muscleGroupToBodyPart(ex.MuscleGroup mg) {
     case ex.MuscleGroup.core:
       return BodyPart.core;
     case ex.MuscleGroup.cardio:
-      return BodyPart.cardio;
+      // v1: cardio track not active in `/saga/stats` (no XP attribution path
+      // in 18d). Returning null excludes any cardio-mapped peak from
+      // [peakLoadsByBodyPart] at the source rather than leaving the dead row
+      // for [PeakLoadsTable]'s `activeBodyParts` filter to drop downstream.
+      // Lifts the gate when Phase 19 adds cardio attribution.
+      return null;
   }
 }
 
