@@ -29,9 +29,6 @@ import { navigateToTab } from '../helpers/app';
 import { SAGA, CELEBRATION } from '../helpers/selectors';
 import { TEST_USERS } from '../fixtures/test-users';
 
-// Slug of the earned title pre-seeded for rpgTitleEquipUser.
-const EARNED_SLUG = 'chest_r5_initiate_of_the_forge';
-
 test.describe('Title equip', () => {
   test.beforeEach(async ({ page }) => {
     await login(
@@ -93,7 +90,9 @@ test.describe('Title equip', () => {
       .waitFor({ state: 'visible', timeout: 15_000 });
 
     // The earned title row must be visible (chest section, rank 5 entry).
-    const titleRow = page.locator(CELEBRATION.titleRow(EARNED_SLUG)).first();
+    const titleRow = page
+      .locator(CELEBRATION.titleRow('chest_r5_initiate_of_the_forge'))
+      .first();
     await titleRow.scrollIntoViewIfNeeded();
     await expect(titleRow).toBeVisible({ timeout: 10_000 });
 
@@ -130,25 +129,22 @@ test.describe('Title equip', () => {
       .first()
       .waitFor({ state: 'visible', timeout: 15_000 });
 
-    const titleRow = page.locator(CELEBRATION.titleRow(EARNED_SLUG)).first();
+    const titleRow = page
+      .locator(CELEBRATION.titleRow('chest_r5_initiate_of_the_forge'))
+      .first();
     await titleRow.scrollIntoViewIfNeeded();
     await expect(titleRow).toBeVisible({ timeout: 10_000 });
 
-    // If EQUIPPED badge is already showing (prior test run left the title
-    // equipped), skip the equip tap — the pill check below still validates
-    // the character sheet contract.
-    const alreadyEquipped = await page
-      .locator(CELEBRATION.equippedTitleLabel)
-      .first()
-      .isVisible({ timeout: 2_000 })
-      .catch(() => false);
-
-    if (!alreadyEquipped) {
-      await titleRow.click();
-      await expect(
-        page.locator(CELEBRATION.equippedTitleLabel).first(),
-      ).toBeVisible({ timeout: 15_000 });
-    }
+    // Always equip in T3 so the test is self-contained: each test in this
+    // describe block has its own beforeEach (login + navigate to Profile),
+    // and asserting "EQUIPPED visible after a tap" before checking the pill
+    // makes T3 independent of T2's effects on the user record. Equipping a
+    // title that's already equipped is idempotent server-side
+    // (UPSERT on user_id+title_id with is_active=true).
+    await titleRow.click();
+    await expect(
+      page.locator(CELEBRATION.equippedTitleLabel).first(),
+    ).toBeVisible({ timeout: 15_000 });
 
     // Navigate back to the character sheet. The active-title-pill should render
     // because equippedTitleSlugProvider was invalidated after the equip RPC.

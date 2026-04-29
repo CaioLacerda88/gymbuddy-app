@@ -16,11 +16,11 @@ import '../models/title.dart';
 /// container, and the celebration-event builder can call this from any
 /// snapshot pair without conditioning on the call site.
 ///
-/// **Cardio in v1:** the `iron_bound` predicate per the spec is "Chest+Back+
-/// Legs ≥ 60 AND cardio is low" — but in v1 cardio doesn't earn XP, so the
-/// cardio condition is dropped. The trigger fires on the strength condition
-/// alone. When v2 ships cardio XP, add the cardio condition here without
-/// touching consumers.
+/// **Cardio in v1:** the `iron_bound` predicate per the spec is "Chest ≥ 60
+/// AND Back ≥ 60 AND Legs ≥ 60 AND cardio is low" — but in v1 cardio doesn't
+/// earn XP, so the cardio condition is dropped. The trigger fires on the
+/// strength condition alone. When v2 ships cardio XP, add the cardio
+/// condition here without touching consumers.
 class CrossBuildTitleEvaluator {
   const CrossBuildTitleEvaluator._();
 
@@ -77,13 +77,27 @@ class CrossBuildTitleEvaluator {
     )) {
       fired.add(CrossBuildTriggerId.broadShouldered.dbValue);
     }
-    if (_evenHanded(chest, back, legs, shoulders, arms, core)) {
+    if (_evenHanded(
+      chest: chest,
+      back: back,
+      legs: legs,
+      shoulders: shoulders,
+      arms: arms,
+      core: core,
+    )) {
       fired.add(CrossBuildTriggerId.evenHanded.dbValue);
     }
     if (_ironBound(chest: chest, back: back, legs: legs)) {
       fired.add(CrossBuildTriggerId.ironBound.dbValue);
     }
-    if (_sagaForged(chest, back, legs, shoulders, arms, core)) {
+    if (_sagaForged(
+      chest: chest,
+      back: back,
+      legs: legs,
+      shoulders: shoulders,
+      arms: arms,
+      core: core,
+    )) {
       fired.add(CrossBuildTriggerId.sagaForged.dbValue);
     }
 
@@ -127,25 +141,35 @@ class CrossBuildTitleEvaluator {
   /// — the title is the persistent-balance reward, where the class is the
   /// snapshot-balance reward. A lifter can be Ascendant from rank 5+ but
   /// only Even-Handed once every track reaches 30.
-  static bool _evenHanded(int a, int b, int c, int d, int e, int f) {
-    if (a < evenHandedMinRank) return false;
-    if (b < evenHandedMinRank) return false;
-    if (c < evenHandedMinRank) return false;
-    if (d < evenHandedMinRank) return false;
-    if (e < evenHandedMinRank) return false;
-    if (f < evenHandedMinRank) return false;
-    final values = [a, b, c, d, e, f];
+  static bool _evenHanded({
+    required int chest,
+    required int back,
+    required int legs,
+    required int shoulders,
+    required int arms,
+    required int core,
+  }) {
+    if (chest < evenHandedMinRank) return false;
+    if (back < evenHandedMinRank) return false;
+    if (legs < evenHandedMinRank) return false;
+    if (shoulders < evenHandedMinRank) return false;
+    if (arms < evenHandedMinRank) return false;
+    if (core < evenHandedMinRank) return false;
+    final values = [chest, back, legs, shoulders, arms, core];
     final maxRank = values.reduce((a, b) => a > b ? a : b);
     final minRank = values.reduce((a, b) => a < b ? a : b);
     final spread = (maxRank - minRank) / maxRank;
     return spread <= evenHandedSpreadFraction;
   }
 
-  /// `iron_bound` — Chest+Back+Legs ≥ 60.
+  /// `iron_bound` — Chest ≥ 60 AND Back ≥ 60 AND Legs ≥ 60.
   ///
-  /// "The big-three of strength training" — the powerlifter heuristic.
-  /// Cardio condition (low cardio) is v2 — v1 ignores cardio entirely so
-  /// the trigger fires on the strength sum alone.
+  /// "The big-three of strength training" — the powerlifter heuristic. Each
+  /// of the three big lifts must independently clear rank 60; this is a
+  /// per-track threshold, not a sum (a chest-90/back-30/legs-60 lifter is
+  /// not iron-bound). Cardio condition (low cardio) is v2 — v1 ignores
+  /// cardio entirely so the trigger fires on the per-track strength
+  /// condition alone.
   static bool _ironBound({
     required int chest,
     required int back,
@@ -159,7 +183,19 @@ class CrossBuildTitleEvaluator {
   /// The end-game prestige title. By the time every track is at rank 60
   /// the user has been training consistently for many months — this title
   /// signals "I have done the work" rather than any specific build shape.
-  static bool _sagaForged(int a, int b, int c, int d, int e, int f) {
-    return a >= 60 && b >= 60 && c >= 60 && d >= 60 && e >= 60 && f >= 60;
+  static bool _sagaForged({
+    required int chest,
+    required int back,
+    required int legs,
+    required int shoulders,
+    required int arms,
+    required int core,
+  }) {
+    return chest >= 60 &&
+        back >= 60 &&
+        legs >= 60 &&
+        shoulders >= 60 &&
+        arms >= 60 &&
+        core >= 60;
   }
 }

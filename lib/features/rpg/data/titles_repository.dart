@@ -204,10 +204,9 @@ class TitlesRepository extends BaseRepository {
           .select()
           .order('earned_at');
 
-      return (rows as List)
-          .cast<Map<String, dynamic>>()
-          .map(EarnedTitleRow.fromJson)
-          .toList(growable: false);
+      // supabase_flutter v2 already types `select()` as `List<Map<String,
+      // dynamic>>` — no `as List` cast needed.
+      return rows.map(EarnedTitleRow.fromJson).toList(growable: false);
     });
   }
 

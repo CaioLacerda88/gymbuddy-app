@@ -29,8 +29,8 @@ Active work being done by agents. Each section is removed once the branch is mer
   - `CelebrationEventBuilder.build` orchestrates all three detectors with cumulative `earnedSoFar` guard
 
 - [x] **WS4 — Cross-build evaluator + retroactive backfill:**
-  - `CrossBuildTitleEvaluator` pure function (5 predicates) shipped
-  - Migration `supabase/migrations/00043_cross_build_titles_backfill.sql` ships the PL/pgSQL mirror function `evaluate_cross_build_titles_for_user(uuid)` + idempotent `INSERT INTO earned_titles … ON CONFLICT DO NOTHING` over distinct users
+  - `CrossBuildTitleEvaluator` pure function (5 predicates) shipped; iron_bound is per-track (Chest ≥ 60 AND Back ≥ 60 AND Legs ≥ 60), not a sum — spec §10.3 amended to disambiguate (reviewer pass)
+  - Migration `supabase/migrations/00043_cross_build_titles_backfill.sql` ships the PL/pgSQL mirror function `evaluate_cross_build_titles_for_user(uuid)` + idempotent `INSERT INTO earned_titles … ON CONFLICT DO NOTHING` over distinct users; the explicit BEGIN/COMMIT was removed in the reviewer pass (Supabase CLI wraps each migration in an implicit transaction)
   - Migration application to hosted Supabase still pending (post-merge step per CLAUDE.md §10)
 
 - [x] **WS5 — Dead 17b code investigation (option B chosen):**

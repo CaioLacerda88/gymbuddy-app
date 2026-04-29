@@ -42,8 +42,9 @@ final xpRepositoryProvider = Provider<XpRepository>((ref) {
 ///      no-op for users on the new RPG flow** because the RPG XP path
 ///      (`record_set_xp` inside `save_workout`) is the canonical writer.
 ///      The gamification award is server-idempotent — duplicate writes
-///      just update `gamification_xp_state` rows that nothing user-facing
-///      reads. Removing the call site is safe but not blocking for v1.
+///      just update `gamification_xp_state` rows that nothing in the RPG
+///      v1 UX reads after `SagaIntroOverlay` has been dismissed. Removing
+///      the call site is safe but not blocking for v1.
 ///
 /// Removal is tracked as a v1.1+ task: migrate `SagaIntroOverlay` to read
 /// from `rpgProgressProvider`, then delete `lib/features/gamification/`.

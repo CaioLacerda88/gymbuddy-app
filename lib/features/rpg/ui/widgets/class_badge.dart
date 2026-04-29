@@ -4,6 +4,29 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../models/character_class.dart';
 
+/// Style tokens for [ClassBadge] — two-tier prestige alpha values.
+///
+/// Public so widget tests can pin against [ClassBadgeStyle.initiateFillAlpha]
+/// etc. instead of magic-numbering the assertions. A future palette rebalance
+/// touches the constants here and the tests keep passing without re-hardcoding
+/// values.
+///
+/// Initiate (quieter "still on the way"):
+///   * Border: 40% primaryViolet
+///   * Fill:   12% primaryViolet
+///
+/// Earned classes (Berserker through Ascendant):
+///   * Border: 60% hotViolet
+///   * Fill:   18% primaryViolet
+class ClassBadgeStyle {
+  const ClassBadgeStyle._();
+
+  static const double initiateBorderAlpha = 0.4;
+  static const double initiateFillAlpha = 0.12;
+  static const double earnedBorderAlpha = 0.6;
+  static const double earnedFillAlpha = 0.18;
+}
+
 /// Class slot — always rendered, even when no class has been derived yet.
 ///
 /// Day-1 copy is "The iron will name you." (en) / "O ferro lhe dará um nome."
@@ -87,20 +110,27 @@ class ClassBadge extends StatelessWidget {
       borderColor = AppColors.hair;
       fillColor = AppColors.surface;
     } else if (isInitiate) {
-      // Quieter "still on the way" palette: primaryViolet text + 40%
-      // primaryViolet border + 12% primaryViolet fill. Keeps Initiate
-      // legibly Arcane-Ascent-branded without competing with the seven
-      // earned classes for visual prestige.
+      // Quieter "still on the way" palette: primaryViolet text + initiate-
+      // tier border/fill alphas. Keeps Initiate legibly Arcane-Ascent-branded
+      // without competing with the seven earned classes for visual prestige.
       textColor = AppColors.primaryViolet;
-      borderColor = AppColors.primaryViolet.withValues(alpha: 0.4);
-      fillColor = AppColors.primaryViolet.withValues(alpha: 0.12);
+      borderColor = AppColors.primaryViolet.withValues(
+        alpha: ClassBadgeStyle.initiateBorderAlpha,
+      );
+      fillColor = AppColors.primaryViolet.withValues(
+        alpha: ClassBadgeStyle.initiateFillAlpha,
+      );
     } else {
-      // Earned-class palette: hotViolet text + 60% hotViolet border +
-      // 18% primaryViolet fill. Reserved for the seven classes a user
-      // unlocks after crossing rank 5 in some body part.
+      // Earned-class palette: hotViolet text + earned-tier border + 18%
+      // primaryViolet fill. Reserved for the seven classes a user unlocks
+      // after crossing rank 5 in some body part.
       textColor = AppColors.hotViolet;
-      borderColor = AppColors.hotViolet.withValues(alpha: 0.6);
-      fillColor = AppColors.primaryViolet.withValues(alpha: 0.18);
+      borderColor = AppColors.hotViolet.withValues(
+        alpha: ClassBadgeStyle.earnedBorderAlpha,
+      );
+      fillColor = AppColors.primaryViolet.withValues(
+        alpha: ClassBadgeStyle.earnedFillAlpha,
+      );
     }
 
     return Container(

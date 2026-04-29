@@ -41,8 +41,13 @@
 --   are the dbValue tokens of CrossBuildTriggerId — forever-stable join keys
 --   with `earned_titles.title_id`.
 -- =============================================================================
-
-BEGIN;
+--
+-- NOTE: Supabase CLI wraps every migration file in an implicit transaction
+-- (`db push` runs each file inside `BEGIN; ... COMMIT;`). Adding our own
+-- BEGIN/COMMIT here would nest transactions and trip the CLI's transaction
+-- bookkeeping. The migration is still atomic — the implicit wrapper covers
+-- both the function definition and the backfill INSERT below.
+-- =============================================================================
 
 -- ---------------------------------------------------------------------------
 -- Helper function — pure SQL mirror of CrossBuildTitleEvaluator.evaluate
@@ -174,5 +179,3 @@ FROM (
 ) u
 CROSS JOIN LATERAL public.evaluate_cross_build_titles_for_user(u.user_id) cb
 ON CONFLICT (user_id, title_id) DO NOTHING;
-
-COMMIT;

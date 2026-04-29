@@ -106,9 +106,9 @@ class ClassResolver {
     }
 
     // 3. Dominant lookup. Tie-break by alphabetical body-part slug for
-    //    deterministic output — a true tie above rank 5 is already routed
-    //    to Ascendant by the predicate above, so this branch only fires
-    //    on tied ranks below the spread threshold.
+    //    deterministic output — a distribution where every rank is tied at
+    //    the Ascendant floor or above already routes to Ascendant; this
+    //    branch fires on partial ties between dominant tracks.
     final sortedBodyParts = activeRanks.keys.toList(growable: false)
       ..sort((a, b) => a.dbValue.compareTo(b.dbValue));
 
