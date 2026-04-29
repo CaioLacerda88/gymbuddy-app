@@ -15,9 +15,11 @@
 ///     that haven't been migrated to RPCs (e.g. softDeleteExercise still uses
 ///     direct table updates).
 ///
-/// Pattern reference: `test/unit/features/gamification/xp_repository_test.dart`
-/// (lines 35-70) — same fake-RPC structure, generalized here for reuse across
-/// exercise/workout/PR/routine repository tests.
+/// Original fake-RPC pattern was lifted from the deleted Phase 17b
+/// `gamification/xp_repository_test.dart` (removed in the Phase 18
+/// follow-ups branch when the gamification dir was deleted) and
+/// generalized here for reuse across exercise/workout/PR/routine
+/// repository tests.
 library;
 
 import 'dart:async';
