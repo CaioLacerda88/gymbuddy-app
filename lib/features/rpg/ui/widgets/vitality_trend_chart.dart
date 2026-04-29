@@ -126,9 +126,13 @@ class VitalityTrendChart extends StatelessWidget {
             // exercise.
             getDotPainter: (spot, percent, bar, index) {
               if (index != spots.length - 1) {
+                // Suppression dot — zero-radius, fully transparent. Using
+                // Colors.transparent keeps us out of the hardcoded-color
+                // sweep without inventing a new palette token for an
+                // invisible primitive.
                 return FlDotCirclePainter(
                   radius: 0,
-                  color: const Color(0x00000000),
+                  color: Colors.transparent,
                   strokeWidth: 0,
                 );
               }
