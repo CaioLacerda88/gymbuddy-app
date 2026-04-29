@@ -4,6 +4,24 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ---
 
+## Phase 18 follow-ups — RPG v1 debt (from PR #120 close-out, 2026-04-29)
+
+Small debt items pushed forward from Phase 18e. None block v1 launch; bundle into one PR when convenient.
+
+- [ ] **Stale Iron-Bound doc** in `lib/features/rpg/models/title.dart:100` — comment reads `iron_bound — Chest+Back+Legs >= 60` (old ambiguous wording). Real implementation is per-track per the reviewer-pass amend (`Chest ≥ 60 AND Back ≥ 60 AND Legs ≥ 60`). One-line fix. Reviewer fix sweep missed this file because the contract is structurally enforced in `cross_build_title_evaluator.dart` (the doc on `title.dart` is just a reference table for the trigger token enum).
+- [ ] **Delete `lib/features/gamification/` dead 17b code** (option B from WS5 deferred to v1.1+):
+  - Rewire `SagaIntroOverlay` to read from `rpgProgressProvider.characterState` (currently reads `gamification_xp_state` via the keep-as-shim path).
+  - Delete `lib/features/gamification/` (~11 prod files: data/, domain/, models/, providers/xp_provider.dart, ui/saga_intro_gate.dart).
+  - Delete dependent tests under `test/unit/features/gamification/` and `test/widget/features/gamification/` (~6 files).
+  - Drop the inline shim pointer in `lib/features/workouts/providers/notifiers/active_workout_notifier.dart:927`.
+  - Drop the `XpRepository` faker entry in `test/fixtures/rpc_fakes.dart` if the rewire makes it unreachable.
+  - The keep-as-shim rationale in `xp_provider.dart` explains the original deferral; safe to remove the file in the same PR.
+- [ ] **`test/integration/rpg_acceptance_test.dart`** — single integration test that synthesises a fixture user and asserts every §18 acceptance bullet end-to-end. WS6 deferred this with the rationale that unit pins + `rpg_record_set_xp_test.dart` + E2E cover the same ground; revisit if a future regression slips through the seams.
+
+**Pipeline:** straight tech-lead → reviewer (no QA gate; doc + dead-code removal). Single PR, squash merge. Spec amendment is in PR #120 already; this only catches the missed doc reference.
+
+---
+
 ## Phase 16 — Subscription Monetization — PARKED (2026-04-22)
 
 **Why parked:** Phase 16 keeps hitting external blockers (Brazilian merchant account, Play Console → upload signed AAB required before subscription product can be created, license-tester account setup). Phase 17 gamification is fully internal code work with no external gates and produces the retention moat that makes Phase 16's paywall pitch compelling. Decision: ship Phase 17 (Gamification) before resuming 16b/c/d.
