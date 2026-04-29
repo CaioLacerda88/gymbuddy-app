@@ -135,16 +135,25 @@ test.describe('Title equip', () => {
     await titleRow.scrollIntoViewIfNeeded();
     await expect(titleRow).toBeVisible({ timeout: 10_000 });
 
-    // Always equip in T3 so the test is self-contained: each test in this
-    // describe block has its own beforeEach (login + navigate to Profile),
-    // and asserting "EQUIPPED visible after a tap" before checking the pill
-    // makes T3 independent of T2's effects on the user record. Equipping a
-    // title that's already equipped is idempotent server-side
-    // (UPSERT on user_id+title_id with is_active=true).
-    await titleRow.click();
-    await expect(
-      page.locator(CELEBRATION.equippedTitleLabel).first(),
-    ).toBeVisible({ timeout: 15_000 });
+    // Equip the title (idempotently across runs). T3's prerequisite is
+    // "a title is equipped" — either we equip it now, or it's already equipped
+    // from T2's run in the same Playwright invocation (Postgres earned_titles
+    // state persists between tests in the same describe block; global-setup
+    // only re-seeds at invocation start, not between tests).
+    //
+    // We can't blindly tap the row: when isActive is true the production code
+    // sets _TitleRow.onTap = null (active rows are no-ops by design — see
+    // titles_screen.dart `rowFor(...)`). Playwright correctly refuses the
+    // click in that case ("flutter-view intercepts pointer events"). So we
+    // probe the EQUIPPED badge first and only click if equip is needed.
+    const equippedLabel = page.locator(CELEBRATION.equippedTitleLabel).first();
+    const alreadyEquipped = await equippedLabel
+      .isVisible({ timeout: 1_000 })
+      .catch(() => false);
+    if (!alreadyEquipped) {
+      await titleRow.click();
+    }
+    await expect(equippedLabel).toBeVisible({ timeout: 15_000 });
 
     // Navigate back to the character sheet. The active-title-pill should render
     // because equippedTitleSlugProvider was invalidated after the equip RPC.

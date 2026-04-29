@@ -79,6 +79,14 @@ class _TitlesScreenState extends ConsumerState<TitlesScreen> {
     final earnedAsync = ref.watch(earnedTitlesProvider);
 
     return Semantics(
+      // `container: true` forces Flutter to emit a flt-semantics node for this
+      // identifier even when no descendant Semantics carries label/role/action.
+      // Without it, Flutter web's AOM elides identifier-only wrappers from the
+      // accessibility tree on rebuild, breaking E2E selectors. Same pattern as
+      // 'character-sheet', 'saga-stats-screen' (via container), 'volume-peak-table',
+      // and every other identifier wrapper in the codebase that needs to survive
+      // rebuilds regardless of child semantic content.
+      container: true,
       identifier: 'titles-screen',
       child: Scaffold(
         appBar: AppBar(title: Text(l10n.titlesScreenTitle)),
@@ -320,6 +328,12 @@ class _TitleRow extends StatelessWidget {
     final nameColor = isEarned ? AppColors.textCream : AppColors.textDim;
 
     return Semantics(
+      // `container: true` keeps the row's flt-semantics node in the AOM tree
+      // even when `onTap` becomes null (active row — already equipped). Without
+      // it, Flutter web drops identifier-only nodes that have no semantic
+      // action, which breaks E2E selectors that need to confirm the row exists
+      // post-equip. Same precedent as 'titles-screen' / 'equipped-title-label'.
+      container: true,
       identifier: 'title-row-${title.slug}',
       child: InkWell(
         onTap: onTap,
@@ -371,6 +385,13 @@ class _TitleRow extends StatelessWidget {
               ),
               if (isActive)
                 Semantics(
+                  // `container: true` is required so the EQUIPPED badge surfaces
+                  // a flt-semantics node with this identifier in Flutter web's
+                  // AOM. The wrapped Container+Text has no semantic action, so
+                  // without `container: true` the wrapper is elided and E2E
+                  // tests cannot detect the badge after equip. See the matching
+                  // notes on 'titles-screen' and 'title-row-{slug}'.
+                  container: true,
                   identifier: 'equipped-title-label',
                   child: Container(
                     padding: const EdgeInsets.symmetric(
