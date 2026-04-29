@@ -9,10 +9,23 @@ import '../../../core/data/base_repository.dart';
 import '../models/body_part.dart';
 import '../models/title.dart';
 
-/// Catalog asset path. Loaded once on first use and cached for the app
-/// lifetime — the catalog is immutable v1 data and lives entirely in the
-/// shipped bundle (no remote fetch).
+/// Body-part catalog asset path. The legacy (Phase 18c) v1 catalog —
+/// 78 entries, every entry implicitly `kind: body_part`. The loader injects
+/// `kind: body_part` per entry before calling [Title.fromJson] for backward
+/// compat with the original schema.
 const String kTitlesCatalogAsset = 'assets/rpg/titles_v1.json';
+
+/// Character-level catalog asset path (Phase 18e). Seven entries spanning
+/// character levels 10..148. Every entry MUST include `"kind": "character_level"`
+/// in the JSON envelope.
+const String kCharacterLevelTitlesCatalogAsset =
+    'assets/rpg/titles_character_level.json';
+
+/// Cross-build catalog asset path (Phase 18e). Five entries — one per
+/// trigger predicate in [CrossBuildTitleEvaluator]. Every entry MUST include
+/// `"kind": "cross_build"` in the JSON envelope.
+const String kCrossBuildTitlesCatalogAsset =
+    'assets/rpg/titles_cross_build.json';
 
 /// Read-shape returned by `earned_titles` SELECT. Lightweight value class
 /// (not Freezed) — the table only ever produces this exact shape and the UI
@@ -82,28 +95,72 @@ class TitlesRepository extends BaseRepository {
   // Catalog
   // ---------------------------------------------------------------------------
 
-  /// Load the v1 title catalog from the shipped asset. Cached after the
-  /// first call. Throws [FlutterError] from `rootBundle` if the asset is
-  /// missing — that would be a build-time bug (catalog not in pubspec.yaml).
+  /// Load the merged v1 title catalog (90 entries: 78 body-part + 7
+  /// character-level + 5 cross-build) from the shipped assets. Cached after
+  /// the first call. Throws [FlutterError] from `rootBundle` if any asset
+  /// is missing — that would be a build-time bug (catalog not in pubspec.yaml).
+  ///
+  /// **Schema dispatch.** Every entry deserializes through [Title.fromJson]
+  /// which discriminates on the `kind` field. The legacy `titles_v1.json`
+  /// predates the discriminator (Phase 18c); the loader injects
+  /// `"kind": "body_part"` per entry before deserialization. New catalogs
+  /// (`titles_character_level.json`, `titles_cross_build.json`) carry the
+  /// `kind` field explicitly.
+  ///
+  /// **Why a single merged list:** consumers (titles screen, detector,
+  /// celebration overlay) operate on the union shape and pattern-match per
+  /// variant. Splitting into three lists would force every consumer to know
+  /// about the storage layout. The catalog cache is process-scoped so the
+  /// merge cost is paid exactly once.
   Future<List<Title>> loadCatalog() async {
     final cached = _catalogCache;
     if (cached != null) return cached;
 
-    final raw = await _bundle.loadString(kTitlesCatalogAsset);
-    final json = jsonDecode(raw) as Map<String, dynamic>;
-    final entries = (json['titles'] as List)
-        .cast<Map<String, dynamic>>()
-        .map(Title.fromJson)
-        .toList(growable: false);
+    final entries = <Title>[
+      ..._loadBodyPart(await _bundle.loadString(kTitlesCatalogAsset)),
+      ..._loadDiscriminated(
+        await _bundle.loadString(kCharacterLevelTitlesCatalogAsset),
+      ),
+      ..._loadDiscriminated(
+        await _bundle.loadString(kCrossBuildTitlesCatalogAsset),
+      ),
+    ];
 
-    _catalogCache = entries;
-    return entries;
+    _catalogCache = List<Title>.unmodifiable(entries);
+    return _catalogCache!;
   }
 
-  /// Lookup a single catalog entry by slug. Returns null if the slug is
-  /// unknown — the caller decides whether that's a data-integrity error
-  /// (server returned a slug we don't ship) or a graceful fallback (UI
-  /// reading a row from a future catalog version).
+  /// Legacy v1 catalog loader. Each entry is `(slug, body_part,
+  /// rank_threshold)` without a `kind` field; we inject `body_part` so
+  /// [Title.fromJson] dispatches to [BodyPartTitle.fromJson]. Adding `kind`
+  /// to the JSON file would also work but rewriting the asset is a lossy
+  /// editorial change — keeping the asset stable means git blame on a
+  /// title's slug stays meaningful.
+  static Iterable<Title> _loadBodyPart(String raw) {
+    final json = jsonDecode(raw) as Map<String, dynamic>;
+    final list = (json['titles'] as List).cast<Map<String, dynamic>>();
+    return list.map((entry) {
+      // Defensive: don't mutate the caller's map (the asset bundle gives us
+      // a fresh decode per call so it's safe in practice, but copying keeps
+      // the loader honest under future caching changes).
+      final withKind = <String, dynamic>{'kind': 'body_part', ...entry};
+      return Title.fromJson(withKind);
+    });
+  }
+
+  /// Discriminated catalog loader (character-level, cross-build). Each entry
+  /// already carries `kind` per the Phase 18e schema; we just defer to
+  /// [Title.fromJson] which routes to the right factory.
+  static Iterable<Title> _loadDiscriminated(String raw) {
+    final json = jsonDecode(raw) as Map<String, dynamic>;
+    final list = (json['titles'] as List).cast<Map<String, dynamic>>();
+    return list.map(Title.fromJson);
+  }
+
+  /// Lookup a single catalog entry by slug across every variant. Returns
+  /// null if the slug is unknown — the caller decides whether that's a
+  /// data-integrity error (server returned a slug we don't ship) or a
+  /// graceful fallback (UI reading a row from a future catalog version).
   Future<Title?> lookupBySlug(String slug) async {
     final catalog = await loadCatalog();
     for (final t in catalog) {
@@ -112,12 +169,21 @@ class TitlesRepository extends BaseRepository {
     return null;
   }
 
-  /// All catalog entries for a body part, ascending by `rankThreshold`. The
-  /// titles screen renders one section per body part using this.
+  /// All body-part catalog entries for [bodyPart], ascending by
+  /// `rankThreshold`. The titles screen renders one section per body part
+  /// using this.
+  ///
+  /// Filters to [BodyPartTitle] — character-level and cross-build entries
+  /// don't have a body part and are surfaced via separate sections on the
+  /// titles screen.
   Future<List<Title>> forBodyPart(BodyPart bodyPart) async {
     final catalog = await loadCatalog();
-    final filtered = catalog.where((t) => t.bodyPart == bodyPart).toList()
-      ..sort((a, b) => a.rankThreshold.compareTo(b.rankThreshold));
+    final filtered =
+        catalog
+            .whereType<BodyPartTitle>()
+            .where((t) => t.bodyPart == bodyPart)
+            .toList()
+          ..sort((a, b) => a.rankThreshold.compareTo(b.rankThreshold));
     return filtered;
   }
 

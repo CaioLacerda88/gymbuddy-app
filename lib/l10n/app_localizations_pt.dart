@@ -1597,6 +1597,14 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String titleUnlockCharacterLevelLabel(int level) {
+    return 'NÍVEL DE PERSONAGEM $level';
+  }
+
+  @override
+  String get titleUnlockCrossBuildLabel => 'TÍTULO DE DISTINÇÃO';
+
+  @override
   String get equipTitleButton => 'EQUIPAR TÍTULO';
 
   @override
@@ -1641,6 +1649,20 @@ class AppLocalizationsPt extends AppLocalizations {
   String titlesRowRankThreshold(int rank) {
     return 'Rank $rank';
   }
+
+  @override
+  String titlesRowCharacterLevel(int level) {
+    return 'Nível $level';
+  }
+
+  @override
+  String get titlesRowCrossBuild => 'Distinção';
+
+  @override
+  String get titlesSectionCharacterLevel => 'NÍVEL DE PERSONAGEM';
+
+  @override
+  String get titlesSectionCrossBuild => 'DISTINÇÃO';
 
   @override
   String get title_chest_r5_initiate_of_the_forge_name => 'Iniciado da Forja';
@@ -2179,4 +2201,88 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get title_core_r99_the_spine_flavor =>
       'Segura a barra como viga de capela.';
+
+  @override
+  String get title_wanderer_name => 'Andarilho';
+
+  @override
+  String get title_wanderer_flavor =>
+      'O primeiro marco já ficou para trás. O mapa se abre.';
+
+  @override
+  String get title_path_trodden_name => 'Caminho-Trilhado';
+
+  @override
+  String get title_path_trodden_flavor =>
+      'Vinte e cinco níveis. A estrada já conhece o seu peso.';
+
+  @override
+  String get title_path_sworn_name => 'Caminho-Jurado';
+
+  @override
+  String get title_path_sworn_flavor =>
+      'Metade do caminho. Você não desiste mais.';
+
+  @override
+  String get title_path_forged_name => 'Caminho-Forjado';
+
+  @override
+  String get title_path_forged_flavor =>
+      'Três quartos da subida. O caminho é forjado por você.';
+
+  @override
+  String get title_saga_scribed_name => 'Saga-Escrita';
+
+  @override
+  String get title_saga_scribed_flavor =>
+      'Cem níveis. Seu nome está no códice.';
+
+  @override
+  String get title_saga_bound_name => 'Saga-Atado';
+
+  @override
+  String get title_saga_bound_flavor =>
+      'Cento e vinte e cinco. A saga prende em você, e você prende de volta.';
+
+  @override
+  String get title_saga_eternal_name => 'Saga-Eterna';
+
+  @override
+  String get title_saga_eternal_flavor =>
+      'Cento e quarenta e oito. A saga tem um nome agora, e é o seu.';
+
+  @override
+  String get title_pillar_walker_name => 'Andarilho de Pilares';
+
+  @override
+  String get title_pillar_walker_flavor =>
+      'Você anda em pilares, não em braços. O chão sabe.';
+
+  @override
+  String get title_broad_shouldered_name => 'Ombro-Largo';
+
+  @override
+  String get title_broad_shouldered_flavor =>
+      'Ombros que cangam, peito que é portão. Carregue o peso.';
+
+  @override
+  String get title_even_handed_name => 'Mão-Equilibrada';
+
+  @override
+  String get title_even_handed_flavor =>
+      'Sem ponto fraco. Sem levantamento favorito. A forja inteira, em harmonia.';
+
+  @override
+  String get title_iron_bound_name => 'Atado-em-Ferro';
+
+  @override
+  String get title_iron_bound_flavor =>
+      'Supino, remada, agachamento — todos atados em ferro. Os três grandes respondem a você.';
+
+  @override
+  String get title_saga_forged_name => 'Saga-Forjada';
+
+  @override
+  String get title_saga_forged_flavor =>
+      'Cada track no sessenta. A saga foi forjada, e foi você quem forjou.';
 }

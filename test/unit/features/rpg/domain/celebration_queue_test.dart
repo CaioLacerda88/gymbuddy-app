@@ -21,11 +21,7 @@ void main() {
       // input order produced by `record_set_xp`.
       final result = CelebrationQueue.build(
         events: const [
-          CelebrationEvent.titleUnlock(
-            slug: 'chest_r5_initiate_of_the_forge',
-            bodyPart: BodyPart.chest,
-            rankThreshold: 5,
-          ),
+          CelebrationEvent.titleUnlock(slug: 'chest_r5_initiate_of_the_forge'),
           CelebrationEvent.levelUp(newLevel: 3),
           CelebrationEvent.rankUp(bodyPart: BodyPart.chest, newRank: 5),
         ],
@@ -89,11 +85,7 @@ void main() {
         events: const [
           CelebrationEvent.rankUp(bodyPart: BodyPart.chest, newRank: 5),
           CelebrationEvent.levelUp(newLevel: 2),
-          CelebrationEvent.titleUnlock(
-            slug: 'chest_r5_initiate_of_the_forge',
-            bodyPart: BodyPart.chest,
-            rankThreshold: 5,
-          ),
+          CelebrationEvent.titleUnlock(slug: 'chest_r5_initiate_of_the_forge'),
         ],
       );
 
@@ -112,11 +104,7 @@ void main() {
           CelebrationEvent.rankUp(bodyPart: BodyPart.legs, newRank: 10),
           CelebrationEvent.rankUp(bodyPart: BodyPart.arms, newRank: 5),
           CelebrationEvent.levelUp(newLevel: 4),
-          CelebrationEvent.titleUnlock(
-            slug: 'chest_r30_forge_born',
-            bodyPart: BodyPart.chest,
-            rankThreshold: 30,
-          ),
+          CelebrationEvent.titleUnlock(slug: 'chest_r30_forge_born'),
         ],
       );
 
@@ -173,16 +161,8 @@ void main() {
       // Both must survive — the half-sheet renders them sequentially.
       final result = CelebrationQueue.build(
         events: const [
-          CelebrationEvent.titleUnlock(
-            slug: 'chest_r5_initiate_of_the_forge',
-            bodyPart: BodyPart.chest,
-            rankThreshold: 5,
-          ),
-          CelebrationEvent.titleUnlock(
-            slug: 'chest_r10_plate_bearer',
-            bodyPart: BodyPart.chest,
-            rankThreshold: 10,
-          ),
+          CelebrationEvent.titleUnlock(slug: 'chest_r5_initiate_of_the_forge'),
+          CelebrationEvent.titleUnlock(slug: 'chest_r10_plate_bearer'),
           CelebrationEvent.rankUp(bodyPart: BodyPart.chest, newRank: 11),
         ],
       );

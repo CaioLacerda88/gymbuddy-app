@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../domain/celebration_queue.dart';
-import '../models/body_part.dart';
 import '../models/celebration_event.dart';
 import '../models/title.dart' as rpg;
 import 'overlays/celebration_overflow_card.dart';
@@ -150,15 +149,17 @@ class CelebrationPlayer {
     //    `hasPriorEarnedTitles` based on the pre-finish snapshot).
     //    Sheet is barrier-dismissable; users who skip equip can re-equip
     //    from the Titles screen.
+    //
+    //    Slugs that aren't in the local catalog are skipped — that would be a
+    //    server-vs-bundle mismatch (server returned a slug we don't ship)
+    //    and rendering "(unknown title)" would be worse than silently
+    //    omitting the sheet. The unlock is still persisted server-side; the
+    //    user sees it on the next titles-screen visit.
     for (var i = 0; i < titles.length; i++) {
       if (!context.mounted) return CelebrationPlayResult.notTapped;
       final event = titles[i];
-      final entry = _resolveCatalog(
-        catalog,
-        event.slug,
-        event.bodyPart,
-        event.rankThreshold,
-      );
+      final entry = _resolveCatalog(catalog, event.slug);
+      if (entry == null) continue;
       final isFirstEver = !hasPriorEarnedTitles && i == 0;
       await _showTitleSheet(
         context,
@@ -350,22 +351,14 @@ class CelebrationPlayer {
     return completer.future;
   }
 
-  static rpg.Title _resolveCatalog(
-    List<rpg.Title> catalog,
-    String slug,
-    BodyPart bodyPart,
-    int rankThreshold,
-  ) {
+  /// Linear scan of the catalog for [slug]. Returns null when the slug isn't
+  /// in the bundle — the caller skips the sheet in that case (see [play]).
+  /// O(catalog) on a 90-entry list is trivial; the catalog is loaded once
+  /// per app lifetime so we don't bother indexing.
+  static rpg.Title? _resolveCatalog(List<rpg.Title> catalog, String slug) {
     for (final t in catalog) {
       if (t.slug == slug) return t;
     }
-    // Defensive: server returned a slug we don't ship. Fall back to a
-    // synthetic entry so the sheet still renders the rank label even if
-    // the localized name lookup misses.
-    return rpg.Title(
-      slug: slug,
-      bodyPart: bodyPart,
-      rankThreshold: rankThreshold,
-    );
+    return null;
   }
 }

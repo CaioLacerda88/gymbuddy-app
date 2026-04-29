@@ -422,6 +422,70 @@ TitleCopy? localizedTitleCopy(String slug, AppLocalizations l10n) {
         name: l10n.title_core_r99_the_spine_name,
         flavor: l10n.title_core_r99_the_spine_flavor,
       );
+
+    // Phase 18e — character-level titles (7 entries: lvl 10..148).
+    case 'wanderer':
+      return TitleCopy(
+        name: l10n.title_wanderer_name,
+        flavor: l10n.title_wanderer_flavor,
+      );
+    case 'path_trodden':
+      return TitleCopy(
+        name: l10n.title_path_trodden_name,
+        flavor: l10n.title_path_trodden_flavor,
+      );
+    case 'path_sworn':
+      return TitleCopy(
+        name: l10n.title_path_sworn_name,
+        flavor: l10n.title_path_sworn_flavor,
+      );
+    case 'path_forged':
+      return TitleCopy(
+        name: l10n.title_path_forged_name,
+        flavor: l10n.title_path_forged_flavor,
+      );
+    case 'saga_scribed':
+      return TitleCopy(
+        name: l10n.title_saga_scribed_name,
+        flavor: l10n.title_saga_scribed_flavor,
+      );
+    case 'saga_bound':
+      return TitleCopy(
+        name: l10n.title_saga_bound_name,
+        flavor: l10n.title_saga_bound_flavor,
+      );
+    case 'saga_eternal':
+      return TitleCopy(
+        name: l10n.title_saga_eternal_name,
+        flavor: l10n.title_saga_eternal_flavor,
+      );
+
+    // Phase 18e — cross-build distinction titles (5 entries).
+    case 'pillar_walker':
+      return TitleCopy(
+        name: l10n.title_pillar_walker_name,
+        flavor: l10n.title_pillar_walker_flavor,
+      );
+    case 'broad_shouldered':
+      return TitleCopy(
+        name: l10n.title_broad_shouldered_name,
+        flavor: l10n.title_broad_shouldered_flavor,
+      );
+    case 'even_handed':
+      return TitleCopy(
+        name: l10n.title_even_handed_name,
+        flavor: l10n.title_even_handed_flavor,
+      );
+    case 'iron_bound':
+      return TitleCopy(
+        name: l10n.title_iron_bound_name,
+        flavor: l10n.title_iron_bound_flavor,
+      );
+    case 'saga_forged':
+      return TitleCopy(
+        name: l10n.title_saga_forged_name,
+        flavor: l10n.title_saga_forged_flavor,
+      );
   }
   return null;
 }

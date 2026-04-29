@@ -69,6 +69,12 @@ flutter:
     # Phase 18c: per-body-part title catalog (78 entries). Slugs only — display
     # copy lives in lib/l10n/app_*.arb keyed by `title_{slug}_name|_flavor`.
     - assets/rpg/titles_v1.json
+    # Phase 18e: character-level (7) + cross-build (5) title catalogs. Each
+    # entry carries a `kind` discriminator so `Title.fromJson` dispatches to
+    # the correct sealed-union variant (BodyPartTitle / CharacterLevelTitle /
+    # CrossBuildTitle).
+    - assets/rpg/titles_character_level.json
+    - assets/rpg/titles_cross_build.json
     # Bundled Rajdhani (display) + Inter (body) TTFs. google_fonts picks these
     # up via its asset-manifest lookup (lib/src/google_fonts_base.dart) and
     # skips the CDN entirely — faster first paint on slow networks and makes

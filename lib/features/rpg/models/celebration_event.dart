@@ -41,16 +41,18 @@ sealed class CelebrationEvent with _$CelebrationEvent {
   /// A title slug was newly unlocked.
   ///
   /// `slug` is the asset-catalog join key. The half-sheet resolves the
-  /// localized name + flavor at render time via `title_{slug}_name` /
-  /// `title_{slug}_flavor` in the `.arb` files.
+  /// localized name + flavor + sub-label at render time by looking the slug
+  /// up against the catalog ([Title]) and pattern-matching on the variant
+  /// (body-part / character-level / cross-build).
   ///
-  /// `rankThreshold` is the rank at which this title unlocks — used for the
-  /// "{BODY PART} · RANK {N} TITLE" sub-label on the half-sheet.
-  const factory CelebrationEvent.titleUnlock({
-    required String slug,
-    required BodyPart bodyPart,
-    required int rankThreshold,
-  }) = TitleUnlockEvent;
+  /// **Why slug-only (Phase 18e):** the body-part rank-threshold sub-label
+  /// is one of three possible sub-labels — character-level and cross-build
+  /// titles use different copy entirely. Carrying only the slug forces the
+  /// resolver to consult the catalog, which is the only surface that knows
+  /// what shape the metadata has. The pre-18e shape (`slug + bodyPart +
+  /// rankThreshold`) silently encoded the body-part assumption.
+  const factory CelebrationEvent.titleUnlock({required String slug}) =
+      TitleUnlockEvent;
 
   /// A body part transitioned from "never trained" to "trained" — fires the
   /// 800ms first-awakening compressed overlay.
