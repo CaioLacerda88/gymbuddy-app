@@ -150,7 +150,11 @@ void main() {
       expect(find.byType(VitalityTable), findsOneWidget);
       expect(find.byType(VitalityTrendChart), findsOneWidget);
       expect(find.byType(PeakLoadsTable), findsOneWidget);
-      // Volume & Peak section heading and per-body-part labels.
+      // All four section headings render through `_SectionHeader` (uppercased
+      // at the call site). The Live Vitality heading anchors the chart→table
+      // junction added in c59ef2a; without an assertion the heading could
+      // silently regress without a failing test.
+      expect(find.text('LIVE VITALITY'), findsOneWidget);
       expect(find.text('VOLUME & PEAK'), findsOneWidget);
       expect(find.text('PEAK LOADS'), findsOneWidget);
     });

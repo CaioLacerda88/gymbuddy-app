@@ -147,11 +147,7 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Text(
         label.toUpperCase(),
-        style: AppTextStyles.label.copyWith(
-          fontSize: 12,
-          color: AppColors.hotViolet,
-          letterSpacing: 0.12 * 12,
-        ),
+        style: AppTextStyles.sectionHeader.copyWith(color: AppColors.hotViolet),
       ),
     );
   }
@@ -173,9 +169,12 @@ class _VolumePeakTable extends StatelessWidget {
     final locale = Localizations.localeOf(context).languageCode;
 
     final rows = <Widget>[];
-    final orderedBodyParts = activeBodyParts
-        .where((bp) => volumePeakByBodyPart.containsKey(bp))
-        .toList();
+    // `volumePeakByBodyPart` is provider-built from `activeBodyParts` itself
+    // (see `assembleStatsState` → §4 Volume + Peak loop) so it always
+    // contains all six entries. Iterating `activeBodyParts` directly avoids
+    // a dead `where(containsKey(...))` filter that read as a defensive
+    // guard but never excluded any row.
+    final orderedBodyParts = activeBodyParts.toList();
 
     for (var i = 0; i < orderedBodyParts.length; i++) {
       final bp = orderedBodyParts[i];
