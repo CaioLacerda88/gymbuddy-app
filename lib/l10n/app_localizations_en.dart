@@ -27,6 +27,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get classSlotPlaceholder => 'The iron will name you.';
 
   @override
+  String get classInitiate => 'Initiate';
+
+  @override
+  String get classBerserker => 'Berserker';
+
+  @override
+  String get classBulwark => 'Bulwark';
+
+  @override
+  String get classSentinel => 'Sentinel';
+
+  @override
+  String get classPathfinder => 'Pathfinder';
+
+  @override
+  String get classAtlas => 'Atlas';
+
+  @override
+  String get classAnchor => 'Anchor';
+
+  @override
+  String get classAscendant => 'Ascendant';
+
+  @override
   String get dormantCardioCopy => 'Cardio runes awaken in a future chapter.';
 
   @override
@@ -1564,6 +1588,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String titleUnlockCharacterLevelLabel(int level) {
+    return 'CHARACTER LEVEL $level';
+  }
+
+  @override
+  String get titleUnlockCrossBuildLabel => 'DISTINCTION TITLE';
+
+  @override
   String get equipTitleButton => 'EQUIP TITLE';
 
   @override
@@ -1608,6 +1640,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String titlesRowRankThreshold(int rank) {
     return 'Rank $rank';
   }
+
+  @override
+  String titlesRowCharacterLevel(int level) {
+    return 'Level $level';
+  }
+
+  @override
+  String get titlesRowCrossBuild => 'Distinction';
+
+  @override
+  String get titlesSectionCharacterLevel => 'CHARACTER LEVEL';
+
+  @override
+  String get titlesSectionCrossBuild => 'DISTINCTION';
 
   @override
   String get title_chest_r5_initiate_of_the_forge_name =>
@@ -2148,4 +2194,88 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get title_core_r99_the_spine_flavor =>
       'Hold the bar like a chapel beam.';
+
+  @override
+  String get title_wanderer_name => 'Wanderer';
+
+  @override
+  String get title_wanderer_flavor =>
+      'The first milestone is behind you. The map opens.';
+
+  @override
+  String get title_path_trodden_name => 'Path-Trodden';
+
+  @override
+  String get title_path_trodden_flavor =>
+      'Twenty-five levels in. The road knows your weight.';
+
+  @override
+  String get title_path_sworn_name => 'Path-Sworn';
+
+  @override
+  String get title_path_sworn_flavor =>
+      'Halfway. You don\'t quit on the path now.';
+
+  @override
+  String get title_path_forged_name => 'Path-Forged';
+
+  @override
+  String get title_path_forged_flavor =>
+      'Three quarters in. The path is forged from you.';
+
+  @override
+  String get title_saga_scribed_name => 'Saga-Scribed';
+
+  @override
+  String get title_saga_scribed_flavor =>
+      'One hundred levels. Your name is in the codex.';
+
+  @override
+  String get title_saga_bound_name => 'Saga-Bound';
+
+  @override
+  String get title_saga_bound_flavor =>
+      'One twenty-five. The saga binds you, and you bind back.';
+
+  @override
+  String get title_saga_eternal_name => 'Saga-Eternal';
+
+  @override
+  String get title_saga_eternal_flavor =>
+      'One forty-eight. The saga has a name now, and it is yours.';
+
+  @override
+  String get title_pillar_walker_name => 'Pillar-Walker';
+
+  @override
+  String get title_pillar_walker_flavor =>
+      'You walk on pillars, not on arms. The ground knows.';
+
+  @override
+  String get title_broad_shouldered_name => 'Broad-Shouldered';
+
+  @override
+  String get title_broad_shouldered_flavor =>
+      'Yokes for shoulders, gates for a chest. Carry the weight.';
+
+  @override
+  String get title_even_handed_name => 'Even-Handed';
+
+  @override
+  String get title_even_handed_flavor =>
+      'No weakness. No favorite lift. The whole forge, even-tempered.';
+
+  @override
+  String get title_iron_bound_name => 'Iron-Bound';
+
+  @override
+  String get title_iron_bound_flavor =>
+      'Bench, pull, squat — all bound in iron. The big three answer to you.';
+
+  @override
+  String get title_saga_forged_name => 'Saga-Forged';
+
+  @override
+  String get title_saga_forged_flavor =>
+      'Every track at sixty. The saga is forged, and you forged it.';
 }

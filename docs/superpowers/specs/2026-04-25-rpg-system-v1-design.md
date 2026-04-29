@@ -359,7 +359,7 @@ Awarded for distinctive Rank distributions:
 | Legs ≥ 40 AND Legs ≥ 2× Arms | "The Pillar-Walker" |
 | Chest+Back+Shoulders ≥ 2× (Legs+Core), all upper ≥ 30 | "The Broad-Shouldered" |
 | All 6 body parts within 30% of max at Rank 30+ | "The Even-Handed" |
-| Chest+Back+Legs ≥ 60, low Cardio (when v2 ships) | "The Iron-Bound" |
+| Chest ≥ 60 AND Back ≥ 60 AND Legs ≥ 60, low Cardio (when v2 ships) | "The Iron-Bound" |
 | All ranks ≥ 60 (true generalist endgame) | "The Saga-Forged" |
 
 **Total: 78 + 7 + 5 = 90 titles in v1.**

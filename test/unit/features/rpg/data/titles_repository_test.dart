@@ -11,11 +11,24 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:repsaga/features/rpg/data/titles_repository.dart';
 import 'package:repsaga/features/rpg/models/body_part.dart';
+import 'package:repsaga/features/rpg/models/title.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
+/// Test bundle that routes asset lookups to per-key payloads. The body-part
+/// loader uses the legacy schema (no `kind` field, injected by the loader),
+/// while the character-level + cross-build loaders expect entries with the
+/// `kind` discriminator already present. A single-payload fake would feed
+/// the wrong shape into the discriminated loaders and trigger
+/// "Invalid union type 'null'" — keep the per-key map explicit.
 class _FakeBundle extends CachingAssetBundle {
-  _FakeBundle(this._payload);
-  final String _payload;
+  _FakeBundle({String? bodyPart, String? characterLevel, String? crossBuild})
+    : _payloads = {
+        kTitlesCatalogAsset: bodyPart ?? _emptyCatalog(),
+        kCharacterLevelTitlesCatalogAsset: characterLevel ?? _emptyCatalog(),
+        kCrossBuildTitlesCatalogAsset: crossBuild ?? _emptyCatalog(),
+      };
+
+  final Map<String, String> _payloads;
   int loadStringCalls = 0;
 
   @override
@@ -26,9 +39,15 @@ class _FakeBundle extends CachingAssetBundle {
   @override
   Future<String> loadString(String key, {bool cache = true}) async {
     loadStringCalls += 1;
-    return _payload;
+    final payload = _payloads[key];
+    if (payload == null) {
+      throw StateError('Unmocked asset key in test fake: $key');
+    }
+    return payload;
   }
 }
+
+String _emptyCatalog() => jsonEncode({'version': 1, 'titles': <dynamic>[]});
 
 /// Minimal fake — TitlesRepository extends BaseRepository, so the constructor
 /// must accept a SupabaseClient. The catalog tests never invoke any client
@@ -57,26 +76,35 @@ void main() {
 
   group('TitlesRepository.loadCatalog', () {
     test('parses every entry with body_part and rank_threshold', () async {
-      final bundle = _FakeBundle(_validCatalog());
+      final bundle = _FakeBundle(bodyPart: _validCatalog());
       final repo = TitlesRepository(_UnusedClient(), bundle: bundle);
 
       final catalog = await repo.loadCatalog();
 
       expect(catalog, hasLength(4));
       expect(catalog.first.slug, 'chest_r5_initiate');
-      expect(catalog.first.bodyPart, BodyPart.chest);
-      expect(catalog.first.rankThreshold, 5);
+      // Legacy v1 catalog entries deserialize as BodyPartTitle (loader
+      // injects `kind: body_part`). Pattern-match instead of using a
+      // hypothetical .bodyPart getter — the sealed union exposes variant
+      // fields only after destructuring.
+      final first = catalog.first;
+      expect(first, isA<BodyPartTitle>());
+      final bodyPart = first as BodyPartTitle;
+      expect(bodyPart.bodyPart, BodyPart.chest);
+      expect(bodyPart.rankThreshold, 5);
     });
 
     test('caches the parsed catalog (second call reuses load)', () async {
-      final bundle = _FakeBundle(_validCatalog());
+      final bundle = _FakeBundle(bodyPart: _validCatalog());
       final repo = TitlesRepository(_UnusedClient(), bundle: bundle);
 
       await repo.loadCatalog();
       await repo.loadCatalog();
 
-      // The static cache short-circuits the second call.
-      expect(bundle.loadStringCalls, 1);
+      // The static cache short-circuits the second call. The first call
+      // requests 3 assets (body-part + character-level + cross-build); the
+      // second call hits the in-memory cache and triggers no further loads.
+      expect(bundle.loadStringCalls, 3);
     });
   });
 
@@ -84,19 +112,21 @@ void main() {
     test('returns the matching catalog entry', () async {
       final repo = TitlesRepository(
         _UnusedClient(),
-        bundle: _FakeBundle(_validCatalog()),
+        bundle: _FakeBundle(bodyPart: _validCatalog()),
       );
 
       final title = await repo.lookupBySlug('chest_r10_plate');
       expect(title, isNotNull);
-      expect(title!.bodyPart, BodyPart.chest);
-      expect(title.rankThreshold, 10);
+      expect(title, isA<BodyPartTitle>());
+      final bodyPart = title! as BodyPartTitle;
+      expect(bodyPart.bodyPart, BodyPart.chest);
+      expect(bodyPart.rankThreshold, 10);
     });
 
     test('returns null for an unknown slug', () async {
       final repo = TitlesRepository(
         _UnusedClient(),
-        bundle: _FakeBundle(_validCatalog()),
+        bundle: _FakeBundle(bodyPart: _validCatalog()),
       );
 
       expect(await repo.lookupBySlug('totally_made_up_slug'), isNull);
@@ -109,11 +139,14 @@ void main() {
       () async {
         final repo = TitlesRepository(
           _UnusedClient(),
-          bundle: _FakeBundle(_validCatalog()),
+          bundle: _FakeBundle(bodyPart: _validCatalog()),
         );
 
         final chest = await repo.forBodyPart(BodyPart.chest);
-        expect(chest.map((t) => t.rankThreshold), [5, 10]);
+        expect(chest.cast<BodyPartTitle>().map((t) => t.rankThreshold), [
+          5,
+          10,
+        ]);
 
         final legs = await repo.forBodyPart(BodyPart.legs);
         expect(legs.map((t) => t.slug), ['legs_r5_walker']);
@@ -125,7 +158,7 @@ void main() {
       () async {
         final repo = TitlesRepository(
           _UnusedClient(),
-          bundle: _FakeBundle(_validCatalog()),
+          bundle: _FakeBundle(bodyPart: _validCatalog()),
         );
 
         // Cardio has no entries in v1.
@@ -134,20 +167,32 @@ void main() {
     );
   });
 
-  group('Shipped titles_v1.json (integration with rootBundle)', () {
-    test('loads, parses, and contains all 78 v1 entries', () async {
-      // This locks the shipped asset against accidental edits — slug count
+  group('Shipped catalogs (integration with rootBundle)', () {
+    test('loads, parses, and contains all 90 v1 entries (78 body-part + 7 '
+        'character-level + 5 cross-build)', () async {
+      // Locks the shipped assets against accidental edits — slug count
       // is a structural invariant of the v1 contract.
       TestWidgetsFlutterBinding.ensureInitialized();
-      // We're not faking here; we read the actual asset registered in
-      // pubspec.yaml. If the asset is missing or malformed, this fails.
+      // Not faking — read the actual assets registered in pubspec.yaml.
+      // If any asset is missing or malformed, this fails.
       final repo = TitlesRepository(_UnusedClient());
       final catalog = await repo.loadCatalog();
-      expect(catalog, hasLength(78));
+      expect(catalog, hasLength(90));
 
-      // Six body parts × 13 thresholds (5,10,15,20,25,30,40,50,60,70,80,90,99).
+      final bodyPartTitles = catalog.whereType<BodyPartTitle>().toList();
+      final characterLevelTitles = catalog
+          .whereType<CharacterLevelTitle>()
+          .toList();
+      final crossBuildTitles = catalog.whereType<CrossBuildTitle>().toList();
+
+      expect(bodyPartTitles, hasLength(78));
+      expect(characterLevelTitles, hasLength(7));
+      expect(crossBuildTitles, hasLength(5));
+
+      // Body-part bucket: six body parts × 13 thresholds
+      // (5,10,15,20,25,30,40,50,60,70,80,90,99).
       final perBodyPart = <BodyPart, int>{};
-      for (final t in catalog) {
+      for (final t in bodyPartTitles) {
         perBodyPart[t.bodyPart] = (perBodyPart[t.bodyPart] ?? 0) + 1;
       }
       expect(perBodyPart[BodyPart.chest], 13);
@@ -166,11 +211,26 @@ void main() {
         BodyPart.arms,
         BodyPart.core,
       ]) {
-        final terminal = catalog.where(
+        final terminal = bodyPartTitles.where(
           (t) => t.bodyPart == bp && t.rankThreshold == 99,
         );
         expect(terminal, hasLength(1), reason: '${bp.dbValue} R99 missing');
       }
+
+      // Character-level thresholds — exact set per spec §10.2.
+      final levels = characterLevelTitles.map((t) => t.levelThreshold).toList()
+        ..sort();
+      expect(levels, [10, 25, 50, 75, 100, 125, 148]);
+
+      // Cross-build trigger ids — exact set per spec §10.3.
+      final triggers = crossBuildTitles.map((t) => t.triggerId).toSet();
+      expect(triggers, {
+        CrossBuildTriggerId.pillarWalker,
+        CrossBuildTriggerId.broadShouldered,
+        CrossBuildTriggerId.evenHanded,
+        CrossBuildTriggerId.ironBound,
+        CrossBuildTriggerId.sagaForged,
+      });
     });
   });
 }

@@ -10,12 +10,19 @@ import '../providers/earned_titles_provider.dart';
 import 'widgets/body_part_localization.dart';
 import 'widgets/title_localization.dart';
 
-/// `/saga/titles` — title library screen (Phase 18c, stage 8).
+/// `/saga/titles` — title library screen (Phase 18c, stage 8; Phase 18e
+/// extended with character-level + cross-build sections).
 ///
 /// Replaces the [SagaStubScreen] previously routed at this path. Renders the
-/// full per-body-part title catalog (78 entries v1) grouped into one section
-/// per body part, with each row indicating earned/locked state and
-/// supporting tap-to-equip on earned rows.
+/// full title catalog (90 entries v1: 78 per-body-part + 7 character-level +
+/// 5 cross-build) grouped into:
+///   * One section per body part for [BodyPartTitle] (sorted by rank threshold).
+///   * One "CHARACTER LEVEL" section for [CharacterLevelTitle] (sorted by
+///     level threshold).
+///   * One "DISTINCTION" section for [CrossBuildTitle] (catalog order).
+///
+/// Each row indicates earned/locked state and supports tap-to-equip on
+/// earned rows regardless of variant.
 ///
 /// **Architecture decisions:**
 ///   * **Pure consumer widget** — no notifier of its own. The screen reads
@@ -72,6 +79,14 @@ class _TitlesScreenState extends ConsumerState<TitlesScreen> {
     final earnedAsync = ref.watch(earnedTitlesProvider);
 
     return Semantics(
+      // `container: true` forces Flutter to emit a flt-semantics node for this
+      // identifier even when no descendant Semantics carries label/role/action.
+      // Without it, Flutter web's AOM elides identifier-only wrappers from the
+      // accessibility tree on rebuild, breaking E2E selectors. Same pattern as
+      // 'character-sheet', 'saga-stats-screen' (via container), 'volume-peak-table',
+      // and every other identifier wrapper in the codebase that needs to survive
+      // rebuilds regardless of child semantic content.
+      container: true,
       identifier: 'titles-screen',
       child: Scaffold(
         appBar: AppBar(title: Text(l10n.titlesScreenTitle)),
@@ -133,18 +148,41 @@ class _Body extends StatelessWidget {
         .map((e) => e.title.slug)
         .firstOrNull;
 
-    // Group by body part, preserving the canonical [activeBodyParts] order.
-    final byBodyPart = <BodyPart, List<rpg.Title>>{};
+    // Group by body part for [BodyPartTitle] entries, preserving the
+    // canonical [activeBodyParts] order. Other variants are bucketed by
+    // their kind for the trailing two sections.
+    final byBodyPart = <BodyPart, List<rpg.BodyPartTitle>>{};
+    final characterLevelTitles = <rpg.CharacterLevelTitle>[];
+    final crossBuildTitles = <rpg.CrossBuildTitle>[];
     for (final t in catalog) {
-      byBodyPart.putIfAbsent(t.bodyPart, () => []).add(t);
+      switch (t) {
+        case rpg.BodyPartTitle(:final bodyPart):
+          byBodyPart.putIfAbsent(bodyPart, () => []).add(t);
+        case rpg.CharacterLevelTitle():
+          characterLevelTitles.add(t);
+        case rpg.CrossBuildTitle():
+          crossBuildTitles.add(t);
+      }
     }
     for (final list in byBodyPart.values) {
       list.sort((a, b) => a.rankThreshold.compareTo(b.rankThreshold));
     }
+    characterLevelTitles.sort(
+      (a, b) => a.levelThreshold.compareTo(b.levelThreshold),
+    );
 
     final orderedBodyParts = activeBodyParts
         .where((bp) => byBodyPart.containsKey(bp))
         .toList(growable: false);
+
+    Widget rowFor(rpg.Title title) => _TitleRow(
+      title: title,
+      earned: earnedBySlug[title.slug],
+      isActive: activeSlug == title.slug,
+      onTap: earnedBySlug.containsKey(title.slug) && activeSlug != title.slug
+          ? () => onTapEarned(title)
+          : null,
+    );
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
@@ -160,17 +198,19 @@ class _Body extends StatelessWidget {
         for (final bp in orderedBodyParts) ...[
           _SectionHeader(label: localizedBodyPartName(bp, l10n).toUpperCase()),
           const SizedBox(height: 8),
-          for (final title in byBodyPart[bp]!)
-            _TitleRow(
-              title: title,
-              earned: earnedBySlug[title.slug],
-              isActive: activeSlug == title.slug,
-              onTap:
-                  earnedBySlug.containsKey(title.slug) &&
-                      activeSlug != title.slug
-                  ? () => onTapEarned(title)
-                  : null,
-            ),
+          for (final title in byBodyPart[bp]!) rowFor(title),
+          const SizedBox(height: 24),
+        ],
+        if (characterLevelTitles.isNotEmpty) ...[
+          _SectionHeader(label: l10n.titlesSectionCharacterLevel),
+          const SizedBox(height: 8),
+          for (final title in characterLevelTitles) rowFor(title),
+          const SizedBox(height: 24),
+        ],
+        if (crossBuildTitles.isNotEmpty) ...[
+          _SectionHeader(label: l10n.titlesSectionCrossBuild),
+          const SizedBox(height: 8),
+          for (final title in crossBuildTitles) rowFor(title),
           const SizedBox(height: 24),
         ],
       ],
@@ -288,6 +328,12 @@ class _TitleRow extends StatelessWidget {
     final nameColor = isEarned ? AppColors.textCream : AppColors.textDim;
 
     return Semantics(
+      // `container: true` keeps the row's flt-semantics node in the AOM tree
+      // even when `onTap` becomes null (active row — already equipped). Without
+      // it, Flutter web drops identifier-only nodes that have no semantic
+      // action, which breaks E2E selectors that need to confirm the row exists
+      // post-equip. Same precedent as 'titles-screen' / 'equipped-title-label'.
+      container: true,
       identifier: 'title-row-${title.slug}',
       child: InkWell(
         onTap: onTap,
@@ -321,7 +367,13 @@ class _TitleRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      l10n.titlesRowRankThreshold(title.rankThreshold),
+                      switch (title) {
+                        rpg.BodyPartTitle(:final rankThreshold) =>
+                          l10n.titlesRowRankThreshold(rankThreshold),
+                        rpg.CharacterLevelTitle(:final levelThreshold) =>
+                          l10n.titlesRowCharacterLevel(levelThreshold),
+                        rpg.CrossBuildTitle() => l10n.titlesRowCrossBuild,
+                      },
                       style: AppTextStyles.label.copyWith(
                         fontSize: 11,
                         color: AppColors.textDim,
@@ -333,6 +385,13 @@ class _TitleRow extends StatelessWidget {
               ),
               if (isActive)
                 Semantics(
+                  // `container: true` is required so the EQUIPPED badge surfaces
+                  // a flt-semantics node with this identifier in Flutter web's
+                  // AOM. The wrapped Container+Text has no semantic action, so
+                  // without `container: true` the wrapper is elided and E2E
+                  // tests cannot detect the badge after equip. See the matching
+                  // notes on 'titles-screen' and 'title-row-{slug}'.
+                  container: true,
                   identifier: 'equipped-title-label',
                   child: Container(
                     padding: const EdgeInsets.symmetric(

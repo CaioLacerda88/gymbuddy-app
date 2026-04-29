@@ -932,6 +932,14 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
           ];
           final breakdown = XpCalculator.compute(sets: sets, prs: prAwards);
           if (breakdown.total > 0) {
+            // Phase 18e note: this is the legacy gamification XP system
+            // (Phase 17b). RPG v1 character level is computed server-side
+            // inside `record_set_xp` (called from `save_workout`); this
+            // award is kept alive only because `SagaIntroOverlay` still
+            // reads `xpProvider.totalXp`. Removal is scheduled for v1.1+
+            // when the saga intro migrates to `rpgProgressProvider`.
+            // See `lib/features/gamification/providers/xp_provider.dart`
+            // for the keep-alive rationale.
             await ref
                 .read(xpProvider.notifier)
                 .awardForWorkout(

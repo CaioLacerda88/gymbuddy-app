@@ -78,6 +78,9 @@ const TEST_USERS = [
   // Dedicated user for overflow card tap-to-/profile test (isolated from
   // rpgOverflowQueue to prevent cross-worker XP races under --repeat-each).
   'e2e-rpg-overflow-tap@test.local',
+  // Phase 18e — class-cross and title-equip E2E tests
+  'e2e-rpg-class-cross@test.local',
+  'e2e-rpg-title-equip@test.local',
 ];
 
 /**
@@ -1263,6 +1266,10 @@ async function globalSetup(): Promise<void> {
     'e2e-rpg-multi-celebration@test.local',
     'e2e-rpg-overflow-queue@test.local',
     'e2e-rpg-overflow-tap@test.local',
+    // Phase 18e class-cross + title-equip users — XP/title state is re-seeded
+    // by dedicated seed functions below.
+    'e2e-rpg-class-cross@test.local',
+    'e2e-rpg-title-equip@test.local',
   ];
 
   for (const email of freshStateUsers) {
@@ -1781,7 +1788,160 @@ async function globalSetup(): Promise<void> {
   await seedRpgOverflowQueueUser(supabase);
   await seedRpgOverflowTapCardUser(supabase);
 
+  // ── Phase 18e: seed class-cross + title-equip test users ─────────────
+  await seedRpgClassCrossUser(supabase);
+  await seedRpgTitleEquipUser(supabase);
+
   console.log('[global-setup] Done.');
+}
+
+/**
+ * Seed rpgClassCrossUser: chest at rank 4 (270 XP), all others at rank 1.
+ *
+ * Seeding mirrors rpgMultiCelebration but on a dedicated user so the
+ * class-cross test can run independently without interfering with the
+ * multi-celebration XP state. After one bench-press set chest crosses
+ * rank 4 → rank 5: class resolver fires dominant chest → Bulwark.
+ *
+ * The class badge before the workout reads "Initiate" (max rank 4 < 5).
+ * After the workout finish + provider refresh it reads "Bulwark".
+ */
+async function seedRpgClassCrossUser(supabase: SupabaseClient): Promise<void> {
+  const email = 'e2e-rpg-class-cross@test.local';
+  const userId = await getUserId(supabase, email);
+  if (!userId) return;
+
+  // Full clean on every run so XP state is deterministic.
+  await supabase.from('workouts').delete().eq('user_id', userId);
+  await supabase.from('xp_events').delete().eq('user_id', userId);
+  await supabase.from('body_part_progress').delete().eq('user_id', userId);
+  await supabase.from('exercise_peak_loads').delete().eq('user_id', userId);
+  await supabase.from('personal_records').delete().eq('user_id', userId);
+  await supabase.from('backfill_progress').delete().eq('user_id', userId);
+  await supabase.from('earned_titles').delete().eq('user_id', userId);
+
+  await supabase.from('backfill_progress').upsert(
+    {
+      user_id: userId,
+      sets_processed: 0,
+      started_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+    },
+    { onConflict: 'user_id' },
+  );
+
+  await supabase.from('profiles').upsert(
+    { id: userId, display_name: 'Class Cross User', fitness_level: 'intermediate' },
+    { onConflict: 'id' },
+  );
+
+  // Chest at 270 XP / rank 4 (Rank 5 threshold ≈ 278.46 XP).
+  // One bench-press set at 80 kg × 5 reps earns ~8–15 chest XP → crosses rank 5.
+  // All other body parts at rank 1 / 0 XP (resolver default).
+  const bodyParts = ['chest', 'back', 'legs', 'shoulders', 'arms', 'core'];
+  for (const bp of bodyParts) {
+    const xp = bp === 'chest' ? 270 : 0;
+    const rank = bp === 'chest' ? 4 : 1;
+    await supabase.from('body_part_progress').upsert(
+      { user_id: userId, body_part: bp, total_xp: xp, rank },
+      { onConflict: 'user_id,body_part' },
+    );
+  }
+
+  // Seed bench-press peak load = 80 kg so strength_mult = 1.0 on the test set.
+  const { data: benchExercises } = await supabase
+    .from('exercises').select('id').eq('slug', 'barbell_bench_press').eq('is_default', true).limit(1);
+  const benchId = benchExercises?.[0]?.id;
+  if (benchId) {
+    await supabase.from('exercise_peak_loads').upsert(
+      { user_id: userId, exercise_id: benchId, peak_weight: 80, peak_reps: 5, peak_date: new Date().toISOString() },
+      { onConflict: 'user_id,exercise_id' },
+    );
+    // Pre-seed personal records so workout finish doesn't navigate to /pr-celebration.
+    const achievedAt = new Date(Date.now() - 86_400_000).toISOString();
+    await supabase.from('personal_records').insert([
+      { user_id: userId, exercise_id: benchId, record_type: 'max_weight', value: 80, reps: 5, achieved_at: achievedAt },
+      { user_id: userId, exercise_id: benchId, record_type: 'max_reps', value: 5, achieved_at: achievedAt },
+      { user_id: userId, exercise_id: benchId, record_type: 'max_volume', value: 400, achieved_at: achievedAt },
+    ]);
+  }
+
+  // One prior minimal workout so the app shows Quick workout (lapsed state).
+  await seedMinimalWorkout(supabase, userId);
+
+  console.log('[global-setup] Seeded rpgClassCrossUser (chest 270 XP / rank 4 → crosses rank 5 on bench set)');
+}
+
+/**
+ * Seed rpgTitleEquipUser: chest at rank 5 (290 XP) with the R5 chest title
+ * already earned in earned_titles. The user also has a prior minimal workout
+ * so the app lands in lapsed state (Quick workout entry point visible).
+ *
+ * The first per-body-part title ("Plate-Bearer" at rank 5) is pre-seeded in
+ * earned_titles directly (bypassing save_workout) so it appears in the Titles
+ * screen without requiring a real workout to cross the threshold.
+ *
+ * Idempotent: skips if body_part_progress row for chest already exists.
+ */
+async function seedRpgTitleEquipUser(supabase: SupabaseClient): Promise<void> {
+  const email = 'e2e-rpg-title-equip@test.local';
+  const userId = await getUserId(supabase, email);
+  if (!userId) return;
+
+  // Full clean on every run.
+  await supabase.from('workouts').delete().eq('user_id', userId);
+  await supabase.from('xp_events').delete().eq('user_id', userId);
+  await supabase.from('body_part_progress').delete().eq('user_id', userId);
+  await supabase.from('exercise_peak_loads').delete().eq('user_id', userId);
+  await supabase.from('personal_records').delete().eq('user_id', userId);
+  await supabase.from('backfill_progress').delete().eq('user_id', userId);
+  await supabase.from('earned_titles').delete().eq('user_id', userId);
+
+  await supabase.from('backfill_progress').upsert(
+    {
+      user_id: userId,
+      sets_processed: 0,
+      started_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+    },
+    { onConflict: 'user_id' },
+  );
+
+  await supabase.from('profiles').upsert(
+    { id: userId, display_name: 'Title Equip User', fitness_level: 'intermediate' },
+    { onConflict: 'id' },
+  );
+
+  // Chest at rank 5 (290 XP — above the 278.46 XP threshold).
+  const bodyParts = ['chest', 'back', 'legs', 'shoulders', 'arms', 'core'];
+  for (const bp of bodyParts) {
+    const xp = bp === 'chest' ? 290 : 0;
+    const rank = bp === 'chest' ? 5 : 1;
+    await supabase.from('body_part_progress').upsert(
+      { user_id: userId, body_part: bp, total_xp: xp, rank },
+      { onConflict: 'user_id,body_part' },
+    );
+  }
+
+  // Seed the chest R5 title directly in earned_titles.
+  // Slug: 'chest_r5_initiate_of_the_forge' (rank 5 chest title per titles_v1.json).
+  // is_active = false so the test can equip it and verify the badge updates.
+  const earnedAt = new Date(Date.now() - 3_600_000).toISOString();
+  const { error: titleError } = await supabase.from('earned_titles').insert({
+    user_id: userId,
+    title_id: 'chest_r5_initiate_of_the_forge',
+    earned_at: earnedAt,
+    is_active: false,
+  });
+  if (titleError) {
+    console.log(`[global-setup] Warning: could not seed earned_title for rpgTitleEquipUser: ${titleError.message}`);
+  }
+
+  await seedMinimalWorkout(supabase, userId);
+
+  console.log('[global-setup] Seeded rpgTitleEquipUser (chest rank 5, plate_bearer earned but not equipped)');
 }
 
 export default globalSetup;

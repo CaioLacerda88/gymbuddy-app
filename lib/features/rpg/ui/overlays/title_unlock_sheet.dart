@@ -63,10 +63,21 @@ class TitleUnlockSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final copy = localizedTitleCopy(title.slug, l10n);
-    final bodyPartName = localizedBodyPartName(
-      title.bodyPart,
-      l10n,
-    ).toUpperCase();
+    // Sub-label resolves per variant. body-part titles read body-part name +
+    // rank threshold; character-level titles read character level; cross-
+    // build titles render a fixed "DISTINCTION TITLE" label since the
+    // trigger predicates aren't user-meaningful at the unlock moment (the
+    // flavor copy carries the why).
+    final subLabel = switch (title) {
+      rpg.BodyPartTitle(:final bodyPart, :final rankThreshold) =>
+        l10n.titleUnlockRankLabel(
+          localizedBodyPartName(bodyPart, l10n).toUpperCase(),
+          rankThreshold,
+        ),
+      rpg.CharacterLevelTitle(:final levelThreshold) =>
+        l10n.titleUnlockCharacterLevelLabel(levelThreshold),
+      rpg.CrossBuildTitle() => l10n.titleUnlockCrossBuildLabel,
+    };
 
     final nameText = Text(
       copy?.name ?? title.slug,
@@ -124,13 +135,11 @@ class TitleUnlockSheet extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  // Rank label — "{BODY PART} · RANK {N} TITLE" via the
-                  // localized arb template, hotViolet, uppercase, tracking.
+                  // Sub-label — body-part rank, character level, or
+                  // distinction marker depending on the title variant.
+                  // hotViolet, uppercase, tracking.
                   Text(
-                    l10n.titleUnlockRankLabel(
-                      bodyPartName,
-                      title.rankThreshold,
-                    ),
+                    subLabel,
                     textAlign: TextAlign.center,
                     style: AppTextStyles.label.copyWith(
                       fontSize: 13,

@@ -778,6 +778,18 @@ export const CELEBRATION = {
    * Example: CELEBRATION.titleRow('ground_walker')
    */
   titleRow: (slug: string) => `[flt-semantics-identifier="title-row-${slug}"]`,
+  /**
+   * Title library entry point on the character sheet — the "Titles" codex nav row.
+   * Alias for SAGA.codexNavTitles. Used in title-equip.spec.ts for readability.
+   * Semantics(identifier: 'codex-nav-titles').
+   */
+  titleLibraryButton: '[flt-semantics-identifier="codex-nav-titles"]',
+  /**
+   * Title library screen root — alias for titlesScreen.
+   * Used in title-equip.spec.ts for readability.
+   * Semantics(identifier: 'titles-screen').
+   */
+  titleLibrarySheet: '[flt-semantics-identifier="titles-screen"]',
 } as const;
 
 // ---------------------------------------------------------------------------

@@ -128,11 +128,59 @@ abstract class AppLocalizations {
   /// **'Saga'**
   String get sagaTabLabel;
 
-  /// Day-1 copy for the class-badge slot on the character sheet, before any class has been derived (Phase 18e).
+  /// Day-1 copy for the class-badge slot on the character sheet, before any class has been derived.
   ///
   /// In en, this message translates to:
   /// **'The iron will name you.'**
   String get classSlotPlaceholder;
+
+  /// Class-badge label for CharacterClass.initiate — newcomer to the path. Phase 18e.
+  ///
+  /// In en, this message translates to:
+  /// **'Initiate'**
+  String get classInitiate;
+
+  /// Class-badge label for CharacterClass.berserker — arms-dominant specialist. Phase 18e.
+  ///
+  /// In en, this message translates to:
+  /// **'Berserker'**
+  String get classBerserker;
+
+  /// Class-badge label for CharacterClass.bulwark — chest-dominant pressing specialist. Phase 18e.
+  ///
+  /// In en, this message translates to:
+  /// **'Bulwark'**
+  String get classBulwark;
+
+  /// Class-badge label for CharacterClass.sentinel — back-dominant pulling specialist. Phase 18e.
+  ///
+  /// In en, this message translates to:
+  /// **'Sentinel'**
+  String get classSentinel;
+
+  /// Class-badge label for CharacterClass.pathfinder — legs-dominant lower-body specialist. Phase 18e.
+  ///
+  /// In en, this message translates to:
+  /// **'Pathfinder'**
+  String get classPathfinder;
+
+  /// Class-badge label for CharacterClass.atlas — shoulders-dominant overhead specialist. Phase 18e.
+  ///
+  /// In en, this message translates to:
+  /// **'Atlas'**
+  String get classAtlas;
+
+  /// Class-badge label for CharacterClass.anchor — core-dominant stability specialist. Phase 18e.
+  ///
+  /// In en, this message translates to:
+  /// **'Anchor'**
+  String get classAnchor;
+
+  /// Class-badge label for CharacterClass.ascendant — balanced (rare, prestigious). Phase 18e.
+  ///
+  /// In en, this message translates to:
+  /// **'Ascendant'**
+  String get classAscendant;
 
   /// Subtitle on the dormant Cardio row of the character sheet — communicates that cardio is intentionally not yet active.
   ///
@@ -2804,11 +2852,23 @@ abstract class AppLocalizations {
   /// **'{bodyPart} AWAKENS'**
   String firstAwakeningHeading(String bodyPart);
 
-  /// Phase 18c title-unlock half-sheet rank label (small caps tracking line above the title name).
+  /// Phase 18c title-unlock half-sheet rank label (small caps tracking line above the title name) for body-part titles.
   ///
   /// In en, this message translates to:
   /// **'{bodyPart} · RANK {rank} TITLE'**
   String titleUnlockRankLabel(String bodyPart, int rank);
+
+  /// Phase 18e title-unlock half-sheet sub-label for character-level titles (Wanderer at lvl 10, Saga-Eternal at lvl 148, ...).
+  ///
+  /// In en, this message translates to:
+  /// **'CHARACTER LEVEL {level}'**
+  String titleUnlockCharacterLevelLabel(int level);
+
+  /// Phase 18e title-unlock half-sheet sub-label for cross-build distinction titles (Pillar-Walker, Saga-Forged, ...). The label is fixed (not parameterized) because the trigger predicates aren't user-meaningful at the unlock moment — the flavor copy carries the why.
+  ///
+  /// In en, this message translates to:
+  /// **'DISTINCTION TITLE'**
+  String get titleUnlockCrossBuildLabel;
 
   /// Phase 18c title-unlock half-sheet primary CTA.
   ///
@@ -2875,6 +2935,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Rank {rank}'**
   String titlesRowRankThreshold(int rank);
+
+  /// Phase 18e titles screen per-row character-level threshold breadcrumb (under each character-level title name).
+  ///
+  /// In en, this message translates to:
+  /// **'Level {level}'**
+  String titlesRowCharacterLevel(int level);
+
+  /// Phase 18e titles screen per-row sub-label for cross-build distinction titles. Fixed (not parameterized) since the trigger predicate isn't user-meaningful at the row level — flavor copy carries the why.
+  ///
+  /// In en, this message translates to:
+  /// **'Distinction'**
+  String get titlesRowCrossBuild;
+
+  /// Phase 18e titles screen section header for character-level titles (lvl 10/25/50/75/100/125/148).
+  ///
+  /// In en, this message translates to:
+  /// **'CHARACTER LEVEL'**
+  String get titlesSectionCharacterLevel;
+
+  /// Phase 18e titles screen section header for cross-build distinction titles (Pillar-Walker, Saga-Forged, etc.).
+  ///
+  /// In en, this message translates to:
+  /// **'DISTINCTION'**
+  String get titlesSectionCrossBuild;
 
   /// Phase 18c chest R5 title display name.
   ///
@@ -3811,6 +3895,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hold the bar like a chapel beam.'**
   String get title_core_r99_the_spine_flavor;
+
+  /// Phase 18e character-level title (lvl 10) display name. The first milestone — you've left the trailhead.
+  ///
+  /// In en, this message translates to:
+  /// **'Wanderer'**
+  String get title_wanderer_name;
+
+  /// Phase 18e character-level title (lvl 10) flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'The first milestone is behind you. The map opens.'**
+  String get title_wanderer_flavor;
+
+  /// Phase 18e character-level title (lvl 25) display name. The road has worn into your boots.
+  ///
+  /// In en, this message translates to:
+  /// **'Path-Trodden'**
+  String get title_path_trodden_name;
+
+  /// Phase 18e character-level title (lvl 25) flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Twenty-five levels in. The road knows your weight.'**
+  String get title_path_trodden_flavor;
+
+  /// Phase 18e character-level title (lvl 50) display name. Half the curve done.
+  ///
+  /// In en, this message translates to:
+  /// **'Path-Sworn'**
+  String get title_path_sworn_name;
+
+  /// Phase 18e character-level title (lvl 50) flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Halfway. You don\'t quit on the path now.'**
+  String get title_path_sworn_flavor;
+
+  /// Phase 18e character-level title (lvl 75) display name. Three-quarters of the climb.
+  ///
+  /// In en, this message translates to:
+  /// **'Path-Forged'**
+  String get title_path_forged_name;
+
+  /// Phase 18e character-level title (lvl 75) flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Three quarters in. The path is forged from you.'**
+  String get title_path_forged_flavor;
+
+  /// Phase 18e character-level title (lvl 100) display name. Triple-digits unlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Saga-Scribed'**
+  String get title_saga_scribed_name;
+
+  /// Phase 18e character-level title (lvl 100) flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'One hundred levels. Your name is in the codex.'**
+  String get title_saga_scribed_flavor;
+
+  /// Phase 18e character-level title (lvl 125) display name. Late-game persistence.
+  ///
+  /// In en, this message translates to:
+  /// **'Saga-Bound'**
+  String get title_saga_bound_name;
+
+  /// Phase 18e character-level title (lvl 125) flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'One twenty-five. The saga binds you, and you bind back.'**
+  String get title_saga_bound_flavor;
+
+  /// Phase 18e character-level title (lvl 148, terminal) display name. The end of the curve.
+  ///
+  /// In en, this message translates to:
+  /// **'Saga-Eternal'**
+  String get title_saga_eternal_name;
+
+  /// Phase 18e character-level title (lvl 148) flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'One forty-eight. The saga has a name now, and it is yours.'**
+  String get title_saga_eternal_flavor;
+
+  /// Phase 18e cross-build title — leg-dominant build (Legs ≥ 40 AND Legs ≥ 2× Arms). Display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Pillar-Walker'**
+  String get title_pillar_walker_name;
+
+  /// Phase 18e cross-build title (pillar_walker) flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'You walk on pillars, not on arms. The ground knows.'**
+  String get title_pillar_walker_flavor;
+
+  /// Phase 18e cross-build title — upper-body specialist (Chest+Back+Shoulders ≥ 2×(Legs+Core), every upper ≥ 30). Display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Broad-Shouldered'**
+  String get title_broad_shouldered_name;
+
+  /// Phase 18e cross-build title (broad_shouldered) flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Yokes for shoulders, gates for a chest. Carry the weight.'**
+  String get title_broad_shouldered_flavor;
+
+  /// Phase 18e cross-build title — balanced build (every rank within 30% of max AND min ≥ 30). Display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Even-Handed'**
+  String get title_even_handed_name;
+
+  /// Phase 18e cross-build title (even_handed) flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'No weakness. No favorite lift. The whole forge, even-tempered.'**
+  String get title_even_handed_flavor;
+
+  /// Phase 18e cross-build title — strength specialist (Chest+Back+Legs all ≥ 60). Display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Iron-Bound'**
+  String get title_iron_bound_name;
+
+  /// Phase 18e cross-build title (iron_bound) flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Bench, pull, squat — all bound in iron. The big three answer to you.'**
+  String get title_iron_bound_flavor;
+
+  /// Phase 18e cross-build title — every rank ≥ 60 (end-game prestige). Display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Saga-Forged'**
+  String get title_saga_forged_name;
+
+  /// Phase 18e cross-build title (saga_forged) flavor line.
+  ///
+  /// In en, this message translates to:
+  /// **'Every track at sixty. The saga is forged, and you forged it.'**
+  String get title_saga_forged_flavor;
 }
 
 class _AppLocalizationsDelegate

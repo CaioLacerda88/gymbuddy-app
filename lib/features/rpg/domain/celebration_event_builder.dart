@@ -29,9 +29,17 @@ import 'title_unlock_detector.dart';
 ///     The notifier passes `suppressFirstAwakening: true` once the per-session
 ///     flag has fired, which fully suppresses the event for subsequent
 ///     finishes in the same session.
-///   * **Title-unlock:** delegated to [TitleUnlockDetector] given the rank
-///     deltas and the pre-save earned-slug set. Already-earned slugs are
-///     filtered out by the detector itself.
+///   * **Title-unlock (per-body-part):** delegated to
+///     [TitleUnlockDetector.detect] given the rank deltas and the pre-save
+///     earned-slug set. Already-earned slugs are filtered by the detector.
+///   * **Title-unlock (character-level):** delegated to
+///     [TitleUnlockDetector.detectCharacterLevel] given the pre/post
+///     character-level pair. Half-open interval semantics mirror the
+///     per-body-part path.
+///   * **Title-unlock (cross-build):** delegated to
+///     [TitleUnlockDetector.detectCrossBuild] given the post-save rank
+///     distribution. Predicate evaluation runs every finish (cheap, O(1));
+///     idempotency via the same already-earned guard.
 ///
 /// **Why first-awakening throttle is in the builder, not the queue:** the
 /// queue applies a presentation-cap (3 visible overlays); the awakening
@@ -86,21 +94,65 @@ class CelebrationEventBuilder {
       );
     }
 
-    // ---- Title unlocks via the detector ----
-    if (catalog.isNotEmpty && deltas.isNotEmpty) {
-      final unlocked = TitleUnlockDetector.detect(
-        deltas: deltas,
-        alreadyEarnedSlugs: alreadyEarnedSlugs,
+    // ---- Title unlocks via the three detectors ----
+    //
+    // Order: per-body-part → character-level → cross-build. The
+    // [CelebrationQueue] re-orders into the playback canonical order; this
+    // sequence here is purely for diff stability (same inputs → same list).
+    //
+    // We grow [alreadyEarnedSlugs] as we go so a slug that fires on multiple
+    // detectors doesn't double-emit. In practice this can't happen — every
+    // catalog entry has a distinct slug regardless of variant — but the
+    // belt-and-suspenders guard means a future catalog overlap is contained
+    // at the builder rather than rippling into the queue.
+    if (catalog.isNotEmpty) {
+      final earnedSoFar = Set<String>.from(alreadyEarnedSlugs);
+
+      // Per-body-part — only fires if the workout produced rank deltas.
+      if (deltas.isNotEmpty) {
+        final unlocked = TitleUnlockDetector.detect(
+          deltas: deltas,
+          alreadyEarnedSlugs: earnedSoFar,
+          catalog: catalog,
+        );
+        for (final t in unlocked) {
+          events.add(CelebrationEvent.titleUnlock(slug: t.slug));
+          earnedSoFar.add(t.slug);
+        }
+      }
+
+      // Character-level — only fires on a level-up. Reuses the level-up
+      // boundary check above.
+      final oldLevel = pre.characterState.characterLevel;
+      final newLevel = post.characterState.characterLevel;
+      if (newLevel > oldLevel) {
+        final unlocked = TitleUnlockDetector.detectCharacterLevel(
+          oldLevel: oldLevel,
+          newLevel: newLevel,
+          alreadyEarnedSlugs: earnedSoFar,
+          catalog: catalog,
+        );
+        for (final t in unlocked) {
+          events.add(CelebrationEvent.titleUnlock(slug: t.slug));
+          earnedSoFar.add(t.slug);
+        }
+      }
+
+      // Cross-build — runs every finish (predicates are O(1) and the
+      // already-earned guard handles idempotency). Built from the post
+      // snapshot's rank map to capture any structural threshold the
+      // workout pushed the user across.
+      final postRanks = <BodyPart, int>{
+        for (final bp in activeBodyParts) bp: post.byBodyPart[bp]?.rank ?? 1,
+      };
+      final crossBuildUnlocked = TitleUnlockDetector.detectCrossBuild(
+        rankMap: postRanks,
+        alreadyEarnedSlugs: earnedSoFar,
         catalog: catalog,
       );
-      for (final t in unlocked) {
-        events.add(
-          CelebrationEvent.titleUnlock(
-            slug: t.slug,
-            bodyPart: t.bodyPart,
-            rankThreshold: t.rankThreshold,
-          ),
-        );
+      for (final t in crossBuildUnlocked) {
+        events.add(CelebrationEvent.titleUnlock(slug: t.slug));
+        earnedSoFar.add(t.slug);
       }
     }
 

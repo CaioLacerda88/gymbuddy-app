@@ -44,7 +44,7 @@ const _r10Slug = 'chest_r10_plate_bearer';
 const _backR5Slug = 'back_r5_lattice_touched';
 
 rpg.Title _title(String slug, BodyPart bp, int rank) =>
-    rpg.Title(slug: slug, bodyPart: bp, rankThreshold: rank);
+    rpg.Title.bodyPart(slug: slug, bodyPart: bp, rankThreshold: rank);
 
 /// A trimmed catalog (3 entries) — enough to verify section grouping and the
 /// earned/locked split without dragging in all 78 arb keys.

@@ -20,7 +20,7 @@ import 'package:repsaga/features/rpg/ui/overlays/title_unlock_sheet.dart';
 
 import '../../../helpers/test_material_app.dart';
 
-const _chestR5 = rpg.Title(
+const _chestR5 = rpg.Title.bodyPart(
   slug: 'chest_r5_initiate_of_the_forge',
   bodyPart: BodyPart.chest,
   rankThreshold: 5,
@@ -157,8 +157,6 @@ void main() {
                         queue: <CelebrationEvent>[
                           CelebrationEvent.titleUnlock(
                             slug: 'chest_r5_initiate_of_the_forge',
-                            bodyPart: BodyPart.chest,
-                            rankThreshold: 5,
                           ),
                         ],
                       ),
