@@ -10,9 +10,9 @@ import { test, expect, type Page } from '@playwright/test';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import path from 'path';
-import { flutterFill, navigateToTab } from '../helpers/app';
+import { dismissCelebrationIfPresent, flutterFill, navigateToTab, waitForAppReady } from '../helpers/app';
 import { login } from '../helpers/auth';
-import { AUTH, NAV, WORKOUT, PROFILE, MANAGE_DATA, PR, HISTORY, HOME, SAGA } from '../helpers/selectors';
+import { AUTH, NAV, WORKOUT, PROFILE, MANAGE_DATA, HISTORY, HOME, SAGA } from '../helpers/selectors';
 import {
   startEmptyWorkout,
   addExercise,
@@ -125,7 +125,9 @@ const FORBIDDEN_TABLE_NAMES = [
 
 /**
  * Complete a single-exercise workout with one set so there is data to delete.
- * Dismisses the PR celebration if shown.
+ * Dismisses any post-workout overlay (PR celebration, rank-up, level-up,
+ * title-unlock) using the shared deterministic helper so this helper is immune
+ * to the ScaleTransition animation race that caused #9/#10/#11 flakiness.
  */
 async function doWorkoutAndReturnHome(page: Page): Promise<void> {
   await startEmptyWorkout(page);
@@ -135,21 +137,14 @@ async function doWorkoutAndReturnHome(page: Page): Promise<void> {
   await completeSet(page, 0);
   await finishWorkout(page);
 
-  // Check for either celebration screen simultaneously to avoid sequential
-  // timeouts that waste time on CI.
-  const celebrationScreen = page
-    .locator(PR.firstWorkoutHeading)
-    .or(page.locator(PR.newPRHeading));
+  // Use the shared deterministic helper (Family 2 fix) instead of the racy
+  // isVisible()-based check. dismissCelebrationIfPresent uses waitForURL to
+  // detect /pr-celebration (immune to ScaleTransition animation) and also
+  // handles Phase 18c overlays (rank-up, level-up, title-unlock) that appear
+  // before the route push.
+  await dismissCelebrationIfPresent(page, 25_000);
 
-  const onCelebration = await celebrationScreen
-    .isVisible({ timeout: 20_000 })
-    .catch(() => false);
-
-  if (onCelebration) {
-    await page.click(PR.continueButton);
-  }
-
-  await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 20_000 });
 }
 
 /** Navigate to Profile Settings -> Manage Data screen.
@@ -320,23 +315,27 @@ test.describe('Account deletion', { tag: '@smoke' }, () => {
       // -- 9. Assert redirect to /login --
       // deleteAccount() -> Edge Function delete-user -> authNotifier signOut -> /login.
       await page.waitForURL('**/login**', { timeout: 30_000 });
-      await expect(page.locator(AUTH.appTitle)).toBeVisible({ timeout: 10_000 });
 
       // Mark deletion as completed so afterAll skips emergency cleanup.
+      // Set this before the page.goto reload so that afterAll never runs
+      // emergency cleanup even if the re-login assertion below fails.
       deletionCompletedInApp = true;
 
-      // -- 10. Attempt re-login with deleted credentials -- must FAIL --
-      await page.click(AUTH.emailInput);
-      await page.locator('input').last().waitFor({ state: 'attached', timeout: 5_000 });
-      await page.waitForTimeout(200);
-      await page.keyboard.press('Control+a');
-      await page.keyboard.type(userEmail, { delay: 10 });
+      // The Flutter SPA soft-redirect triggers multiple flt-semantics tree rebuild
+      // cycles as the auth notifier propagates signOut state, making the semantics
+      // nodes unstable for an extended window. A page.goto reload gives a fresh
+      // Flutter init and a fully stable login screen — the assertion being tested
+      // (re-login fails after deletion) is unaffected by whether we got here via
+      // SPA redirect or a fresh load.
+      await page.goto('/');
+      // waitForAppReady enables the Flutter semantics tree (required after any
+      // page.goto — without it, text= selectors won't match canvas-rendered text).
+      await waitForAppReady(page);
+      await expect(page.locator(AUTH.appTitle)).toBeVisible({ timeout: 10_000 });
 
-      await page.click(AUTH.passwordInput);
-      await page.locator('input').last().waitFor({ state: 'attached', timeout: 5_000 });
-      await page.waitForTimeout(200);
-      await page.keyboard.press('Control+a');
-      await page.keyboard.type(userPassword, { delay: 10 });
+      // -- 10. Attempt re-login with deleted credentials -- must FAIL --
+      await flutterFill(page, AUTH.emailInput, userEmail);
+      await flutterFill(page, AUTH.passwordInput, userPassword);
 
       await page.click(AUTH.loginButton);
 
@@ -397,6 +396,11 @@ test.describe('Account deletion', { tag: '@smoke' }, () => {
 // =============================================================================
 
 test.describe('Manage Data', () => {
+  // Tests that call doWorkoutAndReturnHome run a full workout cycle (Phase 18c
+  // overlays + celebrations can queue), so the suite needs the extended 180s
+  // budget to stay stable under --repeat-each.
+  test.slow();
+
   test.beforeEach(async ({ page }) => {
     await login(
       page,
@@ -535,9 +539,14 @@ test.describe('Manage Data', () => {
     // After history deletion, the Last session line must be hidden (no history).
     // This is a more direct assertion: the W8 home screen hides LastSessionLine
     // when workoutHistory is empty.
+    // Wait for the home status line first — it confirms the Riverpod home provider
+    // has re-queried after deletion (the stream re-emits before the status line renders).
+    // Use 30s to accommodate provider invalidation propagating across repeat runs
+    // where Supabase sync may still be completing when we navigate to Home.
     await navigateToTab(page, 'Home');
+    await expect(page.locator(HOME.statusLine)).toBeVisible({ timeout: 15_000 });
     await expect(page.locator(HOME.lastSessionLine)).not.toBeVisible({
-      timeout: 10_000,
+      timeout: 20_000,
     });
   });
 
@@ -690,9 +699,11 @@ test.describe('Manage Data', () => {
     await assertNoTableNamesVisible(page);
 
     // After Reset All, the Last session line must be hidden (history cleared).
+    // Wait for home status line first — confirms Riverpod provider has re-queried.
     await navigateToTab(page, 'Home');
+    await expect(page.locator(HOME.statusLine)).toBeVisible({ timeout: 15_000 });
     await expect(page.locator(HOME.lastSessionLine)).not.toBeVisible({
-      timeout: 10_000,
+      timeout: 20_000,
     });
   });
 

@@ -26,9 +26,9 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { waitForAppReady } from '../helpers/app';
+import { dismissCelebrationIfPresent, waitForAppReady } from '../helpers/app';
 import { login } from '../helpers/auth';
-import { NAV, WORKOUT, PR, HOME } from '../helpers/selectors';
+import { NAV, WORKOUT, HOME } from '../helpers/selectors';
 import {
   startEmptyWorkout,
   addExercise,
@@ -274,19 +274,9 @@ test.describe('Crash and session recovery', () => {
     // Finish the workout.
     await finishWorkout(page);
 
-    // Dismiss the PR celebration if shown.
-    const isCelebration = await page
-      .locator(PR.firstWorkoutHeading)
-      .isVisible({ timeout: 15_000 })
-      .catch(() => false);
-    const isNewPR = await page
-      .locator(PR.newPRHeading)
-      .isVisible({ timeout: isCelebration ? 0 : 3_000 })
-      .catch(() => false);
-
-    if (isCelebration || isNewPR) {
-      await page.click(PR.continueButton);
-    }
+    // Dismiss the PR celebration if shown. Uses URL-based detection to avoid the
+    // ScaleTransition visibility race on PR.firstWorkoutHeading / PR.newPRHeading.
+    await dismissCelebrationIfPresent(page);
 
     // Return to home if not already there.
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
@@ -326,18 +316,8 @@ test.describe('Crash and session recovery', () => {
     });
 
     // The app must navigate away cleanly — to celebration or home.
-    const isCelebration = await page
-      .locator('text=First Workout Complete!')
-      .isVisible({ timeout: 15_000 })
-      .catch(() => false);
-    const isNewPR = await page
-      .locator(PR.newPRHeading)
-      .isVisible({ timeout: isCelebration ? 0 : 3_000 })
-      .catch(() => false);
-
-    if (isCelebration || isNewPR) {
-      await page.click(PR.continueButton);
-    }
+    // Use URL-based detection to avoid the ScaleTransition visibility race.
+    await dismissCelebrationIfPresent(page);
 
     await expect(page.locator(NAV.homeTab)).toBeVisible({ timeout: 15_000 });
 

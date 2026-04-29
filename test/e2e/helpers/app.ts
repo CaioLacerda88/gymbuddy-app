@@ -14,7 +14,7 @@
  */
 
 import { Page, expect } from '@playwright/test';
-import { GAMIFICATION, NAV, PROFILE, SAGA } from './selectors';
+import { CELEBRATION, GAMIFICATION, NAV, PR, PROFILE, SAGA } from './selectors';
 
 /**
  * Wait for the Flutter app to finish its initial load.
@@ -342,6 +342,91 @@ export async function dismissSagaIntroOverlay(page: Page): Promise<void> {
   await expect(page.locator(GAMIFICATION.step0)).not.toBeVisible({
     timeout: 5_000,
   });
+}
+
+/**
+ * Dismiss any post-workout overlay or celebration screen that may appear
+ * after finishing a workout, then wait for the app to settle.
+ *
+ * Post-workout flow (Phase 18c):
+ *   1. CelebrationPlayer shows rank-up / level-up dialogs (auto-dismissed ~1.1s
+ *      each, barrierDismissible: false) — no URL change.
+ *   2. TitleUnlockSheet shown via showModalBottomSheet — no URL change, needs
+ *      user interaction (EQUIP button or tap outside barrier).
+ *   3. App navigates to /pr-celebration if any PR was set, then back to /home.
+ *   4. Or navigates directly to /home if no PR.
+ *
+ * The original isVisible()-based pattern races the ScaleTransition animation on
+ * the /pr-celebration screen (widgets start at scale=0, so isVisible() returns
+ * false during animation). This helper uses waitForURL to detect /pr-celebration
+ * (immune to animation state) plus a loop to handle Phase 18c overlays that
+ * appear before the route change.
+ *
+ * The full timeout budget is split:
+ *   - Up to 8 s watching for Phase 18c overlays to clear (via a poll loop)
+ *   - Then up to `timeout` ms watching for /pr-celebration (default 20 s)
+ *
+ * @param page    - Playwright page.
+ * @param timeout - How long to wait for the celebration URL (ms). Default 20 s.
+ */
+export async function dismissCelebrationIfPresent(
+  page: Page,
+  timeout = 20_000,
+): Promise<void> {
+  // Phase 18c step 1+2: dismiss any blocking overlays that appear before or
+  // instead of the /pr-celebration route. We loop for up to 12 s because
+  // multiple events can queue (rank-up → level-up → title-unlock → overflow).
+  // Auto-dismissed overlays (rank-up, level-up) resolve in ~1.1s each; the
+  // TitleUnlockSheet must be explicitly dismissed by tapping EQUIP or barrier.
+  const phaseDeadline = Date.now() + 12_000;
+  while (Date.now() < phaseDeadline) {
+    // Check if a Title unlock sheet is blocking (not auto-dismissed).
+    const titleSheet = page.locator(CELEBRATION.titleUnlockSheet);
+    const titleVisible = await titleSheet.isVisible({ timeout: 500 }).catch(() => false);
+    if (titleVisible) {
+      // Dismiss by clicking EQUIP TITLE (safe: equipping the title from the
+      // test context is harmless state accumulation, and the sheet always pops
+      // after the equip callback runs regardless of whether it succeeds).
+      const equipBtn = page.locator(CELEBRATION.equipTitleButton);
+      const equipVisible = await equipBtn.isVisible({ timeout: 2_000 }).catch(() => false);
+      if (equipVisible) {
+        await equipBtn.click();
+      } else {
+        // Sheet present but EQUIP not yet visible — tap outside the barrier
+        // (top-left corner, safely outside the 45% sheet area).
+        await page.mouse.click(50, 50);
+      }
+      // Wait for the sheet to detach.
+      await titleSheet.waitFor({ state: 'detached', timeout: 5_000 }).catch(() => {});
+      continue;
+    }
+
+    // If /pr-celebration URL is already visible, stop the overlay loop.
+    const url = page.url();
+    if (url.includes('pr-celebration') || url.includes('/home') || url.includes('/profile')) {
+      break;
+    }
+
+    // Small poll gap — let auto-dismissed overlays (rank-up, level-up) clear.
+    await page.waitForTimeout(300);
+  }
+
+  // Phase 18c step 3: handle /pr-celebration route (the PR heading widget is
+  // inside a ScaleTransition so isVisible() races the animation — use waitForURL
+  // which is synchronous with the route push).
+  const onCelebration = await page
+    .waitForURL('**/pr-celebration**', { timeout })
+    .then(() => true)
+    .catch(() => false);
+
+  if (onCelebration) {
+    // The Continue button is outside the ScaleTransition and is always reachable
+    // once we are on the /pr-celebration route.
+    await expect(page.locator(PR.continueButton)).toBeVisible({ timeout: 10_000 });
+    await page.click(PR.continueButton);
+    // Wait for the celebration route to leave before the caller continues.
+    await page.waitForURL(/\/(home|profile)/, { timeout: 15_000 });
+  }
 }
 
 /**

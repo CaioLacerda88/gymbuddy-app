@@ -26,6 +26,7 @@ import 'package:repsaga/features/rpg/models/title.dart' as rpg;
 import 'package:repsaga/features/rpg/ui/overlays/title_unlock_sheet.dart';
 
 import '../../../../helpers/test_material_app.dart';
+import '../../../../helpers/tolerant_golden_comparator.dart';
 
 const _chestR5 = rpg.Title(
   slug: 'chest_r5_initiate_of_the_forge',
@@ -54,6 +55,28 @@ Widget _wrap({required bool isFirstEver}) {
 }
 
 void main() {
+  // Text-bearing goldens diverge across platforms by ~0.5–2% on glyph edges
+  // due to Skia's freetype (Linux CI) vs DirectWrite-influenced (Windows
+  // host) sub-pixel anti-aliasing. The 3% tolerance preserves regression
+  // coverage (color flips / layout shifts paint >>3% diffs) while ignoring
+  // platform-divergent rendering noise. See `tolerant_golden_comparator.dart`.
+  late final GoldenFileComparator previousComparator;
+
+  setUpAll(() {
+    previousComparator = goldenFileComparator;
+    final basedir = (goldenFileComparator as LocalFileComparator).basedir;
+    // [LocalFileComparator]'s constructor expects a file URI inside the
+    // target directory and recomputes basedir via dirname(). Append a dummy
+    // filename so the recomputed basedir matches the original directory.
+    goldenFileComparator = TolerantGoldenFileComparator(
+      basedir.resolve('test.dart'),
+    );
+  });
+
+  tearDownAll(() {
+    goldenFileComparator = previousComparator;
+  });
+
   group('TitleUnlockSheet golden', () {
     testWidgets('first-ever unlock — title name in heroGold', (tester) async {
       tester.view.physicalSize = const Size(800, 1200);
