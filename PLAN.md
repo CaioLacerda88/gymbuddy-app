@@ -74,8 +74,8 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 18b | RPG v1: Character sheet + rune sigils UI | DONE | #113 |
 | 18c | RPG v1: Mid-workout overlay rewire + title unlocks | DONE | #114 |
 | 18d | RPG v1: Stats deep-dive + Vitality nightly job + visual states | DONE | #118, #119 |
-| 18e | RPG v1: Class system + cross-build titles + final QA pass | TODO | - |
-| 18 | RPG System v1 (per `docs/superpowers/specs/2026-04-25-rpg-system-v1-design.md`) | PLANNED | - |
+| 18e | RPG v1: Class system + cross-build titles + final QA pass | DONE | #120 |
+| 18 | RPG System v1 (per `docs/superpowers/specs/2026-04-25-rpg-system-v1-design.md`) | DONE | #112–#120 |
 | 19 | Deferred RPG v2 + Nice-to-Have (Quests engine, Stats radar, Synergy, PR mini-events, Cardio track, etc.) | BACKLOG | - |
 
 ### Section Index
@@ -1217,43 +1217,15 @@ Split into two PRs because the cron should populate real EWMA values before the 
 
 ---
 
-### 18e: Class system + cross-build titles + final QA pass
+### 18e: Class system + cross-build titles + final QA pass — DONE (PR #120)
 
-**Goal:** Finish the spec — ship the derived class lookup, the 7 character-level titles + 5 cross-build titles, and run the integration QA gate.
+- **Class system (spec §9):** `class_resolver.dart` (pure `resolveClass(Map<BodyPart,int>)`) with §9.2 resolution order — `max < 5 → Initiate; min ≥ 5 ∧ spread ≤ 30% → Ascendant; else dominant lookup` + alphabetical tie-break. 8 classes (Initiate, Berserker, Bulwark, Sentinel, Pathfinder, Atlas, Anchor, Ascendant). Wired into `classProvider` watching `rpgProgressProvider`; two-tier `ClassBadge` (Initiate quieter, others vivid; asymmetric sigil radius `4/10/10/4`).
+- **Title catalog (spec §10):** `Title` refactored to sealed Freezed union (`BodyPartTitle` / `CharacterLevelTitle` / `CrossBuildTitle`) keyed by `kind` discriminator. 7 character-level + 5 cross-build = 90 titles total in v1. Display copy in `.arb` keyed by slug (48 new keys en+pt). `assets/rpg/titles_character_level.json` + `titles_cross_build.json` ship the structural data.
+- **Detection + retroactive backfill:** `title_unlock_detector.dart` extended with `detectCharacterLevel` + `detectCrossBuild` (half-open `(old, new]` semantics); `celebration_event_builder.dart` orchestrates all three with cumulative `earnedSoFar` guard. `cross_build_title_evaluator.dart` (5 predicates: pillar_walker, broad_shouldered, even_handed, iron_bound (per-track ≥ 60), saga_forged) mirrored by SQL `evaluate_cross_build_titles_for_user(uuid)` in `supabase/migrations/00043_cross_build_titles_backfill.sql` for retroactive awarding.
+- **Tests:** 65 net new (2183 / 2183 passing) — class_resolver (17), cross_build_evaluator (21), class_provider pin (6), detector extension (11→28), builder orchestration (8→12), class_badge styling. E2E: T1/T2/T3 (`title-equip.spec.ts`) + S12 (class label cross in `saga.spec.ts`).
+- **Notable Phase 18e fix:** `titles_screen.dart` Semantics wrappers required `container: true` so Flutter web's AOM doesn't elide identifier-only nodes (root cause of CI E2E flake — a real bug masked by local smoke not running the regression suite, surfaced by the new T2/T3 tests).
 
-**Class system (spec §9):**
-
-- `lib/features/rpg/domain/class_resolver.dart` — pure function `resolveClass(ranks: Map<BodyPart, int>) → CharacterClass` per §9.2 resolution order: Initiate (max rank < 5) > Ascendant (balanced) > dominant lookup. **Cosmetic only, no mechanical effect** — class label updates in real time on character sheet.
-- 8 classes: Initiate, Berserker, Bulwark, Sentinel, Pathfinder, Atlas, Anchor, Ascendant. (Wayfarer is v2 cardio.)
-
-**Title catalog completion:**
-
-- Add 7 character-level titles (spec §10.2) + 5 cross-build titles (spec §10.3). Detection runs in `title_unlock_detector` extended with new triggers.
-- Cross-build titles include retroactive evaluation — when 18e ships, run a one-time `evaluate_cross_build_titles_for_all_users()` procedure to award them based on existing rank state.
-
-**Final QA pass (per design spec §18 acceptance criteria 1-12):**
-
-- `qa-engineer` runs end-to-end verification of every acceptance bullet — see §18 of the spec.
-- Includes manual replay of a power user's history through the backfill, eyeballing the resulting character sheet for plausibility.
-- E2E full regression run.
-- Performance benchmark: 100-set workout `save_workout` p95 ≤ 50ms (capture in PR).
-
-**Files:**
-
-- Create: `lib/features/rpg/domain/class_resolver.dart`, `cross_build_title_evaluator.dart`, `lib/features/rpg/models/character_class.dart`
-- Create: `assets/rpg/titles_character_level.json`, `assets/rpg/titles_cross_build.json` (localized en + pt-BR via `.arb`)
-- Modify: `lib/features/rpg/providers/character_sheet_provider.dart` (replace stub class with real resolver), `title_unlock_detector.dart` (add character-level + cross-build detection), `lib/features/rpg/ui/character_sheet_screen.dart` (show real class label)
-- Migration: `00043_cross_build_titles_backfill.sql` — one-time procedure to award cross-build titles to existing users
-- Cleanup: delete dead 17b `XpCalculator` / `xpForLevel` curve / placeholder unit tests (full sweep — flagged in 18a)
-
-**Test plan:**
-
-- **Unit:** `class_resolver_test.dart` (every class trigger + Ascendant precedence + Initiate floor), `cross_build_title_evaluator_test.dart` (each of the 5 triggers + boundary cases).
-- **Integration:** `test/integration/rpg_acceptance_test.dart` — synthesizes a fixture user covering every spec §18 acceptance bullet; asserts each.
-- **E2E:** Extend `specs/saga.spec.ts` — class label changes after a body-part rank cross. Add `specs/title-equip.spec.ts` — equip a character-level title, verify display on character sheet header. Selectors: `classBadge`, `titleLibraryButton`, `titleLibrarySheet`.
-- **Performance:** Benchmark logged in PR description per acceptance #2.
-
-**Dependencies:** 18a, 18b, 18c, 18d.
+Completes the **RPG v1 arc** (18a→18e). Cardio is v2 (Phase 19); Wayfarer class deferred with it.
 
 ---
 
