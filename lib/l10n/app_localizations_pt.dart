@@ -71,6 +71,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get vitalityTrendHeadingShort => 'Tendência de Vitalidade';
 
   @override
+  String get liveVitalitySectionHeading => 'Vitalidade Atual';
+
+  @override
   String get volumePeakSectionHeading => 'Volume e Pico';
 
   @override

@@ -106,9 +106,14 @@ class _Body extends StatelessWidget {
             useNarrowWindow: state.useNarrowWindow,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
 
         // ─── Live Vitality table ──────────────────────────────────────────
+        // Section header anchors the chart→table junction. Without it the
+        // table reads as the chart's legend; with it the table claims its
+        // own register as the live current-state surface.
+        _SectionHeader(label: l10n.liveVitalitySectionHeading),
+        const SizedBox(height: 8),
         VitalityTable(
           rows: state.vitalityRows,
           selectedBodyPart: selectedBodyPart,

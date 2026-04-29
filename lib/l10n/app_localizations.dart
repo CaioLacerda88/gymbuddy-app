@@ -218,6 +218,12 @@ abstract class AppLocalizations {
   /// **'Vitality Trend'**
   String get vitalityTrendHeadingShort;
 
+  /// Section heading above the live vitality table on the stats deep-dive screen. Anchors the chart→table junction so the table reads as its own section, not as the chart's legend.
+  ///
+  /// In en, this message translates to:
+  /// **'Live Vitality'**
+  String get liveVitalitySectionHeading;
+
   /// Section heading for the per-body-part volume and peak EWMA table on the stats deep-dive screen.
   ///
   /// In en, this message translates to:

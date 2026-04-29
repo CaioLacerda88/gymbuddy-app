@@ -41,6 +41,8 @@
   "@vitalityTrendHeading": { "description": "Section heading for the 90-day vitality trend chart on the stats deep-dive screen — used when the user has ≥30 days of activity." },
   "vitalityTrendHeadingShort": "Vitality Trend",
   "@vitalityTrendHeadingShort": { "description": "Section heading for the vitality trend chart in narrow-window mode — used when the user has <30 days of activity (the chart's X-axis spans first_activity_date → today instead of a rolling 90-day window)." },
+  "liveVitalitySectionHeading": "Live Vitality",
+  "@liveVitalitySectionHeading": { "description": "Section heading above the live vitality table on the stats deep-dive screen. Anchors the chart→table junction so the table reads as its own section, not as the chart's legend." },
   "volumePeakSectionHeading": "Volume & Peak",
   "@volumePeakSectionHeading": { "description": "Section heading for the per-body-part volume and peak EWMA table on the stats deep-dive screen." },
   "peakLoadsSectionHeading": "Peak Loads",
