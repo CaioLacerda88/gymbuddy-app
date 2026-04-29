@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../models/body_part.dart';
 import '../../models/character_sheet_state.dart';
+// Pulled in for `VitalityStateX.borderColor` extension (radar vertex dots).
 import '../../models/vitality_state.dart';
 
 /// Hexagonal Vitality radar — six vertices, one per active body part.

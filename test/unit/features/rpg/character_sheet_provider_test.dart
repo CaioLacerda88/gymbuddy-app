@@ -115,13 +115,15 @@ void main() {
       () async {
         // At rank 5, cumulative threshold is 60 * (1.10^4 - 1) / 0.10 ≈ 278.46.
         // Set totalXp slightly above so xpInRank > 0 and xpForNextRank > 0.
+        // Vitality is incidental here — pick (30, 60) so pct = 0.5 → Active
+        // (mid-band) per the §8.4 percentage-normalised mapper.
         final snapshot = RpgProgressSnapshot(
           byBodyPart: {
             BodyPart.chest: _row(
               bodyPart: BodyPart.chest,
               rank: 5,
               totalXp: 300,
-              vitalityEwma: 50,
+              vitalityEwma: 30,
               vitalityPeak: 60,
             ),
           },

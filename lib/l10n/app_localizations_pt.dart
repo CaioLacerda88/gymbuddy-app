@@ -49,6 +49,19 @@ class AppLocalizationsPt extends AppLocalizations {
   String get settingsLabel => 'Configurações';
 
   @override
+  String get vitalityCopyDormant => 'Aguarda seu primeiro passo.';
+
+  @override
+  String get vitalityCopyFading =>
+      'Condicionamento perdido — retorne ao caminho.';
+
+  @override
+  String get vitalityCopyActive => 'No caminho.';
+
+  @override
+  String get vitalityCopyRadiant => 'Caminho dominado.';
+
+  @override
   String get save => 'Salvar';
 
   @override

@@ -176,6 +176,30 @@ abstract class AppLocalizations {
   /// **'Settings'**
   String get settingsLabel;
 
+  /// Marginalia copy for a body-part rune in the Dormant state (peak == 0; never trained). Shown only on the Stats deep-dive screen — the character sheet stays number-free and copy-free.
+  ///
+  /// In en, this message translates to:
+  /// **'Awaits your first stride.'**
+  String get vitalityCopyDormant;
+
+  /// Marginalia copy for a body-part rune in the Fading state (1-30% of peak).
+  ///
+  /// In en, this message translates to:
+  /// **'Conditioning lost — return to the path.'**
+  String get vitalityCopyFading;
+
+  /// Marginalia copy for a body-part rune in the Active state (31-70% of peak) — the default 'doing the work' read.
+  ///
+  /// In en, this message translates to:
+  /// **'On the path.'**
+  String get vitalityCopyActive;
+
+  /// Marginalia copy for a body-part rune in the Radiant state (71-100% of peak) — peak conditioning.
+  ///
+  /// In en, this message translates to:
+  /// **'Path mastered.'**
+  String get vitalityCopyRadiant;
+
   /// Save button label
   ///
   /// In en, this message translates to:

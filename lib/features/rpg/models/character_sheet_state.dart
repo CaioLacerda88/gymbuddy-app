@@ -1,6 +1,12 @@
 // ignore_for_file: invalid_annotation_target
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+// Hide the calculator's `VitalityState` data class — we only use the
+// `percentage` static helper here. The four-state enum we *do* want
+// already lives in `models/vitality_state.dart`. Renaming the data
+// class would churn ~10 §8.1 call sites; the explicit `show` is safer.
+import '../domain/vitality_calculator.dart' show VitalityCalculator;
+import '../domain/vitality_state_mapper.dart';
 import 'body_part.dart';
 import 'body_part_progress.dart';
 import 'vitality_state.dart';
@@ -71,27 +77,47 @@ abstract class CharacterSheetState with _$CharacterSheetState {
   /// onboarding gate copy on the character sheet.
   bool get isZeroHistory => lifetimeXp <= 0;
 
-  /// Mean Vitality EWMA across active (rank > 1 OR peak > 0) body parts.
-  /// Drives the rune halo state in the header. Falls back to 0 when no body
-  /// parts have been touched, which collapses the halo to Dormant.
-  double get meanActiveVitality {
+  /// Mean Vitality **percentage** (0..1) across active body parts.
+  ///
+  /// "Active" = rank > 1 OR peak > 0 — at least one set has touched the
+  /// body part. Per-body-part percentage is `clamp(ewma/peak, 0, 1)`; we
+  /// average those percentages, NOT the raw EWMA values, because EWMAs
+  /// across body parts are not commensurable (their natural scales depend
+  /// on each body part's lifetime peak).
+  ///
+  /// The `Percent` suffix is load-bearing: this returns a 0..1 ratio, not
+  /// a raw EWMA value (which is volume-derived and typically in the
+  /// thousands). Reading "vitality" without the suffix has historically
+  /// been a source of confusion — see the latent bug in the original
+  /// `VitalityStateX.fromVitality` documented on `VitalityStateMapper`.
+  ///
+  /// Falls back to 0 when no body parts have been touched, which collapses
+  /// the halo to Dormant.
+  double get meanActiveVitalityPercent {
     final active = bodyPartProgress.where(
       (e) => e.vitalityPeak > 0 || e.rank > 1,
     );
     if (active.isEmpty) return 0;
-    final total = active.fold<double>(0, (sum, e) => sum + e.vitalityEwma);
+    final total = active.fold<double>(
+      0,
+      (sum, e) =>
+          sum +
+          VitalityCalculator.percentage(
+            ewma: e.vitalityEwma,
+            peak: e.vitalityPeak,
+          ),
+    );
     return total / active.length;
   }
 
-  /// Vitality state of the rune halo — derived from the mean Vitality across
-  /// active body parts. Day-0 collapses to Dormant; a fresh first set
-  /// awakens it to Fading or Active depending on volume.
+  /// Vitality state of the rune halo — derived from the mean Vitality
+  /// **percentage** across active body parts. Day-0 collapses to Dormant;
+  /// once any body part has a recorded peak, the halo state tracks the
+  /// average ratio across active body parts.
   VitalityState get haloState {
     if (isZeroHistory) return VitalityState.dormant;
     final hasAnyPeak = bodyPartProgress.any((e) => e.vitalityPeak > 0);
-    return VitalityStateX.fromVitality(
-      vitalityEwma: meanActiveVitality,
-      vitalityPeak: hasAnyPeak ? 1 : 0,
-    );
+    if (!hasAnyPeak) return VitalityState.dormant;
+    return VitalityStateMapper.fromPercent(meanActiveVitalityPercent);
   }
 }
