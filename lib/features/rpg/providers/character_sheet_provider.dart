@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/rank_curve.dart';
 import '../models/body_part.dart';
 import '../models/body_part_progress.dart';
+import '../models/character_class.dart';
 import '../models/character_sheet_state.dart';
 import '../models/vitality_state.dart';
 import 'active_title_provider.dart';
@@ -10,13 +11,13 @@ import 'class_provider.dart';
 import 'rpg_progress_provider.dart';
 
 /// Composed character-sheet snapshot — derived from
-/// [rpgProgressProvider] (server data) + [activeTitleProvider] (Phase 18c
-/// stub) + [characterClassProvider] (Phase 18e stub).
+/// [rpgProgressProvider] (server data) + [activeTitleProvider] +
+/// [characterClassProvider].
 ///
 /// **Composition direction.** This provider depends on three lower-level
 /// providers. None of them depend on it. UI consumers watch this single
 /// provider and read a fully-derived [CharacterSheetState] — no widget
-/// recomputes the rank slice, vitality state, or class label. Idempotent:
+/// recomputes the rank slice, vitality state, or class. Idempotent:
 /// re-evaluating with the same inputs produces the same state.
 ///
 /// **Why `Provider` not `AsyncNotifier`:** the heavy lifting (network +
@@ -30,17 +31,19 @@ import 'rpg_progress_provider.dart';
 /// the upstream provider yields the canonical empty snapshot. This
 /// transform expands it into six placeholder entries (rank 1, 0 XP,
 /// Dormant) so the UI iterates a fixed-length list instead of branching
-/// on emptiness.
+/// on emptiness. The class resolver returns [CharacterClass.initiate]
+/// for that day-0 distribution — the badge transitions from the day-1
+/// placeholder copy to "Initiate" on the first frame after auth resolves.
 final characterSheetProvider = Provider<AsyncValue<CharacterSheetState>>((ref) {
   final progressAsync = ref.watch(rpgProgressProvider);
   final activeTitle = ref.watch(activeTitleProvider);
-  final className = ref.watch(characterClassProvider);
+  final characterClass = ref.watch(characterClassProvider);
 
   return progressAsync.whenData((snapshot) {
     return _composeSheet(
       snapshot: snapshot,
       activeTitle: activeTitle,
-      className: className,
+      characterClass: characterClass,
     );
   });
 });
@@ -50,7 +53,7 @@ final characterSheetProvider = Provider<AsyncValue<CharacterSheetState>>((ref) {
 CharacterSheetState _composeSheet({
   required RpgProgressSnapshot snapshot,
   required String? activeTitle,
-  required String? className,
+  required CharacterClass? characterClass,
 }) {
   final entries = activeBodyParts
       .map((bodyPart) {
@@ -64,7 +67,7 @@ CharacterSheetState _composeSheet({
     lifetimeXp: snapshot.characterState.lifetimeXp,
     bodyPartProgress: entries,
     activeTitle: activeTitle,
-    className: className,
+    characterClass: characterClass,
   );
 }
 

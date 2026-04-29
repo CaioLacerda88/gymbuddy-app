@@ -54,7 +54,7 @@ CharacterSheetState _dayZeroState() {
     lifetimeXp: 0,
     bodyPartProgress: activeBodyParts.map((bp) => _entry(bp: bp)).toList(),
     activeTitle: null,
-    className: null,
+    characterClass: null,
   );
 }
 
@@ -107,7 +107,7 @@ CharacterSheetState _highRankState() {
       ),
     ],
     activeTitle: null,
-    className: null,
+    characterClass: null,
   );
 }
 

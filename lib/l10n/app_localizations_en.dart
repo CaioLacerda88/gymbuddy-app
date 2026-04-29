@@ -27,6 +27,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get classSlotPlaceholder => 'The iron will name you.';
 
   @override
+  String get classInitiate => 'Initiate';
+
+  @override
+  String get classBerserker => 'Berserker';
+
+  @override
+  String get classBulwark => 'Bulwark';
+
+  @override
+  String get classSentinel => 'Sentinel';
+
+  @override
+  String get classPathfinder => 'Pathfinder';
+
+  @override
+  String get classAtlas => 'Atlas';
+
+  @override
+  String get classAnchor => 'Anchor';
+
+  @override
+  String get classAscendant => 'Ascendant';
+
+  @override
   String get dormantCardioCopy => 'Cardio runes awaken in a future chapter.';
 
   @override

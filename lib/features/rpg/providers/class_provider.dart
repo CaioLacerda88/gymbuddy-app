@@ -1,16 +1,47 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Stub for the derived character class (Phase 18b).
+import '../domain/class_resolver.dart';
+import '../models/body_part.dart';
+import '../models/character_class.dart';
+import 'rpg_progress_provider.dart';
+
+/// Currently-derived [CharacterClass] for the authenticated user.
 ///
-/// Real class derivation lands in Phase 18e (spec §9.2): given the user's
-/// per-body-part rank distribution, resolve to one of Initiate / Berserker /
-/// Bulwark / Sentinel / Pathfinder / Atlas / Anchor / Ascendant. Until then
-/// this provider returns `null` and the character sheet renders the placeholder
-/// copy "The iron will name you." in the class-badge slot.
+/// Watches [rpgProgressProvider], projects the per-body-part rank map onto
+/// [activeBodyParts] (cardio filtered — Wayfarer is v2), and returns the
+/// resolver result via [ClassResolver.resolve]. The resolver is pure, so this
+/// provider rebuilds in lockstep with the upstream snapshot — there is no
+/// secondary state to invalidate.
 ///
-/// **Why null and not "Initiate":** the kickoff brief explicitly rejected an
-/// "Initiate" default — it reads as a finished state ("I'm an Initiate") when
-/// the real intent is "your class is yet to emerge." The placeholder copy
-/// communicates pre-class-emergence; the badge transitions to a real label
-/// the moment 18e ships, with no schema change required.
-final characterClassProvider = Provider<String?>((ref) => null);
+/// **Returns the [CharacterClass] enum, not a localized string.** UI consumers
+/// (the [`ClassBadge`](../ui/widgets/class_badge.dart)) resolve the localized
+/// label via `AppLocalizations` keyed by [CharacterClass.l10nKey]
+/// (`class_initiate`, `class_berserker`, …). Keeping the provider l10n-free
+/// means the badge stays correct under locale switches and golden tests can
+/// assert against the slug without wiring an `AppLocalizations` mock.
+///
+/// **Loading / error states:**
+///   * `AsyncLoading` → `null` (badge renders the day-1 placeholder copy).
+///   * `AsyncData` → resolved class (always non-null; resolver returns
+///     `Initiate` for the day-0 distribution).
+///   * `AsyncError` → `null` (graceful: badge falls back to placeholder
+///     rather than blocking the character sheet on a network blip).
+///
+/// **Day-1 surface contract.** A brand-new user with no `body_part_progress`
+/// rows lands here with every rank at 1 (via [RpgProgressSnapshot.progressFor]
+/// fallback). The resolver returns [CharacterClass.initiate] for that
+/// distribution — the badge thus transitions from "The iron will name you."
+/// (loading) → "Initiate" (data) on the first frame after auth resolves.
+final characterClassProvider = Provider<CharacterClass?>((ref) {
+  final progressAsync = ref.watch(rpgProgressProvider);
+  return progressAsync.when(
+    data: (snapshot) {
+      final ranks = <BodyPart, int>{
+        for (final bp in activeBodyParts) bp: snapshot.progressFor(bp).rank,
+      };
+      return ClassResolver.resolve(ranks);
+    },
+    loading: () => null,
+    error: (_, _) => null,
+  );
+});

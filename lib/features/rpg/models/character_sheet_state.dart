@@ -9,6 +9,7 @@ import '../domain/vitality_calculator.dart' show VitalityCalculator;
 import '../domain/vitality_state_mapper.dart';
 import 'body_part.dart';
 import 'body_part_progress.dart';
+import 'character_class.dart';
 import 'vitality_state.dart';
 
 part 'character_sheet_state.freezed.dart';
@@ -57,10 +58,13 @@ abstract class BodyPartSheetEntry with _$BodyPartSheetEntry {
 /// it needs from this state so a refresh of one body-part row doesn't tear
 /// the rest.
 ///
-/// `className` is nullable because Phase 18b ships with a stub class
-/// provider that always returns null — the slot still renders, but with the
-/// "The iron will name you." placeholder copy. Real class derivation lands
-/// in 18e (spec §9.2).
+/// `characterClass` is nullable because the upstream RPG progress provider
+/// can be in `AsyncLoading` / `AsyncError` — the badge then renders the
+/// day-1 placeholder copy ("The iron will name you."). Once `AsyncData`
+/// lands, the resolver always returns a non-null variant (Initiate floor).
+/// Real class derivation lives in [`ClassResolver`](../domain/class_resolver.dart)
+/// per spec §9.2; the badge resolves the localized label via
+/// `AppLocalizations` keyed by [CharacterClass.l10nKey].
 @freezed
 abstract class CharacterSheetState with _$CharacterSheetState {
   const factory CharacterSheetState({
@@ -68,7 +72,7 @@ abstract class CharacterSheetState with _$CharacterSheetState {
     required double lifetimeXp,
     required List<BodyPartSheetEntry> bodyPartProgress,
     String? activeTitle,
-    String? className,
+    CharacterClass? characterClass,
   }) = _CharacterSheetState;
 
   const CharacterSheetState._();

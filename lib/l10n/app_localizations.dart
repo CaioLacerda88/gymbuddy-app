@@ -128,11 +128,59 @@ abstract class AppLocalizations {
   /// **'Saga'**
   String get sagaTabLabel;
 
-  /// Day-1 copy for the class-badge slot on the character sheet, before any class has been derived (Phase 18e).
+  /// Day-1 copy for the class-badge slot on the character sheet, before any class has been derived.
   ///
   /// In en, this message translates to:
   /// **'The iron will name you.'**
   String get classSlotPlaceholder;
+
+  /// Class-badge label for CharacterClass.initiate — newcomer to the path. Phase 18e.
+  ///
+  /// In en, this message translates to:
+  /// **'Initiate'**
+  String get classInitiate;
+
+  /// Class-badge label for CharacterClass.berserker — arms-dominant specialist. Phase 18e.
+  ///
+  /// In en, this message translates to:
+  /// **'Berserker'**
+  String get classBerserker;
+
+  /// Class-badge label for CharacterClass.bulwark — chest-dominant pressing specialist. Phase 18e.
+  ///
+  /// In en, this message translates to:
+  /// **'Bulwark'**
+  String get classBulwark;
+
+  /// Class-badge label for CharacterClass.sentinel — back-dominant pulling specialist. Phase 18e.
+  ///
+  /// In en, this message translates to:
+  /// **'Sentinel'**
+  String get classSentinel;
+
+  /// Class-badge label for CharacterClass.pathfinder — legs-dominant lower-body specialist. Phase 18e.
+  ///
+  /// In en, this message translates to:
+  /// **'Pathfinder'**
+  String get classPathfinder;
+
+  /// Class-badge label for CharacterClass.atlas — shoulders-dominant overhead specialist. Phase 18e.
+  ///
+  /// In en, this message translates to:
+  /// **'Atlas'**
+  String get classAtlas;
+
+  /// Class-badge label for CharacterClass.anchor — core-dominant stability specialist. Phase 18e.
+  ///
+  /// In en, this message translates to:
+  /// **'Anchor'**
+  String get classAnchor;
+
+  /// Class-badge label for CharacterClass.ascendant — balanced (rare, prestigious). Phase 18e.
+  ///
+  /// In en, this message translates to:
+  /// **'Ascendant'**
+  String get classAscendant;
 
   /// Subtitle on the dormant Cardio row of the character sheet — communicates that cardio is intentionally not yet active.
   ///

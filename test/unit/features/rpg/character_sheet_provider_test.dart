@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:repsaga/features/rpg/data/rpg_repository.dart';
 import 'package:repsaga/features/rpg/models/body_part.dart';
 import 'package:repsaga/features/rpg/models/body_part_progress.dart';
+import 'package:repsaga/features/rpg/models/character_class.dart';
 import 'package:repsaga/features/rpg/models/character_sheet_state.dart';
 import 'package:repsaga/features/rpg/models/vitality_state.dart';
 import 'package:repsaga/features/rpg/providers/active_title_provider.dart';
@@ -40,7 +41,7 @@ BodyPartProgress _row({
 ProviderContainer _container({
   required RpgProgressSnapshot snapshot,
   String? activeTitle,
-  String? className,
+  CharacterClass? characterClass,
 }) {
   return ProviderContainer(
     overrides: [
@@ -48,7 +49,7 @@ ProviderContainer _container({
         () => _FakeRpgProgressNotifier(snapshot),
       ),
       activeTitleProvider.overrideWithValue(activeTitle),
-      characterClassProvider.overrideWithValue(className),
+      characterClassProvider.overrideWithValue(characterClass),
     ],
   );
 }
@@ -150,17 +151,17 @@ void main() {
       },
     );
 
-    test('class + active title pass through from stub providers', () async {
+    test('class + active title pass through from upstream providers', () async {
       final c = _container(
         snapshot: RpgProgressSnapshot.empty,
         activeTitle: 'Iron-Chested',
-        className: 'Bulwark',
+        characterClass: CharacterClass.bulwark,
       );
       addTearDown(c.dispose);
 
       final sheet = await _read(c);
       expect(sheet.activeTitle, 'Iron-Chested');
-      expect(sheet.className, 'Bulwark');
+      expect(sheet.characterClass, CharacterClass.bulwark);
     });
 
     test(

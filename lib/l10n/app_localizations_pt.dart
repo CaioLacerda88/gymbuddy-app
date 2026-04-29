@@ -27,6 +27,30 @@ class AppLocalizationsPt extends AppLocalizations {
   String get classSlotPlaceholder => 'O ferro lhe dará um nome.';
 
   @override
+  String get classInitiate => 'Iniciante';
+
+  @override
+  String get classBerserker => 'Berserker';
+
+  @override
+  String get classBulwark => 'Baluarte';
+
+  @override
+  String get classSentinel => 'Sentinela';
+
+  @override
+  String get classPathfinder => 'Desbravador';
+
+  @override
+  String get classAtlas => 'Atlas';
+
+  @override
+  String get classAnchor => 'Âncora';
+
+  @override
+  String get classAscendant => 'Ascendente';
+
+  @override
   String get dormantCardioCopy =>
       'As runas de cardio despertam em um capítulo futuro.';
 

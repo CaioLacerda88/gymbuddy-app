@@ -157,7 +157,7 @@ class _SheetHeader extends StatelessWidget {
           Semantics(
             container: true,
             identifier: 'class-badge',
-            child: ClassBadge(className: sheet.className),
+            child: ClassBadge(characterClass: sheet.characterClass),
           ),
           if (sheet.activeTitle != null && sheet.activeTitle!.isNotEmpty) ...[
             const SizedBox(height: 8),
