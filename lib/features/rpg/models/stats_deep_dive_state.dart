@@ -1,5 +1,10 @@
+// ignore_for_file: invalid_annotation_target
+import 'package:freezed_annotation/freezed_annotation.dart';
+
 import 'body_part.dart';
 import 'vitality_state.dart';
+
+part 'stats_deep_dive_state.freezed.dart';
 
 /// State shape consumed by the `/saga/stats` deep-dive screen (Phase 18d.2).
 ///
@@ -14,16 +19,40 @@ import 'vitality_state.dart';
 /// volume/peak table _and_ informs the peak-loads grouping. Composing once
 /// at provider time avoids three round-trips of cross-section coordination
 /// in the UI.
-class StatsDeepDiveState {
-  const StatsDeepDiveState({
-    required this.vitalityRows,
-    required this.trendByBodyPart,
-    required this.volumePeakByBodyPart,
-    required this.peakLoadsByBodyPart,
-    required this.earliestActivity,
-    required this.windowStart,
-    required this.windowEnd,
-  });
+@freezed
+abstract class StatsDeepDiveState with _$StatsDeepDiveState {
+  const factory StatsDeepDiveState({
+    /// One row per active body part, in [activeBodyParts] canonical order.
+    /// Drives both the live Vitality table and the chart's selection set.
+    required List<VitalityTableRow> vitalityRows,
+
+    /// Reconstructed daily trace per body part, oldest → newest. Empty list
+    /// for body parts the user has never trained (rendered as a flat-zero
+    /// line by the chart). All non-empty lists share the same length and the
+    /// same date sequence as [windowStart] → [windowEnd].
+    required Map<BodyPart, List<TrendPoint>> trendByBodyPart,
+
+    /// Per-body-part volume-and-peak row for the secondary table.
+    required Map<BodyPart, VolumePeakRow> volumePeakByBodyPart,
+
+    /// Per-body-part peak-loads list (grouped + sorted), sourced from
+    /// `exercise_peak_loads` joined with `exercises.muscle_group`. Body parts
+    /// with no recorded peaks are absent from the map. The ExpansionTile
+    /// section shows the empty state when the map is empty.
+    required Map<BodyPart, List<PeakLoadRow>> peakLoadsByBodyPart,
+
+    /// Timestamp of the user's earliest `xp_event`. `null` for users who
+    /// have never recorded a set. Drives the hybrid X-axis decision.
+    required DateTime? earliestActivity,
+
+    /// Inclusive start of the trend chart window (UTC midnight).
+    required DateTime windowStart,
+
+    /// Inclusive end of the trend chart window — always "today" UTC midnight.
+    required DateTime windowEnd,
+  }) = _StatsDeepDiveState;
+
+  const StatsDeepDiveState._();
 
   /// Day-0 / loading-failed fallback. Six dormant rows, empty trend lines,
   /// empty peaks. Identity invariant: rendering this state must produce a
@@ -54,35 +83,6 @@ class StatsDeepDiveState {
     );
   }
 
-  /// One row per active body part, in [activeBodyParts] canonical order.
-  /// Drives both the live Vitality table and the chart's selection set.
-  final List<VitalityTableRow> vitalityRows;
-
-  /// Reconstructed daily trace per body part, oldest → newest. Empty list
-  /// for body parts the user has never trained (rendered as a flat-zero
-  /// line by the chart). All non-empty lists share the same length and the
-  /// same date sequence as [windowStart] → [windowEnd].
-  final Map<BodyPart, List<TrendPoint>> trendByBodyPart;
-
-  /// Per-body-part volume-and-peak row for the secondary table.
-  final Map<BodyPart, VolumePeakRow> volumePeakByBodyPart;
-
-  /// Per-body-part peak-loads list (grouped + sorted), sourced from
-  /// `exercise_peak_loads` joined with `exercises.muscle_group`. Body parts
-  /// with no recorded peaks are absent from the map. The ExpansionTile
-  /// section shows the empty state when the map is empty.
-  final Map<BodyPart, List<PeakLoadRow>> peakLoadsByBodyPart;
-
-  /// Timestamp of the user's earliest `xp_event`. `null` for users who have
-  /// never recorded a set. Drives the hybrid X-axis decision.
-  final DateTime? earliestActivity;
-
-  /// Inclusive start of the trend chart window (UTC midnight).
-  final DateTime windowStart;
-
-  /// Inclusive end of the trend chart window — always "today" UTC midnight.
-  final DateTime windowEnd;
-
   /// True when [windowStart] is the user's earliest activity (history <30
   /// days). Drives the heading copy + X-axis label for the chart.
   ///
@@ -102,60 +102,54 @@ class StatsDeepDiveState {
 }
 
 /// One row in the live Vitality table (six rows total).
-class VitalityTableRow {
-  const VitalityTableRow({
-    required this.bodyPart,
-    required this.pct,
-    required this.state,
-    required this.rank,
-  });
+@freezed
+abstract class VitalityTableRow with _$VitalityTableRow {
+  const factory VitalityTableRow({
+    required BodyPart bodyPart,
 
-  final BodyPart bodyPart;
-
-  /// 0..1 ratio. Renders as `(pct * 100).round()%`.
-  final double pct;
-  final VitalityState state;
-  final int rank;
+    /// 0..1 ratio. Renders as `(pct * 100).round()%`.
+    required double pct,
+    required VitalityState state,
+    required int rank,
+  }) = _VitalityTableRow;
 }
 
 /// One sample on the trend chart — daily granularity.
-class TrendPoint {
-  const TrendPoint({required this.date, required this.pct});
+@freezed
+abstract class TrendPoint with _$TrendPoint {
+  const factory TrendPoint({
+    required DateTime date,
 
-  final DateTime date;
-
-  /// 0..1 ratio relative to the body part's lifetime peak EWMA.
-  final double pct;
+    /// 0..1 ratio relative to the body part's lifetime peak EWMA.
+    required double pct,
+  }) = _TrendPoint;
 }
 
 /// One row in the per-body-part Volume & Peak table.
-class VolumePeakRow {
-  const VolumePeakRow({required this.weeklyVolumeSets, required this.peakEwma});
+@freezed
+abstract class VolumePeakRow with _$VolumePeakRow {
+  const factory VolumePeakRow({
+    /// Set count attributed to this body part over the last 7 days.
+    required int weeklyVolumeSets,
 
-  /// Set count attributed to this body part over the last 7 days.
-  final int weeklyVolumeSets;
-
-  /// Lifetime peak EWMA — never decreases. Rendered with tabular figures.
-  final double peakEwma;
+    /// Lifetime peak EWMA — never decreases. Rendered with tabular figures.
+    required double peakEwma,
+  }) = _VolumePeakRow;
 }
 
 /// One row in the per-exercise Peak Loads section.
-class PeakLoadRow {
-  const PeakLoadRow({
-    required this.exerciseName,
-    required this.peakWeight,
-    required this.peakReps,
-    required this.estimated1RM,
-  });
+@freezed
+abstract class PeakLoadRow with _$PeakLoadRow {
+  const factory PeakLoadRow({
+    /// Localized display name fetched via `fn_exercises_localized`.
+    required String exerciseName,
+    required double peakWeight,
+    required int peakReps,
 
-  /// Localized display name fetched via `fn_exercises_localized`.
-  final String exerciseName;
-  final double peakWeight;
-  final int peakReps;
-
-  /// Epley-style 1RM estimate. Null when peakReps == 0 (bodyweight /
-  /// non-loaded peaks) so the UI can suppress the "1RM est." label.
-  final double? estimated1RM;
+    /// Epley-style 1RM estimate. Null when peakReps == 0 (bodyweight /
+    /// non-loaded peaks) so the UI can suppress the "1RM est." label.
+    required double? estimated1RM,
+  }) = _PeakLoadRow;
 }
 
 /// Convenience: derive [BodyPart] count of active rows for tests/UI gates.
