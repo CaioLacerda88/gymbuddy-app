@@ -63,17 +63,31 @@ RpgProgressSnapshot _snapshot({
   );
 }
 
-const _chestR5 = rpg.Title(
+const _chestR5 = rpg.Title.bodyPart(
   slug: 'chest_r5_initiate_of_the_forge',
   bodyPart: BodyPart.chest,
   rankThreshold: 5,
 );
-const _legsR5 = rpg.Title(
+const _legsR5 = rpg.Title.bodyPart(
   slug: 'legs_r5_ground_walker',
   bodyPart: BodyPart.legs,
   rankThreshold: 5,
 );
+const _wandererL10 = rpg.Title.characterLevel(
+  slug: 'wanderer',
+  levelThreshold: 10,
+);
+const _ironBoundCrossBuild = rpg.Title.crossBuild(
+  slug: 'iron_bound',
+  triggerId: rpg.CrossBuildTriggerId.ironBound,
+);
 const _catalog = <rpg.Title>[_chestR5, _legsR5];
+const _fullCatalog = <rpg.Title>[
+  _chestR5,
+  _legsR5,
+  _wandererL10,
+  _ironBoundCrossBuild,
+];
 
 void main() {
   group('CelebrationEventBuilder.build', () {
@@ -299,6 +313,104 @@ void main() {
         post: post,
         catalog: _catalog,
         alreadyEarnedSlugs: const {'chest_r5_initiate_of_the_forge'},
+        suppressFirstAwakening: false,
+      );
+
+      expect(events.whereType<TitleUnlockEvent>(), isEmpty);
+    });
+
+    test('emits character-level TitleUnlockEvent on level-up (Phase 18e)', () {
+      // The level-up overlay is one event; the title half-sheet for crossing
+      // a character-level threshold is a SEPARATE event. Both fire when the
+      // post snapshot crosses both thresholds in the same finish.
+      final pre = _snapshot(
+        rows: {BodyPart.chest: _row(BodyPart.chest, totalXp: 200, rank: 4)},
+        level: 9,
+      );
+      final post = _snapshot(
+        rows: {BodyPart.chest: _row(BodyPart.chest, totalXp: 260, rank: 4)},
+        level: 10,
+      );
+
+      final events = CelebrationEventBuilder.build(
+        pre: pre,
+        post: post,
+        catalog: _fullCatalog,
+        alreadyEarnedSlugs: const {},
+        suppressFirstAwakening: false,
+      );
+
+      expect(events.whereType<LevelUpEvent>(), hasLength(1));
+      expect(
+        events.whereType<TitleUnlockEvent>().map((e) => e.slug).toSet(),
+        contains('wanderer'),
+      );
+    });
+
+    test('emits cross-build TitleUnlockEvent when post-save distribution fires '
+        'a predicate (Phase 18e)', () {
+      // Cross-build detection runs every finish, not just on rank-ups —
+      // the predicate is a snapshot property of the post-save distribution.
+      // Here a workout that doesn't change ranks (chest/back/legs already
+      // at 60) but pushes legs from 59 → 60 must fire iron_bound.
+      final pre = _snapshot(
+        rows: {
+          BodyPart.chest: _row(BodyPart.chest, totalXp: 1000, rank: 60),
+          BodyPart.back: _row(BodyPart.back, totalXp: 1000, rank: 60),
+          BodyPart.legs: _row(BodyPart.legs, totalXp: 950, rank: 59),
+        },
+        level: 30,
+      );
+      final post = _snapshot(
+        rows: {
+          BodyPart.chest: _row(BodyPart.chest, totalXp: 1000, rank: 60),
+          BodyPart.back: _row(BodyPart.back, totalXp: 1000, rank: 60),
+          BodyPart.legs: _row(BodyPart.legs, totalXp: 1010, rank: 60),
+        },
+        level: 30,
+      );
+
+      final events = CelebrationEventBuilder.build(
+        pre: pre,
+        post: post,
+        catalog: _fullCatalog,
+        alreadyEarnedSlugs: const {},
+        suppressFirstAwakening: false,
+      );
+
+      expect(
+        events.whereType<TitleUnlockEvent>().map((e) => e.slug).toSet(),
+        contains('iron_bound'),
+      );
+    });
+
+    test('cross-build idempotency: already-earned slugs do not re-emit on '
+        'subsequent finishes (Phase 18e)', () {
+      // The detector's idempotency guard must propagate through the
+      // builder. A user whose post snapshot still satisfies the predicate
+      // but who already owns the slug must not see it again.
+      final pre = _snapshot(
+        rows: {
+          BodyPart.chest: _row(BodyPart.chest, totalXp: 1000, rank: 60),
+          BodyPart.back: _row(BodyPart.back, totalXp: 1000, rank: 60),
+          BodyPart.legs: _row(BodyPart.legs, totalXp: 1000, rank: 60),
+        },
+        level: 30,
+      );
+      final post = _snapshot(
+        rows: {
+          BodyPart.chest: _row(BodyPart.chest, totalXp: 1100, rank: 60),
+          BodyPart.back: _row(BodyPart.back, totalXp: 1100, rank: 60),
+          BodyPart.legs: _row(BodyPart.legs, totalXp: 1100, rank: 60),
+        },
+        level: 30,
+      );
+
+      final events = CelebrationEventBuilder.build(
+        pre: pre,
+        post: post,
+        catalog: _fullCatalog,
+        alreadyEarnedSlugs: const {'iron_bound'},
         suppressFirstAwakening: false,
       );
 
