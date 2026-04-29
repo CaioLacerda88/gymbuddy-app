@@ -200,6 +200,72 @@ abstract class AppLocalizations {
   /// **'Path mastered.'**
   String get vitalityCopyRadiant;
 
+  /// AppBar title for the /saga/stats deep-dive screen (Phase 18d.2). Distinct from `statsDeepDiveLabel` because the codex nav row uses 'Stats deep-dive' but the screen header uses the shorter 'Stats'.
+  ///
+  /// In en, this message translates to:
+  /// **'Stats'**
+  String get statsDeepDiveTitle;
+
+  /// Section heading for the 90-day vitality trend chart on the stats deep-dive screen — used when the user has ≥30 days of activity.
+  ///
+  /// In en, this message translates to:
+  /// **'90-Day Vitality Trend'**
+  String get vitalityTrendHeading;
+
+  /// Section heading for the vitality trend chart in narrow-window mode — used when the user has <30 days of activity (the chart's X-axis spans first_activity_date → today instead of a rolling 90-day window).
+  ///
+  /// In en, this message translates to:
+  /// **'Vitality Trend'**
+  String get vitalityTrendHeadingShort;
+
+  /// Section heading for the per-body-part volume and peak EWMA table on the stats deep-dive screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Volume & Peak'**
+  String get volumePeakSectionHeading;
+
+  /// Section heading for the per-exercise peak loads list on the stats deep-dive screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Peak Loads'**
+  String get peakLoadsSectionHeading;
+
+  /// Empty-state copy for the peak loads section when the user has no `exercise_peak_loads` rows.
+  ///
+  /// In en, this message translates to:
+  /// **'No peaks recorded yet.'**
+  String get peakLoadsEmpty;
+
+  /// Unit label for the weekly volume (set count, last 7 days) column in the per-body-part volume/peak table.
+  ///
+  /// In en, this message translates to:
+  /// **'sets'**
+  String get weeklyVolumeUnit;
+
+  /// Label for the estimated 1RM value rendered next to a peak load row when the calculator can produce one.
+  ///
+  /// In en, this message translates to:
+  /// **'1RM est.'**
+  String get oneRmEstimateLabel;
+
+  /// Right-edge X-axis label on the vitality trend chart — always 'today'.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get chartXLabelToday;
+
+  /// Left-edge X-axis label on the vitality trend chart in 90-day mode (≥30 days of activity).
+  ///
+  /// In en, this message translates to:
+  /// **'90 days ago'**
+  String get chartXLabel90DaysAgo;
+
+  /// Left-edge X-axis label on the vitality trend chart in narrow mode (<30 days of activity). The number is the count of days since the user's first activity.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 day ago} other{{count} days ago}}'**
+  String chartXLabelDaysAgo(int count);
+
   /// Save button label
   ///
   /// In en, this message translates to:
