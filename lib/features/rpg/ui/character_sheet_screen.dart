@@ -153,7 +153,10 @@ class _SheetHeader extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          // Phase 18e UX-critic pass: 12 → 16dp gives the (now larger,
+          // titleMedium) class badge breathing room beneath the 56sp LVL
+          // numeral so the hierarchy reads LVL > class > title pill.
+          const SizedBox(height: 16),
           Semantics(
             container: true,
             identifier: 'class-badge',

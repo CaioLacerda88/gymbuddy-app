@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/theme/radii.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../models/character_class.dart';
 
@@ -22,11 +21,33 @@ import '../../models/character_class.dart';
 /// l10n-free and the widget tests can assert against either the slug or
 /// the localized string.
 ///
-/// **Visual hierarchy.** When a class is present, the badge fills with
-/// [primaryViolet] tint and renders the label in [hotViolet]. The class
-/// label is denser than the title pill (different weight + tint) so the two
-/// read as distinct identity beats — class is who you are, title is what
-/// you've earned.
+/// **Visual hierarchy — two-tier prestige (Phase 18e UX-critic pass).**
+/// Initiate (the day-1 / "still on the way" class — every active rank ≤ 4)
+/// renders in the quieter [primaryViolet] palette; the other seven derived
+/// classes render in [hotViolet]. The reason: pre-tightening, every resolved
+/// class shared the same hotViolet styling, which collapsed the prestige
+/// curve — a 4-year balanced veteran's Ascendant looked identical to a
+/// day-3 lifter's Initiate. Two tiers restore the "you're still on the way"
+/// vs "you've arrived" distinction without introducing 8 separate palettes
+/// (which would dilute the brand).
+///
+/// Detection is via [CharacterClass.initiate] enum equality, not a
+/// rank-distribution re-derivation — the resolver already encodes the
+/// "max rank < 5" floor, so checking the enum value is the same predicate
+/// without the round-trip.
+///
+/// **Sigil corners.** The badge uses asymmetric [BorderRadius]
+/// (top-left + bottom-right tight, top-right + bottom-left loose) so it
+/// reads as a struck faction mark rather than a tappable Material chip.
+/// Subtle enough not to scream "decorative" but distinct from the title
+/// pill, ElevatedButton, OutlinedButton, and CardTheme — all of which
+/// share the same 8–10dp circular rounding.
+///
+/// **Type scale.** The label uses [TextTheme.titleMedium] (~16sp Inter 600).
+/// Sitting beneath a 56sp Rajdhani LVL numeral, [titleSmall] (~14sp) was
+/// reading as metadata rather than as the second identity beat. Bumping
+/// one step up the scale restores the intended hierarchy: LVL > class >
+/// title pill.
 class ClassBadge extends StatelessWidget {
   const ClassBadge({super.key, required this.characterClass});
 
@@ -35,6 +56,17 @@ class ClassBadge extends StatelessWidget {
   /// always returns a non-null variant — there is no "unclassified" state.
   final CharacterClass? characterClass;
 
+  /// Sigil corners: top-left + bottom-right tight (4dp), top-right +
+  /// bottom-left loose (10dp). The asymmetry is the only thing
+  /// differentiating this from a Material chip — keep both numbers stable
+  /// so `class_badge_test.dart` can assert on them.
+  static const _sigilRadius = BorderRadius.only(
+    topLeft: Radius.circular(4),
+    topRight: Radius.circular(10),
+    bottomLeft: Radius.circular(10),
+    bottomRight: Radius.circular(4),
+  );
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -42,27 +74,45 @@ class ClassBadge extends StatelessWidget {
     final cls = characterClass;
 
     final isStub = cls == null;
+    final isInitiate = cls == CharacterClass.initiate;
     final label = isStub
         ? l10n.classSlotPlaceholder
         : _localizedName(cls, l10n);
-    final textColor = isStub ? AppColors.textDim : AppColors.hotViolet;
-    final borderColor = isStub
-        ? AppColors.hair
-        : AppColors.hotViolet.withValues(alpha: 0.6);
-    final fillColor = isStub
-        ? AppColors.surface
-        : AppColors.primaryViolet.withValues(alpha: 0.18);
+
+    final Color textColor;
+    final Color borderColor;
+    final Color fillColor;
+    if (isStub) {
+      textColor = AppColors.textDim;
+      borderColor = AppColors.hair;
+      fillColor = AppColors.surface;
+    } else if (isInitiate) {
+      // Quieter "still on the way" palette: primaryViolet text + 40%
+      // primaryViolet border + 12% primaryViolet fill. Keeps Initiate
+      // legibly Arcane-Ascent-branded without competing with the seven
+      // earned classes for visual prestige.
+      textColor = AppColors.primaryViolet;
+      borderColor = AppColors.primaryViolet.withValues(alpha: 0.4);
+      fillColor = AppColors.primaryViolet.withValues(alpha: 0.12);
+    } else {
+      // Earned-class palette: hotViolet text + 60% hotViolet border +
+      // 18% primaryViolet fill. Reserved for the seven classes a user
+      // unlocks after crossing rank 5 in some body part.
+      textColor = AppColors.hotViolet;
+      borderColor = AppColors.hotViolet.withValues(alpha: 0.6);
+      fillColor = AppColors.primaryViolet.withValues(alpha: 0.18);
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: fillColor,
         border: Border.all(color: borderColor),
-        borderRadius: BorderRadius.circular(kRadiusSm + 2),
+        borderRadius: _sigilRadius,
       ),
       child: Text(
         label,
-        style: theme.textTheme.titleSmall?.copyWith(
+        style: theme.textTheme.titleMedium?.copyWith(
           color: textColor,
           fontStyle: isStub ? FontStyle.italic : FontStyle.normal,
         ),
