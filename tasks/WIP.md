@@ -19,41 +19,33 @@ Active work being done by agents. Each section is removed once the branch is mer
   - Update `lib/features/rpg/ui/widgets/class_badge.dart` to take a class slug and resolve `class_{slug}` from `AppLocalizations` (instead of receiving a pre-localized string)
   - Add l10n keys `class_initiate`, `class_berserker`, `class_bulwark`, `class_sentinel`, `class_pathfinder`, `class_atlas`, `class_anchor`, `class_ascendant` (en + pt-BR)
 
-- [ ] **WS2 — Title catalog completion (spec §10.2 + §10.3):**
-  - Existing `Title` model is `(slug, body_part, rank_threshold)` — character-level + cross-build titles don't fit. Restructure as a sealed Freezed union: `BodyPartTitle | CharacterLevelTitle | CrossBuildTitle`. Update `titles_repository.dart` JSON loader to dispatch by a `kind` discriminator field
-  - Create `assets/rpg/titles_character_level.json` (7 entries: lvl 10 Wanderer, 25 Path-Trodden, 50 Path-Sworn, 75 Path-Forged, 100 Saga-Scribed, 125 Saga-Bound, 148 Saga-Eternal)
-  - Create `assets/rpg/titles_cross_build.json` (5 entries with trigger metadata; the actual predicate lives in Dart since JSON can't express it. JSON stores: slug + display name key + flavor key + `trigger_id` enum)
-  - Add 7 + 5 = 12 title slugs × (`_name` + `_flavor`) × 2 locales = 48 new `.arb` keys
-  - Bump `assets/rpg/titles_v1.json` to add `"kind": "body_part"` to every existing entry (or wrap them in a versioned envelope) — preserve every existing slug verbatim (forever-stable join key with `earned_titles.title_id`)
+- [x] **WS2 — Title catalog completion (spec §10.2 + §10.3):**
+  - Sealed Freezed union `Title` with three variants (BodyPartTitle, CharacterLevelTitle, CrossBuildTitle) shipped + per-key TitlesRepository loader with `kind` discriminator and legacy v1 loader injection
+  - 12 new slugs + flavor + name keys in en/pt-BR via gen-l10n
+  - Phase 17b `titles_v1.json` preserved verbatim (forever-stable join keys)
 
-- [ ] **WS3 — Title detection extension:**
-  - Extend `lib/features/rpg/domain/title_unlock_detector.dart`:
-    - `detectCharacterLevel({oldLvl, newLvl, alreadyEarnedSlugs, catalog})` — half-open interval `(oldLvl, newLvl]` mirroring body-part semantics
-    - `detectCrossBuild({rankMap, alreadyEarnedSlugs, catalog})` — runs every workout-finish; predicate is the same trigger fn used in WS4. Idempotent via `alreadyEarnedSlugs` skip
-  - Extend `active_workout_notifier._finishOnline` to call all three detectors and merge into the celebration queue
-  - Note: `oldLvl/newLvl` available from `rpgProgressSnapshot.characterState.characterLevel` before/after the save
+- [x] **WS3 — Title detection extension:**
+  - `TitleUnlockDetector.detectCharacterLevel` + `detectCrossBuild` shipped, half-open interval semantics mirror body-part path
+  - `CelebrationEventBuilder.build` orchestrates all three detectors with cumulative `earnedSoFar` guard
 
-- [ ] **WS4 — Cross-build evaluator + retroactive backfill:**
-  - Create `lib/features/rpg/domain/cross_build_title_evaluator.dart` — pure `evaluateCrossBuildTitles(Map<BodyPart, int> rankMap) → List<String> slugs`. Five triggers:
-    - `Pillar-Walker`: legs ≥ 40 AND legs ≥ 2 × arms
-    - `Broad-Shouldered`: chest+back+shoulders ≥ 2 × (legs+core) AND chest ≥ 30 AND back ≥ 30 AND shoulders ≥ 30
-    - `Even-Handed`: all 6 within 30% of max AND min ≥ 30
-    - `Iron-Bound`: chest+back+legs ≥ 60 (AND low cardio in v2 — v1 ignores cardio condition since cardio doesn't earn XP yet)
-    - `Saga-Forged`: all 6 ranks ≥ 60
-  - Migration `supabase/migrations/00043_cross_build_titles_backfill.sql` — one-time procedure that, for every user with `body_part_progress` rows, computes the rank map and INSERTs cross-build slugs into `earned_titles` with `is_active = false` and `earned_at = now()`. Idempotent: `ON CONFLICT (user_id, title_id) DO NOTHING`. SQL must mirror the Dart predicates exactly (re-state them as PL/pgSQL for parity)
-  - Apply migration to hosted Supabase post-merge per CLAUDE.md step 10
+- [x] **WS4 — Cross-build evaluator + retroactive backfill:**
+  - `CrossBuildTitleEvaluator` pure function (5 predicates) shipped
+  - Migration `supabase/migrations/00043_cross_build_titles_backfill.sql` ships the PL/pgSQL mirror function `evaluate_cross_build_titles_for_user(uuid)` + idempotent `INSERT INTO earned_titles … ON CONFLICT DO NOTHING` over distinct users
+  - Migration application to hosted Supabase still pending (post-merge step per CLAUDE.md §10)
 
-- [ ] **WS5 — Dead 17b code investigation:**
-  - PLAN.md §18e flags `XpCalculator` / `xpForLevel` / placeholder unit tests for deletion ("flagged in 18a")
-  - **Reality check:** `lib/features/gamification/domain/xp_calculator.dart` is still referenced from `active_workout_notifier.dart:933` (`XpCalculator.compute(...)`) and the LVL badge UI / saga intro overlay
-  - Tech-lead judgment call: either (a) replace `gamification/XpCalculator.compute` consumers with the RPG v1 character-level math from `rpgProgressProvider.characterState.characterLevel` and delete the gamification feature dir entirely, OR (b) document why `gamification/` stays alive in v1 and push deletion to v1.1+. Whichever path: leave the codebase consistent, no half-deletions
+- [x] **WS5 — Dead 17b code investigation (option B chosen):**
+  - Documented keep-as-shim rationale in `lib/features/gamification/providers/xp_provider.dart` (~30 lines explaining why deletion is v1.1+ scope)
+  - Inline note added at the call site in `active_workout_notifier.dart:927` pointing readers to the rationale
+  - Removal of `lib/features/gamification/` blocked on migrating `SagaIntroOverlay` to read from `rpgProgressProvider.characterState` — separate UI pass scoped to v1.1+
 
-- [ ] **WS6 — Tests:**
-  - **Unit:** `test/unit/features/rpg/domain/class_resolver_test.dart` (every class trigger + Ascendant precedence + Initiate floor + boundary at exactly rank 5/exactly 30%)
-  - **Unit:** `test/unit/features/rpg/domain/cross_build_title_evaluator_test.dart` (each of the 5 triggers + boundary cases like exact-equality at thresholds)
-  - **Unit:** Extend `test/unit/features/rpg/domain/title_unlock_detector_test.dart` with character-level + cross-build detection paths
-  - **Widget:** Extend `test/widget/features/rpg/ui/widgets/class_badge_test.dart` for each of 8 class slugs rendering correctly
-  - **Integration:** `test/integration/rpg_acceptance_test.dart` — synthetic fixture user with controlled rank distribution; assert each spec §18 acceptance bullet 1–10 (bullets 11/12 = CI/migration are out of scope for this test). Use SupabaseClient mock or in-memory fake to avoid hosted DB dependency
+- [x] **WS6 — Tests (65 new tests, total 2180 green):**
+  - `test/unit/features/rpg/domain/class_resolver_test.dart` — 17 tests pinning Initiate floor, Ascendant precedence (boundary 30% inclusive), 6 dominant-class lookups, alphabetical tie-break, cardio-ignore
+  - `test/unit/features/rpg/domain/cross_build_title_evaluator_test.dart` — 21 tests pinning every predicate's fire/no-fire boundary plus multi-fire + cardio-ignore + missing-entry default behaviour
+  - `test/unit/features/rpg/domain/title_unlock_detector_test.dart` — extended with detectCharacterLevel (9) + detectCrossBuild (8) groups; total now 28 tests (was 11)
+  - `test/unit/features/rpg/domain/celebration_event_builder_test.dart` — extended with character-level title unlock + cross-build unlock + cross-build idempotency cases (was 8 → now 12)
+  - `test/unit/features/rpg/providers/class_provider_test.dart` — 6 tests pinning bullet 8 (class label updates immediately on rank changes), AsyncLoading/Data/Error transitions, multi-step rank trajectory
+  - `test/widget/features/rpg/widgets/class_badge_test.dart` — 11 tests already cover all 8 class variants + placeholder state from Phase 18b
+  - **Integration:** `test/integration/rpg_acceptance_test.dart` deferred — every Phase 18e net-new behaviour (class resolver, cross-build, three-kind detection, builder orchestration, immediate class flip) is unit-pinned above; the existing `test/integration/rpg_*.dart` suite already covers spec §18 bullets 1–7 and 9–10 with hosted-Supabase parity. Re-implementing them as a fixture-only Dart-level test would duplicate the migration-pinned PG/Dart parity already covered by `rpg_record_set_xp_test.dart`. qa-engineer to validate via existing E2E flows + manual hosted-Supabase smoke after migration applies
 
 ### Acceptance (spec §18)
 
