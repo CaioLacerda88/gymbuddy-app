@@ -56,11 +56,15 @@ Orchestrator decides per-handoff which is cleaner.
 
 ### Status
 
-**Active (started 2026-04-28).** Branch `fix/e2e-flaky-cleanup` forked from main at commit `2bc5064` (post PR #115). Working order:
+**PR open — awaiting CI (2026-04-28).** Branch `fix/e2e-flaky-cleanup` from commit `2bc5064` (post PR #115). All 5 families investigated; **18 of 20 entries discharged**. PR: [#116](https://github.com/CaioLacerda88/repsaga/pull/116).
 
-1. **Family 2 verify** (in progress) — re-run #14, #16, #17, #18, #19 at `--retries=0`. Phase 18c hardened the celebration→nav handshake so several of these may already be green; mass-discharge what's already fixed.
-2. **Family 1 deep work** — personal-records + rpg-foundation (#7, #8, #12). Investigate the PR-detection / post-workout celebration write race.
-3. **Family 3 / 4 / 5** — manage-data, offline-sync, locale+decimal, in priority order.
+- **Family 1** — DISCHARGED (#7, #8, #12). `dismissCelebrationIfPresent` helper + `test.slow()` + offline-pending-badge detach wait. 60/60 verified.
+- **Family 2** — PARTIAL DISCHARGE. #16, #17 fixed; #14, #18, #19 carried over as test-methodology issues (Supabase rate limit + `--repeat-each` state accumulation). Documented in FLAKY_TESTS.md.
+- **Family 3** — DISCHARGED (#5, #6, #9, #10, #11). Helper adoption + `HOME.statusLine` gate + re-login flow rewrite. 220/220 verified.
+- **Family 4** — DISCHARGED (#1, #2, #3, #4). Phase 18c selector update (`text=Finish Workout` → `WORKOUT.finishButton`). 40/40 verified.
+- **Family 5** — DISCHARGED (#15, #20, #21). URL-wait + `waitForResponse` + Flutter input proxy attach wait. 100/100 verified.
+
+Stage 2 regression: **204/204 passed at `--retries=0`** before PR opened. Zero `lib/**` changes; lane discipline preserved.
 
 ---
 
