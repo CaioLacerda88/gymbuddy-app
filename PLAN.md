@@ -1194,40 +1194,48 @@ Two numbers per body part: **Rank** (1-99, monotonic, the lifetime saga) and **V
 
 ### 18d: Stats deep-dive + Vitality nightly job + visual states
 
-**Goal:** Land the data-curious user surface (live Vitality numbers, 90-day trend, peak loads) and the Vitality nightly EWMA update job.
+Split into two PRs because the cron should populate real EWMA values before the deep-dive UI ships — opening the screen on day 1 to flat-zero charts would feel broken. **18d.1 (backend + mapper) merged 2026-04-29; 18d.2 (UI) is the next active step.**
 
-**Vitality nightly job (spec §8 + §12.2):**
+#### 18d.1: Vitality nightly job + state mapper foundation — DONE (PR #118)
 
-- Edge Function `supabase/functions/vitality-nightly/index.ts` invoked by `pg_cron` at 03:00 UTC daily. For each user with activity in past 7 days:
-  - For each of the six body parts: compute `weekly_volume[bp]` from `xp_events` past 7d, update `vitality_ewma` per spec §8.1 (asymmetric α: τ_up=2wk, τ_down=6wk), bump `vitality_peak = max(peak, ewma)`.
-- **Decision (spec §12.2 says daily, do not move to lazy compute):** retain nightly job. Lazy compute would smear EWMA semantics across irregular reads. Documented in spec §12.2 rationale.
-- Idempotency: `vitality_runs (user_id, run_date PRIMARY KEY)` to dedupe on retries.
-- Performance: spec §12.3 demands <10min for 100k users. We are nowhere near 100k yet, but the function must scale — chunk by `user_id % 10` and run 10 parallel worker invocations to stay within Edge Function timeout limits.
+- **Migration `00042_vitality_cron.sql`** applied to hosted: `vitality_runs (user_id, run_date)` PK idempotency table (RLS owner-SELECT), `pg_cron` schedule `vitality_nightly_03utc` at `0 3 * * *`, partial index `body_part_progress_vitality_ewma_nonzero_idx ON (user_id) WHERE vitality_ewma > 0` keeps the nightly UNION query within spec §12.3 budget at scale.
+- **Edge Function `vitality-nightly`** deployed (v1, ACTIVE on hosted): service-role-only auth (anon/anon-key/end-user JWTs all 401 with constant-time JWT compare), asymmetric EWMA per spec §8.1 (`ALPHA_UP_TAU_2W = 1-exp(-7/14) ≈ 0.3935` rebuild, `ALPHA_DOWN_TAU_6W = 1-exp(-7/42) ≈ 0.1535` decay), INSERT-first idempotent dedup. Optional `{ chunk: 0..9 }` body parameter for `user_id % 10` chunking; cron currently submits a single un-chunked invocation (volume nowhere near §12.3 ceiling).
+- **Architectural fix mid-flight:** active-users pool now UNIONs `xp_events past 7d` with `body_part_progress.vitality_ewma > 0` so deload weeks still get decay applied (spec §8.2 compliance — without the second branch, a user who deloaded to zero would be invisible to the nightly job and EWMA would freeze).
+- **`VitalityStateMapper`** at `lib/features/rpg/domain/vitality_state_mapper.dart` is now the single source of truth for spec §8.4: `fromPercent(pct)` (canonical, 0..1 fraction; `≤0 → dormant`, `(0, 0.30] → fading`, `(0.30, 0.70] → active`, `(0.70, 1.0] → radiant`), `fromVitality({ewma, peak})` (guards `peak ≤ 0 → dormant`, else dispatches). Owns the `bodyPartColor` Map (chart-line / halo / progress-bar palette, locked once — `heroGold` reserved for state=radiant only) plus `borderColorFor / haloColorFor / progressBarColorFor / localizedCopy` lookups. Existing `VitalityStateX.fromVitality(ewma, peak)` extension delegates to mapper (back-compat shim).
+- **Latent bug fixed:** the prior `VitalityStateX.fromVitality` compared raw EWMA values (volume-derived, thousands) to literal `30/70`. Masked because `record_set_xp` doesn't update `vitality_ewma` yet — would have manifested as soon as the nightly job populates real values. Mapper now normalizes via `VitalityCalculator.percentage(ewma, peak)` first.
+- **L10n** added 4 keys (en + pt) for state copy: `vitalityCopyDormant` ("Awaits your first stride."), `vitalityCopyFading` ("Conditioning lost — return to the path."), `vitalityCopyActive` ("On the path."), `vitalityCopyRadiant` ("Path mastered."). Render only on stats deep-dive screen — character sheet stays number-free + copy-free per spec §8.4 + §13.3.
+- **Tests:** 2028/2028 unit+widget, 9/9 integration (4-week steady rebuild within 5% of closed-form per spec §18 acceptance #6, asymmetric α verified, idempotency × 2, end-user JWT 401 reject, UNION-pool decay pin). Mapper boundary tests at exact 0/0+ε/0.30/0.30+ε/0.70/0.70+ε/1.0 + defensive (>1.0, <0).
 
-**Stats deep-dive screen (spec §13.3):**
+#### 18d.2: Stats deep-dive screen at `/saga/stats` — NEXT
 
-- Route `/saga/stats`. Layout per spec §13.3: live Vitality table (state + %) per body part, 90-day Vitality trend line chart (six body parts overlaid), volume/peak per body part, peak loads per exercise.
-- This is the **only** surface where Vitality % appears as a number. Character sheet stays number-free.
+**Goal:** Land the data-curious user surface — the only place in the app where Vitality % appears as a number.
 
-**Visual states (spec §8.4) wired across UI:**
-
-- `RuneVitalityState` enum: `dormant / fading / active / radiant`. Mapped to body-part progress bar colors + rune halo intensity on character sheet.
-- `lib/features/rpg/domain/vitality_state_mapper.dart` is the single source of truth — all other widgets consume it.
+- Route `/saga/stats` reachable from the character sheet (NOT in primary nav, NOT in onboarding — UX critic: empty charts on day 1 = churn trigger).
+- `lib/features/rpg/providers/stats_provider.dart` — Riverpod provider exposing live Vitality table + 90-day trend rows per body part + volume/peak per body part + peak loads per exercise.
+- `lib/features/rpg/ui/stats_deep_dive_screen.dart` layout (top-to-bottom, ledger-not-dashboard register, NO cards / NO elevation; rows separated by `surface2` dividers):
+  1. AppBar — "Stats" (l10n).
+  2. **Live Vitality table** (primary content). 6 rows: `[RuneSigil 32dp] [BodyPartName titleSmall] / [stateCopy bodySmall + textDim]` left, `[% value Rajdhani 24sp tabularFigures stateColor] [stateChip 8x8 dot]` right.
+  3. **90-Day Vitality Trend** chart (`labelSmall` + `textDim` heading "90-Day Vitality Trend"). 200dp height, `fl_chart LineChart`, `FlBorderData(show: false)`, no grid lines, Y labels `0`/`100` only, X labels "90 days ago"/"Today". Six lines at 12-15% opacity by default; tapping a row in the table elevates that body part's line to full opacity + 2.5sp stroke + state-colored + terminal dot with % label. `LineTouchData(enabled: false)` — selection driven by parent `StatefulWidget`. 200ms ease-out animation between selection states.
+  4. **Volume/Peak per body part** — same row pattern as live table; right columns: weekly volume (sets), peak EWMA.
+  5. **Peak Loads per exercise** — `ExpansionTile`s grouped by body part. Default-expanded: highest-ranked body part only. Inside each: exercise name left, `[weight] × [reps]` right (Rajdhani, tabularFigures). "1RM est." label in `textDim` if estimate available.
+- Child widgets: `widgets/vitality_table.dart`, `widgets/vitality_trend_chart.dart`, `widgets/peak_loads_table.dart`.
+- Add l10n (en + pt) for AppBar title + section headers + empty-state ("No peaks recorded yet").
 
 **Files:**
 
-- Create: `supabase/functions/vitality-nightly/index.ts`, `supabase/migrations/00042_vitality_cron.sql` (pg_cron job + `vitality_runs` table)
-- Create: `lib/features/rpg/ui/stats_deep_dive_screen.dart`, `widgets/vitality_table.dart`, `vitality_trend_chart.dart`, `peak_loads_table.dart`, `lib/features/rpg/domain/vitality_state_mapper.dart`, `lib/features/rpg/providers/stats_provider.dart`
-- Modify: `lib/features/rpg/ui/character_sheet_screen.dart` (rune halo + progress bars now consume `vitality_state_mapper`), `lib/core/router/app_router.dart` (add `/saga/stats` route)
+- Create: `lib/features/rpg/ui/stats_deep_dive_screen.dart`, `widgets/vitality_table.dart`, `widgets/vitality_trend_chart.dart`, `widgets/peak_loads_table.dart`, `lib/features/rpg/providers/stats_provider.dart`
+- Modify: `lib/core/router/app_router.dart` (add `/saga/stats` route), `lib/features/rpg/ui/character_sheet_screen.dart` (add tap-target to /saga/stats)
 
 **Test plan:**
 
-- **Unit:** `vitality_state_mapper_test.dart` (boundary cases at 0/30/70/100), `stats_provider_test.dart`.
-- **Integration:** `test/integration/rpg_vitality_nightly_test.dart` against local Supabase — seed user with controlled set history across 4 weeks, run the nightly procedure manually 4 times (one per week), assert EWMA trajectory matches the Python simulator within 5% (per spec §18 acceptance #6).
-- **Widget:** `stats_deep_dive_screen_test.dart` (live numbers render, chart renders 6 lines).
-- **E2E:** Extend `specs/saga.spec.ts` — navigate to /saga/stats, assert Vitality table + chart present. Selectors: `statsDeepDive`, `vitalityTable`, `vitalityTrendChart`, `peakLoadsTable`.
+- **Widget:** `stats_deep_dive_screen_test.dart` (live numbers render, chart renders 6 lines, tap-to-highlight elevates one line, character sheet still number-free), `stats_provider_test.dart`.
+- **E2E:** Extend `specs/saga.spec.ts` (or new file) — navigate to /saga/stats from character sheet, assert table + chart + peak loads visible. Selectors via `helpers/selectors.ts`: `statsDeepDive`, `vitalityTable`, `vitalityTrendChart`, `peakLoadsTable`.
 
-**Dependencies:** 18a (data), 18b (character sheet rebases its color logic onto the new mapper).
+**Anti-patterns to reject** (UX critic): no `Card`s with rounded corners + gradient (generic-AI-stats trap), no floating color legend (table rows ARE the legend), no horizontal progress bars beside % values (the number IS the quantity), no gradient fills under chart lines, no narrative section headers, no global "Overall Vitality" hero ring (averaging dilutes per-body-part signal), no copy lines on the character sheet (state copy lives ONLY on stats screen).
+
+**Edge cases to validate** (PO): returning user with permanent peak ceiling (rebuild-fast τ=2wk should bring 6-month-layoff user to ~79% in ~3 weeks per spec §8.2; flag if not), untrained body part (`peak=0` → `dormant` no divide-by-zero), day-1 empty data (all 6 dormant, chart flat-zero, peak loads "No peaks recorded yet").
+
+**Dependencies:** 18d.1 (mapper + EWMA values).
 
 ---
 
