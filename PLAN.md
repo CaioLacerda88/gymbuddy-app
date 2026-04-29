@@ -73,7 +73,7 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 18a | RPG v1: Schema + XP engine + backfill (foundation) | DONE | #112 |
 | 18b | RPG v1: Character sheet + rune sigils UI | DONE | #113 |
 | 18c | RPG v1: Mid-workout overlay rewire + title unlocks | DONE | #114 |
-| 18d | RPG v1: Stats deep-dive + Vitality nightly job + visual states | TODO | - |
+| 18d | RPG v1: Stats deep-dive + Vitality nightly job + visual states | DONE | #118, #119 |
 | 18e | RPG v1: Class system + cross-build titles + final QA pass | TODO | - |
 | 18 | RPG System v1 (per `docs/superpowers/specs/2026-04-25-rpg-system-v1-design.md`) | PLANNED | - |
 | 19 | Deferred RPG v2 + Nice-to-Have (Quests engine, Stats radar, Synergy, PR mini-events, Cardio track, etc.) | BACKLOG | - |
@@ -1194,7 +1194,7 @@ Two numbers per body part: **Rank** (1-99, monotonic, the lifetime saga) and **V
 
 ### 18d: Stats deep-dive + Vitality nightly job + visual states
 
-Split into two PRs because the cron should populate real EWMA values before the deep-dive UI ships — opening the screen on day 1 to flat-zero charts would feel broken. **18d.1 (backend + mapper) merged 2026-04-29; 18d.2 (UI) is the next active step.**
+Split into two PRs because the cron should populate real EWMA values before the deep-dive UI ships — opening the screen on day 1 to flat-zero charts would feel broken. **18d.1 (backend + mapper) merged 2026-04-29 as PR #118; 18d.2 (UI) merged 2026-04-29 as PR #119. Phase 18d complete — next step is 18e (class system + cross-build titles).**
 
 #### 18d.1: Vitality nightly job + state mapper foundation — DONE (PR #118)
 
@@ -1206,36 +1206,14 @@ Split into two PRs because the cron should populate real EWMA values before the 
 - **L10n** added 4 keys (en + pt) for state copy: `vitalityCopyDormant` ("Awaits your first stride."), `vitalityCopyFading` ("Conditioning lost — return to the path."), `vitalityCopyActive` ("On the path."), `vitalityCopyRadiant` ("Path mastered."). Render only on stats deep-dive screen — character sheet stays number-free + copy-free per spec §8.4 + §13.3.
 - **Tests:** 2028/2028 unit+widget, 9/9 integration (4-week steady rebuild within 5% of closed-form per spec §18 acceptance #6, asymmetric α verified, idempotency × 2, end-user JWT 401 reject, UNION-pool decay pin). Mapper boundary tests at exact 0/0+ε/0.30/0.30+ε/0.70/0.70+ε/1.0 + defensive (>1.0, <0).
 
-#### 18d.2: Stats deep-dive screen at `/saga/stats` — NEXT
+#### 18d.2: Stats deep-dive screen at `/saga/stats` — DONE (PR #119)
 
-**Goal:** Land the data-curious user surface — the only place in the app where Vitality % appears as a number.
-
-- Route `/saga/stats` reachable from the character sheet (NOT in primary nav, NOT in onboarding — UX critic: empty charts on day 1 = churn trigger).
-- `lib/features/rpg/providers/stats_provider.dart` — Riverpod provider exposing live Vitality table + 90-day trend rows per body part + volume/peak per body part + peak loads per exercise.
-- `lib/features/rpg/ui/stats_deep_dive_screen.dart` layout (top-to-bottom, ledger-not-dashboard register, NO cards / NO elevation; rows separated by `surface2` dividers):
-  1. AppBar — "Stats" (l10n).
-  2. **Live Vitality table** (primary content). 6 rows: `[RuneSigil 32dp] [BodyPartName titleSmall] / [stateCopy bodySmall + textDim]` left, `[% value Rajdhani 24sp tabularFigures stateColor] [stateChip 8x8 dot]` right.
-  3. **90-Day Vitality Trend** chart (`labelSmall` + `textDim` heading "90-Day Vitality Trend"). 200dp height, `fl_chart LineChart`, `FlBorderData(show: false)`, no grid lines, Y labels `0`/`100` only, X labels "90 days ago"/"Today". Six lines at 12-15% opacity by default; tapping a row in the table elevates that body part's line to full opacity + 2.5sp stroke + state-colored + terminal dot with % label. `LineTouchData(enabled: false)` — selection driven by parent `StatefulWidget`. 200ms ease-out animation between selection states.
-  4. **Volume/Peak per body part** — same row pattern as live table; right columns: weekly volume (sets), peak EWMA.
-  5. **Peak Loads per exercise** — `ExpansionTile`s grouped by body part. Default-expanded: highest-ranked body part only. Inside each: exercise name left, `[weight] × [reps]` right (Rajdhani, tabularFigures). "1RM est." label in `textDim` if estimate available.
-- Child widgets: `widgets/vitality_table.dart`, `widgets/vitality_trend_chart.dart`, `widgets/peak_loads_table.dart`.
-- Add l10n (en + pt) for AppBar title + section headers + empty-state ("No peaks recorded yet").
-
-**Files:**
-
-- Create: `lib/features/rpg/ui/stats_deep_dive_screen.dart`, `widgets/vitality_table.dart`, `widgets/vitality_trend_chart.dart`, `widgets/peak_loads_table.dart`, `lib/features/rpg/providers/stats_provider.dart`
-- Modify: `lib/core/router/app_router.dart` (add `/saga/stats` route), `lib/features/rpg/ui/character_sheet_screen.dart` (add tap-target to /saga/stats)
-
-**Test plan:**
-
-- **Widget:** `stats_deep_dive_screen_test.dart` (live numbers render, chart renders 6 lines, tap-to-highlight elevates one line, character sheet still number-free), `stats_provider_test.dart`.
-- **E2E:** Extend `specs/saga.spec.ts` (or new file) — navigate to /saga/stats from character sheet, assert table + chart + peak loads visible. Selectors via `helpers/selectors.ts`: `statsDeepDive`, `vitalityTable`, `vitalityTrendChart`, `peakLoadsTable`.
-
-**Anti-patterns to reject** (UX critic): no `Card`s with rounded corners + gradient (generic-AI-stats trap), no floating color legend (table rows ARE the legend), no horizontal progress bars beside % values (the number IS the quantity), no gradient fills under chart lines, no narrative section headers, no global "Overall Vitality" hero ring (averaging dilutes per-body-part signal), no copy lines on the character sheet (state copy lives ONLY on stats screen).
-
-**Edge cases to validate** (PO): returning user with permanent peak ceiling (rebuild-fast τ=2wk should bring 6-month-layoff user to ~79% in ~3 weeks per spec §8.2; flag if not), untrained body part (`peak=0` → `dormant` no divide-by-zero), day-1 empty data (all 6 dormant, chart flat-zero, peak loads "No peaks recorded yet").
-
-**Dependencies:** 18d.1 (mapper + EWMA values).
+- **Route + nav** wired: `/saga/stats` reachable from character sheet's Stats codex row; replaces prior `SagaStubScreen` mount. Character sheet stays number-free (sentinel test in `character_sheet_screen_test.dart` blocks `%` regressions).
+- **`statsProvider`** at `lib/features/rpg/providers/stats_provider.dart` — single source of truth hydrating `StatsDeepDiveState` (Freezed) from `body_part_progress` + `xp_events` + `exercise_peak_loads`. Cardio peaks now excluded at source (`_muscleGroupToBodyPart(cardio)` returns `null`) so v1 cardio gate doesn't allocate-then-drop; structural fix carries forward to Phase 19.
+- **Three spec amendments locked in tests** (PO + UX critic, override original §13.3): (1) no activity gate — empty state via data shape, not a wall; (2) hybrid X-axis — narrow window (first activity → today) for <30 days of history, full 90-day window otherwise; (3) ghost lines `AppColors.textDim` @ 30% opacity 1sp + selected line vivid `bodyPartColor` 2.5sp + terminal dot, plus all rows are raw `Row+Padding+Divider(surface2)` (no `ListTile`).
+- **Layout:** AppBar → trend chart (with `liveVitalitySectionHeading` anchoring chart→table junction) → live Vitality table → Volume & Peak → Peak Loads. Four widgets factored: `vitality_table.dart`, `vitality_trend_chart.dart`, `peak_loads_table.dart`, `_VolumePeakTable` (private to screen). New `AppTextStyles.sectionHeader` token replaces inline `fontSize: 12` overrides.
+- **Tests:** 2081 unit + widget pass (+53 net: provider 16, screen 8, vitality table 9, trend chart 9, peak loads 8, character sheet sentinel +1, plus cardio v1-gate). E2E `specs/saga.spec.ts` extended with S8–S11 + 6 new `SAGA.*` selectors; full saga spec passes 11/11 standalone, 17/17 combined with rpg-foundation.
+- **L10n:** 13 new keys with full en + pt coverage (`statsDeepDiveTitle`, `vitalityTrendHeading`, `vitalityTrendHeadingShort`, `liveVitalitySectionHeading`, `volumePeakSectionHeading`, `peakLoadsSectionHeading`, `peakLoadsEmpty`, `weeklyVolumeUnit`, `oneRmEstimateLabel`, `chartXLabelToday`, `chartXLabel90DaysAgo`, plus the "1RM est." label and weekly-volume unit suffix).
 
 ---
 
