@@ -6,6 +6,8 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../models/body_part.dart';
 import '../../models/character_sheet_state.dart';
+// Pulled in for `VitalityStateX.borderColor` extension (state-driven
+// rank-stamp tint).
 import '../../models/vitality_state.dart';
 import 'body_part_localization.dart';
 import 'rank_stamp.dart';

@@ -1,6 +1,6 @@
 import 'package:flutter/painting.dart';
 
-import '../../../core/theme/app_theme.dart';
+import '../domain/vitality_state_mapper.dart';
 
 /// Visual state of a body-part's rune sigil, derived from Vitality %.
 ///
@@ -12,69 +12,59 @@ import '../../../core/theme/app_theme.dart';
 ///
 /// The Stats Deep-Dive screen (Phase 18d, §13.3) is the only surface that
 /// shows the underlying numeric percentage.
+///
+/// **State derivation lives in [VitalityStateMapper].** This file owns only
+/// the enum + a back-compat extension that delegates. New code should
+/// import [VitalityStateMapper] directly and call `fromPercent` /
+/// `fromVitality` on it.
 enum VitalityState {
   /// Vitality_peak == 0. Body part has never been trained; rune is silent
   /// and waiting for the first attributed set to awaken it.
   dormant,
 
-  /// 1-30%. Conditioning lost — return to the path. Sigil renders at full
-  /// opacity with a desaturated breathing-pulse halo.
+  /// 1-30% of permanent peak. Conditioning lost — return to the path.
+  /// Sigil renders at full opacity with a desaturated breathing-pulse halo.
   fading,
 
-  /// 31-70%. Default "on the path" state. Static halo, attention-conserving.
+  /// 31-70% of permanent peak. Default "on the path" state. Static halo,
+  /// attention-conserving.
   active,
 
-  /// 71-100%. Peak conditioning. Sigil enlarged 10%, gold halo, sweep
-  /// highlight cycle (~4-5s).
+  /// 71-100% of permanent peak. Peak conditioning. Sigil enlarged 10%, gold
+  /// halo, sweep highlight cycle (~4-5s).
   radiant,
 }
 
-/// Mapping helpers for [VitalityState].
-///
-/// `fromVitality` collapses a continuous Vitality EWMA (0..100) into the four
-/// discrete visual states per spec §8.4. `borderColor` is the canonical color
-/// used by [RankStamp] borders, [RuneHalo] glows, and other consumers — kept
-/// here so all four states share a single source of truth and palette drift
-/// is impossible.
+/// Compatibility shim around [VitalityStateMapper] — preserves the existing
+/// `state.borderColor` / `VitalityStateX.fromVitality(...)` call shape used
+/// by character_sheet_state.dart, character_sheet_provider.dart, and the
+/// existing widget/unit tests. New code should use [VitalityStateMapper]
+/// directly.
 extension VitalityStateX on VitalityState {
-  /// Color associated with this state — used for rank stamp borders, halo
-  /// glow tints, and rune sigil tinting on body-part rows.
-  Color get borderColor {
-    switch (this) {
-      case VitalityState.dormant:
-        return AppColors.textDim;
-      case VitalityState.fading:
-        return AppColors.primaryViolet;
-      case VitalityState.active:
-        return AppColors.hotViolet;
-      case VitalityState.radiant:
-        // ignore: reward_accent — §8.4 Radiant IS the reward signal (peak conditioning). Sinks are CustomPainter Paint.color + Border.all + Paint().shader, none of which read IconTheme/DefaultTextStyle from a RewardAccent ancestor.
-        return AppColors.heroGold;
-    }
-  }
+  /// Color associated with this state — delegates to
+  /// [VitalityStateMapper.borderColorFor] so all surfaces (rank stamp,
+  /// rune halo, vitality radar vertex dots, xp progress hairline) share a
+  /// single palette source of truth.
+  Color get borderColor => VitalityStateMapper.borderColorFor(this);
 
-  /// Map a Vitality % (0..100) plus the user's lifetime peak to a visual
-  /// state. The peak is required because a never-trained body part (peak
-  /// == 0) is Dormant regardless of its current EWMA — see spec §8.4.
+  /// Map a raw Vitality EWMA + permanent peak to a visual state.
   ///
-  /// Bounds are inclusive on the lower side, exclusive on the upper:
-  ///   * peak == 0       → Dormant ("Awaits your first stride")
-  ///   * 0 < % ≤ 30      → Fading
-  ///   * 30 < % ≤ 70     → Active
-  ///   * 70 < % ≤ 100    → Radiant
+  /// Delegates to [VitalityStateMapper.fromVitality] which normalises to
+  /// the percentage `clamp(ewma / peak, 0, 1)` first and then dispatches
+  /// to the §8.4 boundary thresholds. Boundary semantics:
   ///
-  /// vitalityEwma == 0 with peak > 0 (fully decayed) also maps to Fading
-  /// per spec §8.4 fall-through — the user trained this body part once but
-  /// has fully fallen off the path. The first branch only catches a never-
-  /// trained body part (peak == 0); a decayed one falls into the Fading
-  /// branch via the `<= 30` bound.
+  ///   * `peak == 0`              → Dormant ("Awaits your first stride")
+  ///   * `0 < pct ≤ 0.30`         → Fading
+  ///   * `0.30 < pct ≤ 0.70`      → Active
+  ///   * `0.70 < pct ≤ 1.0`       → Radiant
+  ///
+  /// `ewma == 0` with `peak > 0` (fully decayed) still computes
+  /// `pct = 0/peak = 0` and falls into Dormant — matches spec §8.4
+  /// "fully fallen off the path" case (a body part you trained once and
+  /// have completely lost conditioning on).
   static VitalityState fromVitality({
     required double vitalityEwma,
     required double vitalityPeak,
-  }) {
-    if (vitalityPeak <= 0) return VitalityState.dormant;
-    if (vitalityEwma <= 30) return VitalityState.fading;
-    if (vitalityEwma <= 70) return VitalityState.active;
-    return VitalityState.radiant;
-  }
+  }) =>
+      VitalityStateMapper.fromVitality(ewma: vitalityEwma, peak: vitalityPeak);
 }

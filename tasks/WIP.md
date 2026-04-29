@@ -13,27 +13,38 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ### Workstreams (one PR, three internal stages)
 
-#### Stage 1 — Vitality nightly Edge Function + cron + idempotency
+#### Stage 1 — Vitality nightly Edge Function + cron + idempotency (active dispatch 2026-04-29)
 
-- [ ] Migration `supabase/migrations/00042_vitality_cron.sql`: `vitality_runs (user_id uuid, run_date date, primary key (user_id, run_date), inserted_at timestamptz default now())`. Add `pg_cron` job invoking the Edge Function at 03:00 UTC daily.
-- [ ] Edge Function `supabase/functions/vitality-nightly/index.ts`. For each user with activity in past 7 days:
-  - For each of 6 body parts, compute `weekly_volume[bp]` from `xp_events` past 7d.
-  - Apply asymmetric EWMA per spec §8.1: τ_up=2wk → α≈0.393 when `weekly_volume >= prior_EWMA`, τ_down=6wk → α≈0.154 otherwise.
-  - Update `vitality_ewma`, bump `vitality_peak = max(peak, ewma)`.
-  - Compute `vitality_pct = clamp(ewma / peak, 0, 1)`.
-- [ ] Idempotency: skip work if `vitality_runs (user_id, run_date)` row already exists for today (UTC). Insert before computing.
-- [ ] Performance: chunk by `user_id % 10` and parallelize 10 worker invocations to stay under Edge Function timeout limits (spec §12.3 — <10min for 100k users; we are nowhere near that yet but the function must scale).
+- [x] Survey existing migrations — next number is `00042` (00040 RPG schema, 00041 earned_titles policy).
+- [x] Survey existing Edge Functions — pattern uses `serve` from `deno.land/std@0.224.0/http/server.ts`, `createClient` from `esm.sh/@supabase/supabase-js@2`, module-scope env validation, fail-loud on missing env.
+- [x] Survey schema — `body_part_progress` already has `vitality_ewma numeric(14,4)` + `vitality_peak numeric(14,4)` columns; `xp_events.attribution` is `jsonb` keyed by body-part `dbValue`. `pg_cron` + `pg_net` extensions guaranteed by 00026. Vault secret pattern (`edge_functions_url`, `service_role_key`) in 00027.
+- [x] Migration `supabase/migrations/00042_vitality_cron.sql`: create `vitality_runs (user_id uuid, run_date date, inserted_at timestamptz default now(), primary key (user_id, run_date))` with RLS owner-SELECT only. Add `cron.schedule('vitality_nightly', '0 3 * * *', ...)` invoking the Edge Function with the service-role JWT in Authorization header. Use the Vault-secrets pattern from 00027 (no app.settings GUCs).
+- [x] Edge Function `supabase/functions/vitality-nightly/index.ts`. Service-role-only auth (rejects anon/user JWTs). For each user with `xp_events` rows in past 7 days:
+  - INSERT INTO `vitality_runs (user_id, run_date)` first — primary key conflict short-circuits (idempotent retry).
+  - For each of 6 body parts, compute `weekly_volume[bp] = sum((attribution ->> bp)::numeric)` over xp_events from past 7d (the attribution column already stores per-bp XP, which is the post-multiplier volume — matches spec §8.1).
+  - Apply asymmetric EWMA: `α_up = 1 - exp(-7/14) ≈ 0.3935` when `weekly_volume >= prior_ewma`, `α_down = 1 - exp(-7/42) ≈ 0.1535` otherwise. Constants named `ALPHA_UP_TAU_2W` / `ALPHA_DOWN_TAU_6W` referencing spec §8.1.
+  - UPSERT `body_part_progress.vitality_ewma`, `vitality_peak = max(prior_peak, new_ewma)`.
+- [x] Optional `{ chunk: number (0-9) }` body parameter for `user_id % 10` chunking — wired but the cron schedule submits a single un-chunked invocation today.
+- [x] Return `{ ok: true, processed, skipped }`.
 
-#### Stage 2 — `vitality_state_mapper.dart` single source of truth
+#### Stage 2 — `vitality_state_mapper.dart` single source of truth (active dispatch 2026-04-29)
 
-- [ ] Create `lib/features/rpg/domain/vitality_state_mapper.dart` exposing:
-  - `RuneVitalityState` enum: `dormant / fading / active / radiant`.
-  - `VitalityStateColors` — `borderColor`, `haloColor`, `chartLineColor`, `progressBarColor` per state.
-  - `Map<BodyPart, Color>` body-part → line color (locked across chart, halo, progress bar — UI critic warning: lock once or color drift across surfaces is inevitable).
-  - `RuneVitalityState fromPercent(double pct)` with boundary semantics `0 → dormant`, `(0,30] → fading`, `(30,70] → active`, `(70,100] → radiant`.
-  - `String copyKey(state)` returns the `app_localizations` key for the state's marginalia line ("Awaits your first stride", "Conditioning lost — return to the path", "On the path", "Path mastered").
-- [ ] Modify `lib/features/rpg/ui/character_sheet_screen.dart` to consume `vitality_state_mapper` for rune halo + progress bars. **Character sheet stays number-free** — no Vitality % renders here.
-- [ ] Modify `lib/features/rpg/widgets/rune_sigil.dart` (if exists) and any rune halo painter to read state from the mapper instead of ad-hoc color logic.
+**Codebase reality check (2026-04-29):** the existing `lib/features/rpg/models/vitality_state.dart` already defines an enum `VitalityState { dormant, fading, active, radiant }` with a `borderColor` extension and a `fromVitality(ewma, peak)` static method, consumed by character_sheet_screen, rune_halo, body_part_rank_row, rank_stamp, vitality_radar, xp_progress_hairline, character_sheet_provider, and the existing widget tests. **Renaming the enum to `RuneVitalityState` would churn ~10 files for zero gain.** The deviations from the WIP this implies:
+
+- Keep enum name as `VitalityState` (matches existing models + tests).
+- Move canonical state-derivation logic to `lib/features/rpg/domain/vitality_state_mapper.dart` (state derivation is domain, not model).
+- The existing `fromVitality(ewma, peak)` has a latent bug — it compares raw EWMA value to literal `30/70`, but EWMA is volume-derived (thousands), not normalized. Today this is masked because `record_set_xp` never updates `vitality_ewma` (always 0). Once Stage 1's nightly job lands, EWMA will be correct and the boundary check must be on the **percentage** (ewma / peak). Stage 2 fixes this by normalizing first.
+- The new `VitalityStateMapper` exposes `fromPercent(pct)` (canonical, 0..1 fraction) AND `fromVitality(ewma, peak)` (computes pct, dispatches). Existing `models/vitality_state.dart` `VitalityStateX` extension delegates to the mapper.
+
+- [x] Create `lib/features/rpg/domain/vitality_state_mapper.dart` exposing:
+  - `VitalityStateMapper.fromPercent(double pct)` — canonical, `0 → dormant`, `(0, 0.30] → fading`, `(0.30, 0.70] → active`, `(0.70, 1.0] → radiant`.
+  - `VitalityStateMapper.fromVitality({ewma, peak})` — guards `peak <= 0 → dormant`; else `fromPercent(VitalityCalculator.percentage(ewma, peak))`.
+  - `borderColorFor(state)` / `haloColorFor(state)` / `progressBarColorFor(state)` lookups using `AppTheme` tokens.
+  - `bodyPartColor` `Map<BodyPart, Color>` — locked once here (UI critic warning: chart lines, halo dot, progress bar all read from this map; introducing a second source = drift). Choices documented inline.
+  - `copyKey(state)` returns the `app_localizations` key per state.
+- [x] Migrate `models/vitality_state.dart` `VitalityStateX.fromVitality` to delegate to `VitalityStateMapper.fromVitality` (back-compat shim — existing call sites in character_sheet_state.dart, character_sheet_provider.dart compile unchanged).
+- [x] Add four l10n keys (en + pt) for state copy: `vitalityCopyDormant`, `vitalityCopyFading`, `vitalityCopyActive`, `vitalityCopyRadiant`. Used by Stage 3 stats screen — character sheet stays number-free (no copy lines on it).
+- [x] Confirm `character_sheet_screen.dart` is already number-free — no `pct.toStringAsFixed`, no `'%'` in the rendered tree. (Existing implementation verified.)
 
 #### Stage 3 — Stats deep-dive screen at `/saga/stats`
 
@@ -51,10 +62,10 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ### Test plan (per PLAN.md §18d)
 
-- [ ] **Unit:** `vitality_state_mapper_test.dart` — boundary cases at 0%, 0.5%, 30%, 30.5%, 70%, 70.5%, 100%. Body-part-to-color map locked (regression check). `stats_provider_test.dart` — provider returns expected shape from seeded `xp_events`.
-- [ ] **Integration:** `test/integration/rpg_vitality_nightly_test.dart` against local Supabase. Seed user with controlled set history across 4 weeks. Run nightly procedure manually 4 times (one per week-end). Assert EWMA trajectory matches Python simulator within 5% per spec §18 acceptance #6.
-- [ ] **Widget:** `stats_deep_dive_screen_test.dart` — live numbers render, chart renders 6 lines, tap-to-highlight elevates one line, character sheet still has zero numbers.
-- [ ] **E2E:** Extend `specs/rpg-foundation.spec.ts` (or new `specs/saga.spec.ts` if cleaner). Navigate to /saga/stats from character sheet, assert table + chart + peak loads visible. Selectors via `helpers/selectors.ts`.
+- [x] **Unit (Stage 2):** `vitality_state_mapper_test.dart` — boundary cases at 0%, 0%+ε, 30%, 30%+ε, 70%, 70%+ε, 100%, >1.0 (defensive), <0 (defensive). Body-part-to-color map locked (regression check) including reward-scarcity assertion (`heroGold` not in body-part palette). All 6 groups passing.
+- [x] **Integration (Stage 1):** `test/integration/rpg_vitality_nightly_test.dart` — 7 tests. Auth gate (anon/anon-key/service-role), 4-week steady rebuild trajectory within 5% of closed-form expected values, deload week preserves peak while ewma decays, idempotency via PRIMARY KEY (vitality_runs (user_id, run_date)). All passing against local Supabase.
+- [ ] **Widget (Stage 3):** `stats_deep_dive_screen_test.dart` — live numbers render, chart renders 6 lines, tap-to-highlight elevates one line, character sheet still has zero numbers.
+- [ ] **E2E (Stage 3):** Extend `specs/rpg-foundation.spec.ts` (or new `specs/saga.spec.ts` if cleaner). Navigate to /saga/stats from character sheet, assert table + chart + peak loads visible. Selectors via `helpers/selectors.ts`.
 
 ### Anti-patterns to reject (UX critic input)
 
@@ -74,11 +85,12 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ### Acceptance (mirrors PLAN.md §18d test plan)
 
-- [ ] Migration applied to local Supabase, verified by `supabase db push` and a manual cron-job inspection.
-- [ ] Edge Function passes integration test (4-week trajectory within 5% of simulator).
-- [ ] Character sheet still renders correctly post-rebase (no Vitality % numbers, rune halo + progress bars now driven by mapper).
-- [ ] /saga/stats reachable from character sheet, all four sections render with seeded data.
-- [ ] `make ci` green: format + gen + analyze + test + android-debug-build.
+- [x] **Stage 1:** Migration `00042_vitality_cron.sql` applied to local Supabase (`vitality_runs` table + `pg_cron` schedule at 03:00 UTC).
+- [x] **Stage 1:** Edge Function passes integration test (4-week steady rebuild within 5% of closed-form expected; deload preserves peak while ewma decays). Architectural fix mid-flight: active-users pool now UNIONs `xp_events past 7d` with `body_part_progress.vitality_ewma > 0` so deload weeks still get decay applied (spec §8.2 compliance).
+- [x] **Stage 2:** `VitalityStateMapper` is the single source of truth for §8.4 four-state collapse + per-state palette + body-part chart palette + l10n copy keys. Existing `VitalityStateX` extension delegates to mapper (back-compat shim).
+- [x] **Stage 2:** Character sheet still renders correctly post-rebase — no Vitality % numbers, rune halo + progress bars now driven by mapper. Verified via existing `character_sheet_screen_test.dart`.
+- [ ] **Stage 3:** /saga/stats reachable from character sheet, all four sections render with seeded data.
+- [x] **Stage 1+2 verification:** CI pipeline green — `dart format` (0 changed), `gen-l10n` + `build_runner` (1 output regenerated), `check_reward_accent` (clean after annotating §8.4 Radiant), `dart analyze --fatal-infos` (No issues found), `check_hardcoded_colors` (clean), 2028/2028 unit+widget tests pass, Android debug APK builds (`build/app/outputs/flutter-apk/app-debug.apk`).
 - [ ] Full E2E suite green at `--retries=0` on local Supabase (selector impact assessment performed; new e2e test for /saga/stats added per PLAN.md §18d test plan).
 - [ ] PR #118 (or next number) opened, reviewer + ui-ux-critic + qa-engineer all green, squash-merged.
 
