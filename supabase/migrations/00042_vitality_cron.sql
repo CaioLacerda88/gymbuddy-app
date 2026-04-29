@@ -71,6 +71,32 @@ CREATE POLICY vitality_runs_select_own
   USING (user_id = auth.uid());
 
 -- ---------------------------------------------------------------------------
+-- 1b. Partial index on body_part_progress for the nightly active-pool query
+-- ---------------------------------------------------------------------------
+--
+-- The Edge Function's UNION active-pool query filters rows on
+-- `vitality_ewma > 0` to find users still carrying conditioning that needs
+-- decay. Without an index, that's a sequential scan over body_part_progress
+-- every nightly run — at the §12.3 budget target (100k users × 6 body parts
+-- = 600k rows) the seq scan blows the 10-min budget silently.
+--
+-- The partial WHERE clause keeps this index narrow: only rows with
+-- vitality_ewma > 0 are indexed, so the index size scales with the active
+-- conditioning population, not the full table. Day-0 users (peak == 0,
+-- ewma == 0) and fully-decayed body parts contribute zero rows here.
+--
+-- Indexed column is `user_id` because the Edge Function pages users into
+-- chunks by user_id; the planner uses this as both a filter (WHERE
+-- vitality_ewma > 0, satisfied by the partial predicate) and an index-only
+-- scan source for the user_id list.
+--
+-- Idempotent (CREATE INDEX IF NOT EXISTS) — safe to re-apply against a DB
+-- that already has the index from a previous push.
+CREATE INDEX IF NOT EXISTS body_part_progress_vitality_ewma_nonzero_idx
+  ON public.body_part_progress (user_id)
+  WHERE vitality_ewma > 0;
+
+-- ---------------------------------------------------------------------------
 -- 2. invoke_vitality_nightly() — server-side cron entrypoint
 -- ---------------------------------------------------------------------------
 --

@@ -85,9 +85,15 @@ abstract class CharacterSheetState with _$CharacterSheetState {
   /// across body parts are not commensurable (their natural scales depend
   /// on each body part's lifetime peak).
   ///
+  /// The `Percent` suffix is load-bearing: this returns a 0..1 ratio, not
+  /// a raw EWMA value (which is volume-derived and typically in the
+  /// thousands). Reading "vitality" without the suffix has historically
+  /// been a source of confusion — see the latent bug in the original
+  /// `VitalityStateX.fromVitality` documented on `VitalityStateMapper`.
+  ///
   /// Falls back to 0 when no body parts have been touched, which collapses
   /// the halo to Dormant.
-  double get meanActiveVitality {
+  double get meanActiveVitalityPercent {
     final active = bodyPartProgress.where(
       (e) => e.vitalityPeak > 0 || e.rank > 1,
     );
@@ -112,6 +118,6 @@ abstract class CharacterSheetState with _$CharacterSheetState {
     if (isZeroHistory) return VitalityState.dormant;
     final hasAnyPeak = bodyPartProgress.any((e) => e.vitalityPeak > 0);
     if (!hasAnyPeak) return VitalityState.dormant;
-    return VitalityStateMapper.fromPercent(meanActiveVitality);
+    return VitalityStateMapper.fromPercent(meanActiveVitalityPercent);
   }
 }

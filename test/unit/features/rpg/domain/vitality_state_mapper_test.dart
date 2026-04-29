@@ -1,9 +1,10 @@
-import 'package:flutter/painting.dart' show Color;
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:repsaga/core/theme/app_theme.dart';
 import 'package:repsaga/features/rpg/domain/vitality_state_mapper.dart';
 import 'package:repsaga/features/rpg/models/body_part.dart';
 import 'package:repsaga/features/rpg/models/vitality_state.dart';
+import 'package:repsaga/l10n/app_localizations.dart';
 
 /// Canonical mapper boundary + palette tests.
 ///
@@ -205,31 +206,80 @@ void main() {
     });
   });
 
-  group('VitalityStateMapper.copyKey', () {
-    test('returns a distinct l10n key per state', () {
-      final keys = VitalityState.values
-          .map(VitalityStateMapper.copyKey)
-          .toSet();
-      expect(keys.length, VitalityState.values.length);
+  group('VitalityStateMapper.localizedCopy', () {
+    // localizedCopy requires an AppLocalizations instance which is only
+    // available inside a widget tree that pumps the localization delegates,
+    // so these tests use `testWidgets` (not pure-Dart `test`). We resolve
+    // l10n once via a Builder, run the assertions inside it, and return a
+    // SizedBox.shrink() — no rendering needed.
+
+    testWidgets('returns distinct strings per state', (tester) async {
+      String? collected;
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Builder(
+            builder: (ctx) {
+              final l10n = AppLocalizations.of(ctx);
+              final lines = VitalityState.values
+                  .map((s) => VitalityStateMapper.localizedCopy(s, l10n))
+                  .toSet();
+              expect(
+                lines.length,
+                VitalityState.values.length,
+                reason:
+                    'Each VitalityState must map to a unique copy line — '
+                    'collisions would silently merge two visual states.',
+              );
+              collected = lines.join('|');
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
+      // Sanity: Builder ran (catches the case where the test passes
+      // vacuously because the inner expects never executed).
+      expect(collected, isNotNull);
     });
 
-    test('keys match the AppLocalizations contract', () {
-      expect(
-        VitalityStateMapper.copyKey(VitalityState.dormant),
-        'vitalityCopyDormant',
+    testWidgets('returns the canonical English copy per state', (tester) async {
+      // Pin the actual ARB strings so a regression in app_en.arb (e.g.
+      // someone editing the copy without re-running gen-l10n) fails here
+      // rather than silently shipping the wrong text. Trailing periods
+      // come straight from app_en.arb and matter — design wants the
+      // marginalia to read as full sentences.
+      bool ran = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Builder(
+            builder: (ctx) {
+              final l10n = AppLocalizations.of(ctx);
+              expect(
+                VitalityStateMapper.localizedCopy(VitalityState.dormant, l10n),
+                'Awaits your first stride.',
+              );
+              expect(
+                VitalityStateMapper.localizedCopy(VitalityState.fading, l10n),
+                'Conditioning lost — return to the path.',
+              );
+              expect(
+                VitalityStateMapper.localizedCopy(VitalityState.active, l10n),
+                'On the path.',
+              );
+              expect(
+                VitalityStateMapper.localizedCopy(VitalityState.radiant, l10n),
+                'Path mastered.',
+              );
+              ran = true;
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
       );
-      expect(
-        VitalityStateMapper.copyKey(VitalityState.fading),
-        'vitalityCopyFading',
-      );
-      expect(
-        VitalityStateMapper.copyKey(VitalityState.active),
-        'vitalityCopyActive',
-      );
-      expect(
-        VitalityStateMapper.copyKey(VitalityState.radiant),
-        'vitalityCopyRadiant',
-      );
+      expect(ran, isTrue);
     });
   });
 }

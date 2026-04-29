@@ -1,6 +1,7 @@
 import 'package:flutter/painting.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../l10n/app_localizations.dart';
 import '../models/body_part.dart';
 import '../models/vitality_state.dart';
 // Hide the legacy `VitalityState` data class — `VitalityCalculator.step`
@@ -182,26 +183,32 @@ class VitalityStateMapper {
   };
 
   // ---------------------------------------------------------------------------
-  // Copy keys (l10n)
+  // Localized copy (l10n)
   // ---------------------------------------------------------------------------
 
-  /// `app_localizations` key for the marginalia copy line associated with
-  /// each state. Per spec §8.4 + §13.3, these copy lines render ONLY on
-  /// the stats deep-dive screen — the character sheet stays number-free
-  /// and copy-free, the rune state alone is the signal there.
+  /// Returns the localized marginalia copy line for [state] per spec §8.4 +
+  /// §13.3. These copy lines render ONLY on the stats deep-dive screen —
+  /// the character sheet stays number-free and copy-free, the rune state
+  /// alone is the signal there.
   ///
-  /// Consumers translate the returned key via
-  /// `AppLocalizations.of(context).<key>`.
-  static String copyKey(VitalityState s) {
-    switch (s) {
+  /// **Single source of truth.** This mapper owns the
+  /// [VitalityState] → [AppLocalizations] string association; consumers
+  /// just provide the [AppLocalizations] instance from their `BuildContext`
+  /// (e.g. `AppLocalizations.of(context)!`). We deliberately do NOT return
+  /// a raw key string — `AppLocalizations` (Flutter gen-l10n) has no
+  /// runtime key-lookup API, so a key-returning helper would force every
+  /// consumer to write a second switch from key back to getter, defeating
+  /// the centralisation goal.
+  static String localizedCopy(VitalityState state, AppLocalizations l10n) {
+    switch (state) {
       case VitalityState.dormant:
-        return 'vitalityCopyDormant';
+        return l10n.vitalityCopyDormant;
       case VitalityState.fading:
-        return 'vitalityCopyFading';
+        return l10n.vitalityCopyFading;
       case VitalityState.active:
-        return 'vitalityCopyActive';
+        return l10n.vitalityCopyActive;
       case VitalityState.radiant:
-        return 'vitalityCopyRadiant';
+        return l10n.vitalityCopyRadiant;
     }
   }
 }
