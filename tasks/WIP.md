@@ -4,6 +4,86 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ---
 
+## Phase 18d — RPG v1: Stats deep-dive + Vitality nightly job + visual states
+
+**Branch:** `feature/phase18d-stats-deep-dive` (created 2026-04-29 off `84c72c4`).
+**Source of truth:** `PLAN.md` §18d (lines 1195-1230) + `docs/superpowers/specs/2026-04-25-rpg-system-v1-design.md` §8 (Vitality), §13.3 (Stats deep-dive screen), §13.5 (visual states).
+**Owner:** `tech-lead` implements; `qa-engineer` gate; `ui-ux-critic` review pass on the stats screen; `reviewer` final pass.
+**Goal:** Land RPG v1's data-curious user surface (live Vitality numbers + 90-day trend) AND the Vitality nightly EWMA recompute job AND the canonical 4-state rune mapper that the character sheet rebases onto.
+
+### Workstreams (one PR, three internal stages)
+
+#### Stage 1 — Vitality nightly Edge Function + cron + idempotency
+
+- [ ] Migration `supabase/migrations/00042_vitality_cron.sql`: `vitality_runs (user_id uuid, run_date date, primary key (user_id, run_date), inserted_at timestamptz default now())`. Add `pg_cron` job invoking the Edge Function at 03:00 UTC daily.
+- [ ] Edge Function `supabase/functions/vitality-nightly/index.ts`. For each user with activity in past 7 days:
+  - For each of 6 body parts, compute `weekly_volume[bp]` from `xp_events` past 7d.
+  - Apply asymmetric EWMA per spec §8.1: τ_up=2wk → α≈0.393 when `weekly_volume >= prior_EWMA`, τ_down=6wk → α≈0.154 otherwise.
+  - Update `vitality_ewma`, bump `vitality_peak = max(peak, ewma)`.
+  - Compute `vitality_pct = clamp(ewma / peak, 0, 1)`.
+- [ ] Idempotency: skip work if `vitality_runs (user_id, run_date)` row already exists for today (UTC). Insert before computing.
+- [ ] Performance: chunk by `user_id % 10` and parallelize 10 worker invocations to stay under Edge Function timeout limits (spec §12.3 — <10min for 100k users; we are nowhere near that yet but the function must scale).
+
+#### Stage 2 — `vitality_state_mapper.dart` single source of truth
+
+- [ ] Create `lib/features/rpg/domain/vitality_state_mapper.dart` exposing:
+  - `RuneVitalityState` enum: `dormant / fading / active / radiant`.
+  - `VitalityStateColors` — `borderColor`, `haloColor`, `chartLineColor`, `progressBarColor` per state.
+  - `Map<BodyPart, Color>` body-part → line color (locked across chart, halo, progress bar — UI critic warning: lock once or color drift across surfaces is inevitable).
+  - `RuneVitalityState fromPercent(double pct)` with boundary semantics `0 → dormant`, `(0,30] → fading`, `(30,70] → active`, `(70,100] → radiant`.
+  - `String copyKey(state)` returns the `app_localizations` key for the state's marginalia line ("Awaits your first stride", "Conditioning lost — return to the path", "On the path", "Path mastered").
+- [ ] Modify `lib/features/rpg/ui/character_sheet_screen.dart` to consume `vitality_state_mapper` for rune halo + progress bars. **Character sheet stays number-free** — no Vitality % renders here.
+- [ ] Modify `lib/features/rpg/widgets/rune_sigil.dart` (if exists) and any rune halo painter to read state from the mapper instead of ad-hoc color logic.
+
+#### Stage 3 — Stats deep-dive screen at `/saga/stats`
+
+- [ ] Add route `/saga/stats` in `lib/core/router/app_router.dart`. Discoverable via a tap-target on the character sheet (NOT in primary nav, NOT in onboarding — UX critic: empty charts on day 1 = churn trigger).
+- [ ] Create `lib/features/rpg/providers/stats_provider.dart` — Riverpod provider exposing live Vitality table + 90-day trend rows (per body part) + volume/peak per body part + peak loads per exercise.
+- [ ] Create `lib/features/rpg/ui/stats_deep_dive_screen.dart`. Layout (top-to-bottom, ledger-not-dashboard register, NO cards, NO elevation, rows separated by `surface2` dividers):
+  1. AppBar — "Stats" (l10n key).
+  2. **Live Vitality table** (primary content). Each of 6 rows: `[RuneSigil 32dp] [BodyPartName titleSmall] / [stateCopy bodySmall + textDim]` left, `[% value Rajdhani 24sp tabularFigures stateColor] [stateChip 8x8 dot]` right.
+  3. **90-Day Vitality Trend chart** (label `labelSmall` + `textDim` "90-Day Vitality Trend"). 200dp height. `fl_chart LineChart`, `FlBorderData(show: false)`, no grid lines, Y-axis labels `0`/`100` only, X-axis labels "90 days ago"/"Today". Six lines drawn at 12-15% opacity by default; tapping a row in the table elevates that body part's line to full opacity + 2.5sp stroke + state-colored + terminal dot with % label. `lineTouchData: LineTouchData(enabled: false)` — selection driven by parent `StatefulWidget`. 200ms ease-out animation between selection states.
+  4. **Volume/Peak per body part** — same row pattern as live table, two right columns: weekly volume (sets), peak EWMA.
+  5. **Peak Loads per exercise** — `ExpansionTile`s grouped by body part. Default-expanded: highest-ranked body part only. Inside each: exercise name left, `[weight] × [reps]` right (Rajdhani, tabularFigures). "1RM est." label in `textDim` if estimate available.
+- [ ] Create child widgets: `widgets/vitality_table.dart`, `widgets/vitality_trend_chart.dart`, `widgets/peak_loads_table.dart`.
+- [ ] Add l10n keys (en + pt) for the AppBar title and 4 state copy lines + section headers.
+- [ ] Add `Semantics(identifier: 'saga-stats-screen')` etc. for E2E selectors (`statsDeepDive`, `vitalityTable`, `vitalityTrendChart`, `peakLoadsTable`).
+
+### Test plan (per PLAN.md §18d)
+
+- [ ] **Unit:** `vitality_state_mapper_test.dart` — boundary cases at 0%, 0.5%, 30%, 30.5%, 70%, 70.5%, 100%. Body-part-to-color map locked (regression check). `stats_provider_test.dart` — provider returns expected shape from seeded `xp_events`.
+- [ ] **Integration:** `test/integration/rpg_vitality_nightly_test.dart` against local Supabase. Seed user with controlled set history across 4 weeks. Run nightly procedure manually 4 times (one per week-end). Assert EWMA trajectory matches Python simulator within 5% per spec §18 acceptance #6.
+- [ ] **Widget:** `stats_deep_dive_screen_test.dart` — live numbers render, chart renders 6 lines, tap-to-highlight elevates one line, character sheet still has zero numbers.
+- [ ] **E2E:** Extend `specs/rpg-foundation.spec.ts` (or new `specs/saga.spec.ts` if cleaner). Navigate to /saga/stats from character sheet, assert table + chart + peak loads visible. Selectors via `helpers/selectors.ts`.
+
+### Anti-patterns to reject (UX critic input)
+
+- No `Card`s with rounded corners + gradient — that is the generic-AI-stats-screen trap. Rows on `surface` with `Divider(height:1, color: surface2)` only.
+- No floating color legend panel. Body-part rows ARE the legend (tap to highlight).
+- No horizontal progress bar column beside the % values. The number IS the quantity.
+- No gradient fills under chart lines. Lines only.
+- No "see your journey" narrative section headers. Sub-labels only, `labelSmall` + `textDim`.
+- No global "Overall Vitality" hero ring or summary card. Per-body-part granularity is the design philosophy — averaging would dilute the signal.
+- No state copy lines on the character sheet. They live ONLY on the stats screen as marginalia.
+
+### Edge cases to validate (PO input)
+
+- **Returning user with permanent peak ceiling.** Vitality_peak never decays — a user who peaked 18 months ago and is returning from injury sees an unreachable ceiling. Run the simulator on a "6-month layoff → return" trajectory and confirm the rebuild path feels achievable (rebuild-fast τ=2wk should bring them to 79% in ~3 weeks per spec §8.2). If not, flag to design.
+- **Untrained body part.** `Vitality_peak = 0` → `dormant` state, copy line "Awaits your first stride". Verify mapper returns `dormant` (not divide-by-zero) for `peak=0`.
+- **Day-1 user with empty data.** /saga/stats should not crash with no `xp_events`. All six body parts render as `dormant`, chart shows flat-zero lines, peak loads section reads "No peaks recorded yet" (l10n key).
+
+### Acceptance (mirrors PLAN.md §18d test plan)
+
+- [ ] Migration applied to local Supabase, verified by `supabase db push` and a manual cron-job inspection.
+- [ ] Edge Function passes integration test (4-week trajectory within 5% of simulator).
+- [ ] Character sheet still renders correctly post-rebase (no Vitality % numbers, rune halo + progress bars now driven by mapper).
+- [ ] /saga/stats reachable from character sheet, all four sections render with seeded data.
+- [ ] `make ci` green: format + gen + analyze + test + android-debug-build.
+- [ ] Full E2E suite green at `--retries=0` on local Supabase (selector impact assessment performed; new e2e test for /saga/stats added per PLAN.md §18d test plan).
+- [ ] PR #118 (or next number) opened, reviewer + ui-ux-critic + qa-engineer all green, squash-merged.
+
+---
+
 ## Phase 16 — Subscription Monetization — PARKED (2026-04-22)
 
 **Why parked:** Phase 16 keeps hitting external blockers (Brazilian merchant account, Play Console → upload signed AAB required before subscription product can be created, license-tester account setup). Phase 17 gamification is fully internal code work with no external gates and produces the retention moat that makes Phase 16's paywall pitch compelling. Decision: ship Phase 17 (Gamification) before resuming 16b/c/d.
