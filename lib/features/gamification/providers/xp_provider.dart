@@ -19,6 +19,34 @@ final xpRepositoryProvider = Provider<XpRepository>((ref) {
 /// watch this provider and re-render when the state changes. Writes that
 /// award XP must `ref.invalidate(xpProvider)` — or, for the happy path,
 /// drive through [XpNotifier.awardForWorkout] which updates state directly.
+///
+/// **Phase 18e shim status (kept-alive decision, 2026-04-29):**
+///
+/// The Phase 18a RPG system (`rpgProgressProvider.characterState.characterLevel`)
+/// is the canonical source of character level for everything net-new in
+/// Phase 18 (saga screen, class badge, title detection, celebration overlays).
+/// The Phase 17b gamification XP system shipped this `xpProvider` AND the
+/// `SagaIntroOverlay` consumer that reads it on first-run.
+///
+/// We're keeping the gamification feature dir intact in v1 because:
+///
+///   1. **`SagaIntroOverlay` still reads from this provider.** Migrating
+///      it to read from `rpgProgressProvider.characterState` requires a
+///      separate UI pass (different LVL mapping, different rank palette,
+///      different copy beats). That work is scoped to v1.1+.
+///   2. **The first-run retro backfill flag (`hasRunRetroForUser`) lives
+///      here.** Phase 18a's `backfill_rpg_v1` reuses the same Hive key
+///      pattern; if we delete this file, the cold-start gate breaks for
+///      every existing v1 user who hasn't yet seen the post-18a re-launch.
+///   3. **The `awardForWorkout` call from `ActiveWorkoutNotifier` is a
+///      no-op for users on the new RPG flow** because the RPG XP path
+///      (`record_set_xp` inside `save_workout`) is the canonical writer.
+///      The gamification award is server-idempotent — duplicate writes
+///      just update `gamification_xp_state` rows that nothing user-facing
+///      reads. Removing the call site is safe but not blocking for v1.
+///
+/// Removal is tracked as a v1.1+ task: migrate `SagaIntroOverlay` to read
+/// from `rpgProgressProvider`, then delete `lib/features/gamification/`.
 final xpProvider = AsyncNotifierProvider<XpNotifier, GamificationSummary>(
   XpNotifier.new,
 );
