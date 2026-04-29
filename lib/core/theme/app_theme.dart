@@ -128,6 +128,15 @@ class AppTextStyles {
     color: AppColors.textCream,
   );
 
+  /// `[label]` at 12px — section headers above tables/cards on the
+  /// numeric face of the saga (`/saga/stats`). One step up from the
+  /// chip/tab register so a heading can hold its own next to body copy
+  /// without competing with [title]. Color is left to the call site
+  /// (sections currently use [AppColors.hotViolet]; future sections may
+  /// pick a state-color).
+  static TextStyle get sectionHeader =>
+      label.copyWith(fontSize: 12, letterSpacing: 0.12 * 12);
+
   /// Rajdhani 700 tabular — XP counts, level numbers, weight/rep numerals.
   static TextStyle get numeric => GoogleFonts.rajdhani(
     fontSize: 20,

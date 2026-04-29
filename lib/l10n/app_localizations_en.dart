@@ -60,6 +60,50 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vitalityCopyRadiant => 'Path mastered.';
 
   @override
+  String get statsDeepDiveTitle => 'Stats';
+
+  @override
+  String get vitalityTrendHeading => '90-Day Vitality Trend';
+
+  @override
+  String get vitalityTrendHeadingShort => 'Vitality Trend';
+
+  @override
+  String get liveVitalitySectionHeading => 'Live Vitality';
+
+  @override
+  String get volumePeakSectionHeading => 'Volume & Peak';
+
+  @override
+  String get peakLoadsSectionHeading => 'Peak Loads';
+
+  @override
+  String get peakLoadsEmpty => 'No peaks recorded yet.';
+
+  @override
+  String get weeklyVolumeUnit => 'sets';
+
+  @override
+  String get oneRmEstimateLabel => '1RM est.';
+
+  @override
+  String get chartXLabelToday => 'Today';
+
+  @override
+  String get chartXLabel90DaysAgo => '90 days ago';
+
+  @override
+  String chartXLabelDaysAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days ago',
+      one: '1 day ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get save => 'Save';
 
   @override

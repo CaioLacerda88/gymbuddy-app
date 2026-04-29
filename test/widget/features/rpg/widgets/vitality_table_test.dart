@@ -1,0 +1,324 @@
+/// Widget tests for [VitalityTable] — Phase 18d.2.
+///
+/// The table is the live-Vitality readout on the stats deep-dive screen:
+/// six rows, each row a localized body-part name + state copy + percentage
+/// numeral + state-color dot. Tapping a row drives the trend chart's
+/// selection above it.
+///
+/// **Layout-primitive locks under test (per UX-critic amendment):**
+///   * Rows are NOT [ListTile]s — they're `Padding(EdgeInsets.symmetric(
+///     horizontal: 16, vertical: 12))` inside a [Material]+[InkWell].
+///   * The selected row sits one elevation level higher (`AppColors.surface2`)
+///     vs the unselected baseline (`AppColors.abyss`).
+///   * Rows are separated by `Divider(height: 1, color: AppColors.surface2)`
+///     — one fewer divider than rows.
+///   * The percentage is the only numeric quantity; there is no progress
+///     bar next to it (anti-pattern lock #3).
+library;
+
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:repsaga/core/theme/app_theme.dart';
+import 'package:repsaga/features/rpg/models/body_part.dart';
+import 'package:repsaga/features/rpg/models/stats_deep_dive_state.dart';
+import 'package:repsaga/features/rpg/models/vitality_state.dart';
+import 'package:repsaga/features/rpg/ui/widgets/vitality_table.dart';
+
+import '../../../../helpers/test_material_app.dart';
+
+VitalityTableRow _row({
+  BodyPart bodyPart = BodyPart.chest,
+  double pct = 0.5,
+  VitalityState state = VitalityState.active,
+  int rank = 3,
+}) {
+  return VitalityTableRow(
+    bodyPart: bodyPart,
+    pct: pct,
+    state: state,
+    rank: rank,
+  );
+}
+
+/// Six canonical rows mirroring [activeBodyParts] order, each in a different
+/// state to assert the per-row state-color rendering branches don't collapse.
+List<VitalityTableRow> _sixCanonicalRows() {
+  return const [
+    VitalityTableRow(
+      bodyPart: BodyPart.chest,
+      pct: 0.92,
+      state: VitalityState.radiant,
+      rank: 6,
+    ),
+    VitalityTableRow(
+      bodyPart: BodyPart.back,
+      pct: 0.55,
+      state: VitalityState.active,
+      rank: 4,
+    ),
+    VitalityTableRow(
+      bodyPart: BodyPart.legs,
+      pct: 0.20,
+      state: VitalityState.fading,
+      rank: 2,
+    ),
+    VitalityTableRow(
+      bodyPart: BodyPart.shoulders,
+      pct: 0,
+      state: VitalityState.dormant,
+      rank: 1,
+    ),
+    VitalityTableRow(
+      bodyPart: BodyPart.arms,
+      pct: 0.40,
+      state: VitalityState.active,
+      rank: 3,
+    ),
+    VitalityTableRow(
+      bodyPart: BodyPart.core,
+      pct: 0.71,
+      state: VitalityState.radiant,
+      rank: 5,
+    ),
+  ];
+}
+
+Widget _wrap({
+  required List<VitalityTableRow> rows,
+  required BodyPart selected,
+  required ValueChanged<BodyPart> onSelect,
+}) {
+  return TestMaterialApp(
+    home: Scaffold(
+      body: SafeArea(
+        child: VitalityTable(
+          rows: rows,
+          selectedBodyPart: selected,
+          onSelect: onSelect,
+        ),
+      ),
+    ),
+  );
+}
+
+void main() {
+  group('VitalityTable', () {
+    testWidgets('renders one row per supplied row + (n-1) dividers', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          rows: _sixCanonicalRows(),
+          selected: BodyPart.chest,
+          onSelect: (_) {},
+        ),
+      );
+      await tester.pump();
+
+      // Six body-part names show.
+      expect(find.text('Chest'), findsOneWidget);
+      expect(find.text('Back'), findsOneWidget);
+      expect(find.text('Legs'), findsOneWidget);
+      expect(find.text('Shoulders'), findsOneWidget);
+      expect(find.text('Arms'), findsOneWidget);
+      expect(find.text('Core'), findsOneWidget);
+
+      // n-1 dividers between rows.
+      expect(find.byType(Divider), findsNWidgets(5));
+    });
+
+    testWidgets('renders the percentage as `(pct*100).round()%`', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          rows: _sixCanonicalRows(),
+          selected: BodyPart.chest,
+          onSelect: (_) {},
+        ),
+      );
+      await tester.pump();
+
+      // 0.92 → 92%, 0.55 → 55%, 0.20 → 20%, 0 → 0%, 0.40 → 40%, 0.71 → 71%.
+      expect(find.text('92%'), findsOneWidget);
+      expect(find.text('55%'), findsOneWidget);
+      expect(find.text('20%'), findsOneWidget);
+      expect(find.text('0%'), findsOneWidget);
+      expect(find.text('40%'), findsOneWidget);
+      expect(find.text('71%'), findsOneWidget);
+    });
+
+    testWidgets('renders the localized state copy per row', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          rows: _sixCanonicalRows(),
+          selected: BodyPart.chest,
+          onSelect: (_) {},
+        ),
+      );
+      await tester.pump();
+
+      // Two radiant rows (Chest + Core) → two "Path mastered." instances.
+      expect(find.text('Path mastered.'), findsNWidgets(2));
+      // Two active rows (Back + Arms) → two "On the path." instances.
+      expect(find.text('On the path.'), findsNWidgets(2));
+      // One fading row (Legs).
+      expect(
+        find.text('Conditioning lost — return to the path.'),
+        findsOneWidget,
+      );
+      // One dormant row (Shoulders).
+      expect(find.text('Awaits your first stride.'), findsOneWidget);
+    });
+
+    testWidgets('tapping a row fires onSelect with that row\'s body part', (
+      tester,
+    ) async {
+      final tapped = <BodyPart>[];
+      await tester.pumpWidget(
+        _wrap(
+          rows: _sixCanonicalRows(),
+          selected: BodyPart.chest,
+          onSelect: tapped.add,
+        ),
+      );
+      await tester.pump();
+
+      // Tap the row that contains "Legs".
+      await tester.tap(find.text('Legs'));
+      await tester.pump();
+
+      expect(tapped, [BodyPart.legs]);
+
+      // Tap a second row.
+      await tester.tap(find.text('Arms'));
+      await tester.pump();
+
+      expect(tapped, [BodyPart.legs, BodyPart.arms]);
+    });
+
+    testWidgets(
+      'selected row sits on AppColors.surface2; siblings sit on AppColors.abyss',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            rows: _sixCanonicalRows(),
+            selected: BodyPart.legs,
+            onSelect: (_) {},
+          ),
+        );
+        await tester.pump();
+
+        // Each row has its own [Material] node — there are six. The selected
+        // one should be `surface2`; the others `abyss`. We scan only the
+        // Materials descended from the [VitalityTable] itself (excluding the
+        // Scaffold/MaterialApp ancestor Materials that have a `null` or
+        // theme-default color, not our palette tokens).
+        final rowMaterials = tester
+            .widgetList<Material>(
+              find.descendant(
+                of: find.byType(VitalityTable),
+                matching: find.byType(Material),
+              ),
+            )
+            .where(
+              (m) =>
+                  m.color == AppColors.surface2 || m.color == AppColors.abyss,
+            )
+            .toList();
+
+        expect(rowMaterials.length, 6);
+
+        final surface2Count = rowMaterials
+            .where((m) => m.color == AppColors.surface2)
+            .length;
+        final abyssCount = rowMaterials
+            .where((m) => m.color == AppColors.abyss)
+            .length;
+
+        // Exactly one row painted surface2 (the selected one);
+        // the other five abyss.
+        expect(surface2Count, 1);
+        expect(abyssCount, 5);
+      },
+    );
+
+    testWidgets('does not use ListTile (UX critic anti-pattern lock)', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          rows: _sixCanonicalRows(),
+          selected: BodyPart.chest,
+          onSelect: (_) {},
+        ),
+      );
+      await tester.pump();
+
+      expect(find.byType(ListTile), findsNothing);
+    });
+
+    testWidgets(
+      'each row exposes a Semantics identifier of vitality-row-<bodyPart>',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            rows: _sixCanonicalRows(),
+            selected: BodyPart.chest,
+            onSelect: (_) {},
+          ),
+        );
+        await tester.pump();
+
+        // The container Semantics node carries the table identifier;
+        // each child row carries its per-body-part identifier composed of
+        // localized name + percentage + state copy. We sample two rows
+        // (radiant + dormant) to cover both ends of the state range.
+        expect(
+          find.bySemanticsLabel(RegExp('Chest, 92%, Path mastered.')),
+          findsOneWidget,
+        );
+        expect(
+          find.bySemanticsLabel(
+            RegExp('Shoulders, 0%, Awaits your first stride.'),
+          ),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets('renders without overflow at narrow widths', (tester) async {
+      // 320 dp — the historical narrowest target. Rows must lay out inside
+      // a Column without an unbounded-width crash or rendering exception.
+      await tester.binding.setSurfaceSize(const Size(320, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        _wrap(
+          rows: _sixCanonicalRows(),
+          selected: BodyPart.chest,
+          onSelect: (_) {},
+        ),
+      );
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('renders single-row tables without dividers', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          rows: [_row(bodyPart: BodyPart.core, pct: 0.5)],
+          selected: BodyPart.core,
+          onSelect: (_) {},
+        ),
+      );
+      await tester.pump();
+
+      // n-1 = 0 dividers when n = 1.
+      expect(find.byType(Divider), findsNothing);
+      expect(find.text('Core'), findsOneWidget);
+      expect(find.text('50%'), findsOneWidget);
+    });
+  });
+}

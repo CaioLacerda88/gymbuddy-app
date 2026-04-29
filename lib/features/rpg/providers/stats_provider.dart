@@ -1,0 +1,429 @@
+import 'dart:math' as math;
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/l10n/locale_provider.dart';
+import '../../auth/providers/auth_providers.dart';
+import '../../exercises/data/exercise_repository.dart';
+import '../../exercises/models/exercise.dart' as ex;
+import '../../exercises/providers/exercise_providers.dart';
+import '../data/rpg_repository.dart';
+import '../domain/vitality_calculator.dart';
+import '../domain/vitality_state_mapper.dart';
+import '../models/body_part.dart';
+import '../models/peak_load.dart';
+import '../models/stats_deep_dive_state.dart';
+import '../models/xp_event.dart';
+import 'rpg_progress_provider.dart';
+
+/// Async provider that composes the `/saga/stats` deep-dive screen state.
+///
+/// Reads from three repositories — the per-body-part progress (via
+/// [rpgProgressProvider]), the user's recent `xp_events` (via
+/// [RpgRepository.getRecentXpEvents]), and `exercise_peak_loads` joined with
+/// `exercises.muscle_group` for the peak-loads section. Composition is a
+/// pure function ([assembleStatsState]) so unit tests can pin the trend
+/// reconstruction + peak-loads grouping without touching Supabase.
+///
+/// **Why a `FutureProvider` not `AsyncNotifier`:** the screen is read-only
+/// — there are no actions on this surface that need to mutate state. A
+/// `FutureProvider` is the simpler primitive and matches the
+/// "data-curious view" intent.
+final statsProvider = FutureProvider<StatsDeepDiveState>((ref) async {
+  // Wait for the upstream snapshot — drives the live Vitality table + the
+  // current per-body-part EWMA values (the terminal point on each trend
+  // line).
+  final snapshot = await ref.watch(rpgProgressProvider.future);
+
+  final rpgRepo = ref.watch(rpgRepositoryProvider);
+  final peaksRepo = ref.watch(peakLoadsRepositoryProvider);
+  final exerciseRepo = ref.watch(exerciseRepositoryProvider);
+  final locale = ref.watch(localeProvider).languageCode;
+  final user = ref.watch(authStateProvider).value?.session?.user;
+
+  // 90 days of xp_events drives the trend reconstruction. The query is
+  // capped at a generous 5000 rows so a 5-set/day power user with 90 days
+  // of history (~450 events) is well below the cap. Repository pagination
+  // is unnecessary here — the cap is a defensive ceiling, not the expected
+  // size.
+  final now = DateTime.now().toUtc();
+  final since = now.subtract(const Duration(days: 90));
+  final events = await _fetchRecentEvents(rpgRepo, since: since);
+
+  // exercise_peak_loads is independent of the trend — fetch in parallel.
+  final peaks = await peaksRepo.getPeakLoads();
+
+  // Resolve exercise display names + muscle groups for grouping the peaks.
+  // Skip when the user has no peaks; avoids an unnecessary RPC roundtrip
+  // for fresh users.
+  final exercisesById = peaks.isEmpty || user == null
+      ? const <String, ex.Exercise>{}
+      : await _fetchExercisesByIds(
+          exerciseRepo,
+          locale: locale,
+          userId: user.id,
+          ids: peaks.map((p) => p.exerciseId).toList(growable: false),
+        );
+
+  return assembleStatsState(
+    now: now,
+    snapshot: snapshot,
+    events: events,
+    peaks: peaks,
+    exercisesById: exercisesById,
+  );
+});
+
+/// Pure assembler — extracted so unit tests can pin the algorithm without
+/// spinning up a ProviderContainer or mocking Supabase.
+///
+/// Inputs:
+///   * [now] — the "today" anchor; injected so tests can drive the hybrid
+///     X-axis at exact day boundaries.
+///   * [snapshot] — current EWMA + peak per body part.
+///   * [events] — last 90 days of `xp_events` for this user, newest-first
+///     order is fine; the assembler re-sorts by [XpEvent.occurredAt].
+///   * [peaks] — `exercise_peak_loads` rows for this user, any order.
+///   * [exercisesById] — name + muscle-group lookup keyed by exercise id.
+///
+/// Output: a fully-derived [StatsDeepDiveState] ready for direct
+/// `ref.read` consumption by the screen.
+StatsDeepDiveState assembleStatsState({
+  required DateTime now,
+  required RpgProgressSnapshot snapshot,
+  required List<XpEvent> events,
+  required List<PeakLoad> peaks,
+  required Map<String, ex.Exercise> exercisesById,
+}) {
+  // ---------------------------------------------------------------------------
+  // 1. Earliest activity + window selection.
+  // ---------------------------------------------------------------------------
+  // Re-sort events by occurrence ascending so the earliest is at index 0 and
+  // the trend reconstruction can stream forward in time.
+  final sorted = [...events]
+    ..sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
+  final earliest = sorted.isEmpty ? null : sorted.first.occurredAt;
+
+  final today = DateTime.utc(now.year, now.month, now.day);
+  // Hybrid X-axis: <30d of history → narrow window starting at earliest
+  // activity. ≥30d → rolling 90-day window. Boundary day-30 falls into the
+  // 90-day case (>=) per the WIP amendment.
+  final useNarrow = earliest != null && today.difference(earliest).inDays < 30;
+  final windowStart = useNarrow
+      ? DateTime.utc(earliest.year, earliest.month, earliest.day)
+      : today.subtract(const Duration(days: 90));
+
+  // ---------------------------------------------------------------------------
+  // 2. Live Vitality table — six rows, canonical order.
+  // ---------------------------------------------------------------------------
+  final vitalityRows = <VitalityTableRow>[];
+  for (final bp in activeBodyParts) {
+    final progress = snapshot.progressFor(bp);
+    final pct = VitalityCalculator.percentage(
+      ewma: progress.vitalityEwma,
+      peak: progress.vitalityPeak,
+    );
+    vitalityRows.add(
+      VitalityTableRow(
+        bodyPart: bp,
+        pct: pct,
+        state: VitalityStateMapper.fromVitality(
+          ewma: progress.vitalityEwma,
+          peak: progress.vitalityPeak,
+        ),
+        rank: progress.rank,
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 3. Trend reconstruction — daily series per body part.
+  // ---------------------------------------------------------------------------
+  // We aggregate `attribution[bp]` into ISO-week buckets (the same cadence
+  // the EWMA stepper expects per `VitalityCalculator.samplePeriodDays`),
+  // run the stepper week-by-week starting from EWMA 0 + the persisted
+  // peak, then linearly interpolate the weekly samples down to daily
+  // granularity.
+  final trendByBp = _reconstructTrends(
+    sorted: sorted,
+    windowStart: windowStart,
+    windowEnd: today,
+    snapshot: snapshot,
+  );
+
+  // ---------------------------------------------------------------------------
+  // 4. Volume + Peak per body part.
+  // ---------------------------------------------------------------------------
+  final volumePeak = <BodyPart, VolumePeakRow>{};
+  final weekAgo = today.subtract(const Duration(days: 7));
+  for (final bp in activeBodyParts) {
+    final setsLast7d = sorted
+        .where(
+          (e) =>
+              e.occurredAt.isAfter(weekAgo) &&
+              (e.attribution[bp.dbValue] as num? ?? 0) > 0,
+        )
+        .length;
+    volumePeak[bp] = VolumePeakRow(
+      weeklyVolumeSets: setsLast7d,
+      peakEwma: snapshot.progressFor(bp).vitalityPeak,
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 5. Peak loads — group by body part, sort by peak weight desc.
+  // ---------------------------------------------------------------------------
+  final peakLoadsByBp = _groupPeakLoads(
+    peaks: peaks,
+    exercisesById: exercisesById,
+  );
+
+  return StatsDeepDiveState(
+    vitalityRows: vitalityRows,
+    trendByBodyPart: trendByBp,
+    volumePeakByBodyPart: volumePeak,
+    peakLoadsByBodyPart: peakLoadsByBp,
+    earliestActivity: earliest,
+    windowStart: windowStart,
+    windowEnd: today,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Internals
+// ---------------------------------------------------------------------------
+
+/// Aggregate xp_events into weekly buckets per body part, run the EWMA
+/// stepper, and interpolate to daily granularity.
+///
+/// The end-of-trace per body part is anchored to the persisted current
+/// EWMA (the live value from `body_part_progress`). This keeps the chart's
+/// terminal point in lock-step with the table row above it — the line
+/// always lands exactly where the % readout says it should.
+Map<BodyPart, List<TrendPoint>> _reconstructTrends({
+  required List<XpEvent> sorted,
+  required DateTime windowStart,
+  required DateTime windowEnd,
+  required RpgProgressSnapshot snapshot,
+}) {
+  final out = <BodyPart, List<TrendPoint>>{};
+  final spanDays = windowEnd.difference(windowStart).inDays;
+  if (spanDays < 1) {
+    for (final bp in activeBodyParts) {
+      out[bp] = const <TrendPoint>[];
+    }
+    return out;
+  }
+
+  // Number of weekly sample points spanning the window. We always include
+  // both endpoints (windowStart and windowEnd) so the trace lands exactly
+  // on the visible chart edges.
+  final weekCount = math.max(2, (spanDays / 7).ceil() + 1);
+
+  for (final bp in activeBodyParts) {
+    final progress = snapshot.progressFor(bp);
+    final peak = progress.vitalityPeak;
+    if (peak <= 0) {
+      // Untrained body part — flat-zero series, but we still emit a series
+      // of the same length as the others so the chart can render six lines
+      // without per-line empty-state branching.
+      out[bp] = [
+        for (var i = 0; i < weekCount; i++)
+          TrendPoint(
+            date: _interpDate(windowStart, windowEnd, i, weekCount),
+            pct: 0,
+          ),
+      ];
+      continue;
+    }
+
+    // Bucket events by week index relative to windowStart.
+    final weeklyVolume = List<double>.filled(weekCount, 0);
+    for (final e in sorted) {
+      final attr = (e.attribution[bp.dbValue] as num?)?.toDouble() ?? 0;
+      if (attr <= 0) continue;
+      if (e.occurredAt.isBefore(windowStart) ||
+          e.occurredAt.isAfter(windowEnd)) {
+        continue;
+      }
+      final dayOffset = e.occurredAt.difference(windowStart).inDays;
+      final wIdx = (dayOffset / 7).floor().clamp(0, weekCount - 1);
+      weeklyVolume[wIdx] += attr;
+    }
+
+    // Run the EWMA stepper week-by-week from 0. The terminal value is
+    // *theoretical* — driven only by what the events imply for this
+    // window. We then apply a single rescale at the end so the terminal
+    // matches the persisted current EWMA exactly.
+    final weeklyEwma = List<double>.filled(weekCount, 0);
+    var ewma = 0.0;
+    for (var i = 0; i < weekCount; i++) {
+      final s = VitalityCalculator.step(
+        priorEwma: ewma,
+        priorPeak: peak,
+        weeklyVolume: weeklyVolume[i],
+      );
+      ewma = s.ewma;
+      weeklyEwma[i] = ewma;
+    }
+
+    // Anchor the terminal to the persisted current EWMA. If the
+    // theoretical terminal is zero (the user trained earlier but no events
+    // in this window), fall back to the persisted EWMA as a flat trace.
+    final theoreticalTerminal = weeklyEwma.last;
+    final actualTerminal = progress.vitalityEwma;
+    final scale = theoreticalTerminal > 0
+        ? actualTerminal / theoreticalTerminal
+        : 0.0;
+    if (scale > 0) {
+      for (var i = 0; i < weekCount; i++) {
+        weeklyEwma[i] *= scale;
+      }
+    } else if (actualTerminal > 0) {
+      // No events in window but EWMA is nonzero — flat trace at the
+      // current value. Trace the user's "carried-over" conditioning.
+      for (var i = 0; i < weekCount; i++) {
+        weeklyEwma[i] = actualTerminal;
+      }
+    }
+
+    // Interpolate weekly samples to daily granularity. We keep the daily
+    // resolution for the chart so smooth curves render without bunching.
+    // Length: spanDays + 1 (inclusive endpoints).
+    final dayCount = spanDays + 1;
+    final dailyPct = List<double>.filled(dayCount, 0);
+    for (var d = 0; d < dayCount; d++) {
+      final tWeek = (d / spanDays) * (weekCount - 1);
+      final lo = tWeek.floor().clamp(0, weekCount - 1);
+      final hi = math.min(lo + 1, weekCount - 1);
+      final frac = tWeek - lo;
+      final value = weeklyEwma[lo] * (1 - frac) + weeklyEwma[hi] * frac;
+      dailyPct[d] = (value / peak).clamp(0, 1).toDouble();
+    }
+
+    out[bp] = [
+      for (var d = 0; d < dayCount; d++)
+        TrendPoint(
+          date: windowStart.add(Duration(days: d)),
+          pct: dailyPct[d],
+        ),
+    ];
+  }
+
+  return out;
+}
+
+DateTime _interpDate(DateTime start, DateTime end, int i, int count) {
+  final t = count <= 1 ? 0.0 : i / (count - 1);
+  final spanMs = end.difference(start).inMilliseconds;
+  return start.add(Duration(milliseconds: (spanMs * t).round()));
+}
+
+/// Group `exercise_peak_loads` rows by body part using the `MuscleGroup` of
+/// the parent exercise. Within each group, sort by peak weight descending —
+/// the heaviest lift opens the section visually.
+Map<BodyPart, List<PeakLoadRow>> _groupPeakLoads({
+  required List<PeakLoad> peaks,
+  required Map<String, ex.Exercise> exercisesById,
+}) {
+  final out = <BodyPart, List<PeakLoadRow>>{};
+  for (final peak in peaks) {
+    final exercise = exercisesById[peak.exerciseId];
+    if (exercise == null) continue; // exercise deleted / not visible to user
+    final bp = _muscleGroupToBodyPart(exercise.muscleGroup);
+    if (bp == null) continue; // shouldn't happen in v1, but be defensive
+
+    final estimated = _epley1RM(
+      weight: peak.peakWeight,
+      peakReps: peak.peakReps,
+    );
+    out
+        .putIfAbsent(bp, () => <PeakLoadRow>[])
+        .add(
+          PeakLoadRow(
+            exerciseName: exercise.name,
+            peakWeight: peak.peakWeight,
+            peakReps: peak.peakReps,
+            estimated1RM: estimated,
+          ),
+        );
+  }
+  for (final list in out.values) {
+    list.sort((a, b) => b.peakWeight.compareTo(a.peakWeight));
+  }
+  return out;
+}
+
+BodyPart? _muscleGroupToBodyPart(ex.MuscleGroup mg) {
+  switch (mg) {
+    case ex.MuscleGroup.chest:
+      return BodyPart.chest;
+    case ex.MuscleGroup.back:
+      return BodyPart.back;
+    case ex.MuscleGroup.legs:
+      return BodyPart.legs;
+    case ex.MuscleGroup.shoulders:
+      return BodyPart.shoulders;
+    case ex.MuscleGroup.arms:
+      return BodyPart.arms;
+    case ex.MuscleGroup.core:
+      return BodyPart.core;
+    case ex.MuscleGroup.cardio:
+      // v1: cardio track not active in `/saga/stats` (no XP attribution path
+      // in 18d). Returning null excludes any cardio-mapped peak from
+      // [peakLoadsByBodyPart] at the source rather than leaving the dead row
+      // for [PeakLoadsTable]'s `activeBodyParts` filter to drop downstream.
+      // Lifts the gate when Phase 19 adds cardio attribution.
+      return null;
+  }
+}
+
+/// Epley 1RM estimate: `weight * (1 + reps/30)`. Returns null when reps == 0
+/// (bodyweight / non-loaded peaks where the formula doesn't apply).
+double? _epley1RM({required double weight, required int peakReps}) {
+  if (peakReps <= 0 || weight <= 0) return null;
+  if (peakReps == 1) return weight;
+  return weight * (1 + peakReps / 30.0);
+}
+
+// ---------------------------------------------------------------------------
+// Repository helpers — kept private; callers consume [statsProvider].
+// ---------------------------------------------------------------------------
+
+/// Fetch `xp_events` since [since], paginating up to a hard cap to avoid an
+/// unbounded query for outlier accounts. The repository returns newest-first;
+/// we paginate via the `olderThan` cursor until exhausted or the cap is hit.
+Future<List<XpEvent>> _fetchRecentEvents(
+  RpgRepository repo, {
+  required DateTime since,
+}) async {
+  const pageSize = 500;
+  const hardCap = 5000;
+  final out = <XpEvent>[];
+  DateTime? cursor;
+  while (out.length < hardCap) {
+    final page = await repo.getRecentXpEvents(
+      limit: pageSize,
+      olderThan: cursor,
+    );
+    if (page.isEmpty) break;
+    final filtered = page
+        .where((e) => !e.occurredAt.isBefore(since))
+        .toList(growable: false);
+    out.addAll(filtered);
+    if (filtered.length < page.length) break;
+    cursor = page.last.occurredAt;
+    if (page.length < pageSize) break;
+  }
+  return out;
+}
+
+Future<Map<String, ex.Exercise>> _fetchExercisesByIds(
+  ExerciseRepository repo, {
+  required String locale,
+  required String userId,
+  required List<String> ids,
+}) {
+  if (ids.isEmpty) return Future.value(const <String, ex.Exercise>{});
+  return repo.getExercisesByIds(locale: locale, userId: userId, ids: ids);
+}

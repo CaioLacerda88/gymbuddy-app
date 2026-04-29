@@ -25,7 +25,7 @@ import '../../features/workouts/providers/workout_providers.dart';
 import '../../features/profile/ui/manage_data_screen.dart';
 import '../../features/profile/ui/profile_settings_screen.dart';
 import '../../features/rpg/ui/character_sheet_screen.dart';
-import '../../features/rpg/ui/saga_stub_screen.dart';
+import '../../features/rpg/ui/stats_deep_dive_screen.dart';
 import '../../features/rpg/ui/titles_screen.dart';
 import '../../features/routines/ui/create_routine_screen.dart';
 import '../../features/routines/ui/routine_list_screen.dart';
@@ -225,9 +225,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/saga/stats',
-            builder: (context, state) => SagaStubScreen(
-              title: AppLocalizations.of(context).statsDeepDiveLabel,
-            ),
+            builder: (context, state) => const StatsDeepDiveScreen(),
           ),
           GoRoute(
             path: '/saga/titles',
