@@ -265,4 +265,27 @@ export const TEST_USERS = {
     email: 'e2e-rpg-overflow-tap@test.local',
     password: 'TestPassword123!',
   },
+
+  // -------------------------------------------------------------------------
+  // Phase 18e — Class system + title-equip E2E
+  // -------------------------------------------------------------------------
+
+  // rpgClassCrossUser: chest pre-seeded at rank 4 (270 XP), all others rank 1.
+  // After one bench-press set, chest crosses to rank 5 → class flips from
+  // Initiate to Bulwark (chest-dominant, max=5 ≥ 5, spread 0.80 > 0.30).
+  // Isolated from rpgMultiCelebration so the class-cross test doesn't interfere
+  // with the multi-celebration celebration-queue test.
+  rpgClassCrossUser: {
+    email: 'e2e-rpg-class-cross@test.local',
+    password: 'TestPassword123!',
+  },
+
+  // rpgTitleEquipUser: chest pre-seeded at rank 5+ so at least one body-part
+  // title ("Plate-Bearer" at R5) has been awarded. The user also has a completed
+  // backfill so the title appears in earned_titles and the Titles screen shows it
+  // as equippable. Used by title-equip.spec.ts to test tap-to-equip flow.
+  rpgTitleEquipUser: {
+    email: 'e2e-rpg-title-equip@test.local',
+    password: 'TestPassword123!',
+  },
 } as const;
