@@ -206,5 +206,40 @@ void main() {
         expect(find.byType(RankStamp), findsNWidgets(6));
       },
     );
+
+    testWidgets(
+      'sentinel: zero numeric Vitality % readouts leak onto the character sheet',
+      (tester) async {
+        // Phase 18d.2 contract: the character sheet is the *rune* face — runes
+        // and rank stamps drive the visual state. Numeric Vitality percentages
+        // (e.g. "80%", "75%") are deliberately confined to /saga/stats. If a
+        // refactor accidentally surfaces a `%` glyph on the character sheet,
+        // this test fails — protecting the rune-face/number-face split.
+        tester.view.physicalSize = const Size(800, 2400);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(_buildApp(_highRankState()));
+        await tester.pump();
+        await tester.pump();
+
+        // Sweep every Text widget in the tree. None should contain a `%`
+        // glyph — the high-rank state has Vitality EWMA values 72..80 that
+        // would render as "72%".."80%" if a regression piped them in.
+        final percentTexts = tester
+            .widgetList<Text>(find.byType(Text))
+            .where((t) => (t.data ?? '').contains('%'))
+            .map((t) => t.data)
+            .toList();
+        expect(
+          percentTexts,
+          isEmpty,
+          reason:
+              'character sheet must not surface numeric Vitality percentages '
+              '— those belong on /saga/stats. Found: $percentTexts',
+        );
+      },
+    );
   });
 }

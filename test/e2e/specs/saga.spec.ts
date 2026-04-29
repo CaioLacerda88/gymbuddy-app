@@ -207,20 +207,22 @@ test.describe('Saga — navigation', { tag: '@smoke' }, () => {
     await expect(page.locator(SAGA.profileSettingsScreen)).not.toBeVisible({ timeout: 5_000 });
   });
 
-  // S5: Stats codex nav row → stats stub screen.
+  // S5: Stats codex nav row → stats deep-dive screen (Phase 18d.2).
   //
-  // CodexNavRow with semanticIdentifier 'codex-nav-stats' calls context.push('/saga/stats').
-  // SagaStubScreen renders l10n.comingSoonStub = "Coming soon.".
-  test('should navigate to stats stub screen when tapping Stats codex nav row (S5)', async ({
+  // CodexNavRow with semanticIdentifier 'codex-nav-stats' calls
+  // context.push('/saga/stats'). Phase 18d.2 retired SagaStubScreen here in
+  // favor of StatsDeepDiveScreen (saga-stats-screen identifier).
+  test('should navigate to stats deep-dive screen when tapping Stats codex nav row (S5)', async ({
     page,
   }) => {
     // Scroll to bring codex nav rows into view (they are below the fold).
     await page.locator(SAGA.codexNavStats).first().scrollIntoViewIfNeeded();
     await page.locator(SAGA.codexNavStats).first().click();
 
-    // Flutter web pushes the route via context.push — assert on visible content
-    // rather than URL (URL update timing is unreliable with Flutter web routing).
-    await expect(page.locator(SAGA.sagaStubScreen).first()).toBeVisible({ timeout: 15_000 });
+    // Assert the Phase 18d.2 deep-dive screen rendered.
+    await expect(page.locator(SAGA.statsDeepDiveScreen).first()).toBeVisible({
+      timeout: 15_000,
+    });
   });
 
   // S6: Titles codex nav row → titles screen (functional list, Phase 18c upgrade).
@@ -261,5 +263,163 @@ test.describe('Saga — navigation', { tag: '@smoke' }, () => {
       .isVisible({ timeout: 5_000 })
       .catch(() => false);
     expect(hasHeading || hasEmpty).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// S8–S10: Stats deep-dive composition + interaction (Phase 18d.2)
+//
+// The /saga/stats deep-dive composes four sub-widgets — VitalityTable,
+// VitalityTrendChart, _VolumePeakTable, PeakLoadsTable — keyed off
+// statsProvider. These tests verify the composition contract end-to-end:
+//   S8 — fresh user lands without an activity gate, all four sub-widgets render.
+//   S9 — foundation user sees the same layout populated with their data.
+//   S10 — re-tapping the Saga tab from /saga/stats pops back to the character sheet.
+//
+// User isolation: rpgFoundationUser exists already in TEST_USERS. We reuse
+// it to keep the user-fixture surface area small. S8 reuses rpgFreshUser.
+// ---------------------------------------------------------------------------
+
+test.describe('Saga — stats deep-dive', { tag: '@smoke' }, () => {
+  test.beforeEach(async ({ page }) => {
+    await login(
+      page,
+      TEST_USERS.rpgFoundationUser.email,
+      TEST_USERS.rpgFoundationUser.password,
+    );
+    await navigateToTab(page, 'Profile');
+    await page
+      .locator(SAGA.characterSheet)
+      .first()
+      .waitFor({ state: 'visible', timeout: 20_000 });
+
+    // Drill into /saga/stats via the codex nav row.
+    await page.locator(SAGA.codexNavStats).first().scrollIntoViewIfNeeded();
+    await page.locator(SAGA.codexNavStats).first().click();
+    await page
+      .locator(SAGA.statsDeepDiveScreen)
+      .first()
+      .waitFor({ state: 'visible', timeout: 15_000 });
+  });
+
+  // S8: Composition — all four sub-widgets render.
+  //
+  // The screen is pure presentation; the four sub-widget identifiers are
+  // wrapped in Semantics by the widgets themselves. If any one is missing,
+  // a refactor likely dropped its identifier or the widget itself.
+  test('should compose the four deep-dive sub-widgets (S8)', async ({ page }) => {
+    await expect(page.locator(SAGA.vitalityTable).first()).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.locator(SAGA.vitalityTrendChart).first()).toBeVisible({
+      timeout: 10_000,
+    });
+    // The volume-peak and peak-loads tables sit below the fold on small
+    // viewports. Scroll them into view before asserting visibility — the
+    // identifiers are emitted regardless, but visibility requires layout
+    // overlap with the viewport.
+    await page.locator(SAGA.volumePeakTable).first().scrollIntoViewIfNeeded();
+    await expect(page.locator(SAGA.volumePeakTable).first()).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.locator(SAGA.peakLoadsTable).first().scrollIntoViewIfNeeded();
+    await expect(page.locator(SAGA.peakLoadsTable).first()).toBeVisible({
+      timeout: 10_000,
+    });
+  });
+
+  // S9: Tapping a vitality row drives the trend chart's selected line.
+  //
+  // The screen holds selection state and passes selectedBodyPart into the
+  // chart. We can't visually assert which color is "vivid" from the AOM, but
+  // we can verify that tapping a row doesn't error and that the chart stays
+  // visible across the interaction (i.e. no rebuild crash).
+  test('should keep the trend chart rendered after tapping a vitality row (S9)', async ({
+    page,
+  }) => {
+    await expect(page.locator(SAGA.vitalityTrendChart).first()).toBeVisible({
+      timeout: 10_000,
+    });
+
+    // Tap the legs row (always present — provider always emits all six rows).
+    await page.locator(SAGA.vitalityRow('legs')).first().scrollIntoViewIfNeeded();
+    await page.locator(SAGA.vitalityRow('legs')).first().click();
+
+    // The chart must still be in the tree afterward.
+    await expect(page.locator(SAGA.vitalityTrendChart).first()).toBeVisible({
+      timeout: 10_000,
+    });
+  });
+
+  // S10: Re-tapping the Saga tab from /saga/stats pops back to the
+  // character sheet. Mirrors S4's contract for the deep-dive route.
+  test('should pop back to the character sheet on Saga tab re-tap (S10)', async ({
+    page,
+  }) => {
+    await page.click(NAV.profileTab);
+
+    // Character sheet visible again; deep-dive no longer in the tree.
+    await expect(page.locator(SAGA.characterSheet).first()).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.locator(SAGA.statsDeepDiveScreen)).not.toBeVisible({
+      timeout: 5_000,
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// S11: Fresh user can reach /saga/stats without activity gate (Phase 18d.2)
+//
+// PO + UX-critic amendment #1: the deep-dive screen is reachable from a
+// fresh account. The empty-state copy is communicated through the data
+// shape (zero %, dormant copy, flat trend lines, empty peaks copy).
+// ---------------------------------------------------------------------------
+
+test.describe('Saga — stats deep-dive (fresh user)', { tag: '@smoke' }, () => {
+  test.beforeEach(async ({ page }) => {
+    // Reset the fresh user's RPG state so we land on a true zero-history
+    // baseline (mirrors the S1 reset).
+    const userId = await getRpgFreshUserId();
+    if (userId) {
+      const admin = makeAdminClient();
+      await admin.from('xp_events').delete().eq('user_id', userId);
+      await admin.from('body_part_progress').delete().eq('user_id', userId);
+      await admin.from('exercise_peak_loads').delete().eq('user_id', userId);
+      await admin.from('backfill_progress').delete().eq('user_id', userId);
+      await admin.from('backfill_progress').insert({
+        user_id: userId,
+        sets_processed: 0,
+        started_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        completed_at: new Date().toISOString(),
+      });
+    }
+
+    await login(
+      page,
+      TEST_USERS.rpgFreshUser.email,
+      TEST_USERS.rpgFreshUser.password,
+    );
+    await navigateToTab(page, 'Profile');
+    await page
+      .locator(SAGA.characterSheet)
+      .first()
+      .waitFor({ state: 'visible', timeout: 20_000 });
+  });
+
+  test('should let a fresh user open /saga/stats without an activity gate (S11)', async ({
+    page,
+  }) => {
+    await page.locator(SAGA.codexNavStats).first().scrollIntoViewIfNeeded();
+    await page.locator(SAGA.codexNavStats).first().click();
+
+    await expect(page.locator(SAGA.statsDeepDiveScreen).first()).toBeVisible({
+      timeout: 15_000,
+    });
+    // Vitality table renders even with all-zero rows — six rows still appear.
+    await expect(page.locator(SAGA.vitalityTable).first()).toBeVisible({
+      timeout: 10_000,
+    });
   });
 });

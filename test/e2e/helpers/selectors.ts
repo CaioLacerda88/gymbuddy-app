@@ -697,8 +697,36 @@ export const SAGA = {
   /** SagaStubScreen body — Semantics(identifier: 'saga-stub-screen').
    *  Locale-independent (was previously `text=Coming soon.`, which broke
    *  pt-BR because the localized copy is "Em breve.").
+   *
+   *  Phase 18d.2 retired this for /saga/stats — use `statsDeepDiveScreen`
+   *  instead. The selector is kept here for any future stub-screen route
+   *  (e.g. /saga/skills if added later).
    */
   sagaStubScreen: '[flt-semantics-identifier="saga-stub-screen"]',
+  // -----------------------------------------------------------------------
+  // Phase 18d.2 — /saga/stats deep-dive screen
+  //
+  // The deep-dive replaces SagaStubScreen at /saga/stats. It composes four
+  // sub-widgets, each wrapped in its own Semantics(identifier: ...) so E2E
+  // can target them independently.
+  // -----------------------------------------------------------------------
+  /** StatsDeepDiveScreen root — Semantics(identifier: 'saga-stats-screen') */
+  statsDeepDiveScreen: '[flt-semantics-identifier="saga-stats-screen"]',
+  /** VitalityTable container — Semantics(identifier: 'vitality-table') */
+  vitalityTable: '[flt-semantics-identifier="vitality-table"]',
+  /**
+   * Per-row tap target inside VitalityTable.
+   * Each row is wrapped in Semantics(identifier: 'vitality-row-{slug}'),
+   * where slug is the BodyPart.dbValue ('chest', 'back', 'legs', etc.).
+   */
+  vitalityRow: (slug: 'chest' | 'back' | 'legs' | 'shoulders' | 'arms' | 'core') =>
+    `[flt-semantics-identifier="vitality-row-${slug}"]`,
+  /** VitalityTrendChart container — Semantics(identifier: 'vitality-trend-chart') */
+  vitalityTrendChart: '[flt-semantics-identifier="vitality-trend-chart"]',
+  /** _VolumePeakTable container — Semantics(identifier: 'volume-peak-table') */
+  volumePeakTable: '[flt-semantics-identifier="volume-peak-table"]',
+  /** PeakLoadsTable container — Semantics(identifier: 'peak-loads-table') */
+  peakLoadsTable: '[flt-semantics-identifier="peak-loads-table"]',
 } as const;
 
 // ---------------------------------------------------------------------------
