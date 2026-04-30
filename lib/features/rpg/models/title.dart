@@ -97,7 +97,7 @@ sealed class Title with _$Title {
 ///   * `pillar_walker` — Legs >= 40 AND Legs >= 2x Arms
 ///   * `broad_shouldered` — Chest+Back+Shoulders >= 2x(Legs+Core), all upper >= 30
 ///   * `even_handed` — All 6 within 30% of max at Rank 30+
-///   * `iron_bound` — Chest+Back+Legs >= 60 (cardio condition is v2)
+///   * `iron_bound` — Chest >= 60 AND Back >= 60 AND Legs >= 60 (cardio is v2)
 ///   * `saga_forged` — All 6 ranks >= 60
 @JsonEnum(fieldRename: FieldRename.snake)
 enum CrossBuildTriggerId {

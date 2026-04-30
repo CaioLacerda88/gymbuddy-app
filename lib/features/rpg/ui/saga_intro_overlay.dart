@@ -5,12 +5,11 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/radii.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/reward_accent.dart';
-import '../domain/xp_calculator.dart';
 
 /// First-run, 3-step explainer that introduces the gamification layer
 /// (XP, LVL, rank). Pure presentation — the widget calls [onDismiss] when
 /// the user taps "BEGIN" on the final step; the caller owns the
-/// Hive-backed `saga_intro_seen` persistence (see `xp_provider.dart`).
+/// Hive-backed `saga_intro_seen` persistence (see `saga_intro_gate.dart`).
 ///
 /// Visual direction (Arcane Ascent, §17.0c):
 ///   * Full-screen [AppColors.abyss] backdrop — no Material Dialog chrome.
@@ -19,11 +18,18 @@ import '../domain/xp_calculator.dart';
 ///   * 80-dp hero SVG per step (hero silhouette / XP bolt / level sigil).
 ///   * Primary button is a Material [FilledButton] so it picks up the
 ///     primary-violet theme.
+///
+/// Phase 18-followups note (2026-04-29): the overlay used to take a
+/// `Rank` parameter from the legacy gamification feature. After deleting
+/// `lib/features/gamification/`, the rank label is computed by the gate
+/// from the RPG `character_state` view (lifetime_xp + character_level)
+/// and passed in as a pre-localized string. The overlay stays presentation-
+/// only and has zero coupling to gamification or RPG models.
 class SagaIntroOverlay extends StatefulWidget {
   const SagaIntroOverlay({
     required this.onDismiss,
     this.startingLevel = 1,
-    this.startingRank = Rank.rookie,
+    this.rankLabel = '',
     super.key,
   });
 
@@ -33,11 +39,15 @@ class SagaIntroOverlay extends StatefulWidget {
   final VoidCallback onDismiss;
 
   /// Level to display on the step-3 preview. Defaults to 1 for a fresh
-  /// user; existing users get their retro-backfilled level.
+  /// user; existing users get their retro-backfilled level from
+  /// `character_state.character_level`.
   final int startingLevel;
 
-  /// Rank to display on the step-3 preview. Defaults to [Rank.rookie].
-  final Rank startingRank;
+  /// Pre-localized rank label for the step-3 preview ("ROOKIE", "IRON",
+  /// "SILVER", ...). The gate computes this from `character_state` and
+  /// resolves it through [AppLocalizations] so the overlay stays
+  /// presentation-only.
+  final String rankLabel;
 
   @override
   State<SagaIntroOverlay> createState() => _SagaIntroOverlayState();
@@ -76,7 +86,7 @@ class _SagaIntroOverlayState extends State<SagaIntroOverlay> {
                   step: _step,
                   l10n: l10n,
                   level: widget.startingLevel,
-                  rank: widget.startingRank,
+                  rankLabel: widget.rankLabel,
                 ),
               ),
               const Spacer(),
@@ -129,13 +139,13 @@ class _StepContent extends StatelessWidget {
     required this.step,
     required this.l10n,
     required this.level,
-    required this.rank,
+    required this.rankLabel,
   });
 
   final int step;
   final AppLocalizations l10n;
   final int level;
-  final Rank rank;
+  final String rankLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -153,10 +163,10 @@ class _StepContent extends StatelessWidget {
         'xp icon',
       ),
       _ => (
-        l10n.sagaIntroStep3Title(level, _rankLabel(l10n, rank)),
+        l10n.sagaIntroStep3Title(level, rankLabel),
         l10n.sagaIntroStep3Body,
         AppIcons.levelUp,
-        '${rank.dbValue} rank',
+        '$rankLabel rank',
       ),
     };
 
@@ -212,16 +222,6 @@ class _StepContent extends StatelessWidget {
       ],
     );
   }
-
-  static String _rankLabel(AppLocalizations l10n, Rank r) => switch (r) {
-    Rank.rookie => l10n.sagaRankRookie,
-    Rank.iron => l10n.sagaRankIron,
-    Rank.copper => l10n.sagaRankCopper,
-    Rank.silver => l10n.sagaRankSilver,
-    Rank.gold => l10n.sagaRankGold,
-    Rank.platinum => l10n.sagaRankPlatinum,
-    Rank.diamond => l10n.sagaRankDiamond,
-  };
 }
 
 class _PrimaryButton extends StatelessWidget {

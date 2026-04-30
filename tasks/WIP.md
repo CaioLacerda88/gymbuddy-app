@@ -4,6 +4,26 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ---
 
+## Phase 18 follow-ups — RPG v1 debt (from PR #120 close-out, 2026-04-29)
+
+Small debt items pushed forward from Phase 18e. None block v1 launch; bundle into one PR when convenient.
+
+- [x] **Stale Iron-Bound doc** in `lib/features/rpg/models/title.dart:100` — comment now reads `Chest >= 60 AND Back >= 60 AND Legs >= 60 (cardio is v2)`, mirroring the cross-build evaluator's per-track AND predicate (commit `a4f8e51`).
+- [x] **Delete `lib/features/gamification/` dead 17b code** (commit `ed3caab`):
+  - `SagaIntroOverlay` rewired — now decoupled from gamification's `Rank` enum, takes a pre-localized `rankLabel` string passed in by the new `SagaIntroGate` (under `lib/features/rpg/ui/`).
+  - `SagaIntroGate` reads `rpgProgressProvider.characterState`, computes the label from `lifetime_xp` via an inline ladder, kicks `RpgRepository.runBackfill()` for retro, and persists Hive flags (`saga_retro_run:`, `saga_intro_seen:`) under the same prefixes as before.
+  - `lib/core/router/app_router.dart` import path updated.
+  - `lib/features/workouts/providers/notifiers/active_workout_notifier.dart:927` shim pointer dropped (inline gamification XP-award block deleted; canonical writer is server-side `record_set_xp`).
+  - Whole `lib/features/gamification/` directory removed (data/, domain/, models/, providers/, ui/) plus the orphaned `models/*.freezed.dart` / `*.g.dart` (gitignored, generated).
+  - Tests under `test/unit/features/gamification/` and `test/widget/features/gamification/` deleted.
+  - `test/fixtures/rpc_fakes.dart` docstring updated to note the pattern's lineage; the file's RPC machinery is shared infra and stays.
+  - New widget tests cover the rewire: `test/widget/features/rpg/ui/saga_intro_overlay_test.dart` + `test/widget/features/rpg/ui/saga_intro_gate_test.dart` (14 tests).
+- [x] **`test/integration/rpg_acceptance_test.dart`** — 15-test seam covering §18 bullets #3, #5, #7 (all three title kinds + idempotency), #8 (class resolution Initiate/Bulwark/Ascendant + flip on rank change), #10 (no rank-decrease event). Loads the real shipped catalog via `TitlesRepository.loadCatalog()` against `rootBundle`; pure-Dart aggregation, NOT `@Tags(['integration'])` so it runs in `flutter test --exclude-tags integration` (= `make test`).
+
+**Pipeline:** straight tech-lead → reviewer (no QA gate; doc + dead-code removal). Single PR, squash merge. Spec amendment is in PR #120 already; this only catches the missed doc reference.
+
+---
+
 ## Phase 16 — Subscription Monetization — PARKED (2026-04-22)
 
 **Why parked:** Phase 16 keeps hitting external blockers (Brazilian merchant account, Play Console → upload signed AAB required before subscription product can be created, license-tester account setup). Phase 17 gamification is fully internal code work with no external gates and produces the retention moat that makes Phase 16's paywall pitch compelling. Decision: ship Phase 17 (Gamification) before resuming 16b/c/d.

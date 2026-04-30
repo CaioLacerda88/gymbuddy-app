@@ -18,8 +18,6 @@ import '../../../analytics/providers/analytics_providers.dart';
 import '../../../auth/providers/auth_providers.dart';
 import '../../../exercises/models/exercise.dart';
 import '../../../exercises/providers/exercise_progress_provider.dart';
-import '../../../gamification/domain/xp_calculator.dart';
-import '../../../gamification/providers/xp_provider.dart';
 import '../../../personal_records/domain/pr_detection_service.dart';
 import '../../../personal_records/providers/pr_providers.dart';
 import '../../../profile/providers/profile_providers.dart';
@@ -914,47 +912,14 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
         );
       }
 
-      // XP award: compute the per-workout breakdown from the sets + detected
-      // PRs, then call award_xp via the XpNotifier so the home LVL badge and
-      // character sheet re-render with the new total. Only runs when the
-      // workout was saved online — offline replays will re-trigger XP on
-      // successful sync (handled by the offline queue in Phase 14).
-      //
-      // Failure here must NOT fail the workout save. The server is the
-      // source of truth for XP, and any transient error (network blip, RPC
-      // timeout) is recoverable on the next online finish or via the retro
-      // backfill safety net.
-      if (!savedOffline) {
-        try {
-          final prAwards = <XpPrAward>[
-            for (final record in prResult?.newRecords ?? <PersonalRecord>[])
-              XpPrAward(recordType: record.recordType),
-          ];
-          final breakdown = XpCalculator.compute(sets: sets, prs: prAwards);
-          if (breakdown.total > 0) {
-            // Phase 18e note: this is the legacy gamification XP system
-            // (Phase 17b). RPG v1 character level is computed server-side
-            // inside `record_set_xp` (called from `save_workout`); this
-            // award is kept alive only because `SagaIntroOverlay` still
-            // reads `xpProvider.totalXp`. Removal is scheduled for v1.1+
-            // when the saga intro migrates to `rpgProgressProvider`.
-            // See `lib/features/gamification/providers/xp_provider.dart`
-            // for the keep-alive rationale.
-            await ref
-                .read(xpProvider.notifier)
-                .awardForWorkout(
-                  userId: workout.userId,
-                  breakdown: breakdown,
-                  workoutId: workout.id,
-                );
-          }
-        } catch (e) {
-          // XP award failure should NOT fail the workout save. The retro
-          // backfill is an idempotent safety net that will recompute on
-          // next cold start.
-          log('XP award failed: $e', name: 'ActiveWorkoutNotifier', level: 900);
-        }
-      }
+      // XP award: handled server-side inside `save_workout` → `record_set_xp`,
+      // which writes `body_part_progress` and `xp_events` rows in the same
+      // transaction as the workout. The post-save Dart award path was a
+      // Phase 17b leftover that drove the legacy `gamification_xp_state`
+      // table; it was deleted in the Phase 18 follow-ups branch when the
+      // gamification feature dir was removed (the saga intro overlay no
+      // longer depends on the legacy XP roll-up). Phase 18a's per-set RPC
+      // is the single writer.
 
       // Weekly plan: mark matching bucket routine as complete.
       try {

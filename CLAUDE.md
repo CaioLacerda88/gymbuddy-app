@@ -33,7 +33,7 @@ flutter run -d chrome        # run on Chrome (for Playwright e2e)
 - Extract widgets when build method exceeds ~50 lines
 - Import our exceptions with prefix when Supabase types clash: `import '...' as app;`
 - Commit format: `feat|fix|refactor|test|docs|ci|chore(scope): description`
-- Scopes: `auth`, `exercises`, `workouts`, `progress`, `profile`, `core`, `theme`, `ci`
+- Scopes: `auth`, `exercises`, `workouts`, `progress`, `profile`, `core`, `theme`, `ci`, `rpg`, `gamification`, `test`
 
 ### Exercise content translation coverage rule
 

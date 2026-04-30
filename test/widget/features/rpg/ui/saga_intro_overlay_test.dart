@@ -1,28 +1,20 @@
-import 'dart:io';
+/// Widget tests for [SagaIntroOverlay] (Phase 18 follow-ups rewire).
+///
+/// The overlay used to take a `Rank` enum from the legacy gamification
+/// feature. After deleting `lib/features/gamification/`, the rank is
+/// resolved by [SagaIntroGate] from `character_state.lifetime_xp` and
+/// passed in as a pre-localized string. These tests pin the
+/// presentation-only contract: step navigation, dismiss callback, and
+/// step-3 preview rendering against arbitrary level / rank-label inputs.
+library;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import 'package:repsaga/features/gamification/domain/xp_calculator.dart';
-import 'package:repsaga/features/gamification/providers/xp_provider.dart';
-import 'package:repsaga/features/gamification/ui/saga_intro_overlay.dart';
+import 'package:repsaga/features/rpg/ui/saga_intro_overlay.dart';
 
-import '../../../helpers/test_material_app.dart';
+import '../../../../helpers/test_material_app.dart';
 
 void main() {
   group('SagaIntroOverlay', () {
-    late Directory tempDir;
-
-    setUp(() async {
-      tempDir = await Directory.systemTemp.createTemp('saga_intro_test_');
-      Hive.init(tempDir.path);
-      await Hive.openBox<dynamic>('user_prefs');
-    });
-
-    tearDown(() async {
-      await Hive.close();
-      await tempDir.delete(recursive: true);
-    });
-
     testWidgets('renders step 1 with NEXT button and no BEGIN', (tester) async {
       await tester.pumpWidget(
         TestMaterialApp(home: SagaIntroOverlay(onDismiss: () {})),
@@ -95,7 +87,7 @@ void main() {
           home: SagaIntroOverlay(
             onDismiss: () {},
             startingLevel: 8,
-            startingRank: Rank.iron,
+            rankLabel: 'IRON',
           ),
         ),
       );
@@ -109,61 +101,6 @@ void main() {
       // Step-3 headline format: "LVL {n} — {RANK}"
       expect(find.textContaining('LVL 8'), findsOneWidget);
       expect(find.textContaining('IRON'), findsOneWidget);
-    });
-  });
-
-  group('hasSeenSagaIntroForUser / markSagaIntroSeenForUser', () {
-    late Directory tempDir;
-
-    setUp(() async {
-      tempDir = await Directory.systemTemp.createTemp('saga_intro_pref_');
-      Hive.init(tempDir.path);
-      await Hive.openBox<dynamic>('user_prefs');
-    });
-
-    tearDown(() async {
-      await Hive.close();
-      await tempDir.delete(recursive: true);
-    });
-
-    test('hasSeenSagaIntroForUser defaults to false for an untouched user', () {
-      expect(hasSeenSagaIntroForUser('user-abc'), isFalse);
-    });
-
-    test(
-      'markSagaIntroSeenForUser flips the flag for that user only',
-      () async {
-        await markSagaIntroSeenForUser('user-abc');
-        expect(hasSeenSagaIntroForUser('user-abc'), isTrue);
-        expect(hasSeenSagaIntroForUser('user-xyz'), isFalse);
-      },
-    );
-
-    test('a second launch after dismiss still reports true '
-        '(persistence across provider re-reads)', () async {
-      await markSagaIntroSeenForUser('user-abc');
-      // Simulate a "second launch" by re-checking. Hive is backed by the
-      // same temp box, so the flag must persist.
-      expect(hasSeenSagaIntroForUser('user-abc'), isTrue);
-    });
-  });
-
-  group('hasRunRetroForUser', () {
-    late Directory tempDir;
-
-    setUp(() async {
-      tempDir = await Directory.systemTemp.createTemp('saga_retro_flag_');
-      Hive.init(tempDir.path);
-      await Hive.openBox<dynamic>('user_prefs');
-    });
-
-    tearDown(() async {
-      await Hive.close();
-      await tempDir.delete(recursive: true);
-    });
-
-    test('defaults to false for an untouched user', () {
-      expect(hasRunRetroForUser('user-001'), isFalse);
     });
   });
 }
