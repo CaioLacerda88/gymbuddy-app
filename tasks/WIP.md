@@ -8,15 +8,17 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 Small debt items pushed forward from Phase 18e. None block v1 launch; bundle into one PR when convenient.
 
-- [ ] **Stale Iron-Bound doc** in `lib/features/rpg/models/title.dart:100` — comment reads `iron_bound — Chest+Back+Legs >= 60` (old ambiguous wording). Real implementation is per-track per the reviewer-pass amend (`Chest ≥ 60 AND Back ≥ 60 AND Legs ≥ 60`). One-line fix. Reviewer fix sweep missed this file because the contract is structurally enforced in `cross_build_title_evaluator.dart` (the doc on `title.dart` is just a reference table for the trigger token enum).
-- [ ] **Delete `lib/features/gamification/` dead 17b code** (option B from WS5 deferred to v1.1+):
-  - Rewire `SagaIntroOverlay` to read from `rpgProgressProvider.characterState` (currently reads `gamification_xp_state` via the keep-as-shim path).
-  - Delete `lib/features/gamification/` (~11 prod files: data/, domain/, models/, providers/xp_provider.dart, ui/saga_intro_gate.dart).
-  - Delete dependent tests under `test/unit/features/gamification/` and `test/widget/features/gamification/` (~6 files).
-  - Drop the inline shim pointer in `lib/features/workouts/providers/notifiers/active_workout_notifier.dart:927`.
-  - Drop the `XpRepository` faker entry in `test/fixtures/rpc_fakes.dart` if the rewire makes it unreachable.
-  - The keep-as-shim rationale in `xp_provider.dart` explains the original deferral; safe to remove the file in the same PR.
-- [ ] **`test/integration/rpg_acceptance_test.dart`** — single integration test that synthesises a fixture user and asserts every §18 acceptance bullet end-to-end. WS6 deferred this with the rationale that unit pins + `rpg_record_set_xp_test.dart` + E2E cover the same ground; revisit if a future regression slips through the seams.
+- [x] **Stale Iron-Bound doc** in `lib/features/rpg/models/title.dart:100` — comment now reads `Chest >= 60 AND Back >= 60 AND Legs >= 60 (cardio is v2)`, mirroring the cross-build evaluator's per-track AND predicate (commit `a4f8e51`).
+- [x] **Delete `lib/features/gamification/` dead 17b code** (commit `ed3caab`):
+  - `SagaIntroOverlay` rewired — now decoupled from gamification's `Rank` enum, takes a pre-localized `rankLabel` string passed in by the new `SagaIntroGate` (under `lib/features/rpg/ui/`).
+  - `SagaIntroGate` reads `rpgProgressProvider.characterState`, computes the label from `lifetime_xp` via an inline ladder, kicks `RpgRepository.runBackfill()` for retro, and persists Hive flags (`saga_retro_run:`, `saga_intro_seen:`) under the same prefixes as before.
+  - `lib/core/router/app_router.dart` import path updated.
+  - `lib/features/workouts/providers/notifiers/active_workout_notifier.dart:927` shim pointer dropped (inline gamification XP-award block deleted; canonical writer is server-side `record_set_xp`).
+  - Whole `lib/features/gamification/` directory removed (data/, domain/, models/, providers/, ui/) plus the orphaned `models/*.freezed.dart` / `*.g.dart` (gitignored, generated).
+  - Tests under `test/unit/features/gamification/` and `test/widget/features/gamification/` deleted.
+  - `test/fixtures/rpc_fakes.dart` docstring updated to note the pattern's lineage; the file's RPC machinery is shared infra and stays.
+  - New widget tests cover the rewire: `test/widget/features/rpg/ui/saga_intro_overlay_test.dart` + `test/widget/features/rpg/ui/saga_intro_gate_test.dart` (14 tests).
+- [x] **`test/integration/rpg_acceptance_test.dart`** — 15-test seam covering §18 bullets #3, #5, #7 (all three title kinds + idempotency), #8 (class resolution Initiate/Bulwark/Ascendant + flip on rank change), #10 (no rank-decrease event). Loads the real shipped catalog via `TitlesRepository.loadCatalog()` against `rootBundle`; pure-Dart aggregation, NOT `@Tags(['integration'])` so it runs in `flutter test --exclude-tags integration` (= `make test`).
 
 **Pipeline:** straight tech-lead → reviewer (no QA gate; doc + dead-code removal). Single PR, squash merge. Spec amendment is in PR #120 already; this only catches the missed doc reference.
 
