@@ -254,4 +254,26 @@ void main() {
       expect(hasRunRetroForUser('user-001'), isFalse);
     });
   });
+
+  // The ladder is the source of truth for the saga intro overlay's
+  // "LVL N — RANK" preview. Pin each tier so future ladder edits surface as
+  // test failures instead of silent UI regressions for existing lifters.
+  group('rankSlugFromLifetimeXp', () {
+    test('returns diamond at and above the top threshold (250_000)', () {
+      expect(rankSlugFromLifetimeXp(300000), 'diamond');
+    });
+
+    test('returns platinum between 125_000 and 250_000', () {
+      expect(rankSlugFromLifetimeXp(150000), 'platinum');
+    });
+
+    test('returns iron between 2_500 and 10_000', () {
+      // 5_000 sits in [2_500, 10_000) → iron tier.
+      expect(rankSlugFromLifetimeXp(5000), 'iron');
+    });
+
+    test('returns rookie at the 0 floor', () {
+      expect(rankSlugFromLifetimeXp(0), 'rookie');
+    });
+  });
 }

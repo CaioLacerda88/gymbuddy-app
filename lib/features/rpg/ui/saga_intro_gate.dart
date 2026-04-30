@@ -67,10 +67,8 @@ class _SagaIntroGateState extends ConsumerState<SagaIntroGate> {
     final l10n = AppLocalizations.of(context);
     final snapshot = snapshotAsync.value!;
     final level = snapshot.characterState.characterLevel;
-    final rankLabel = _rankLabelFromLifetimeXp(
-      l10n,
-      snapshot.characterState.lifetimeXp,
-    );
+    final rankSlug = rankSlugFromLifetimeXp(snapshot.characterState.lifetimeXp);
+    final rankLabel = _localizeRankSlug(l10n, rankSlug);
 
     return Stack(
       fit: StackFit.expand,
@@ -103,7 +101,7 @@ class _SagaIntroGateState extends ConsumerState<SagaIntroGate> {
 
   Future<void> _runBackfill(String userId) async {
     await ref.read(rpgRepositoryProvider).runBackfill();
-    markRetroCompleteForUser(userId);
+    await markRetroCompleteForUser(userId);
     ref.invalidate(rpgProgressProvider);
   }
 
@@ -145,9 +143,16 @@ bool hasRunRetroForUser(String userId) {
 /// Mark the retro backfill as completed for [userId]. The server is
 /// idempotent regardless; this flag is purely a cold-start latency
 /// optimization.
-void markRetroCompleteForUser(String userId) {
+///
+/// `box.flush()` mirrors [markSagaIntroSeenForUser] for IndexedDB durability
+/// on Flutter Web. The server is idempotent so a missed flush is recoverable
+/// (re-running `backfill_rpg_v1` is a no-op), but the parity keeps the two
+/// per-user gate writes structurally identical and avoids a misleading
+/// inconsistency for future maintainers.
+Future<void> markRetroCompleteForUser(String userId) async {
   final box = Hive.box<dynamic>(HiveService.userPrefs);
-  box.put('$_kRetroKeyPrefix$userId', true);
+  await box.put('$_kRetroKeyPrefix$userId', true);
+  await box.flush();
 }
 
 /// Whether the first-run [SagaIntroOverlay] has been dismissed for [userId].
@@ -170,7 +175,7 @@ Future<void> markSagaIntroSeenForUser(String userId) async {
 }
 
 // ---------------------------------------------------------------------------
-// Lifetime XP → rank label
+// Lifetime XP → rank slug + localized label
 // ---------------------------------------------------------------------------
 //
 // The Phase 17b coarse rank ladder (rookie → diamond) is a UI-only
@@ -181,44 +186,62 @@ Future<void> markSagaIntroSeenForUser(String userId) async {
 // localization keys live here — the only consumer is the intro overlay.
 //
 // Threshold table (locked, mirrors PLAN.md §17b):
-//   * 0          → ROOKIE
-//   * 2_500      → IRON
-//   * 10_000     → COPPER
-//   * 25_000     → SILVER
-//   * 60_000     → GOLD
-//   * 125_000    → PLATINUM
 //   * 250_000    → DIAMOND
+//   * 125_000    → PLATINUM
+//   *  60_000    → GOLD
+//   *  25_000    → SILVER
+//   *  10_000    → COPPER
+//   *   2_500    → IRON
+//   *       0    → ROOKIE
+//
+// The ladder is stored as a `List` of `(minXp, slug)` records sorted
+// **descending by `minXp`** so a single forward walk finds the first match.
+// Earlier revisions used a `Map<String, double>` and called
+// `.entries.toList().reversed` per lookup — correct, but it allocated a
+// throwaway list on every overlay rebuild and obscured intent. The list
+// shape makes ordering structural (not derived) and the lookup zero-alloc.
 
-const Map<String, double> _kIntroRankThresholds = {
-  'rookie': 0,
-  'iron': 2500,
-  'copper': 10000,
-  'silver': 25000,
-  'gold': 60000,
-  'platinum': 125000,
-  'diamond': 250000,
-};
+const List<({double minXp, String slug})> _rpgIntroRankLadder = [
+  (minXp: 250000, slug: 'diamond'),
+  (minXp: 125000, slug: 'platinum'),
+  (minXp: 60000, slug: 'gold'),
+  (minXp: 25000, slug: 'silver'),
+  (minXp: 10000, slug: 'copper'),
+  (minXp: 2500, slug: 'iron'),
+  (minXp: 0, slug: 'rookie'),
+];
 
-/// Resolve a localized rank label from `character_state.lifetime_xp`.
+/// Resolve a rank slug from `character_state.lifetime_xp` against the
+/// Phase 17b coarse ladder.
 ///
-/// Returns the localized label for the highest threshold the lifter has
-/// crossed. Used by the intro overlay's step-3 "LVL N — RANK" preview.
-String _rankLabelFromLifetimeXp(AppLocalizations l10n, double lifetimeXp) {
-  String slug = 'rookie';
-  // Walk thresholds top-down so the first match wins.
-  for (final entry in _kIntroRankThresholds.entries.toList().reversed) {
-    if (lifetimeXp >= entry.value) {
-      slug = entry.key;
-      break;
-    }
+/// Walks [_rpgIntroRankLadder] top-down (descending `minXp`) and returns the
+/// first slug whose threshold the lifter has crossed. With a `0` floor entry
+/// (`rookie`), every non-negative XP matches; the final-fallback return on
+/// the last entry's slug guards against an empty ladder + negative XP and
+/// keeps the function total.
+///
+/// Public + `@visibleForTesting` so the unit suite can pin threshold edges
+/// without spinning up a localized widget tree.
+@visibleForTesting
+String rankSlugFromLifetimeXp(double lifetimeXp) {
+  for (final entry in _rpgIntroRankLadder) {
+    if (lifetimeXp >= entry.minXp) return entry.slug;
   }
+  return _rpgIntroRankLadder.last.slug;
+}
+
+/// Map a rank [slug] (from [rankSlugFromLifetimeXp]) to its localized label
+/// via the bundled `sagaRank*` ARB keys. Unknown slugs fall back to ROOKIE
+/// — the ladder is closed, so this is defensive only.
+String _localizeRankSlug(AppLocalizations l10n, String slug) {
   return switch (slug) {
-    'iron' => l10n.sagaRankIron,
-    'copper' => l10n.sagaRankCopper,
-    'silver' => l10n.sagaRankSilver,
-    'gold' => l10n.sagaRankGold,
-    'platinum' => l10n.sagaRankPlatinum,
     'diamond' => l10n.sagaRankDiamond,
+    'platinum' => l10n.sagaRankPlatinum,
+    'gold' => l10n.sagaRankGold,
+    'silver' => l10n.sagaRankSilver,
+    'copper' => l10n.sagaRankCopper,
+    'iron' => l10n.sagaRankIron,
+    'rookie' => l10n.sagaRankRookie,
     _ => l10n.sagaRankRookie,
   };
 }

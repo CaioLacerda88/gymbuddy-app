@@ -30,17 +30,6 @@
 ///             only increases across pre→post; the builder never fabricates a
 ///             rank decrease.
 ///
-/// **Why this test lives in `test/integration/` but is NOT tagged
-/// `@Tags(['integration'])`:** the existing `test/integration/` files are
-/// Postgres-hitting tests that require local Supabase. This file is a
-/// pure-Dart aggregation seam test — no HTTP, no DB. Leaving it untagged
-/// keeps it inside the default `flutter test` run (= `make test` =
-/// `flutter test --exclude-tags integration`) so CI catches aggregation
-/// regressions without standing up Supabase. The file lives here because
-/// the user asked for it under this path; if integration-vs-unit
-/// classification ever matters for CI sharding, this test moves to
-/// `test/unit/features/rpg/integration/` without losing its contract.
-///
 /// **Bullets covered elsewhere (intentionally not duplicated):**
 ///   * #1 schema migrated, #2 <50ms p95 XP, #6 vitality EWMA, #9 strength_mult,
 ///     #11 CI green, #12 hosted migration — these are server-side / pipeline
@@ -630,7 +619,7 @@ void main() {
       // saga_forged fires (every active rank >= 60).
       // iron_bound fires (chest+back+legs all >= 60).
       // even_handed fires (every active rank >= 30 and spread = 0/60 = 0).
-      // pillar_walker fires (legs=60 >= 40 AND legs=60 >= 2*arms=120 → 60 >= 120 is FALSE).
+      // pillar_walker: legs=60 < 2×arms (2×60=120) → FALSE.
       // broad_shouldered: upper=180, lower=120 → 180 >= 240 is FALSE.
       expect(fired, contains('iron_bound'));
       expect(fired, contains('saga_forged'));
