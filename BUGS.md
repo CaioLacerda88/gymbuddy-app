@@ -1,0 +1,638 @@
+# BUGS.md — Multi-Agent Audit Findings (2026-04-30)
+
+Output of a parallel sweep across UX/visual, QA stress simulation, DB schema/perf,
+and codebase/test audits triggered by two production bugs surfaced on a Galaxy
+S25 Ultra:
+
+1. **Workout-save sync error:** `type 'Null' is not a subtype of type 'String' in type cast`
+2. **Personal-records sync error:** `DatabaseException: insert or update on table "personal_records" violates foreign key constraint "..."`
+
+Both items showed in the home-screen "Sincronização Pendente" sheet with retry
+counters incrementing toward terminal failure (data loss).
+
+Prioritization: **P0** = user-blocking / data-loss / security. **P1** = significant
+UX or correctness. **P2** = polish, missing indexes, brand alignment. **P3** =
+nice-to-have. Items are clustered so the tech-lead can batch related fixes into
+single PRs.
+
+PR **#122** (chore/phase18-followups) is already in flight and addresses none of
+the items below — it is a separate debt-cleanup branch.
+
+---
+
+## Cluster 1 — Offline sync replay (P0 data-loss)
+
+The two production bugs are both in this cluster. Three independent agents
+converged on the same root causes. Recommend a single PR fixing all of Cluster 1
+with paired unit tests.
+
+### BUG-001 [P0] — Offline `setsJson` omits `created_at`, breaks `ExerciseSet.fromJson` on replay
+
+**What:** When a workout is saved offline, `_enqueueOfflineWorkout` builds a
+`setsJson` map for the queued `PendingSaveWorkout` action. The map serializes
+every `ExerciseSet` field **except `created_at`**. When the queue later replays,
+`ExerciseSet.fromJson` calls `DateTime.parse(json['created_at'] as String)` —
+`json['created_at']` is `null`, the cast throws, the action moves to retry, and
+after 6 attempts the entire workout becomes terminal data loss.
+
+**Where:**
+- `lib/features/workouts/providers/notifiers/active_workout_notifier.dart:758-771` — the JSON construction missing `'created_at'`
+- `lib/features/workouts/models/exercise_set.g.dart:21` — generated `_$ExerciseSetFromJson` that does the unguarded cast
+- Replay path: `lib/core/offline/pending_sync_provider.dart:96-98` calls `ExerciseSet.fromJson(setsJson[i])`
+
+**Fix:** Add `'created_at': s.createdAt.toIso8601String()` to the map literal at
+`active_workout_notifier.dart:758-771`. While here, extract a static
+`ExerciseSet.toRpcJson()` so the offline path and the online `WorkoutRepository.saveWorkout`
+path share one serializer (eliminates the DRY drift that caused this bug).
+
+**Test gap to close:** Add a unit pin in
+`test/unit/features/workouts/providers/active_workout_notifier_test.dart` that
+extracts the queued `setsJson` and round-trips it through `ExerciseSet.fromJson`
+without throwing.
+
+---
+
+### BUG-002 [P0] — FIFO queue replay drains `PendingUpsertRecords` before its `PendingSaveWorkout` parent
+
+**What:** `OfflineQueueService` is FIFO across action types. When a workout is
+saved offline, the queue contains `PendingSaveWorkout(W)` followed by
+`PendingUpsertRecords([{set_id: S1, ...}])` for the PRs detected during that
+workout. Replay drains FIFO, but with backoff each item retries independently.
+If `PendingSaveWorkout` fails transiently (e.g., it hits BUG-001 above) and goes
+to backoff, `PendingUpsertRecords` may attempt before its parent workout is
+committed. The `personal_records.set_id` FK references a `sets.id` that doesn't
+exist server-side yet → FK violation.
+
+**Where:**
+- `lib/core/offline/sync_service.dart` (queue drain logic)
+- `lib/features/personal_records/data/pr_repository.dart:297-308` (upsert that fires the FK)
+- Schema: `00001_initial_schema.sql:108` (`personal_records.exercise_id` and `set_id` FKs)
+- `lib/features/personal_records/domain/pr_detection_service.dart:153,193` — `setId: bestSet.id` is always set even on the offline path; if BUG-001 is fixed in isolation but ordering isn't, this still fires.
+
+**Fix (recommended):** Dependency-order the queue drain — `PendingUpsertRecords`
+for set IDs `[S1, S2]` cannot drain until the `PendingSaveWorkout` carrying
+those set IDs has committed. Implementation: tag each pending action with a
+`dependsOn: List<String>` field (action UUIDs) and gate the drain.
+
+**Alternative fix:** Set `setId: null` on the PR entries when they're enqueued
+offline (the FK is already `ON DELETE SET NULL` per migration `00008`). Less
+ideal — loses the set→PR linkage permanently for offline workouts.
+
+**Test gap:** Add a `sync_service_test.dart` test that queues `saveWorkout` then
+`upsertRecords`, asserts ordering on drain, and verifies the upsert is held
+when its parent saveWorkout is in backoff.
+
+---
+
+### BUG-003 [P0] — No `PendingCreateExercise` queue variant
+
+**What:** A user can create a custom exercise while offline and log sets against
+it in the same offline session. There is no `PendingCreateExercise` action; the
+exercise exists only in local Hive. When `PendingSaveWorkout` replays, the RPC
+fails (`exercise_id` references a row not on the server). Same FK violation
+class as BUG-002, but a permanently latent bug — even with dependency-ordering
+fixed, this path still breaks.
+
+**Where:**
+- `lib/core/offline/pending_action.dart` — sealed class missing `PendingCreateExercise`
+- `lib/features/exercises/data/` — exercise creation repository
+- `personal_records.exercise_id` FK at `00001_initial_schema.sql:108` (no `ON DELETE CASCADE`)
+
+**Fix:** Add `PendingCreateExercise(exerciseId, name, locale, ...)` action.
+Enqueue on offline custom-exercise creation. Drain before any
+`PendingSaveWorkout` that references the new `exerciseId`. Reuses the
+dependency-ordering work from BUG-002.
+
+**Test gap:** Offline E2E spec — create custom exercise offline, log sets
+against it, reconnect, verify sync drains successfully.
+
+---
+
+### BUG-004 [P0] — `WorkoutRepository.saveWorkout` hard-casts RPC result without null guard
+
+**What:** `result as Map<String, dynamic>` assumes Supabase always returns a
+non-null map. PostgREST can return `null` for RPCs that hit a `RAISE
+EXCEPTION` inside a `DO` block or on certain partial-commit error paths. When
+that happens, the cast throws the exact error string the user reported. This
+is a secondary path to the same surface symptom as BUG-001 (different root,
+same user-visible message).
+
+**Where:** `lib/features/workouts/data/workout_repository.dart:89`
+
+**Fix:** `if (result is! Map<String, dynamic>) throw const app.DatabaseException('save_workout returned null');` before the cast. Apply the same defensive pattern to every repository's RPC return-cast (see Cluster 2 for the audit list).
+
+---
+
+### BUG-005 [P1] — Sync drain doesn't invalidate RPG/PR providers after success
+
+**What:** After `PendingSaveWorkout` drains successfully, the sync service
+collects user IDs only for `PendingUpsertRecords` reconciliation
+(`reconciledUserIds` in `sync_service.dart:69`). It never invalidates
+`rpgProgressProvider`, `characterSheetProvider`, `earnedTitlesProvider`,
+`exerciseProgressProvider`, `workoutHistoryProvider`, or `weeklyPlanProvider`.
+The user trains hard offline, syncs, opens the character sheet — sees no
+rank/level progression until they kill and relaunch the app. Severe degradation
+of the RPG motivational loop, which is the entire premise of Phase 17–18.
+
+**Where:**
+- `lib/core/offline/sync_service.dart:69-131` — drain handler missing invalidations after `PendingSaveWorkout` success
+
+**Fix:** Track which action types completed in the drain; for each, invalidate
+the appropriate provider set. Pattern:
+```dart
+if (drainedSaveWorkouts.isNotEmpty) {
+  ref.invalidate(rpgProgressProvider);
+  ref.invalidate(characterSheetProvider);
+  ref.invalidate(earnedTitlesProvider);
+  ref.invalidate(exerciseProgressProvider);
+  ref.invalidate(workoutHistoryProvider);
+  ref.invalidate(weeklyPlanProvider);
+}
+```
+
+---
+
+### BUG-006 [P1] — PR cache key mismatch between reconcile and detection
+
+**What:** `SyncService._reconcilePrCache` writes to `prCache` under key
+`'<userId>:<locale>'`. `ActiveWorkoutNotifier.detectPRs` reads from `prCache`
+under key `'exercises:<sorted_exercise_ids>'`. These are two different cache
+namespaces. Reconciliation writes one key; offline PR detection reads another.
+Result: after a successful sync drain, the next offline workout uses the
+pre-reconciliation exercise-specific cache, falsely earning PRs for exercises
+the user already holds records on.
+
+**Where:**
+- `lib/core/offline/sync_service.dart:260-280` (writes `<userId>:<locale>` key)
+- `lib/features/workouts/providers/notifiers/active_workout_notifier.dart:837-840` (reads `exercises:<...>` key)
+
+**Fix:** Unify the cache key strategy. Either both use exercise-id-keyed (and
+reconcile by clearing all per-exercise cache entries on drain), or both use
+user-keyed (and detection re-fetches per exercise from the user-keyed bag).
+Recommend the former: clearer cache invalidation semantics.
+
+---
+
+### BUG-007 [P1] — `OfflineQueueService` silently swallows Hive write failures
+
+**What:** Three methods (`enqueue`, `dequeue`, `updateAction`) catch and log
+without rethrowing. A failed enqueue means the action is permanently lost (no
+queue item, no badge increment, no Sentry capture). A failed dequeue after a
+successful remote save means the item replays on next drain, causing a
+duplicate upsert. A failed `updateAction` means the retry counter never
+increments, so the queue retries forever rather than reaching terminal state.
+
+**Where:**
+- `lib/core/offline/offline_queue_service.dart:25-32` (enqueue)
+- `lib/core/offline/offline_queue_service.dart:36-44` (dequeue)
+- `lib/core/offline/offline_queue_service.dart:73-82` (updateAction)
+- `lib/core/offline/offline_queue_service.dart:51-68` (`getAll` silently skips corrupt entries — same class)
+
+**Fix:** Rethrow on Hive failures so callers can surface them. At minimum, add
+`Sentry.captureException` in each catch so the team sees production rates.
+
+---
+
+### BUG-008 [P1] — Sync sheet retry CTA shown even for structural errors
+
+**What:** `PendingSyncSheet` renders "Tentar novamente" for every failed item,
+including structural errors (FK violations, type-cast crashes) that retry will
+never resolve. The error text is the raw Dart exception string
+(`type 'Null' is not a subtype of type 'String' in type cast`), opaque to a
+Brazilian gym user. Users get stuck in a retry loop with no path out until
+the queue auto-terminates after 6 attempts (data loss).
+
+**Where:**
+- `lib/shared/widgets/pending_sync_sheet.dart:220-229`
+
+**Fix:** Classify error categories on the action:
+- Transient (network, 503) → "Tentar novamente"
+- Structural (FK violation, type cast, 4xx) → "Dispensar" + branded copy ("Não foi possível enviar — entre em contato com suporte")
+- Capture the error class on the action's `errorReason` so the UI can switch on it.
+
+---
+
+### BUG-009 [P1] — Active workout notifier swallows PR-detection exceptions
+
+**What:** The PR detection catch block in `_finishWorkout` logs and continues.
+If `PersonalRecord.fromJson` throws a null cast inside the cache deserializer,
+the workout saves but the detection result is silently dropped. This was the
+mask that hid BUG-001 from earlier debugging.
+
+**Where:** `lib/features/workouts/providers/notifiers/active_workout_notifier.dart:906-912`
+
+**Fix:** Capture to Sentry inside the catch (don't just `log()`). Decide
+whether to surface to the user — ideally not (workout is saved), but the
+team needs visibility on production rates.
+
+---
+
+## Cluster 2 — Unsafe casts in repository layer (P1)
+
+Multiple `as String` / `as Map` / `!` patterns throughout the repository layer
+will throw the same cryptic null-cast error if any DB column shape drifts.
+
+### BUG-010 [P1] — `as String` casts without null guards (audit list)
+
+**Where (high priority — call paths that fire on workout save / PR sync):**
+- `lib/features/personal_records/data/pr_repository.dart:261` — `setRows.map<String>((r) => r['id'] as String)`
+- `lib/features/rpg/data/rpg_repository.dart:25, 315-325` — `CharacterState.fromJson` and `BackfillProgress.fromJson` field casts
+- `lib/features/rpg/data/titles_repository.dart:43-45` — `earned_titles` view casts
+- `lib/core/router/app_router.dart:148-151` — `extra['result'] as PRDetectionResult` and `extra['exerciseNames'] as Map<String, String>`
+
+**Fix pattern:** For every untrusted external boundary, replace `as T` with
+`as T?` plus a null check that throws a typed `app.DatabaseException` with
+context. Consider a helper `T requireField<T>(Map<String, dynamic> json, String key)`.
+
+**Lint:** Enable `avoid_dynamic_calls` in `analysis_options.yaml` to surface
+new instances at compile time.
+
+---
+
+## Cluster 3 — RPG progression UX gaps (P1)
+
+The RPG system is the retention moat (per PLAN.md Phase 17–18 framing). Several
+gaps blunt the motivational loop.
+
+### BUG-011 [P1] — Class promotion (Initiate → first earned class) silent
+
+**What:** When `maxRank < 5`, `ClassResolver` returns `CharacterClass.initiate`.
+On the first rank-5 cross-over, the resolver returns a dominant class (e.g.
+Bulwark for chest-dominant) and the badge silently changes on the character
+sheet. There is no `ClassChangeEvent` in the celebration system. A user who
+earns their first class above Initiate has no idea anything happened — the
+badge just changes quietly.
+
+**Where:**
+- `lib/features/rpg/domain/class_resolver.dart:94`
+- `lib/features/rpg/domain/celebration_event_builder.dart` — no class-change event type
+
+**Fix:** Add `ClassChangeEvent(fromClass, toClass)` to the celebration union.
+Detect on the workout-finish RPG snapshot diff. Render a branded class-up
+overlay (one-time, not on every workout). High-priority for retention.
+
+---
+
+### BUG-012 [P1] — Saga intro overlay collides with rank-up celebration
+
+**What:** Saga intro fires after the first XP is earned. If the user's first
+workout produces a rank-up overlay AND the saga intro is gated on first XP,
+both overlays compete for the screen at workout-finish. There is no E2E
+coverage for this scenario; ordering depends on widget-tree paint order and
+provider invalidation timing.
+
+**Where:**
+- `lib/features/rpg/ui/saga_intro_gate.dart` (gate logic)
+- `lib/features/workouts/ui/active_workout_screen.dart:253-456` (`_onFinish`)
+
+**Fix:** Sequence the overlays explicitly — saga intro must complete before
+celebration overlays render. Add a `SagaIntroController.shouldShowAt(post-workout)` check
+in the celebration orchestrator and queue.
+
+**Test gap:** New E2E spec exercising "first workout that produces a rank-up".
+
+---
+
+### BUG-013 [P1] — Cap-at-3 celebration logic drops all rank-ups when 3+ closers fire
+
+**What:** `celebration_event_builder.dart:103-104` calculates
+`closersCount = levelUps.length + titles.length`, then
+`rankUpCapacity = clamp(3 - closersCount, 0, N)`. A workout producing 1
+level-up + 2 titles silently demotes ALL rank-ups to the overflow card (just
+"{N} more rank-ups" with no enumeration). Rank-up overlays are the most
+viscerally satisfying moment in the loop; losing them entirely to a numeric
+card is anticlimactic.
+
+**Where:** `lib/features/rpg/domain/celebration_event_builder.dart:103-104`
+
+**Fix:** Always reserve at least one slot for the highest rank-up event, even
+when closers fill the queue. Rebalance: `rankUpCapacity = clamp(3 - closersCount, 1, N)`.
+Trade off one closer if needed to make room.
+
+---
+
+### BUG-014 [P1] — Cross-build titles are hidden cheevos with no progress hint
+
+**What:** `_pillarWalker`, `_broadShouldered`, `_evenHanded`, `_ironBound`,
+`_sagaForged` are binary unlocks with no in-app surface that reveals trigger
+conditions. Brazilian gym-goers motivated by visible progress will not know
+Iron-Bound exists until they accidentally unlock it. No codex entry shows
+"you need X more rank in Y body part". This kills the retention hook these
+titles are supposed to provide.
+
+**Where:**
+- `lib/features/rpg/domain/cross_build_title_evaluator.dart`
+- `lib/features/rpg/ui/titles_screen.dart` — Distinction section shows earned only
+
+**Fix:** Render unearned cross-build titles in the Distinction section with
+locked iconography + a "next milestone" progress hint. Spec the predicate
+descriptions in pt-BR (`"Aumente Costas e Pernas para 60 — falta {N} no Peito"`).
+
+---
+
+### BUG-015 [P1] — `_broadShouldered` predicate is effectively unreachable for balanced lifters
+
+**What:** The predicate requires `Chest+Back+Shoulders >= 2*(Legs+Core)`. Any
+lifter who does serious leg day cannot hit this — chest=50, back=50,
+shoulders=50 (upper=150) requires legs+core ≤75, meaning legs ≤65 if core=10.
+A dedicated upper-body-only build. The title is invisible to most users.
+
+**Where:** `lib/features/rpg/domain/cross_build_title_evaluator.dart:128-133`
+
+**Fix (product call):** Either re-spec the threshold (e.g., upper >= 1.5x
+lower instead of 2x) or rename the title to something that matches the
+extreme-imbalance reality (e.g., "Sky-Reacher" / "Above the Belt"). Coordinate
+with PO before changing math.
+
+---
+
+### BUG-016 [P1] — Class names hardcoded English (likely; verify)
+
+**What:** `ClassBadge` displays the class name. If the class names are
+hardcoded English in `CharacterClass` enum without ARB l10n, switching to
+pt-BR leaves "Bulwark" or "Sentinel" on the badge. Brazilian users seeing
+English class names on a pt-BR UI is jarring.
+
+**Where:**
+- `lib/features/rpg/models/character_class.dart`
+- `lib/features/rpg/ui/widgets/class_badge.dart`
+- `lib/l10n/app_pt.arb` — verify `classNameBulwark`, `classNameSentinel`, etc. keys exist
+
+**Fix:** Add per-class l10n keys; resolve in the badge widget via
+`AppLocalizations.of(context).classNameForSlug(slug)`.
+
+---
+
+### BUG-017 [P2] — Vitality state stale on workout finish (cron-driven)
+
+**What:** Vitality is computed by a nightly pg_cron job. A user who trains
+heavily in the morning sees the same green radar they had when they last
+trained — until the next cron tick. There's no on-demand recalculation on
+workout finish.
+
+**Where:** `00042_vitality_cron.sql`, `lib/features/rpg/domain/vitality_state_mapper.dart`
+
+**Fix:** Add a "last updated" timestamp to the vitality widget. Optionally,
+trigger an Edge Function call on workout finish to recompute that user's
+vitality immediately. Low priority — the cron architecture is a deliberate
+spec choice.
+
+---
+
+## Cluster 4 — Tap-target & sweat-proof UX (P1)
+
+Core gym-context interactions below the 48dp Material minimum. High impact
+because they're on the primary logging flow.
+
+### BUG-018 [P1] — Set-row number cell is 40dp (below 48dp tap target)
+
+**Where:** `lib/features/workouts/ui/widgets/set_row.dart:236-241`
+**Fix:** Bump `minWidth: 48, minHeight: 48`.
+
+### BUG-019 [P1] — Weight stepper buttons can render at 32dp on 360dp screens
+
+**Where:** `lib/features/workouts/ui/widgets/set_row.dart:298-322` (the
+`flex: 3` weight column compresses on Moto G / Samsung A widths)
+**Fix:** Raise stepper button constraints to `minWidth: 40, minHeight: 48` and
+audit at 360dp.
+
+### BUG-020 [P1] — Workout "Finish" button is AppBar-only (one-handed reach hard)
+
+**What:** Comment in code calls this "intentional friction" — but the issue
+isn't the friction (a confirmation dialog gates it), it's the discoverability
++ reach. First-time users will hunt for how to end a workout; on 360dp
+devices the AppBar trailing area is a precise micro-tap.
+
+**Where:** `lib/features/workouts/ui/active_workout_screen.dart:592-627`
+**Fix:** Move the button to a persistent bottom bar so users can reach it
+one-handed. Keep the confirmation dialog as the safety gate — the friction
+remains, the obscurity goes away.
+
+---
+
+## Cluster 5 — Localization & accessibility (P1/P2)
+
+### BUG-021 [P1] — `PendingSyncBadge` Semantics label hardcoded English
+
+**Where:** `lib/shared/widgets/pending_sync_badge.dart:36`
+**Fix:** Add `pendingSyncBadgeSemantics` ARB key; localize the
+`'$label. Tap to manage.'` string.
+
+### BUG-022 [P2] — `equipmentBands` not localized (one of seven equipment chips)
+
+**Where:** `lib/l10n/app_pt.arb:103` — `"equipmentBands": "Bands"` (English)
+**Fix:** Change to `"Elásticos"` (or `"Faixas"` per BR gym vocabulary).
+
+### BUG-023 [P2] — Home status line fails WCAG AA contrast (2.8:1)
+
+**Where:** `lib/features/workouts/ui/widgets/home_status_line.dart:68-87`
+**What:** `titleLarge` at alpha 0.55 over `abyss` background ≈ 2.8:1 ratio
+(WCAG AA requires 4.5:1 for normal text).
+**Fix:** Increase dim portion to alpha 0.75 minimum.
+
+### BUG-024 [P2] — `ActiveTitlePill` lacks max-width / overflow handling
+
+**Where:** `lib/features/rpg/ui/widgets/active_title_pill.dart:34-39`
+**What:** Long pt-BR titles will overflow.
+**Fix:** Add `Text(..., overflow: TextOverflow.ellipsis, maxLines: 1)` plus
+a `BoxConstraints(maxWidth: ...)`.
+
+### BUG-025 [P3] — Saga intro overlay has no skip path
+
+**Where:** `lib/features/rpg/ui/saga_intro_overlay.dart:68-107`
+**Fix:** Add a "Pular" `TextButton` in the top-right of the step-indicator row
+calling `onDismiss` directly.
+
+---
+
+## Cluster 6 — Brand consistency (generic Material smells, P2)
+
+The RPG screens are the most brand-expressive surfaces. Several use vanilla
+Material widgets that read as generic-AI default.
+
+### BUG-026 [P2] — Character sheet error state uses `Icons.error_outline`
+
+**Where:** `lib/features/rpg/ui/character_sheet_screen.dart:331`
+**Fix:** Replace with `AppIcons.render(AppIcons.hero, ...)` to stay on-brand.
+Single most egregious generic-AI smell on a flagship screen.
+
+### BUG-027 [P2] — Titles screen loading uses double `CircularProgressIndicator`
+
+**Where:** `lib/features/rpg/ui/titles_screen.dart:95-96`
+**Fix:** Combine `catalogAsync.isLoading || earnedAsync.isLoading` into one
+branch; show a branded skeleton (mirror `_CharacterSheetSkeleton`'s pattern).
+
+### BUG-028 [P2] — Onboarding page 2 uses raw `ChoiceChip` widgets
+
+**Where:** `lib/features/auth/ui/onboarding_screen.dart:312-330, 350-369`
+**What:** Visual language switches from branded welcome page to generic M3.
+**Fix:** Replace `ChoiceChip` with branded pill-buttons matching the
+exercise-screen filter chip style.
+
+### BUG-029 [P2] — Routine list empty state is bare `Text`
+
+**Where:** `lib/features/routines/ui/routine_list_screen.dart:74-89`
+**Fix:** Add a branded illustration + inline `FilledButton("Criar rotina")`
+that calls `context.go('/routines/create')` (rather than pointing to the
+hard-to-reach `+` icon in the AppBar).
+
+---
+
+## Cluster 7 — Database integrity & performance (P1/P2)
+
+### BUG-030 [P1] — `evaluate_cross_build_titles_for_user` lacks ownership check
+
+**What:** Authenticated users can pass any `p_user_id` and read another
+user's rank distribution via the returned slug list. Not currently exploited
+because cross-user UIs don't exist, but should be locked down before any
+social surface ships.
+
+**Where:** `00043_cross_build_titles_backfill.sql:152` (GRANT to authenticated)
+**Fix:** Add `IF p_user_id != auth.uid() THEN RAISE EXCEPTION USING errcode = '42501'; END IF;`
+at the function entry.
+
+### BUG-031 [P2] — Missing index: `workout_exercises.exercise_id`
+
+**Where:** `00001_initial_schema.sql` (only indexes `workout_id`)
+**Fix:** `CREATE INDEX workout_exercises_exercise_id_idx ON workout_exercises(exercise_id)` —
+hot path for "show workouts containing exercise X".
+
+### BUG-032 [P2] — Missing index: `personal_records.set_id`
+
+**Where:** `00008_fix_personal_records_set_id_fk.sql` (rewires FK without index)
+**Fix:** `CREATE INDEX personal_records_set_id_idx ON personal_records(set_id)`.
+
+### BUG-033 [P2] — `personal_records.exercise_id` lacks explicit `ON DELETE` clause
+
+**Where:** `00001_initial_schema.sql:108`
+**What:** Defaults to NO ACTION/RESTRICT. A hard `DELETE FROM exercises`
+would fail with FK violation rather than CASCADE/SET NULL.
+**Fix:** New migration: `ALTER TABLE personal_records ALTER CONSTRAINT personal_records_exercise_id_fkey ON DELETE SET NULL` (matching the pattern from `00008` for `set_id`).
+
+### BUG-034 [P3] — Cross-build backfill uses `now()` for all `earned_at` rows
+
+**Where:** `00043_cross_build_titles_backfill.sql:167-175`
+**What:** Every backfilled user shares the exact same earn timestamp →
+"recently earned" UIs look unnatural.
+**Fix:** Use a derived timestamp (e.g., the `MAX(earned_at)` of the user's
+existing per-body-part titles + 1ms) or accept the cosmetic issue.
+
+---
+
+## Cluster 8 — Architecture leaks & SOLID violations (P2)
+
+### BUG-035 [P2] — Domain layer imports Flutter framework
+
+**Where:** `lib/features/rpg/domain/vitality_state_mapper.dart:1,4` (imports
+`package:flutter/painting.dart` and `AppLocalizations`)
+**Fix:** Return a `VitalityColorToken` enum + l10n key from the domain;
+let the UI layer resolve to `Color` and string. Or move the file to
+`lib/features/rpg/ui/utils/`.
+
+### BUG-036 [P2] — `active_workout_screen.dart` is 1590 lines, `_onFinish` is 205 lines
+
+**Where:** `lib/features/workouts/ui/active_workout_screen.dart`
+**Fix:** Extract `_PostWorkoutNavigator`, `_CelebrationOrchestrator`, and
+`_FinishWorkoutCoordinator` into separate files. CLAUDE.md mandates < 50-line
+build methods.
+
+### BUG-037 [P2] — `profile_settings_screen.dart` is 801 lines, mixes 5 responsibilities
+
+**Where:** `lib/features/profile/ui/profile_settings_screen.dart`
+**Fix:** Extract per-section widgets (language picker, crash report toggle,
+account deletion, social links).
+
+### BUG-038 [P2] — `plan_management_screen.dart` is 752 lines
+
+**Where:** `lib/features/weekly_plan/ui/plan_management_screen.dart`
+**Fix:** Extract `_WeekDayBucket`, `_RoutineSlot`, `_EmptyPlanCta`.
+
+### BUG-039 [P2] — `ActiveWorkoutNotifier.savedOffline` is a public field, not in state
+
+**Where:** `lib/features/workouts/providers/notifiers/active_workout_notifier.dart:47-98`
+**What:** UI reads `notifier.savedOffline` via `ref.read` — breaks
+unidirectional Riverpod data flow.
+**Fix:** Fold `savedOffline` into `ActiveWorkoutState` (Freezed) or return as
+part of `finishWorkout`'s result.
+
+### BUG-040 [P2] — Provider keepAlive with no logout invalidation
+
+**Where:** `lib/features/workouts/providers/workout_history_providers.dart`,
+`workout_providers.dart` (`workoutCountProvider`)
+**What:** Stale data for user A shown to user B after sign-out → sign-in.
+**Fix:** Listen on `authStateProvider` and invalidate on user-id change.
+
+### BUG-041 [P2] — File-level mutable state on active workout screen
+
+**Where:** `lib/features/workouts/ui/active_workout_screen.dart:45-59` —
+`_isShowingDiscardDialog`, `_isFinishHandled`
+**What:** Survives widget disposal; could interfere with re-mount paths.
+**Fix:** Move to `_ActiveWorkoutBodyState` instance fields.
+
+---
+
+## Test gaps to close
+
+The fixes above include test specs for each. Consolidated list:
+
+- **`active_workout_notifier_test.dart`** — pin that queued `setsJson` round-trips through `ExerciseSet.fromJson` (BUG-001)
+- **`sync_service_test.dart`** — pin FIFO ordering: `PendingUpsertRecords` waits for parent `PendingSaveWorkout` (BUG-002)
+- **`pr_detection_service_test.dart`** — assert `setId: null` policy or document the FK-race avoidance (BUG-002)
+- **`workout_repository_test.dart`** — pin null-RPC-result handling throws typed exception (BUG-004)
+- **`offline_queue_service_test.dart`** — pin Hive failure paths surface to caller (BUG-007)
+- **`test/e2e/specs/offline-sync.spec.ts`** — assert character sheet reflects new XP/rank after offline drain (BUG-005)
+- **`test/e2e/specs/saga.spec.ts`** — class change celebration spec (BUG-011)
+- **`test/e2e/specs/gamification-intro.spec.ts`** — saga-intro + rank-up overlay collision (BUG-012)
+- **`workout_history_providers_test.dart`** — invalidation on logout (BUG-040)
+- **ARB completeness test extension** — assert all class-name keys exist in en + pt (BUG-016)
+
+### Tests to consolidate / delete
+
+- `test/widget/features/workouts/ui/home_screen_*.dart` — 8 separate files testing the same screen with duplicated scaffolding. Consolidate into `home_screen_test.dart` with `group()` blocks sharing setup.
+- `test/unit/features/workouts/providers/active_workout_notifier_test.dart:766-830` — six near-identical "saveActiveWorkout-was-called" tests. Collapse to two: "mutations call save" / "no-op mutations don't".
+- `test/integration/rpg_backfill_resume_test.dart:129`, `rpg_backfill_test.dart:145` — `expect(x, isNotNull)` followed by `x!` access. Replace with assertions on a meaningful field.
+
+### Lint config gaps (`analysis_options.yaml`)
+
+Enable these to catch the bug classes above at compile time:
+- `unawaited_futures` — surfaces dropped `Future`s
+- `avoid_dynamic_calls` — surfaces every untyped `(row as Map<...>)['key']` access
+- `cancel_subscriptions` — `_RouterRefreshListenable` and others
+- `close_sinks` — auth/connectivity providers
+
+---
+
+## Strengths to preserve in fixes
+
+Findings the agents flagged as "do not gut these" while fixing:
+
+- **Arcane Ascent color system** is genuinely distinctive (abyss/surface/surface2 three-tier, scarcity-enforced `heroGold`, Rajdhani/Inter pairing).
+- **Rank-up overlay choreography** (1100ms multi-stage gold→violet, haptic at peak gold, FittedBox overflow guard for long pt-BR names) is the anti-generic model to copy elsewhere.
+- **`ClassBadge` two-tier prestige design** (Initiate primaryViolet vs. earned hotViolet, asymmetric BorderRadius "struck mark") is smart brand differentiation.
+- **`SetRow` sweat-proof patterns** — 600ms lock on new sets, swipe-to-delete with undo, dotted underline for copy-last-set.
+- **`SECURITY DEFINER` RPC pattern** consistently applied across XP/vitality/exercise paths. Owner-only SELECT on data tables; writes via DEFINER fns is correct authz.
+- **`character_state` view with `security_invoker = true`** — uncommon and correct.
+- **Reversal pattern in `save_workout`** cleanly avoids double-counting on edits.
+- **Idempotent backfill design** with `pg_advisory_xact_lock` + checkpoint table.
+- **Vault-sourced secrets with graceful no-op** prevents pg_cron auto-disable on misconfigured envs.
+- **`mapException` repository wrapper** consistently keeps Supabase exceptions out of the UI.
+- **`AsyncNotifier` adopted everywhere** — zero legacy `StateNotifier` in new code.
+- **`mounted` checks present** on all async UI callbacks.
+- **ARB completeness test exists** — catches en/pt drift automatically.
+
+---
+
+## Suggested implementation order
+
+Single PR per cluster to keep diffs reviewable.
+
+1. **Cluster 1 — Sync replay** (BUG-001 through BUG-009) — closes the data-loss bug. Highest leverage; ship first. Will need DB-side coordination if BUG-002 introduces queue dependency tagging.
+2. **Cluster 2 — Unsafe casts sweep** (BUG-010) — defensive depth-in-defense after Cluster 1. Enable `avoid_dynamic_calls` lint in the same PR to prevent regressions.
+3. **Cluster 4 — Tap-target fixes** (BUG-018 through BUG-020) — small, isolated, immediate UX win.
+4. **Cluster 7 — DB integrity** (BUG-030 through BUG-034) — security fix BUG-030 first; index additions can ride along.
+5. **Cluster 3 — RPG progression UX** (BUG-011 through BUG-017) — coordinate with PO; rebalances are spec changes.
+6. **Cluster 5 — Localization & a11y** (BUG-021 through BUG-025) — medium-scope sweep, easy review.
+7. **Cluster 6 — Brand consistency** (BUG-026 through BUG-029) — UI polish PR; coordinate with ui-ux-critic.
+8. **Cluster 8 — Architecture refactors** (BUG-035 through BUG-041) — medium-effort cleanup; can be split into per-feature PRs.
+
+Test gaps and lint config land alongside their corresponding cluster fixes.
