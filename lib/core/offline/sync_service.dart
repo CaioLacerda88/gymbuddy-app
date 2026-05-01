@@ -98,10 +98,10 @@ class SyncService extends Notifier<SyncState> {
         if (action.retryCount >= kMaxSyncRetries) continue;
 
         // Skip when a dependency is still live (BUG-002). Don't increment
-        // retryCount — this isn't a failure, just a "not yet". When the
-        // parent drains in this same loop, the child becomes drainable on
-        // the next drain pass (driven by the next online emission, retry
-        // tap, or trailing reconciliation pass below).
+        // retryCount — this isn't a failure, just a "not yet". The child
+        // becomes drainable in this same pass if the parent appeared
+        // earlier in the FIFO slice (liveIds.remove(parentId) on success),
+        // or on the next drain trigger if the parent was held this pass.
         if (action.dependsOn.any(liveIds.contains)) {
           SentryReport.addBreadcrumb(
             category: 'sync',

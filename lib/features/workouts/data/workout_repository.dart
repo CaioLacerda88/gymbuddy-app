@@ -81,6 +81,8 @@ class WorkoutRepository extends BaseRepository {
       // domain exception so the offline-queue retry loop and the UI's
       // sync-error mapper can classify it.
       if (result is! Map<String, dynamic>) {
+        // RPC name kept in message for diagnostic logs/Sentry; never reaches
+        // UI (sanitized by SyncErrorMapper to a generic localized retry).
         throw const app.DatabaseException(
           'save_workout RPC returned null',
           code: 'rpc_null_result',

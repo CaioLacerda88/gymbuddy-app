@@ -920,7 +920,7 @@ void main() {
     );
 
     test(
-      'BUG-002: child upsertRecords drains after parent commits (next pass)',
+      'BUG-002: child upsertRecords drains in the same pass when parent commits first (FIFO order)',
       () async {
         final container = createContainer(initialOnline: false);
 

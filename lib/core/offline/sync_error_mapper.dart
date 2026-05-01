@@ -28,7 +28,12 @@ import '../observability/sentry_report.dart';
 ///
 /// All copy is sourced from `app_pt.arb` / `app_en.arb` — pt-BR is the
 /// canonical authoring locale per CLAUDE.md.
-abstract final class SyncErrorMapper {
+class SyncErrorMapper {
+  // Static-only utility — instantiation is meaningless; the private
+  // constructor matches the prevailing codebase idiom (AppNumberFormat,
+  // ErrorMapper, AppTheme, etc.) for utility classes.
+  const SyncErrorMapper._();
+
   /// Returns a user-safe message for [error], localized via [l10n].
   ///
   /// Side effect: logs the raw exception to `developer.log` and forwards

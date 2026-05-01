@@ -154,5 +154,18 @@ void main() {
         SyncErrorMapper.classify(en, error),
       );
     });
+
+    test('does not leak sensitive markers on the toUserMessage path', () {
+      // Pin the disclosure contract at the public boundary, not just at
+      // classify(): even though toUserMessage logs the raw error, its
+      // return value (the only thing the UI ever sees) must never carry
+      // the runtime-type name or table identifiers.
+      const error = SocketException(
+        'SocketException: failed host lookup for personal_records',
+      );
+      final message = SyncErrorMapper.toUserMessage(en, error);
+      expect(message, isNot(contains('SocketException')));
+      expect(message, isNot(contains('personal_records')));
+    });
   });
 }
