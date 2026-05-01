@@ -20,13 +20,24 @@ the items below — it is a separate debt-cleanup branch.
 
 ---
 
-## Cluster 1 — Offline sync replay (P0 data-loss)
+## Cluster 1 — Offline sync replay (P0 data-loss) — ✅ RESOLVED in PR #124
 
 The two production bugs are both in this cluster. Three independent agents
 converged on the same root causes. Recommend a single PR fixing all of Cluster 1
 with paired unit tests.
 
-### BUG-001 [P0] — Offline `setsJson` omits `created_at`, breaks `ExerciseSet.fromJson` on replay
+**Cluster status (2026-05-01):** All four entries below resolved in PR #124
+([01eec28](https://github.com/CaioLacerda88/repsaga/commit/01eec28e96572e8c5bc0a887ceea4a26686a990d)).
+The fix introduced `ExerciseSet.toRpcJson()` as the DRY single-source serializer
+shared by online + offline paths (BUG-001), a `dependsOn: List<String>` mechanism
+on queued actions to gate child PR upserts on parent saveWorkout commit (BUG-002),
+a typed `DatabaseException(code: 'rpc_null_result')` null guard on the RPC return
+(BUG-004), and a `SyncErrorMapper` that classifies exceptions by class and renders
+locale-aware user messages — never raw `e.toString()` — at the pending-sync sheet
+boundary (BUG-042, opened mid-cluster after the user flagged information
+disclosure on screenshots).
+
+### BUG-001 [P0] — ~~Offline `setsJson` omits `created_at`, breaks `ExerciseSet.fromJson` on replay~~ ✅ RESOLVED in PR #124
 
 **What:** When a workout is saved offline, `_enqueueOfflineWorkout` builds a
 `setsJson` map for the queued `PendingSaveWorkout` action. The map serializes
@@ -52,7 +63,7 @@ without throwing.
 
 ---
 
-### BUG-002 [P0] — FIFO queue replay drains `PendingUpsertRecords` before its `PendingSaveWorkout` parent
+### BUG-002 [P0] — ~~FIFO queue replay drains `PendingUpsertRecords` before its `PendingSaveWorkout` parent~~ ✅ RESOLVED in PR #124
 
 **What:** `OfflineQueueService` is FIFO across action types. When a workout is
 saved offline, the queue contains `PendingSaveWorkout(W)` followed by
@@ -108,7 +119,7 @@ against it, reconnect, verify sync drains successfully.
 
 ---
 
-### BUG-004 [P0] — `WorkoutRepository.saveWorkout` hard-casts RPC result without null guard
+### BUG-004 [P0] — ~~`WorkoutRepository.saveWorkout` hard-casts RPC result without null guard~~ ✅ RESOLVED in PR #124
 
 **What:** `result as Map<String, dynamic>` assumes Supabase always returns a
 non-null map. PostgREST can return `null` for RPCs that hit a `RAISE
@@ -227,7 +238,7 @@ team needs visibility on production rates.
 
 ---
 
-### BUG-042 [P0] — Pending-sync sheet leaks raw exception strings to end users
+### BUG-042 [P0] — ~~Pending-sync sheet leaks raw exception strings to end users~~ ✅ RESOLVED in PR #124
 
 **What:** The "Sincronização Pendente" sheet rendered `e.toString()` directly
 in the per-item error label, exposing raw Dart cast errors
