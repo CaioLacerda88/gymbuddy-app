@@ -348,10 +348,14 @@ class _ProfileSetupPage extends StatelessWidget {
             runSpacing: 12,
             children: _frequencyOptions.map((freq) {
               final isSelected = freq == trainingFrequency;
-              return _BrandedPillChoice(
-                label: '${freq}x',
-                isSelected: isSelected,
-                onTap: () => onTrainingFrequencyChanged(freq),
+              return Semantics(
+                container: true,
+                identifier: 'onboarding-freq-$freq',
+                child: _BrandedPillChoice(
+                  label: '${freq}x',
+                  isSelected: isSelected,
+                  onTap: () => onTrainingFrequencyChanged(freq),
+                ),
               );
             }).toList(),
           ),
@@ -381,9 +385,17 @@ class _ProfileSetupPage extends StatelessWidget {
 }
 
 /// BUG-028: branded pill replacement for `ChoiceChip`. Idle uses surface2
-/// + textCream label; selected uses hotViolet fill + textCream label, with
-/// a hotViolet border in both states (alpha 0.4 idle, full when selected)
-/// so the pill reads as a consistent brand element.
+/// + textCream label; selected uses primaryViolet fill + textCream label,
+/// with a hotViolet border in both states (alpha 0.4 idle, full when
+/// selected) so the pill reads as a consistent brand element.
+///
+/// **Selected fill choice (post-review fix):** the original draft used
+/// [AppColors.hotViolet] (#B36DFF) as the selected fill, but `textCream`
+/// (#EEE7FA) over `hotViolet` only achieves a 2.67:1 contrast ratio — well
+/// below WCAG AA's 4.5:1 floor for normal text. Switching the selected fill
+/// to [AppColors.primaryViolet] (#6A2FA8) lifts the ratio to ~6.69:1 while
+/// preserving the violet brand language. The hotViolet border still reads
+/// as the "selected" cue against the darker fill.
 ///
 /// **Sizing:** We deliberately keep this compact (matches the natural
 /// `ChoiceChip` footprint, ~32dp tall) so two `Wrap` rows fit on the
@@ -413,7 +425,7 @@ class _BrandedPillChoice extends StatelessWidget {
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.hotViolet : AppColors.surface2,
+            color: isSelected ? AppColors.primaryViolet : AppColors.surface2,
             border: Border.all(
               color: isSelected
                   ? AppColors.hotViolet

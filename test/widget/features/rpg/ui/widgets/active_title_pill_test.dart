@@ -19,10 +19,25 @@ void main() {
         ),
       );
 
-      // No text → no Container with the violet border. The pill should
-      // collapse to nothing and contribute no visible glyphs.
-      expect(find.byType(Container), findsNothing);
-      expect(find.byType(Text), findsNothing);
+      // No text → the pill collapses to nothing and contributes no
+      // ConstrainedBox or Text inside its own subtree. Scope assertions to
+      // the ActiveTitlePill subtree so we don't match the Scaffold /
+      // MediaQuery / Theme widgets that legitimately use these types
+      // upstream — `find.byType(Container)` was passing only by accident.
+      expect(
+        find.descendant(
+          of: find.byType(ActiveTitlePill),
+          matching: find.byType(ConstrainedBox),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(ActiveTitlePill),
+          matching: find.byType(Text),
+        ),
+        findsNothing,
+      );
     });
 
     testWidgets('renders SizedBox.shrink when title is empty string', (
@@ -34,7 +49,20 @@ void main() {
         ),
       );
 
-      expect(find.byType(Container), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byType(ActiveTitlePill),
+          matching: find.byType(ConstrainedBox),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(ActiveTitlePill),
+          matching: find.byType(Text),
+        ),
+        findsNothing,
+      );
     });
 
     testWidgets('renders the title text when non-empty', (tester) async {

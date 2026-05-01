@@ -10,10 +10,13 @@ import '../../../../helpers/test_material_app.dart';
 
 /// BUG-028: the fitness-level + frequency pickers were `ChoiceChip` widgets
 /// (raw M3) and were replaced by a private `_BrandedPillChoice` Container.
-/// Selection now manifests through a hotViolet fill on the inner
-/// [AnimatedContainer]. Walking up from the label `Text` to the nearest
-/// AnimatedContainer and reading its decoration color is how we assert the
-/// selected state without exposing the private widget type.
+/// Selection now manifests through a primaryViolet fill on the inner
+/// [AnimatedContainer]. (The pre-review draft used hotViolet, but textCream
+/// over hotViolet only reached 2.67:1 — below WCAG AA 4.5:1 — so the
+/// selected fill was darkened to primaryViolet which clears 6.69:1.)
+/// Walking up from the label `Text` to the nearest AnimatedContainer and
+/// reading its decoration color is how we assert the selected state without
+/// exposing the private widget type.
 Color? _pillFillFor(WidgetTester tester, String label) {
   final ancestor = tester.widget<AnimatedContainer>(
     find
@@ -180,15 +183,15 @@ void main() {
         await tester.tap(find.text('GET STARTED'));
         await tester.pumpAndSettle();
 
-        // Default selection ('beginner') is hotViolet at mount time.
-        expect(_pillFillFor(tester, 'Beginner'), AppColors.hotViolet);
+        // Default selection ('beginner') is primaryViolet at mount time.
+        expect(_pillFillFor(tester, 'Beginner'), AppColors.primaryViolet);
         expect(_pillFillFor(tester, 'Intermediate'), AppColors.surface2);
 
         await tester.tap(find.text('Intermediate'));
         await tester.pumpAndSettle();
 
         // After tap: Intermediate is filled, Beginner falls back to surface2.
-        expect(_pillFillFor(tester, 'Intermediate'), AppColors.hotViolet);
+        expect(_pillFillFor(tester, 'Intermediate'), AppColors.primaryViolet);
       },
     );
 
@@ -206,7 +209,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(_pillFillFor(tester, 'Beginner'), AppColors.surface2);
-        expect(_pillFillFor(tester, 'Intermediate'), AppColors.hotViolet);
+        expect(_pillFillFor(tester, 'Intermediate'), AppColors.primaryViolet);
       },
     );
 

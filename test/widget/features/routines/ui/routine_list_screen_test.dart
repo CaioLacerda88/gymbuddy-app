@@ -115,8 +115,7 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(_build(routines: const []));
-      await tester.pump();
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       // Title + body + CTA must all surface from the new ARB keys.
       expect(find.text('No routines yet'), findsOneWidget);
@@ -131,8 +130,7 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(_build(routines: const []));
-      await tester.pump();
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       // The CTA must be the inline FilledButton, not a TextButton or a
       // pointer to the AppBar `+` icon — that was BUG-029's ergonomic miss.
@@ -150,8 +148,7 @@ void main() {
             routines: [_routine(id: 'd-1', name: 'Full Body', isDefault: true)],
           ),
         );
-        await tester.pump();
-        await tester.pump();
+        await tester.pumpAndSettle();
 
         // The user has no custom routines → empty state renders. The starter
         // section still ships below it.

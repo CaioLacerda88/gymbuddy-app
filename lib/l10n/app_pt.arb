@@ -289,7 +289,6 @@
   "failedToLoadRoutines": "Falha ao carregar rotinas",
   "myRoutinesSection": "MINHAS ROTINAS",
   "starterRoutinesSection": "ROTINAS INICIAIS",
-  "noCustomRoutines": "Nenhuma rotina personalizada ainda. Toque em + para criar.",
   "routinesEmptyTitle": "Nenhuma rotina ainda",
   "routinesEmptyBody": "Planeje uma sequência de exercícios uma vez e reutilize a cada treino.",
   "routinesEmptyCta": "Criar rotina",

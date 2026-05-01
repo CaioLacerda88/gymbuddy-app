@@ -470,29 +470,32 @@ class _ErrorState extends StatelessWidget {
 class _TitlesSkeleton extends StatelessWidget {
   const _TitlesSkeleton();
 
-  @override
-  Widget build(BuildContext context) {
-    Widget rowPlaceholder() => Container(
-      height: 56,
-      margin: const EdgeInsets.only(bottom: 6),
+  // Hoisted out of `build` (post-review) so each rebuild doesn't reallocate
+  // the placeholder closures. Both placeholders are stateless and capture
+  // nothing, so static methods are the cheapest scoping option.
+  static Widget _rowPlaceholder() => Container(
+    height: 56,
+    margin: const EdgeInsets.only(bottom: 6),
+    decoration: BoxDecoration(
+      color: AppColors.surface2,
+      borderRadius: BorderRadius.circular(kRadiusSm),
+    ),
+  );
+
+  static Widget _sectionHeaderPlaceholder() => Padding(
+    padding: const EdgeInsets.only(top: 8, bottom: 12),
+    child: Container(
+      height: 14,
+      width: 120,
       decoration: BoxDecoration(
         color: AppColors.surface2,
         borderRadius: BorderRadius.circular(kRadiusSm),
       ),
-    );
+    ),
+  );
 
-    Widget sectionHeaderPlaceholder() => Padding(
-      padding: const EdgeInsets.only(top: 8, bottom: 12),
-      child: Container(
-        height: 14,
-        width: 120,
-        decoration: BoxDecoration(
-          color: AppColors.surface2,
-          borderRadius: BorderRadius.circular(kRadiusSm),
-        ),
-      ),
-    );
-
+  @override
+  Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
@@ -508,8 +511,8 @@ class _TitlesSkeleton extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         for (var section = 0; section < 3; section++) ...[
-          sectionHeaderPlaceholder(),
-          for (var i = 0; i < 3; i++) rowPlaceholder(),
+          _sectionHeaderPlaceholder(),
+          for (var i = 0; i < 3; i++) _rowPlaceholder(),
           const SizedBox(height: 24),
         ],
       ],

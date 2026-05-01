@@ -105,7 +105,14 @@ class _SagaIntroOverlayState extends State<SagaIntroOverlay> {
                                 horizontal: 12,
                                 vertical: 4,
                               ),
-                              minimumSize: const Size(48, 32),
+                              // Visual pill stays ~32dp tall (controlled by
+                              // padding + the label's font size), but the
+                              // hit-test region extends to 48dp via
+                              // `minimumSize` so we clear WCAG 2.5.5 / HIG
+                              // touch-target guidance. `shrinkWrap` is kept
+                              // so Material's default 48dp padding doesn't
+                              // bloat the visible chrome.
+                              minimumSize: const Size(48, 48),
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                             child: Text(

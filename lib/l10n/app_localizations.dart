@@ -1664,12 +1664,6 @@ abstract class AppLocalizations {
   /// **'STARTER ROUTINES'**
   String get starterRoutinesSection;
 
-  /// Empty state: no custom routines (legacy bare-text empty state, kept for ARB completeness).
-  ///
-  /// In en, this message translates to:
-  /// **'No custom routines yet. Tap + to create one.'**
-  String get noCustomRoutines;
-
   /// Routines empty-state headline, branded illustration. BUG-029.
   ///
   /// In en, this message translates to:

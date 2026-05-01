@@ -878,9 +878,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get starterRoutinesSection => 'STARTER ROUTINES';
 
   @override
-  String get noCustomRoutines => 'No custom routines yet. Tap + to create one.';
-
-  @override
   String get routinesEmptyTitle => 'No routines yet';
 
   @override

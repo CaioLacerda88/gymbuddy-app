@@ -883,10 +883,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get starterRoutinesSection => 'ROTINAS INICIAIS';
 
   @override
-  String get noCustomRoutines =>
-      'Nenhuma rotina personalizada ainda. Toque em + para criar.';
-
-  @override
   String get routinesEmptyTitle => 'Nenhuma rotina ainda';
 
   @override

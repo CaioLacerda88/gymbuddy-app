@@ -679,8 +679,6 @@
   "@myRoutinesSection": { "description": "Section header: my routines" },
   "starterRoutinesSection": "STARTER ROUTINES",
   "@starterRoutinesSection": { "description": "Section header: starter routines" },
-  "noCustomRoutines": "No custom routines yet. Tap + to create one.",
-  "@noCustomRoutines": { "description": "Empty state: no custom routines (legacy bare-text empty state, kept for ARB completeness)." },
   "routinesEmptyTitle": "No routines yet",
   "@routinesEmptyTitle": { "description": "Routines empty-state headline, branded illustration. BUG-029." },
   "routinesEmptyBody": "Plan a workout sequence once and reuse it every session.",
