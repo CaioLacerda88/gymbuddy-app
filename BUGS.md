@@ -528,7 +528,7 @@ hard-to-reach `+` icon in the AppBar).
 
 ## Cluster 7 — Database integrity & performance (P1/P2)
 
-### BUG-030 [P1] — `evaluate_cross_build_titles_for_user` lacks ownership check
+### BUG-030 [P1] — ~~`evaluate_cross_build_titles_for_user` lacks ownership check~~ ✅ RESOLVED in fix/cluster7-db-integrity
 
 **What:** Authenticated users can pass any `p_user_id` and read another
 user's rank distribution via the returned slug list. Not currently exploited
@@ -539,31 +539,66 @@ social surface ships.
 **Fix:** Add `IF p_user_id != auth.uid() THEN RAISE EXCEPTION USING errcode = '42501'; END IF;`
 at the function entry.
 
-### BUG-031 [P2] — Missing index: `workout_exercises.exercise_id`
+**Resolution:** New migration `00045_evaluate_cross_build_titles_ownership_check.sql`
+issues `CREATE OR REPLACE FUNCTION` with the original 00043 body reproduced
+verbatim, plus an `auth.uid() IS NULL OR auth.uid() != p_user_id` guard at
+entry that raises with `ERRCODE = '42501'`. Verified locally: calling the
+function from a session with no `auth.uid()` rejects with the expected
+errcode.
+
+### BUG-031 [P2] — ~~Missing index: `workout_exercises.exercise_id`~~ ✅ RESOLVED in fix/cluster7-db-integrity
 
 **Where:** `00001_initial_schema.sql` (only indexes `workout_id`)
 **Fix:** `CREATE INDEX workout_exercises_exercise_id_idx ON workout_exercises(exercise_id)` —
 hot path for "show workouts containing exercise X".
 
-### BUG-032 [P2] — Missing index: `personal_records.set_id`
+**Resolution:** Combined into `00046_indexes_workout_exercises_pr_set_id.sql`
+alongside BUG-032. Uses `CREATE INDEX IF NOT EXISTS` for replay safety.
+
+### BUG-032 [P2] — ~~Missing index: `personal_records.set_id`~~ ✅ RESOLVED in fix/cluster7-db-integrity
 
 **Where:** `00008_fix_personal_records_set_id_fk.sql` (rewires FK without index)
 **Fix:** `CREATE INDEX personal_records_set_id_idx ON personal_records(set_id)`.
 
-### BUG-033 [P2] — `personal_records.exercise_id` lacks explicit `ON DELETE` clause
+**Resolution:** Same migration `00046_indexes_workout_exercises_pr_set_id.sql`.
+
+### BUG-033 [P2] — ~~`personal_records.exercise_id` lacks explicit `ON DELETE` clause~~ ✅ RESOLVED in fix/cluster7-db-integrity
 
 **Where:** `00001_initial_schema.sql:108`
 **What:** Defaults to NO ACTION/RESTRICT. A hard `DELETE FROM exercises`
 would fail with FK violation rather than CASCADE/SET NULL.
 **Fix:** New migration: `ALTER TABLE personal_records ALTER CONSTRAINT personal_records_exercise_id_fkey ON DELETE SET NULL` (matching the pattern from `00008` for `set_id`).
 
-### BUG-034 [P3] — Cross-build backfill uses `now()` for all `earned_at` rows
+**Resolution:** New migration
+`00047_personal_records_exercise_id_on_delete.sql`. Postgres does not allow
+mutating an FK's referential action via `ALTER CONSTRAINT`, so the migration
+follows 00008's pattern: drops the existing auto-named FK via a dynamic
+`information_schema` lookup, then re-adds it as
+`personal_records_exercise_id_fkey FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE SET NULL`.
+Also drops `NOT NULL` from `exercise_id` (it was originally `NOT NULL` in
+00001) so SET NULL can fire. Verified post-state via `\d personal_records`.
+
+### BUG-034 [P3] — ~~Cross-build backfill uses `now()` for all `earned_at` rows~~ ✅ RESOLVED in fix/cluster7-db-integrity
 
 **Where:** `00043_cross_build_titles_backfill.sql:167-175`
 **What:** Every backfilled user shares the exact same earn timestamp →
 "recently earned" UIs look unnatural.
 **Fix:** Use a derived timestamp (e.g., the `MAX(earned_at)` of the user's
 existing per-body-part titles + 1ms) or accept the cosmetic issue.
+
+**Resolution:** New migration
+`00048_cross_build_backfill_derived_timestamps.sql`. Introduces a generic
+`public.migration_checkpoints(key, applied_at, notes)` table for future
+one-shot data fixes; the migration body is wrapped in a `DO` block guarded
+by `pg_advisory_xact_lock` + a sentinel row (key
+`'00048_cross_build_backfill_ts'`) so re-runs no-op. The UPDATE replaces
+each cross-build row's `earned_at` with the user's
+`MAX(earned_at) + 1ms` over their non-cross-build titles, COALESCE'd back
+to the original timestamp for users who have no other earned titles. Note:
+the original spec referenced `et.title_slug`; the actual column is
+`earned_titles.title_id`. Idempotency verified by running the migration
+twice — second invocation emits `Migration 00048 already applied` and
+exits.
 
 ---
 
