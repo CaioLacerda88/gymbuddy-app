@@ -38,6 +38,16 @@
 
 BEGIN;
 
+-- Drop the prior 7-arg overload before installing the 8-arg variant. Without
+-- this, PostgreSQL leaves both overloads in place and the online call site
+-- (which omits p_id) becomes ambiguous: the 7-arg exact match AND the 8-arg
+-- with default p_id both qualify, and PG raises 42725 "function ... is not
+-- unique" on dispatch. Killing the old overload first makes the 8-arg the
+-- single authoritative function.
+DROP FUNCTION IF EXISTS public.fn_insert_user_exercise(
+  UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT
+);
+
 CREATE OR REPLACE FUNCTION public.fn_insert_user_exercise(
   p_user_id        UUID,
   p_locale         TEXT,
@@ -148,21 +158,34 @@ GRANT EXECUTE ON FUNCTION public.fn_insert_user_exercise(
   UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, UUID
 ) TO authenticated;
 
--- Sanity check: assert the new arity exists. Note that `pg_proc` carries
--- one row per overload, and `CREATE OR REPLACE` only replaces the matching
--- arity — so this check would catch a copy-paste error that left the old
--- 7-arg version in place without the 8-arg variant.
+-- Sanity check: assert exactly one overload exists, and it has 8 args.
+-- The prior 7-arg overload must be gone (DROP FUNCTION IF EXISTS above) AND
+-- the new 8-arg variant must be in place. Two overloads coexisting causes
+-- the dispatch ambiguity that broke the online create-exercise path before
+-- this fix was added.
 DO $$
+DECLARE
+  v_overload_count INT;
+  v_eight_arg_count INT;
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-    FROM pg_proc p
-    JOIN pg_namespace n ON n.oid = p.pronamespace
-    WHERE n.nspname = 'public'
-      AND p.proname = 'fn_insert_user_exercise'
-      AND p.pronargs = 8
-  ) THEN
-    RAISE EXCEPTION 'BUG-003 invariant violated: fn_insert_user_exercise(8 args) is missing';
+  SELECT COUNT(*)
+  INTO v_overload_count
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public'
+    AND p.proname = 'fn_insert_user_exercise';
+
+  SELECT COUNT(*)
+  INTO v_eight_arg_count
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public'
+    AND p.proname = 'fn_insert_user_exercise'
+    AND p.pronargs = 8;
+
+  IF v_overload_count <> 1 OR v_eight_arg_count <> 1 THEN
+    RAISE EXCEPTION 'BUG-003 invariant violated: expected exactly one fn_insert_user_exercise overload (8 args), found % total / % with 8 args',
+      v_overload_count, v_eight_arg_count;
   END IF;
 END
 $$;

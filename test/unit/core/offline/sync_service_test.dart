@@ -959,12 +959,6 @@ void main() {
         // parent ID drop out of liveIds and the child becomes drainable.
         stubSaveWorkoutSuccess(id: 'w-parent-ok');
         when(() => mockPRRepo.upsertRecords(any())).thenAnswer((_) async {});
-        when(
-          () => mockPRRepo.getRecordsForUser(
-            userId: any(named: 'userId'),
-            locale: any(named: 'locale'),
-          ),
-        ).thenAnswer((_) async => <PersonalRecord>[]);
 
         connectivityController.add(true);
         await _pumpAsync(300);
