@@ -9,8 +9,19 @@ import '../../l10n/app_localizations.dart';
 
 /// Modal bottom sheet listing all pending offline actions with retry controls.
 ///
-/// Each row shows the action type, timestamp, and a "Retry" button.
-/// Successful retries remove the row; failures show the error inline.
+/// Each row shows the action type, timestamp, and a CTA whose label and
+/// behavior depend on the action's last classified error category
+/// (BUG-008): transient / network / unknown errors get "Retry"; only
+/// structural and session errors that retry definitively won't fix get
+/// "Dismiss" (which dequeues the item). On first display (no prior error)
+/// the CTA is always "Retry".
+///
+/// `unknown` is intentionally permissive — a genuinely unfamiliar exception
+/// class might be a one-off plugin crash that retry resolves; if the
+/// underlying issue IS structural, the next attempt will surface a more
+/// specific exception class that gets routed to [SyncErrorCategory.structural]
+/// and switches the CTA to "Dismiss" on its own. Forcing terminal here
+/// would strip the user's only recovery path with no diagnostic upside.
 class PendingSyncSheet extends ConsumerStatefulWidget {
   const PendingSyncSheet({super.key});
 
@@ -101,6 +112,7 @@ class _PendingSyncSheetState extends ConsumerState<PendingSyncSheet> {
                       isRetrying: _retrying.contains(actions[index].id),
                       error: _errors[actions[index].id],
                       onRetry: () => _retry(actions[index].id),
+                      onDismiss: () => _dismiss(actions[index].id),
                     ),
                   ),
           ),
@@ -125,8 +137,8 @@ class _PendingSyncSheetState extends ConsumerState<PendingSyncSheet> {
       }
     } catch (e) {
       // BUG-042: never surface raw exception strings. The mapper
-      // localizes by exception class (PostgrestException → generic retry
-      // copy, AuthException → session expired, etc.) and the raw error
+      // localizes by exception class (PostgrestException -> generic retry
+      // copy, AuthException -> session expired, etc.) and the raw error
       // goes to developer.log + Sentry inside the mapper.
       if (mounted) {
         final l10n = AppLocalizations.of(context);
@@ -143,6 +155,17 @@ class _PendingSyncSheetState extends ConsumerState<PendingSyncSheet> {
       }
     }
   }
+
+  /// BUG-008: dequeue a structurally-failed action without retrying.
+  Future<void> _dismiss(String id) async {
+    await ref.read(pendingSyncProvider.notifier).dismissItem(id);
+    if (mounted) {
+      setState(() {
+        _errors.remove(id);
+        _retrying.remove(id);
+      });
+    }
+  }
 }
 
 class _ActionRow extends StatelessWidget {
@@ -151,23 +174,42 @@ class _ActionRow extends StatelessWidget {
     required this.isRetrying,
     required this.error,
     required this.onRetry,
+    required this.onDismiss,
   });
 
   final PendingAction action;
   final bool isRetrying;
   final String? error;
   final VoidCallback onRetry;
+  final VoidCallback onDismiss;
 
   IconData get _icon => switch (action) {
     PendingSaveWorkout() => Icons.fitness_center,
     PendingUpsertRecords() => Icons.emoji_events,
     PendingMarkRoutineComplete() => Icons.check_circle_outline,
+    PendingCreateExercise() => Icons.add_circle_outline,
   };
 
   String _label(AppLocalizations l10n) => switch (action) {
     PendingSaveWorkout() => l10n.pendingActionSaveWorkout,
     PendingUpsertRecords() => l10n.pendingActionUpdateRecords,
     PendingMarkRoutineComplete() => l10n.pendingActionMarkComplete,
+    PendingCreateExercise() => l10n.pendingActionCreateExercise,
+  };
+
+  /// BUG-008: the CTA depends on the last classified error category. Only
+  /// errors retry definitively cannot fix — structural (FK / RLS / cast)
+  /// and session (expired token) — show "Dismiss". Everything else,
+  /// including [SyncErrorCategory.unknown], keeps the retry CTA so the
+  /// user has a recovery path; structural errors that initially classify
+  /// as `unknown` will surface a more specific exception class on the next
+  /// attempt and flip to "Dismiss" then.
+  bool get _isStructural => switch (action.errorCategory) {
+    SyncErrorCategory.structural || SyncErrorCategory.session => true,
+    SyncErrorCategory.none ||
+    SyncErrorCategory.network ||
+    SyncErrorCategory.transient ||
+    SyncErrorCategory.unknown => false,
   };
 
   String _formatTime(DateTime dt) {
@@ -181,6 +223,14 @@ class _ActionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+    final structural = _isStructural;
+
+    // The body shown beneath the row: prefer the (already-localized) live
+    // retry error from the parent state; otherwise, if the persisted
+    // error category is structural, show the canned structural copy so the
+    // user understands why "Dismiss" replaced "Retry".
+    final bodyError =
+        error ?? (structural ? l10n.syncErrorStructuralBody : null);
 
     return Container(
       constraints: const BoxConstraints(minHeight: 48),
@@ -208,7 +258,7 @@ class _ActionRow extends StatelessWidget {
                     ),
                     Text(
                       '${l10n.queuedAt(_formatTime(action.queuedAt))}'
-                      '${action.retryCount > 0 ? ' \u00b7 ${l10n.retryCount(action.retryCount)}' : ''}',
+                      '${action.retryCount > 0 ? ' · ${l10n.retryCount(action.retryCount)}' : ''}',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurface.withValues(
                           alpha: 0.5,
@@ -226,20 +276,20 @@ class _ActionRow extends StatelessWidget {
                 )
               else
                 FilledButton.tonal(
-                  onPressed: onRetry,
+                  onPressed: structural ? onDismiss : onRetry,
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     minimumSize: const Size(0, 32),
                     textStyle: const TextStyle(fontSize: 13),
                   ),
-                  child: Text(l10n.retry),
+                  child: Text(structural ? l10n.syncDismissAction : l10n.retry),
                 ),
             ],
           ),
-          if (error != null) ...[
+          if (bodyError != null) ...[
             const SizedBox(height: 4),
             Text(
-              error!,
+              bodyError,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.error,
               ),

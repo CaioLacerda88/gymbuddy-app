@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:repsaga/core/data/base_repository.dart';
 import 'package:repsaga/core/local_storage/cache_service.dart';
+import 'package:repsaga/core/observability/sentry_report.dart';
 import 'package:repsaga/core/offline/offline_queue_service.dart';
 import 'package:repsaga/core/offline/pending_action.dart';
 import 'package:repsaga/core/offline/pending_sync_provider.dart';
@@ -32,6 +33,7 @@ import 'package:repsaga/features/rpg/data/rpg_repository.dart';
 import 'package:repsaga/features/rpg/models/body_part_progress.dart';
 import 'package:repsaga/features/rpg/providers/rpg_progress_provider.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:sentry_flutter/sentry_flutter.dart' show SentryId;
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
 
 import '../../../../fixtures/test_factories.dart';
@@ -1411,6 +1413,155 @@ void main() {
         expect(upserts.single.dependsOn, [parentId]);
       },
     );
+
+    // BUG-003 wiring pin (notifier-level): when an offline-finished workout
+    // references an exercise the user created offline (still queued as
+    // PendingCreateExercise), the new PendingSaveWorkout must declare
+    // `dependsOn: [createExerciseAction.id]`. SyncService's drain test
+    // asserts that the gate behaves correctly given seeded `dependsOn`,
+    // but doesn't cover the wiring — i.e. that the notifier actually
+    // scans the queue and stamps the dependency. Without this pin a
+    // refactor of `_enqueueOfflineWorkout` could silently drop the scan
+    // and the SyncService test would still pass.
+    test('BUG-003: offline saveWorkout carries dependsOn = [createExercise id] '
+        'when an exercise is queued', () async {
+      // Build a workout whose single exercise's id matches a queued
+      // PendingCreateExercise stub. The notifier must scan the queue,
+      // find the match, and stamp the dependency on the new save.
+      const offlineExerciseId = 'ex-offline-123';
+      final exercise = Exercise.fromJson(
+        TestExerciseFactory.create(
+          id: offlineExerciseId,
+          name: 'Custom Bench',
+          equipmentType: 'barbell',
+        ),
+      );
+      final we = WorkoutExercise(
+        id: 'we-1',
+        workoutId: 'workout-001',
+        exerciseId: offlineExerciseId,
+        order: 0,
+        exercise: exercise,
+      );
+      final sets = [
+        ExerciseSet.fromJson(
+          TestSetFactory.create(
+            id: 'set-1',
+            workoutExerciseId: 'we-1',
+            setNumber: 1,
+            weight: 100.0,
+            reps: 8,
+            isCompleted: true,
+          ),
+        ),
+      ];
+      final initial = ActiveWorkoutState(
+        workout: Workout.fromJson(
+          TestWorkoutFactory.create(id: 'workout-001', isActive: true),
+        ),
+        exercises: [ActiveWorkoutExercise(workoutExercise: we, sets: sets)],
+      );
+
+      final mockRepo = MockWorkoutRepository();
+      final mockStorage = MockWorkoutLocalStorage();
+      final mockAuth = MockAuthRepository();
+      final capturedNotifier = _CapturingPendingSyncNotifier();
+
+      // Pre-seed the queue with the PendingCreateExercise the workout
+      // depends on. This mirrors the production sequence: user creates an
+      // exercise offline (NetworkException → enqueue), then logs a
+      // workout against it (saveWorkout throws → enqueue with dependsOn).
+      capturedNotifier.enqueued.add(
+        PendingAction.createExercise(
+          id: 'create-ex-action-id',
+          exerciseId: offlineExerciseId,
+          userId: 'user-test-001',
+          locale: 'en',
+          name: 'Custom Bench',
+          muscleGroup: 'chest',
+          equipmentType: 'barbell',
+          queuedAt: DateTime.utc(2026, 4, 17, 9, 0, 0),
+        ),
+      );
+
+      when(() => mockStorage.loadActiveWorkout()).thenReturn(initial);
+      when(() => mockStorage.saveActiveWorkout(any())).thenAnswer((_) async {});
+      when(() => mockStorage.clearActiveWorkout()).thenAnswer((_) async {});
+      when(() => mockAuth.currentUser).thenReturn(fakeUser());
+      when(() => mockRepo.getCachedWorkoutCount(any())).thenReturn(5);
+
+      // Offline path: saveWorkout throws so the workout enqueues offline.
+      when(
+        () => mockRepo.saveWorkout(
+          workout: any(named: 'workout'),
+          exercises: any(named: 'exercises'),
+          sets: any(named: 'sets'),
+        ),
+      ).thenThrow(Exception('Network error'));
+      when(
+        () => mockRepo.getFinishedWorkoutCount(any()),
+      ).thenThrow(Exception('Offline'));
+
+      final container = ProviderContainer(
+        overrides: [
+          workoutRepositoryProvider.overrideWithValue(mockRepo),
+          workoutLocalStorageProvider.overrideWithValue(mockStorage),
+          authRepositoryProvider.overrideWithValue(mockAuth),
+          analyticsRepositoryProvider.overrideWithValue(
+            const _FakeAnalyticsRepository(),
+          ),
+          pendingSyncProvider.overrideWith(() => capturedNotifier),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(activeWorkoutProvider.future);
+      await container.read(activeWorkoutProvider.notifier).finishWorkout();
+
+      // The newly-enqueued PendingSaveWorkout must declare its dependency
+      // on the queued create action so the SyncService drain holds the
+      // workout back until the exercise row commits server-side.
+      final saves = capturedNotifier.enqueued
+          .whereType<PendingSaveWorkout>()
+          .toList();
+      expect(saves, hasLength(1));
+      expect(saves.single.dependsOn, ['create-ex-action-id']);
+    });
+
+    // BUG-003 negative pin: when no PendingCreateExercise references the
+    // workout's exercise IDs, the new PendingSaveWorkout must NOT carry any
+    // dependsOn entries. Spurious dependencies would hold the save back
+    // forever waiting for a parent that doesn't exist.
+    test('BUG-003: offline saveWorkout has empty dependsOn when no '
+        'createExercise is queued', () async {
+      final initial = makeState(exerciseCount: 1, setsPerExercise: 1);
+      final bundle = makeOfflineContainer(initial);
+      addTearDown(bundle.container.dispose);
+
+      when(() => bundle.mockAuth.currentUser).thenReturn(fakeUser());
+      when(
+        () => bundle.mockRepo.saveWorkout(
+          workout: any(named: 'workout'),
+          exercises: any(named: 'exercises'),
+          sets: any(named: 'sets'),
+        ),
+      ).thenThrow(Exception('Network error'));
+      when(
+        () => bundle.mockRepo.getFinishedWorkoutCount(any()),
+      ).thenThrow(Exception('Offline'));
+      when(() => bundle.mockRepo.getCachedWorkoutCount(any())).thenReturn(5);
+
+      await bundle.container.read(activeWorkoutProvider.future);
+      await bundle.container
+          .read(activeWorkoutProvider.notifier)
+          .finishWorkout();
+
+      final saves = bundle.capturedNotifier.enqueued
+          .whereType<PendingSaveWorkout>()
+          .toList();
+      expect(saves, hasLength(1));
+      expect(saves.single.dependsOn, isEmpty);
+    });
 
     test(
       'offline path: incrementCachedWorkoutCount is called when saveWorkout fails',
@@ -3063,6 +3214,68 @@ void main() {
           capturedNotifier.enqueued.whereType<PendingUpsertRecords>(),
           isEmpty,
         );
+      },
+    );
+
+    // BUG-009: PR-detection failures must be Sentry-captured in addition
+    // to logged. Historically the catch silently swallowed errors which
+    // masked BUG-001 — null casts inside detectPRs hid for weeks because
+    // production never saw the exception rate.
+    test(
+      'BUG-009: PR-detection error is captured to Sentry while workout still saves',
+      () async {
+        var captureCount = 0;
+        Object? lastCaptured;
+        SentryReport.debugSetCaptureFn((error, {stackTrace}) async {
+          captureCount++;
+          lastCaptured = error;
+          return const SentryId.empty();
+        });
+        addTearDown(() => SentryReport.debugSetCaptureFn(null));
+
+        final initial = stateWithCompletedSets();
+        final container = makePRContainer(initial);
+        addTearDown(container.dispose);
+
+        when(
+          () => mockRepo.saveWorkout(
+            workout: any(named: 'workout'),
+            exercises: any(named: 'exercises'),
+            sets: any(named: 'sets'),
+          ),
+        ).thenAnswer(
+          (_) async => Workout.fromJson(TestWorkoutFactory.create()),
+        );
+
+        // Cache misses → falls back to prRepo, which throws a TypeError-like
+        // failure. The notifier's try/catch around detection must swallow
+        // it for the workout save AND forward to Sentry.
+        when(
+          () => mockCache.read<Map<String, List<PersonalRecord>>>(
+            any(),
+            any(),
+            any(),
+          ),
+        ).thenReturn(null);
+        when(
+          () => mockPRRepo.getRecordsForExercises(any()),
+        ).thenThrow(TypeError());
+
+        await container.read(activeWorkoutProvider.future);
+
+        // Workout finishes without throwing.
+        final prResult = await container
+            .read(activeWorkoutProvider.notifier)
+            .finishWorkout();
+
+        // State cleared (workout committed).
+        expect(container.read(activeWorkoutProvider).value, isNull);
+        // Detection never produced records → no PR result.
+        expect(prResult, isNull);
+
+        // Sentry must have received the detection failure exactly once.
+        expect(captureCount, 1);
+        expect(lastCaptured, isA<TypeError>());
       },
     );
 

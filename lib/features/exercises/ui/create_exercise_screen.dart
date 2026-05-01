@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../core/exceptions/app_exception.dart';
 import '../../../core/l10n/locale_provider.dart';
+import '../../../core/offline/pending_action.dart';
+import '../../../core/offline/pending_sync_provider.dart';
 import '../../../core/theme/app_icons.dart';
 import '../../../core/utils/enum_l10n.dart';
 import '../../../l10n/app_localizations.dart';
@@ -80,17 +83,54 @@ class _CreateExerciseScreenState extends ConsumerState<CreateExerciseScreen> {
       final description = _descriptionController.text.trim();
       final formTips = _formTipsController.text.trim();
       final locale = ref.read(localeProvider).languageCode;
-      await ref
-          .read(exerciseRepositoryProvider)
-          .createExercise(
-            locale: locale,
-            name: _nameController.text.trim(),
-            muscleGroup: _selectedMuscleGroup!,
-            equipmentType: _selectedEquipmentType!,
-            userId: userId,
-            description: description.isEmpty ? null : description,
-            formTips: formTips.isEmpty ? null : formTips,
-          );
+      final name = _nameController.text.trim();
+      try {
+        await ref
+            .read(exerciseRepositoryProvider)
+            .createExercise(
+              locale: locale,
+              name: name,
+              muscleGroup: _selectedMuscleGroup!,
+              equipmentType: _selectedEquipmentType!,
+              userId: userId,
+              description: description.isEmpty ? null : description,
+              formTips: formTips.isEmpty ? null : formTips,
+            );
+      } on NetworkException {
+        // BUG-003: offline create. Generate a local UUID, enqueue the
+        // creation for replay, and warn the user that this exercise is
+        // local-only until they reconnect. The active-workout flow scans
+        // the queue at finishWorkout time and tags any `PendingSaveWorkout`
+        // that references an offline-created exercise with the
+        // PendingCreateExercise action's id in `dependsOn`, so replay
+        // ordering keeps the FK satisfied.
+        final actionId = const Uuid().v4();
+        final exerciseId = const Uuid().v4();
+        await ref
+            .read(pendingSyncProvider.notifier)
+            .enqueue(
+              PendingAction.createExercise(
+                id: actionId,
+                exerciseId: exerciseId,
+                userId: userId,
+                locale: locale,
+                name: name,
+                muscleGroup: _selectedMuscleGroup!.name,
+                equipmentType: _selectedEquipmentType!.name,
+                description: description.isEmpty ? null : description,
+                formTips: formTips.isEmpty ? null : formTips,
+                queuedAt: DateTime.now().toUtc(),
+              ),
+            );
+        if (mounted) {
+          _invalidateExerciseList();
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(l10n.exerciseCreatedOffline)));
+          context.pop();
+        }
+        return;
+      }
 
       // Invalidate the exercise list to trigger a refresh.
       _invalidateExerciseList();

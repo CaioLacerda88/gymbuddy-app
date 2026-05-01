@@ -763,6 +763,22 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
         // `DateTime.parse(json['created_at'] as String)` unconditionally.
         final setsJson = sets.map((s) => s.toRpcJson()).toList();
 
+        // BUG-003: when a workout references an exercise the user created
+        // offline (still queued as PendingCreateExercise), tag this save
+        // with `dependsOn: [createExerciseAction.id]` so the drain commits
+        // the exercise BEFORE this workout — otherwise replay races the
+        // `workout_exercises.exercise_id` FK and the workout fails terminally.
+        final referencedExerciseIds = workoutExercises
+            .map((e) => e.exerciseId)
+            .toSet();
+        final pendingActions = ref.read(pendingSyncProvider.notifier).getAll();
+        final exerciseDependsOn = <String>[
+          for (final a in pendingActions)
+            if (a is PendingCreateExercise &&
+                referencedExerciseIds.contains(a.exerciseId))
+              a.id,
+        ];
+
         await ref
             .read(pendingSyncProvider.notifier)
             .enqueue(
@@ -773,6 +789,7 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
                 setsJson: setsJson,
                 userId: workout.userId,
                 queuedAt: now,
+                dependsOn: exerciseDependsOn,
               ),
             );
 
@@ -906,13 +923,18 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
             ),
           );
         }
-      } catch (e) {
+      } catch (e, st) {
         // PR detection failure should NOT fail the workout save.
+        // BUG-009: capture to Sentry so production rates are visible —
+        // this catch historically masked BUG-001 by silently dropping
+        // detection-side null casts. Workout still saves; user is not
+        // surfaced anything because PRs are non-essential.
         log(
           'PR detection failed: $e',
           name: 'ActiveWorkoutNotifier',
           level: 900,
         );
+        unawaited(SentryReport.captureException(e, stackTrace: st));
       }
 
       // XP award: handled server-side inside `save_workout` → `record_set_xp`,

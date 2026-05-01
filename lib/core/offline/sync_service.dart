@@ -5,9 +5,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/analytics/data/models/analytics_event.dart';
 import '../../features/analytics/providers/analytics_providers.dart';
-import '../../features/personal_records/providers/pr_providers.dart';
+import '../../features/exercises/providers/exercise_progress_provider.dart';
+import '../../features/rpg/providers/character_sheet_provider.dart';
+import '../../features/rpg/providers/earned_titles_provider.dart';
+import '../../features/rpg/providers/rpg_progress_provider.dart';
+import '../../features/weekly_plan/providers/weekly_plan_provider.dart';
+import '../../features/workouts/providers/workout_history_providers.dart';
 import '../connectivity/connectivity_provider.dart';
-import '../l10n/locale_provider.dart';
+import '../local_storage/cache_service.dart';
+import '../local_storage/hive_service.dart';
 import '../observability/sentry_report.dart';
 import 'offline_queue_service.dart';
 import 'pending_action.dart';
@@ -56,10 +62,17 @@ class SyncService extends Notifier<SyncState> {
   /// 3. Skip if retryCount >= [kMaxSyncRetries] (terminal).
   /// 4. Skip if any [PendingAction.dependsOn] parent is still in the queue
   ///    AND not terminal — the parent must commit first or the child's FK
-  ///    will fail (BUG-002).
+  ///    will fail (BUG-002, BUG-003).
   /// 5. Delegate to [PendingSyncNotifier.retryItem].
   /// 6. On success: emit [AnalyticsEvent.workoutSyncSucceeded].
   /// 7. On failure: classify error, maybe backoff, maybe emit failed event.
+  ///
+  /// **Post-loop side effects (BUG-005):** when at least one
+  /// [PendingSaveWorkout] drained successfully, invalidates the RPG/PR/
+  /// progress provider tree so the UI rebuilds against the new server state
+  /// without requiring an app relaunch. Without this, the user trains hard
+  /// offline, syncs, opens the character sheet — and sees no rank progress
+  /// until they kill the app.
   Future<void> _drain() async {
     if (_draining) return;
     _draining = true;
@@ -72,6 +85,11 @@ class SyncService extends Notifier<SyncState> {
       // Collect unique userIds from successfully drained upsertRecords items
       // so we can batch reconciliation after the loop.
       final reconciledUserIds = <String>{};
+
+      // BUG-005: track successful saveWorkout drains so we know whether to
+      // invalidate the RPG/progress providers post-loop. We don't need a
+      // count, only "did at least one save commit".
+      var drainedSaveWorkouts = 0;
 
       // Snapshot the live (non-terminal) IDs for dependency gating.
       // This shrinks as actions drain successfully (`dequeue` removes them
@@ -137,6 +155,10 @@ class SyncService extends Notifier<SyncState> {
           if (action is PendingUpsertRecords && action.userId.isNotEmpty) {
             reconciledUserIds.add(action.userId);
           }
+
+          if (action is PendingSaveWorkout) {
+            drainedSaveWorkouts++;
+          }
         } catch (e) {
           SentryReport.addBreadcrumb(
             category: 'sync',
@@ -160,8 +182,14 @@ class SyncService extends Notifier<SyncState> {
       }
 
       // Batch PR cache reconciliation — once per unique userId.
-      for (final uid in reconciledUserIds) {
-        await _reconcilePrCache(uid);
+      await _reconcilePrCache(reconciledUserIds);
+
+      // BUG-005: post-drain provider invalidation. Each ref.invalidate is
+      // independent; one failure must not skip the rest, so they're guarded
+      // individually. Invalidating these from a Notifier is the standard
+      // pattern: the providers re-fetch lazily on next read.
+      if (drainedSaveWorkouts > 0) {
+        _invalidateAfterSaveWorkoutDrain();
       }
 
       // Count terminal items and update state.
@@ -219,6 +247,7 @@ class SyncService extends Notifier<SyncState> {
       PendingSaveWorkout() => 'save_workout',
       PendingUpsertRecords() => 'upsert_records',
       PendingMarkRoutineComplete() => 'mark_routine_complete',
+      PendingCreateExercise() => 'create_exercise',
     };
   }
 
@@ -226,11 +255,25 @@ class SyncService extends Notifier<SyncState> {
   /// cleared.
   static PendingAction _resetRetryCount(PendingAction action) {
     return switch (action) {
-      PendingSaveWorkout() => action.copyWith(retryCount: 0, lastError: null),
-      PendingUpsertRecords() => action.copyWith(retryCount: 0, lastError: null),
+      PendingSaveWorkout() => action.copyWith(
+        retryCount: 0,
+        lastError: null,
+        errorCategory: SyncErrorCategory.none,
+      ),
+      PendingUpsertRecords() => action.copyWith(
+        retryCount: 0,
+        lastError: null,
+        errorCategory: SyncErrorCategory.none,
+      ),
       PendingMarkRoutineComplete() => action.copyWith(
         retryCount: 0,
         lastError: null,
+        errorCategory: SyncErrorCategory.none,
+      ),
+      PendingCreateExercise() => action.copyWith(
+        retryCount: 0,
+        lastError: null,
+        errorCategory: SyncErrorCategory.none,
       ),
     };
   }
@@ -284,27 +327,72 @@ class SyncService extends Notifier<SyncState> {
       PendingSaveWorkout(:final userId) => userId,
       PendingUpsertRecords(:final userId) => userId,
       PendingMarkRoutineComplete() => 'unknown',
+      PendingCreateExercise(:final userId) => userId,
     };
   }
 
-  /// Refresh the PR cache from the server after a successful `upsertRecords`
-  /// drain. The optimistic cache written during `finishWorkout()` uses a
-  /// different key than the one read here, and `prRepo.upsertRecords()` clears
-  /// the entire box before this runs, so a divergence comparison is meaningless.
-  /// We simply refresh the cache from the server and log a breadcrumb.
-  Future<void> _reconcilePrCache(String userId) async {
-    if (userId.isEmpty) return;
+  /// Invalidate the RPG / progress / weekly-plan provider tree so the UI
+  /// reflects the new server state after a successful save_workout drain
+  /// (BUG-005). Each invalidation is wrapped in try/catch — a single
+  /// missing override (e.g. in a unit test that doesn't override every
+  /// dependency) must NOT break the drain loop's post-success bookkeeping.
+  ///
+  /// Riverpod 3 does not export the `ProviderOrFamily` base type, so we
+  /// can't extract a generic helper. Instead each invalidate is a closure
+  /// in the list — a tiny price for type safety and clarity.
+  void _invalidateAfterSaveWorkoutDrain() {
+    final invalidations = <(String, void Function())>[
+      ('rpgProgressProvider', () => ref.invalidate(rpgProgressProvider)),
+      ('characterSheetProvider', () => ref.invalidate(characterSheetProvider)),
+      ('earnedTitlesProvider', () => ref.invalidate(earnedTitlesProvider)),
+      (
+        'exerciseProgressProvider',
+        () => ref.invalidate(exerciseProgressProvider),
+      ),
+      ('workoutHistoryProvider', () => ref.invalidate(workoutHistoryProvider)),
+      ('weeklyPlanProvider', () => ref.invalidate(weeklyPlanProvider)),
+    ];
+
+    for (final (name, invalidate) in invalidations) {
+      try {
+        invalidate();
+      } catch (e) {
+        log('invalidate failed for $name: $e', name: 'SyncService', level: 900);
+      }
+    }
+  }
+
+  /// Reconcile the PR cache after a successful `upsertRecords` drain.
+  ///
+  /// **BUG-006 cache invariant:** the PR cache (`HiveService.prCache`) is
+  /// keyed by `'exercises:<sorted_exercise_ids>'` at the
+  /// `ActiveWorkoutNotifier.detectPRs` write boundary. After a successful
+  /// upsertRecords drain we have to clear those entries so the next offline
+  /// PR detection re-fetches via `prRepo.getRecordsForExercises`, which
+  /// reconciles through the user-keyed bag.  Without the clear, `detectPRs`
+  /// keeps reading the stale pre-reconciliation cache and falsely awards PRs
+  /// the user already holds.
+  ///
+  /// Decision: clear the entire `prCache` box rather than per-key — the box
+  /// is small (one entry per active exercise set) and complete invalidation
+  /// is the only way to guarantee correctness without tracking which
+  /// exercise IDs were touched by the just-drained PR rows.
+  ///
+  /// We do NOT pre-fetch server records here. The clear is sufficient: next
+  /// reader (`PRRepository.getRecordsForExercises`) re-seeds the cache via
+  /// the user-keyed bag. A pre-fetch would be a wasted round-trip whose only
+  /// observable effect was a Sentry breadcrumb count.
+  Future<void> _reconcilePrCache(Set<String> userIds) async {
+    if (userIds.isEmpty) return;
     try {
-      final prRepo = ref.read(prRepositoryProvider);
-      final locale = ref.read(localeProvider).languageCode;
-      final serverRecords = await prRepo.getRecordsForUser(
-        userId: userId,
-        locale: locale,
-      );
+      // BUG-006: clear the exercise-keyed cache entries so next read
+      // re-fetches from server (single source of truth post-reconcile).
+      // One clearBox call covers all userIds — the box is per-device,
+      // not per-user, so we'd otherwise clear it N times for no benefit.
+      await ref.read(cacheServiceProvider).clearBox(HiveService.prCache);
       SentryReport.addBreadcrumb(
         category: 'sync.reconcile',
-        message: 'PR cache refreshed after upsertRecords drain',
-        data: {'server_record_count': serverRecords.length},
+        message: 'PR cache reconciled (cleared) for ${userIds.length} users',
       );
     } catch (e) {
       log(

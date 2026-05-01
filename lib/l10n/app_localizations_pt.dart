@@ -651,6 +651,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get exerciseCreated => 'Exercício criado com sucesso';
 
   @override
+  String get exerciseCreatedOffline =>
+      'Exercício salvo localmente. Será sincronizado quando você voltar a ficar online.';
+
+  @override
   String get createExerciseButton => 'CRIAR EXERCÍCIO';
 
   @override
@@ -1245,6 +1249,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get pendingActionMarkComplete => 'Marcar rotina como concluída';
 
   @override
+  String get pendingActionCreateExercise => 'Criar exercício';
+
+  @override
   String queuedAt(String time) {
     return 'Na fila às $time';
   }
@@ -1269,6 +1276,13 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get syncErrorUnknown =>
       'Algo deu errado. Vamos tentar novamente em alguns instantes.';
+
+  @override
+  String get syncErrorStructuralBody =>
+      'Não foi possível enviar — entre em contato com o suporte.';
+
+  @override
+  String get syncDismissAction => 'Dispensar';
 
   @override
   String get pendingSyncBadgeSingular => '1 treino pendente de sincronização';

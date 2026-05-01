@@ -2,6 +2,8 @@ import 'dart:developer';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../features/exercises/models/exercise.dart';
+import '../../features/exercises/providers/exercise_providers.dart';
 import '../../features/personal_records/models/personal_record.dart';
 import '../../features/personal_records/providers/pr_providers.dart';
 import '../../features/weekly_plan/providers/weekly_plan_provider.dart';
@@ -11,6 +13,7 @@ import '../../features/workouts/models/workout_exercise.dart';
 import '../../features/workouts/providers/workout_providers.dart';
 import 'offline_queue_service.dart';
 import 'pending_action.dart';
+import 'sync_error_mapper.dart';
 
 /// Exposes the pending-sync queue count as reactive state.
 ///
@@ -73,13 +76,25 @@ class PendingSyncNotifier extends Notifier<int> {
         name: 'PendingSyncNotifier',
         level: 900,
       );
-      final updated = _withRetry(action, e.toString());
+      // BUG-008: classify the error so the pending-sync sheet can pick the
+      // right CTA (retry vs dismiss) without re-classifying. Stored on the
+      // action and persisted alongside `lastError`.
+      final category = SyncErrorMapper.classifyCategory(e);
+      final updated = _withRetry(action, e.toString(), category);
       await _queue.updateAction(updated);
       state = _queue.pendingCount;
       rethrow;
     } finally {
       _inFlight.remove(id);
     }
+  }
+
+  /// Dismiss a single queued item without retrying — used by the
+  /// pending-sync sheet (BUG-008) when the error category is structural and
+  /// retry won't help. Removes the item from the queue and updates the count.
+  Future<void> dismissItem(String id) async {
+    await _queue.dequeue(id);
+    state = _queue.pendingCount;
   }
 
   /// Execute a pending action against the appropriate repository.
@@ -119,23 +134,68 @@ class PendingSyncNotifier extends Notifier<int> {
             name: 'PendingSyncNotifier',
           );
         }
+
+      case PendingCreateExercise(
+        :final exerciseId,
+        :final userId,
+        :final locale,
+        :final name,
+        :final muscleGroup,
+        :final equipmentType,
+        :final description,
+        :final formTips,
+      ):
+        // BUG-003: replay the offline exercise creation so the row exists
+        // server-side BEFORE any dependent PendingSaveWorkout drains. We
+        // forward the local stub [exerciseId] as `p_id` so the server row's
+        // PK matches what the local Hive cache and any queued
+        // `PendingSaveWorkout.exercisesJson` (whose `exercise_id` is the
+        // local stub) already wrote. Without this the server allocates a
+        // fresh UUID and downstream `workout_exercises.exercise_id` rows
+        // commit with a dangling FK pointer — the dependsOn gate prevents a
+        // crash but the data is structurally broken. Migration 00044 added
+        // the optional `p_id` parameter to fn_insert_user_exercise.
+        final repo = ref.read(exerciseRepositoryProvider);
+        await repo.createExercise(
+          id: exerciseId,
+          locale: locale,
+          name: name,
+          muscleGroup: MuscleGroup.fromString(muscleGroup),
+          equipmentType: EquipmentType.fromString(equipmentType),
+          userId: userId,
+          description: description,
+          formTips: formTips,
+        );
     }
   }
 
-  /// Create an updated copy of [action] with incremented retryCount and error.
-  PendingAction _withRetry(PendingAction action, String error) {
+  /// Create an updated copy of [action] with incremented retryCount, error,
+  /// and the classified [errorCategory] so the UI can pick the right CTA.
+  PendingAction _withRetry(
+    PendingAction action,
+    String error,
+    SyncErrorCategory category,
+  ) {
     return switch (action) {
       PendingSaveWorkout() => action.copyWith(
         retryCount: action.retryCount + 1,
         lastError: error,
+        errorCategory: category,
       ),
       PendingUpsertRecords() => action.copyWith(
         retryCount: action.retryCount + 1,
         lastError: error,
+        errorCategory: category,
       ),
       PendingMarkRoutineComplete() => action.copyWith(
         retryCount: action.retryCount + 1,
         lastError: error,
+        errorCategory: category,
+      ),
+      PendingCreateExercise() => action.copyWith(
+        retryCount: action.retryCount + 1,
+        lastError: error,
+        errorCategory: category,
       ),
     };
   }

@@ -1280,6 +1280,12 @@ abstract class AppLocalizations {
   /// **'Exercise created successfully'**
   String get exerciseCreated;
 
+  /// Snackbar: exercise queued for offline sync (BUG-003).
+  ///
+  /// In en, this message translates to:
+  /// **'Exercise saved locally. It will sync when you\'re back online.'**
+  String get exerciseCreatedOffline;
+
   /// Create exercise submit button
   ///
   /// In en, this message translates to:
@@ -2270,6 +2276,12 @@ abstract class AppLocalizations {
   /// **'Mark routine complete'**
   String get pendingActionMarkComplete;
 
+  /// Pending action: create custom exercise. BUG-003.
+  ///
+  /// In en, this message translates to:
+  /// **'Create exercise'**
+  String get pendingActionCreateExercise;
+
   /// Pending action queued time
   ///
   /// In en, this message translates to:
@@ -2305,6 +2317,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Something went wrong. We\'ll retry shortly.'**
   String get syncErrorUnknown;
+
+  /// User-safe sync error body for structural failures that retry won't fix (FK violations, type-cast crashes, expired sessions). Shown alongside the Dismiss CTA. BUG-008.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t send this — please contact support.'**
+  String get syncErrorStructuralBody;
+
+  /// CTA on the pending-sync sheet for structural errors that can't be fixed by retrying. BUG-008.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get syncDismissAction;
 
   /// Pending sync badge: one workout
   ///
