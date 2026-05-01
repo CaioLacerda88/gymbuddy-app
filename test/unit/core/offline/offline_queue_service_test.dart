@@ -222,7 +222,7 @@ void main() {
       );
     });
 
-    test('getAll deserializes all three action types', () async {
+    test('getAll deserializes all four action types', () async {
       await service.enqueue(makeSaveWorkout('w-1'));
       await service.enqueue(
         PendingAction.upsertRecords(
@@ -241,12 +241,35 @@ void main() {
           queuedAt: now.add(const Duration(seconds: 2)),
         ),
       );
+      // BUG-003: PendingCreateExercise was added in this PR; ensure the
+      // round-trip serialization works so a schema change is caught here.
+      await service.enqueue(
+        PendingAction.createExercise(
+          id: 'ce-1',
+          exerciseId: 'ex-local-1',
+          userId: 'user-1',
+          locale: 'en',
+          name: 'Custom Bench',
+          muscleGroup: 'chest',
+          equipmentType: 'barbell',
+          queuedAt: now.add(const Duration(seconds: 3)),
+        ),
+      );
 
       final all = service.getAll();
-      expect(all.length, 3);
+      expect(all.length, 4);
       expect(all[0], isA<PendingSaveWorkout>());
       expect(all[1], isA<PendingUpsertRecords>());
       expect(all[2], isA<PendingMarkRoutineComplete>());
+      expect(all[3], isA<PendingCreateExercise>());
+
+      // Verify field-level round-trip for the new type.
+      final ce = all[3] as PendingCreateExercise;
+      expect(ce.id, 'ce-1');
+      expect(ce.exerciseId, 'ex-local-1');
+      expect(ce.name, 'Custom Bench');
+      expect(ce.muscleGroup, 'chest');
+      expect(ce.equipmentType, 'barbell');
     });
   });
 }
