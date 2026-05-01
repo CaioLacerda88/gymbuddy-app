@@ -4,6 +4,73 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ---
 
+## Wave 2 / Cluster 7 — DB integrity (fix/cluster7-db-integrity)
+
+Per BUGS.md Cluster 7 (BUG-030..034). SQL-migrations-only PR — no Dart changes.
+
+- [x] Read `00001_initial_schema.sql` and `00043_cross_build_titles_backfill.sql` to copy signatures and FK names verbatim
+- [x] Read `00008_fix_personal_records_set_id_fk.sql` for the dynamic-constraint-name pattern
+- [x] Verify schema: `earned_titles.title_id` (not `title_slug`) — BUG-034 spec corrected accordingly
+- [x] **00045_evaluate_cross_build_titles_ownership_check.sql** — BUG-030. CREATE OR REPLACE the function with the existing body verbatim plus an `auth.uid() IS NULL OR auth.uid() != p_user_id` ownership check that raises errcode 42501
+- [x] **00046_indexes_workout_exercises_pr_set_id.sql** — BUG-031 + BUG-032 combined. `workout_exercises_exercise_id_idx` and `personal_records_set_id_idx`, both `IF NOT EXISTS`
+- [x] **00047_personal_records_exercise_id_on_delete.sql** — BUG-033. `DROP NOT NULL` on exercise_id, drop the auto-named FK via dynamic lookup (mirroring 00008), re-add as `personal_records_exercise_id_fkey` with `ON DELETE SET NULL`
+- [x] **00048_cross_build_backfill_derived_timestamps.sql** — BUG-034. New `migration_checkpoints` table for one-shot data fixes. `pg_advisory_xact_lock` + sentinel-row guard so re-runs are no-ops. UPDATE replaces cross-build `earned_at` with each user's max non-cross-build `earned_at + 1ms`, COALESCE'd back to the original for users with no other titles
+- [x] `npx supabase db reset` passes locally — all 4 migrations apply cleanly
+- [x] Verified post-state: `personal_records.exercise_id` nullable + `ON DELETE SET NULL`, both new indexes present, checkpoint sentinel inserted, ownership check rejects unauthenticated callers with errcode 42501
+- [x] Verified 00048 idempotency: second apply emits the skip NOTICE and is a no-op
+- [x] BUGS.md: BUG-030..034 marked RESOLVED with strikethrough heads + branch reference
+- [x] Branch pushed: `fix/cluster7-db-integrity`
+
+**Files added (all new — no historical migration was edited):**
+- `supabase/migrations/00045_evaluate_cross_build_titles_ownership_check.sql`
+- `supabase/migrations/00046_indexes_workout_exercises_pr_set_id.sql`
+- `supabase/migrations/00047_personal_records_exercise_id_on_delete.sql`
+- `supabase/migrations/00048_cross_build_backfill_derived_timestamps.sql`
+
+---
+
+## Wave 2 / Cluster 5+6 — Localization, a11y, brand polish (fix/cluster5-6-ui-polish)
+
+Per BUGS.md Cluster 5 (Localization & accessibility) + Cluster 6 (Brand consistency). Combined into one PR because the file scope is disjoint from Cluster 2 + Cluster 7 wave-2 branches.
+
+### Cluster 5 — Localization & a11y
+
+- [ ] BUG-021 — `PendingSyncBadge` Semantics label hardcoded English (add `pendingSyncBadgeSemantics` ARB key with `{label}` placeholder)
+- [ ] BUG-022 — `equipmentBands` not localized in pt (`"Bands"` → `"Elásticos"`)
+- [ ] BUG-023 — Home status line WCAG AA contrast (alpha 0.55 → 0.75)
+- [ ] BUG-024 — `ActiveTitlePill` overflow handling (ellipsis + maxWidth)
+- [ ] BUG-025 — Saga intro overlay skip path (`sagaIntroSkip` ARB key + skip TextButton)
+
+### Cluster 6 — Brand consistency
+
+- [ ] BUG-026 — Character-sheet error icon `Icons.error_outline` → `AppIcons.hero`
+- [ ] BUG-027 — Titles screen double `CircularProgressIndicator` → branded skeleton
+- [ ] BUG-028 — Onboarding `ChoiceChip` → branded pill buttons
+- [ ] BUG-029 — Routine list empty state branded (illustration + inline FilledButton)
+
+### Files in scope
+
+- `lib/l10n/app_en.arb`, `lib/l10n/app_pt.arb`
+- `lib/shared/widgets/pending_sync_badge.dart`
+- `lib/features/workouts/ui/widgets/home_status_line.dart`
+- `lib/features/rpg/ui/widgets/active_title_pill.dart`
+- `lib/features/rpg/ui/saga_intro_overlay.dart`
+- `lib/features/rpg/ui/character_sheet_screen.dart`
+- `lib/features/rpg/ui/titles_screen.dart`
+- `lib/features/auth/ui/onboarding_screen.dart`
+- `lib/features/routines/ui/routine_list_screen.dart`
+- Widget tests under `test/widget/...`
+- `BUGS.md` (mark BUG-021..029 RESOLVED)
+
+### Verification
+
+- [ ] `make ci` green (format + analyze + test + android-debug-build)
+- [ ] ARB completeness test passes
+- [ ] BUGS.md updated with ✅ RESOLVED tags for BUG-021..029
+- [ ] Branch pushed; do NOT open PR (orchestrator opens it)
+
+---
+
 ## Phase 16 — Subscription Monetization — PARKED (2026-04-22)
 
 **Why parked:** Phase 16 keeps hitting external blockers (Brazilian merchant account, Play Console → upload signed AAB required before subscription product can be created, license-tester account setup). Phase 17 gamification is fully internal code work with no external gates and produces the retention moat that makes Phase 16's paywall pitch compelling. Decision: ship Phase 17 (Gamification) before resuming 16b/c/d.
