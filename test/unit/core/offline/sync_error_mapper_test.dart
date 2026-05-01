@@ -81,9 +81,11 @@ void main() {
         );
         final out = SyncErrorMapper.classify(en, error);
         expect(out, en.syncErrorRetryGeneric);
-        // Internal RPC names must not leak.
+        // Internal RPC names must not leak (BUG-042 disclosure markers).
         expect(out, isNot(contains('save_workout')));
         expect(out, isNot(contains('rpc_null_result')));
+        expect(out, isNot(contains('DatabaseException')));
+        expect(out, isNot(contains('null is not a subtype')));
       });
 
       test('TypeError (Dart cast failure) maps to generic retry copy', () {
@@ -99,6 +101,8 @@ void main() {
           // Cast-error guts (`type 'Object' is not a subtype...`) must not leak.
           expect(out, isNot(contains('subtype')));
           expect(out, isNot(contains('Object')));
+          // The exact production-crash string (BUG-042) must not appear.
+          expect(out, isNot(contains('null is not a subtype')));
         }
       });
     });
