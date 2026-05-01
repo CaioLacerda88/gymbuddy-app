@@ -56,6 +56,11 @@ void main() {
       expect(validatePrCelebrationExtra(extra), isFalse);
     });
 
+    test('rejects an extra missing the exerciseNames field', () {
+      final extra = validExtra()..remove('exerciseNames');
+      expect(validatePrCelebrationExtra(extra), isFalse);
+    });
+
     test('rejects an extra with a wrong-typed exerciseNames field', () {
       final extra = validExtra()..['exerciseNames'] = <String, int>{'ex-1': 7};
       expect(validatePrCelebrationExtra(extra), isFalse);

@@ -247,8 +247,9 @@ class RpgRepository extends BaseRepository {
           params: {'p_user_id': user.id, 'p_chunk_size': chunkSize},
         );
         final row = _firstRow(result);
-        final isComplete = (row['out_is_complete'] as bool?) ?? false;
-        totalProcessed = (row['out_total_processed'] as num?)?.toInt() ?? 0;
+        final isComplete = optionalField<bool>(row, 'out_is_complete') ?? false;
+        final processedRaw = optionalField<num>(row, 'out_total_processed');
+        totalProcessed = processedRaw?.toInt() ?? 0;
         if (isComplete) {
           return totalProcessed;
         }
@@ -266,7 +267,14 @@ class RpgRepository extends BaseRepository {
   /// of maps even when the function returns a single row.
   Map<String, dynamic> _firstRow(dynamic result) {
     if (result is List && result.isNotEmpty) {
-      return Map<String, dynamic>.from(result.first as Map);
+      final first = result.first;
+      if (first is! Map) {
+        throw const DatabaseException(
+          'backfill_rpg_v1 returned a non-Map row',
+          code: 'json_wrong_type',
+        );
+      }
+      return Map<String, dynamic>.from(first);
     }
     if (result is Map) {
       return Map<String, dynamic>.from(result);
