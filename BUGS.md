@@ -95,7 +95,7 @@ when its parent saveWorkout is in backoff.
 
 ---
 
-### BUG-003 [P0] — ~~No `PendingCreateExercise` queue variant~~ ✅ RESOLVED in fix/cluster1-leftovers
+### BUG-003 [P0] — ~~No `PendingCreateExercise` queue variant~~ ✅ RESOLVED in PR #127
 
 **What:** A user can create a custom exercise while offline and log sets against
 it in the same offline session. There is no `PendingCreateExercise` action; the
@@ -134,7 +134,7 @@ same user-visible message).
 
 ---
 
-### BUG-005 [P1] — ~~Sync drain doesn't invalidate RPG/PR providers after success~~ ✅ RESOLVED in fix/cluster1-leftovers
+### BUG-005 [P1] — ~~Sync drain doesn't invalidate RPG/PR providers after success~~ ✅ RESOLVED in PR #127
 
 **What:** After `PendingSaveWorkout` drains successfully, the sync service
 collects user IDs only for `PendingUpsertRecords` reconciliation
@@ -163,7 +163,7 @@ if (drainedSaveWorkouts.isNotEmpty) {
 
 ---
 
-### BUG-006 [P1] — ~~PR cache key mismatch between reconcile and detection~~ ✅ RESOLVED in fix/cluster1-leftovers
+### BUG-006 [P1] — ~~PR cache key mismatch between reconcile and detection~~ ✅ RESOLVED in PR #127
 
 **What:** `SyncService._reconcilePrCache` writes to `prCache` under key
 `'<userId>:<locale>'`. `ActiveWorkoutNotifier.detectPRs` reads from `prCache`
@@ -184,7 +184,7 @@ Recommend the former: clearer cache invalidation semantics.
 
 ---
 
-### BUG-007 [P1] — ~~`OfflineQueueService` silently swallows Hive write failures~~ ✅ RESOLVED in fix/cluster1-leftovers
+### BUG-007 [P1] — ~~`OfflineQueueService` silently swallows Hive write failures~~ ✅ RESOLVED in PR #127
 
 **What:** Three methods (`enqueue`, `dequeue`, `updateAction`) catch and log
 without rethrowing. A failed enqueue means the action is permanently lost (no
@@ -204,7 +204,7 @@ increments, so the queue retries forever rather than reaching terminal state.
 
 ---
 
-### BUG-008 [P1] — ~~Sync sheet retry CTA shown even for structural errors~~ ✅ RESOLVED in fix/cluster1-leftovers
+### BUG-008 [P1] — ~~Sync sheet retry CTA shown even for structural errors~~ ✅ RESOLVED in PR #127
 
 **What:** `PendingSyncSheet` renders "Tentar novamente" for every failed item,
 including structural errors (FK violations, type-cast crashes) that retry will
@@ -223,7 +223,7 @@ the queue auto-terminates after 6 attempts (data loss).
 
 ---
 
-### BUG-009 [P1] — ~~Active workout notifier swallows PR-detection exceptions~~ ✅ RESOLVED in fix/cluster1-leftovers
+### BUG-009 [P1] — ~~Active workout notifier swallows PR-detection exceptions~~ ✅ RESOLVED in PR #127
 
 **What:** The PR detection catch block in `_finishWorkout` logs and continues.
 If `PersonalRecord.fromJson` throws a null cast inside the cache deserializer,
@@ -528,7 +528,7 @@ hard-to-reach `+` icon in the AppBar).
 
 ## Cluster 7 — Database integrity & performance (P1/P2)
 
-### BUG-030 [P1] — ~~`evaluate_cross_build_titles_for_user` lacks ownership check~~ ✅ RESOLVED in fix/cluster7-db-integrity
+### BUG-030 [P1] — ~~`evaluate_cross_build_titles_for_user` lacks ownership check~~ ✅ RESOLVED in PR #128
 
 **What:** Authenticated users can pass any `p_user_id` and read another
 user's rank distribution via the returned slug list. Not currently exploited
@@ -552,7 +552,7 @@ is still rejected. Verified locally with the truth table:
 end-user/own-UUID passes, end-user/foreign-UUID rejects, NULL/any-UUID
 passes.
 
-### BUG-031 [P2] — ~~Missing index: `workout_exercises.exercise_id`~~ ✅ RESOLVED in fix/cluster7-db-integrity
+### BUG-031 [P2] — ~~Missing index: `workout_exercises.exercise_id`~~ ✅ RESOLVED in PR #128
 
 **Where:** `00001_initial_schema.sql` (only indexes `workout_id`)
 **Fix:** `CREATE INDEX workout_exercises_exercise_id_idx ON workout_exercises(exercise_id)` —
@@ -561,14 +561,14 @@ hot path for "show workouts containing exercise X".
 **Resolution:** Combined into `00046_indexes_workout_exercises_pr_set_id.sql`
 alongside BUG-032. Uses `CREATE INDEX IF NOT EXISTS` for replay safety.
 
-### BUG-032 [P2] — ~~Missing index: `personal_records.set_id`~~ ✅ RESOLVED in fix/cluster7-db-integrity
+### BUG-032 [P2] — ~~Missing index: `personal_records.set_id`~~ ✅ RESOLVED in PR #128
 
 **Where:** `00008_fix_personal_records_set_id_fk.sql` (rewires FK without index)
 **Fix:** `CREATE INDEX personal_records_set_id_idx ON personal_records(set_id)`.
 
 **Resolution:** Same migration `00046_indexes_workout_exercises_pr_set_id.sql`.
 
-### BUG-033 [P2] — ~~`personal_records.exercise_id` lacks explicit `ON DELETE` clause~~ ✅ RESOLVED in fix/cluster7-db-integrity
+### BUG-033 [P2] — ~~`personal_records.exercise_id` lacks explicit `ON DELETE` clause~~ ✅ RESOLVED in PR #128
 
 **Where:** `00001_initial_schema.sql:108`
 **What:** Defaults to NO ACTION/RESTRICT. A hard `DELETE FROM exercises`
@@ -589,7 +589,7 @@ because `set_id` was already nullable in 00001 — same reasoning does not
 apply here. The ADD CONSTRAINT step is wrapped in an existence guard so
 partial-replay scenarios don't raise "constraint already exists".
 
-### BUG-034 [P3] — ~~Cross-build backfill uses `now()` for all `earned_at` rows~~ ✅ RESOLVED in fix/cluster7-db-integrity
+### BUG-034 [P3] — ~~Cross-build backfill uses `now()` for all `earned_at` rows~~ ✅ RESOLVED in PR #128
 
 **Where:** `00043_cross_build_titles_backfill.sql:167-175`
 **What:** Every backfilled user shares the exact same earn timestamp →

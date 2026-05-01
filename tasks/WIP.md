@@ -4,31 +4,6 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ---
 
-## Wave 2 / Cluster 7 — DB integrity (fix/cluster7-db-integrity)
-
-Per BUGS.md Cluster 7 (BUG-030..034). SQL-migrations-only PR — no Dart changes.
-
-- [x] Read `00001_initial_schema.sql` and `00043_cross_build_titles_backfill.sql` to copy signatures and FK names verbatim
-- [x] Read `00008_fix_personal_records_set_id_fk.sql` for the dynamic-constraint-name pattern
-- [x] Verify schema: `earned_titles.title_id` (not `title_slug`) — BUG-034 spec corrected accordingly
-- [x] **00045_evaluate_cross_build_titles_ownership_check.sql** — BUG-030. CREATE OR REPLACE the function with the existing body verbatim plus an `auth.uid() IS NULL OR auth.uid() != p_user_id` ownership check that raises errcode 42501
-- [x] **00046_indexes_workout_exercises_pr_set_id.sql** — BUG-031 + BUG-032 combined. `workout_exercises_exercise_id_idx` and `personal_records_set_id_idx`, both `IF NOT EXISTS`
-- [x] **00047_personal_records_exercise_id_on_delete.sql** — BUG-033. `DROP NOT NULL` on exercise_id, drop the auto-named FK via dynamic lookup (mirroring 00008), re-add as `personal_records_exercise_id_fkey` with `ON DELETE SET NULL`
-- [x] **00048_cross_build_backfill_derived_timestamps.sql** — BUG-034. New `migration_checkpoints` table for one-shot data fixes. `pg_advisory_xact_lock` + sentinel-row guard so re-runs are no-ops. UPDATE replaces cross-build `earned_at` with each user's max non-cross-build `earned_at + 1ms`, COALESCE'd back to the original for users with no other titles
-- [x] `npx supabase db reset` passes locally — all 4 migrations apply cleanly
-- [x] Verified post-state: `personal_records.exercise_id` nullable + `ON DELETE SET NULL`, both new indexes present, checkpoint sentinel inserted, ownership check rejects unauthenticated callers with errcode 42501
-- [x] Verified 00048 idempotency: second apply emits the skip NOTICE and is a no-op
-- [x] BUGS.md: BUG-030..034 marked RESOLVED with strikethrough heads + branch reference
-- [x] Branch pushed: `fix/cluster7-db-integrity`
-
-**Files added (all new — no historical migration was edited):**
-- `supabase/migrations/00045_evaluate_cross_build_titles_ownership_check.sql`
-- `supabase/migrations/00046_indexes_workout_exercises_pr_set_id.sql`
-- `supabase/migrations/00047_personal_records_exercise_id_on_delete.sql`
-- `supabase/migrations/00048_cross_build_backfill_derived_timestamps.sql`
-
----
-
 ## Wave 2 / Cluster 5+6 — Localization, a11y, brand polish (fix/cluster5-6-ui-polish)
 
 Per BUGS.md Cluster 5 (Localization & accessibility) + Cluster 6 (Brand consistency). Combined into one PR because the file scope is disjoint from Cluster 2 + Cluster 7 wave-2 branches.
