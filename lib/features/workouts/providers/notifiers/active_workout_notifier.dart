@@ -755,21 +755,13 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
               },
             )
             .toList();
-        final setsJson = sets
-            .map(
-              (s) => <String, dynamic>{
-                'id': s.id,
-                'workout_exercise_id': s.workoutExerciseId,
-                'set_number': s.setNumber,
-                'reps': s.reps,
-                'weight': s.weight,
-                'rpe': s.rpe,
-                'set_type': s.setType.name,
-                'notes': s.notes,
-                'is_completed': s.isCompleted,
-              },
-            )
-            .toList();
+        // BUG-001 fix: use the shared `toRpcJson()` extension so the offline
+        // payload always matches the online one. Drift between these two
+        // serializers (offline omitting `created_at`) was the root cause of
+        // the "type 'Null' is not a subtype of type 'String' in type cast"
+        // crash on replay — `_$ExerciseSetFromJson` calls
+        // `DateTime.parse(json['created_at'] as String)` unconditionally.
+        final setsJson = sets.map((s) => s.toRpcJson()).toList();
 
         await ref
             .read(pendingSyncProvider.notifier)

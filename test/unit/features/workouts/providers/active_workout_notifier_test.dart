@@ -1237,6 +1237,52 @@ void main() {
       },
     );
 
+    // BUG-001 round-trip pin: the JSON map enqueued for offline replay must
+    // deserialize cleanly through ExerciseSet.fromJson without throwing. The
+    // production crash was a null-cast on `created_at` because the map
+    // omitted that key — _$ExerciseSetFromJson does an unguarded
+    // `DateTime.parse(json['created_at'] as String)`.
+    test(
+      'BUG-001: offline setsJson round-trips through ExerciseSet.fromJson',
+      () async {
+        final initial = makeState(exerciseCount: 1, setsPerExercise: 2);
+        final bundle = makeOfflineContainer(initial);
+        addTearDown(bundle.container.dispose);
+
+        when(() => bundle.mockAuth.currentUser).thenReturn(fakeUser());
+        when(
+          () => bundle.mockRepo.saveWorkout(
+            workout: any(named: 'workout'),
+            exercises: any(named: 'exercises'),
+            sets: any(named: 'sets'),
+          ),
+        ).thenThrow(Exception('Network error'));
+        when(
+          () => bundle.mockRepo.getFinishedWorkoutCount(any()),
+        ).thenThrow(Exception('Offline'));
+        when(() => bundle.mockRepo.getCachedWorkoutCount(any())).thenReturn(1);
+
+        await bundle.container.read(activeWorkoutProvider.future);
+        await bundle.container
+            .read(activeWorkoutProvider.notifier)
+            .finishWorkout();
+
+        final queued =
+            bundle.capturedNotifier.enqueued.first as PendingSaveWorkout;
+
+        // Round-trip every set through fromJson: this would throw the
+        // production cast error before the BUG-001 fix added `created_at`.
+        for (final json in queued.setsJson) {
+          expect(json['created_at'], isNotNull);
+          // No throw == pass — explicit asserts on a couple of fields too.
+          final round = ExerciseSet.fromJson(json);
+          expect(round.id, json['id']);
+          expect(round.workoutExerciseId, json['workout_exercise_id']);
+          expect(round.setType, isA<SetType>());
+        }
+      },
+    );
+
     test(
       'offline path: incrementCachedWorkoutCount is called when saveWorkout fails',
       () async {

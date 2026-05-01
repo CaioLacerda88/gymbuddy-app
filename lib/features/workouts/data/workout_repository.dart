@@ -69,21 +69,7 @@ class WorkoutRepository extends BaseRepository {
                 },
               )
               .toList(),
-          'p_sets': sets
-              .map(
-                (s) => {
-                  'id': s.id,
-                  'workout_exercise_id': s.workoutExerciseId,
-                  'set_number': s.setNumber,
-                  'reps': s.reps,
-                  'weight': s.weight,
-                  'rpe': s.rpe,
-                  'set_type': s.setType.name,
-                  'notes': s.notes,
-                  'is_completed': s.isCompleted,
-                },
-              )
-              .toList(),
+          'p_sets': sets.map((s) => s.toRpcJson()).toList(),
         },
       );
       final saved = Workout.fromJson(result as Map<String, dynamic>);
