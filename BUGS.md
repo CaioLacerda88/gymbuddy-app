@@ -541,10 +541,16 @@ at the function entry.
 
 **Resolution:** New migration `00045_evaluate_cross_build_titles_ownership_check.sql`
 issues `CREATE OR REPLACE FUNCTION` with the original 00043 body reproduced
-verbatim, plus an `auth.uid() IS NULL OR auth.uid() != p_user_id` guard at
-entry that raises with `ERRCODE = '42501'`. Verified locally: calling the
-function from a session with no `auth.uid()` rejects with the expected
-errcode.
+verbatim, plus an `auth.uid() IS NOT NULL AND auth.uid() != p_user_id`
+guard at entry that raises with `ERRCODE = '42501'`. NULL `auth.uid()`
+sessions (service_role, postgres role, pg_cron jobs, future server-side
+detectors) are intentionally allowed through — they are authenticated at
+the infrastructure layer and have legitimate cross-user reasons to invoke
+this function (recompute, backfill, audit). The targeted attack surface —
+an authenticated end user passing some other user's UUID via PostgREST —
+is still rejected. Verified locally with the truth table:
+end-user/own-UUID passes, end-user/foreign-UUID rejects, NULL/any-UUID
+passes.
 
 ### BUG-031 [P2] — ~~Missing index: `workout_exercises.exercise_id`~~ ✅ RESOLVED in fix/cluster7-db-integrity
 
