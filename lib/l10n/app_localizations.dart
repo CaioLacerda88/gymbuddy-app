@@ -2282,6 +2282,30 @@ abstract class AppLocalizations {
   /// **'{count} retries'**
   String retryCount(int count);
 
+  /// User-safe sync error for transient/structural failures (Postgrest FK/unique violations, type-cast errors, RLS denials). Raw exception goes to logs, never to UI. BUG-042.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t sync right now. We\'ll retry shortly.'**
+  String get syncErrorRetryGeneric;
+
+  /// User-safe sync error for network/timeout/socket failures. The data is safe in the queue. BUG-042.
+  ///
+  /// In en, this message translates to:
+  /// **'No connection. Your data will sync when you\'re back online.'**
+  String get syncErrorOffline;
+
+  /// User-safe sync error for authentication failures (Supabase AuthException). BUG-042.
+  ///
+  /// In en, this message translates to:
+  /// **'Session expired. Please log in again.'**
+  String get syncErrorSessionExpired;
+
+  /// Generic fallback for unknown sync errors — used by SyncErrorMapper when no other classifier matches. BUG-042.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. We\'ll retry shortly.'**
+  String get syncErrorUnknown;
+
   /// Pending sync badge: one workout
   ///
   /// In en, this message translates to:

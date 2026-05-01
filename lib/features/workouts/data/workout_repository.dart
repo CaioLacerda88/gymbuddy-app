@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 import '../../../core/data/base_repository.dart';
+import '../../../core/exceptions/app_exception.dart' as app;
 import '../../../core/local_storage/cache_service.dart';
 import '../../../core/local_storage/hive_service.dart';
 import '../../exercises/data/exercise_repository.dart';
@@ -69,24 +70,25 @@ class WorkoutRepository extends BaseRepository {
                 },
               )
               .toList(),
-          'p_sets': sets
-              .map(
-                (s) => {
-                  'id': s.id,
-                  'workout_exercise_id': s.workoutExerciseId,
-                  'set_number': s.setNumber,
-                  'reps': s.reps,
-                  'weight': s.weight,
-                  'rpe': s.rpe,
-                  'set_type': s.setType.name,
-                  'notes': s.notes,
-                  'is_completed': s.isCompleted,
-                },
-              )
-              .toList(),
+          'p_sets': sets.map((s) => s.toRpcJson()).toList(),
         },
       );
-      final saved = Workout.fromJson(result as Map<String, dynamic>);
+      // Defensive null-guard (BUG-004): Postgrest can return `null` for RPCs
+      // that hit a `RAISE EXCEPTION` inside a `DO` block or partial-commit
+      // error paths. Without this check the cast throws the cryptic
+      // "type 'Null' is not a subtype of type 'String' in type cast" error
+      // that surfaced on a Galaxy S25 Ultra. We translate to a typed
+      // domain exception so the offline-queue retry loop and the UI's
+      // sync-error mapper can classify it.
+      if (result is! Map<String, dynamic>) {
+        // RPC name kept in message for diagnostic logs/Sentry; never reaches
+        // UI (sanitized by SyncErrorMapper to a generic localized retry).
+        throw const app.DatabaseException(
+          'save_workout RPC returned null',
+          code: 'rpc_null_result',
+        );
+      }
+      final saved = Workout.fromJson(result);
       // History cache is locale-prefixed (`'<userId>:<locale>'`); after a
       // save we evict every locale entry — the heavy hand is fine here
       // (rare event, single-user devices in practice). Same applies to

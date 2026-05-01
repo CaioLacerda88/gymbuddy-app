@@ -54,9 +54,12 @@ class SyncService extends Notifier<SyncState> {
   /// 1. Stop if connectivity drops mid-drain.
   /// 2. Skip if already being retried (in-flight guard).
   /// 3. Skip if retryCount >= [kMaxSyncRetries] (terminal).
-  /// 4. Delegate to [PendingSyncNotifier.retryItem].
-  /// 5. On success: emit [AnalyticsEvent.workoutSyncSucceeded].
-  /// 6. On failure: classify error, maybe backoff, maybe emit failed event.
+  /// 4. Skip if any [PendingAction.dependsOn] parent is still in the queue
+  ///    AND not terminal — the parent must commit first or the child's FK
+  ///    will fail (BUG-002).
+  /// 5. Delegate to [PendingSyncNotifier.retryItem].
+  /// 6. On success: emit [AnalyticsEvent.workoutSyncSucceeded].
+  /// 7. On failure: classify error, maybe backoff, maybe emit failed event.
   Future<void> _drain() async {
     if (_draining) return;
     _draining = true;
@@ -69,6 +72,17 @@ class SyncService extends Notifier<SyncState> {
       // Collect unique userIds from successfully drained upsertRecords items
       // so we can batch reconciliation after the loop.
       final reconciledUserIds = <String>{};
+
+      // Snapshot the live (non-terminal) IDs for dependency gating.
+      // This shrinks as actions drain successfully (`dequeue` removes them
+      // from the queue, and we mirror that here on success). Terminal items
+      // are NOT considered live — a perma-stuck parent shouldn't block its
+      // children from at least attempting; the child will then fail and
+      // surface its own error to the user.
+      final liveIds = <String>{
+        for (final a in actions)
+          if (a.retryCount < kMaxSyncRetries) a.id,
+      };
 
       for (final action in actions) {
         // Stop if connectivity dropped mid-drain.
@@ -83,6 +97,23 @@ class SyncService extends Notifier<SyncState> {
         // Skip terminal items.
         if (action.retryCount >= kMaxSyncRetries) continue;
 
+        // Skip when a dependency is still live (BUG-002). Don't increment
+        // retryCount — this isn't a failure, just a "not yet". The child
+        // becomes drainable in this same pass if the parent appeared
+        // earlier in the FIFO slice (liveIds.remove(parentId) on success),
+        // or on the next drain trigger if the parent was held this pass.
+        if (action.dependsOn.any(liveIds.contains)) {
+          SentryReport.addBreadcrumb(
+            category: 'sync',
+            message: 'Holding action ${action.id} for parent commit',
+            data: {
+              'action_type': _actionType(action),
+              'depends_on': action.dependsOn.join(','),
+            },
+          );
+          continue;
+        }
+
         SentryReport.addBreadcrumb(
           category: 'sync',
           message: 'Draining action ${action.id}',
@@ -94,6 +125,10 @@ class SyncService extends Notifier<SyncState> {
 
         try {
           await notifier.retryItem(action.id);
+
+          // Success — parent committed; remove from the live set so any
+          // dependent action later in the FIFO becomes drainable.
+          liveIds.remove(action.id);
 
           // Success — emit analytics event.
           _trackSyncSucceeded(action);

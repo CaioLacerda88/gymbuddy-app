@@ -755,21 +755,13 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
               },
             )
             .toList();
-        final setsJson = sets
-            .map(
-              (s) => <String, dynamic>{
-                'id': s.id,
-                'workout_exercise_id': s.workoutExerciseId,
-                'set_number': s.setNumber,
-                'reps': s.reps,
-                'weight': s.weight,
-                'rpe': s.rpe,
-                'set_type': s.setType.name,
-                'notes': s.notes,
-                'is_completed': s.isCompleted,
-              },
-            )
-            .toList();
+        // BUG-001 fix: use the shared `toRpcJson()` extension so the offline
+        // payload always matches the online one. Drift between these two
+        // serializers (offline omitting `created_at`) was the root cause of
+        // the "type 'Null' is not a subtype of type 'String' in type cast"
+        // crash on replay — `_$ExerciseSetFromJson` calls
+        // `DateTime.parse(json['created_at'] as String)` unconditionally.
+        final setsJson = sets.map((s) => s.toRpcJson()).toList();
 
         await ref
             .read(pendingSyncProvider.notifier)
@@ -872,6 +864,16 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
 
         if (prResult!.hasNewRecords) {
           // Always enqueue — all PR writes go through the offline queue.
+          //
+          // BUG-002 fix: when the parent workout was saved offline, the new
+          // PR rows reference set IDs the server hasn't seen yet
+          // (`personal_records.set_id` FK -> `sets.id`). Tag this action with
+          // the parent workout ID so the drain holds the upsert until the
+          // parent commits. When the parent saved online, the sets are
+          // already durable server-side, so no `dependsOn` is needed.
+          final dependsOn = savedOffline
+              ? <String>[workout.id]
+              : const <String>[];
           await ref
               .read(pendingSyncProvider.notifier)
               .enqueue(
@@ -882,6 +884,7 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
                       .toList(),
                   userId: _userId,
                   queuedAt: now,
+                  dependsOn: dependsOn,
                 ),
               );
 

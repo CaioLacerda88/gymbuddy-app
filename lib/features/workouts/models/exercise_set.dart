@@ -35,3 +35,25 @@ abstract class ExerciseSet with _$ExerciseSet {
   factory ExerciseSet.fromJson(Map<String, dynamic> json) =>
       _$ExerciseSetFromJson(json);
 }
+
+/// Single source of truth for the snake_case set payload sent to the
+/// `save_workout` RPC and queued as `setsJson` on offline `PendingSaveWorkout`.
+///
+/// Both call sites must serialize identically — drift between them caused
+/// BUG-001, where the offline path omitted `created_at` and `ExerciseSet.fromJson`
+/// then threw a null-cast on replay. Keep this map shape and key set in sync
+/// with `_$ExerciseSetFromJson` in `exercise_set.g.dart`.
+extension ExerciseSetRpcJson on ExerciseSet {
+  Map<String, dynamic> toRpcJson() => <String, dynamic>{
+    'id': id,
+    'workout_exercise_id': workoutExerciseId,
+    'set_number': setNumber,
+    'reps': reps,
+    'weight': weight,
+    'rpe': rpe,
+    'set_type': setType.name,
+    'notes': notes,
+    'is_completed': isCompleted,
+    'created_at': createdAt.toIso8601String(),
+  };
+}

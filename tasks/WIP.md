@@ -4,6 +4,46 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ---
 
+## Cluster 1 — Offline sync data-loss + error sanitization (BUGS.md, 2026-04-30)
+
+**Branch:** `fix/cluster1-offline-sync-data-loss`
+**Source:** BUGS.md Cluster 1 (BUG-001, BUG-002, BUG-004) + new BUG-042 (info-disclosure leak in `pending_sync_sheet.dart`)
+
+### Plan
+
+- [x] **BUG-001 fix:** add `created_at` to offline `setsJson`; extract single `ExerciseSet.toRpcJson()` shared by online (`workout_repository.dart:72-86`) and offline (`active_workout_notifier.dart:758-771`) paths.
+- [x] **BUG-004 fix:** null-guard `result as Map<String, dynamic>` in `WorkoutRepository.saveWorkout` (line 89). Throw typed `app.DatabaseException` on null.
+- [x] **BUG-002 fix:** add `dependsOn: List<String>` to `PendingAction` (defaults to empty); enqueue `PendingUpsertRecords` with parent `PendingSaveWorkout.id` + new `PendingCreateExercise` parents (Phase 14d already wires children to parent IDs in `_finishWorkout`); gate the `SyncService` drain so children wait until their parents have committed.
+- [x] **BUG-042 fix (new):** create `lib/core/offline/sync_error_mapper.dart` — single function takes `BuildContext` + thrown error → returns localized, user-safe message. `pending_sync_sheet.dart` calls only this. Raw exception goes to `developer.log()` and Sentry; never to UI. Strip `lastError` from any UI render path that bypasses the mapper.
+- [x] **L10n (BR-Portuguese canonical):** add `syncErrorRetryGeneric`, `syncErrorOffline`, `syncErrorSessionExpired`, `syncErrorUnknown` keys to `app_pt.arb` and `app_en.arb`.
+
+### Tests
+
+- [x] Round-trip pin: queued `setsJson` deserializes via `ExerciseSet.fromJson` without throwing (`active_workout_notifier_test.dart`).
+- [x] Drain ordering pin: enqueue `PendingSaveWorkout` then `PendingUpsertRecords(dependsOn: parent)`; first attempt fails the workout; assert PR upsert is skipped this drain pass (`sync_service_test.dart`).
+- [x] `SyncErrorMapper` pin per exception class → l10n key (new test file).
+- [x] `WorkoutRepository.saveWorkout` null-RPC handling pin (BUG-004).
+
+### Files to modify
+
+- `lib/features/workouts/models/exercise_set.dart` — add `toRpcJson()`.
+- `lib/features/workouts/data/workout_repository.dart` — call `toRpcJson`; null-guard; PostgrestException-friendly.
+- `lib/features/workouts/providers/notifiers/active_workout_notifier.dart` — call `toRpcJson`; pass parent-id when enqueueing `upsertRecords`.
+- `lib/core/offline/pending_action.dart` (+ regenerated `.freezed.dart` / `.g.dart`) — add `dependsOn`.
+- `lib/core/offline/sync_service.dart` — gate drain by `dependsOn`; on FK-fail of child whose parent is still queued, skip without incrementing retry.
+- `lib/core/offline/sync_error_mapper.dart` — NEW.
+- `lib/shared/widgets/pending_sync_sheet.dart` — wire mapper; drop `error.toString()`.
+- `lib/l10n/app_en.arb`, `lib/l10n/app_pt.arb` — new keys.
+- `BUGS.md` — append BUG-042 entry only.
+
+### Out of scope
+
+- BUG-003 (PendingCreateExercise variant) — separate PR.
+- BUG-005 → BUG-009 — separate PRs.
+- Clusters 2–8 — separate PRs.
+
+---
+
 ## Phase 18 follow-ups — RPG v1 debt (from PR #120 close-out, 2026-04-29)
 
 Small debt items pushed forward from Phase 18e. None block v1 launch; bundle into one PR when convenient.

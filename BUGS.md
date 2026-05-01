@@ -227,6 +227,43 @@ team needs visibility on production rates.
 
 ---
 
+### BUG-042 [P0] — Pending-sync sheet leaks raw exception strings to end users
+
+**What:** The "Sincronização Pendente" sheet rendered `e.toString()` directly
+in the per-item error label, exposing raw Dart cast errors
+(`type 'Null' is not a subtype of type 'String' in type cast`), Postgres
+constraint names (`personal_records_set_id_fkey`), table names, and SQL
+codes to end users. This is OWASP A04:2021 information disclosure: the
+backend's internal schema bleeds into a consumer surface, gives attackers a
+free reconnaissance channel, and produces user-hostile copy that erodes
+trust in the worst possible moment (their data is in limbo). Both reported
+production crashes (BUG-001 and the FK-violation case) surfaced through
+this leak path before they were diagnosed.
+
+**Where:**
+- `lib/shared/widgets/pending_sync_sheet.dart` — `_errors[id] = e.toString()`
+  in the catch block (pre-fix line ~165)
+- `lib/core/offline/pending_action.dart` — `lastError` field stores the same
+  raw string and was rendered directly when present
+
+**Fix:** New `lib/core/offline/sync_error_mapper.dart` centralizes error
+translation at the UI boundary. It classifies the exception
+(`AuthException` / `NetworkException`-shaped / `DatabaseException` +
+`PostgrestException` + `TypeError` / fallback) and returns a localized,
+user-safe string from the four new ARB keys:
+`syncErrorSessionExpired`, `syncErrorOffline`, `syncErrorRetryGeneric`,
+`syncErrorUnknown`. The raw exception is logged via `developer.log` and
+breadcrumbed to Sentry inside the mapper — the caller never sees it. The
+`lastError` field on `PendingAction` is now documented as
+**dev-facing only**: it remains populated for diagnostics but UI must read
+through `SyncErrorMapper.toUserMessage`.
+
+Pinned by `test/unit/core/offline/sync_error_mapper_test.dart` (one test
+per exception class → expected ARB key, plus information-disclosure
+assertions that schema/constraint names never appear in the output).
+
+---
+
 ## Cluster 2 — Unsafe casts in repository layer (P1)
 
 Multiple `as String` / `as Map` / `!` patterns throughout the repository layer

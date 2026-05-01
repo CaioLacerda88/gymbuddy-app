@@ -1248,6 +1248,20 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get syncErrorRetryGeneric =>
+      'Couldn\'t sync right now. We\'ll retry shortly.';
+
+  @override
+  String get syncErrorOffline =>
+      'No connection. Your data will sync when you\'re back online.';
+
+  @override
+  String get syncErrorSessionExpired => 'Session expired. Please log in again.';
+
+  @override
+  String get syncErrorUnknown => 'Something went wrong. We\'ll retry shortly.';
+
+  @override
   String get pendingSyncBadgeSingular => '1 workout pending sync';
 
   @override
