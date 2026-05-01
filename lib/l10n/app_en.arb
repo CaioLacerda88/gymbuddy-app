@@ -990,6 +990,15 @@
     }
   },
 
+  "syncErrorRetryGeneric": "Couldn't sync right now. We'll retry shortly.",
+  "@syncErrorRetryGeneric": { "description": "User-safe sync error for transient/structural failures (Postgrest FK/unique violations, type-cast errors, RLS denials). Raw exception goes to logs, never to UI. BUG-042." },
+  "syncErrorOffline": "No connection. Your data will sync when you're back online.",
+  "@syncErrorOffline": { "description": "User-safe sync error for network/timeout/socket failures. The data is safe in the queue. BUG-042." },
+  "syncErrorSessionExpired": "Session expired. Please log in again.",
+  "@syncErrorSessionExpired": { "description": "User-safe sync error for authentication failures (Supabase AuthException). BUG-042." },
+  "syncErrorUnknown": "Something went wrong. We'll retry shortly.",
+  "@syncErrorUnknown": { "description": "Generic fallback for unknown sync errors — used by SyncErrorMapper when no other classifier matches. BUG-042." },
+
   "pendingSyncBadgeSingular": "1 workout pending sync",
   "@pendingSyncBadgeSingular": { "description": "Pending sync badge: one workout" },
   "pendingSyncBadgePlural": "{count} workouts pending sync",

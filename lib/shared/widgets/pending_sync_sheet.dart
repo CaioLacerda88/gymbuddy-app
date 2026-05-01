@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/offline/pending_action.dart';
 import '../../core/offline/pending_sync_provider.dart';
+import '../../core/offline/sync_error_mapper.dart';
 import '../../core/theme/radii.dart';
 import '../../l10n/app_localizations.dart';
 
@@ -123,9 +124,15 @@ class _PendingSyncSheetState extends ConsumerState<PendingSyncSheet> {
         ).showSnackBar(SnackBar(content: Text(l10n.syncedSuccessfully)));
       }
     } catch (e) {
+      // BUG-042: never surface raw exception strings. The mapper
+      // localizes by exception class (PostgrestException → generic retry
+      // copy, AuthException → session expired, etc.) and the raw error
+      // goes to developer.log + Sentry inside the mapper.
       if (mounted) {
+        final l10n = AppLocalizations.of(context);
+        final userMessage = SyncErrorMapper.toUserMessage(l10n, e);
         setState(() {
-          _errors[id] = e.toString();
+          _errors[id] = userMessage;
         });
       }
     } finally {

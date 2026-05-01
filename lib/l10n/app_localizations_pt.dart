@@ -1255,6 +1255,22 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get syncErrorRetryGeneric =>
+      'Não foi possível sincronizar agora. Vamos tentar novamente em alguns instantes.';
+
+  @override
+  String get syncErrorOffline =>
+      'Sem conexão. Os dados serão sincronizados quando voltar online.';
+
+  @override
+  String get syncErrorSessionExpired =>
+      'Sessão expirada. Faça login novamente.';
+
+  @override
+  String get syncErrorUnknown =>
+      'Algo deu errado. Vamos tentar novamente em alguns instantes.';
+
+  @override
   String get pendingSyncBadgeSingular => '1 treino pendente de sincronização';
 
   @override
