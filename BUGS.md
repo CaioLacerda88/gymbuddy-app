@@ -20,13 +20,13 @@ the items below — it is a separate debt-cleanup branch.
 
 ---
 
-## Cluster 1 — Offline sync replay (P0 data-loss) — ✅ RESOLVED in PR #124
+## Cluster 1 — Offline sync replay & related — FULLY RESOLVED (PR #124 + leftovers PR)
 
 The two production bugs are both in this cluster. Three independent agents
 converged on the same root causes. Recommend a single PR fixing all of Cluster 1
 with paired unit tests.
 
-**Cluster status (2026-05-01):** All four entries below resolved in PR #124
+**P0 data-loss subset status (2026-05-01):** BUG-001/002/004/042 resolved in PR #124
 ([01eec28](https://github.com/CaioLacerda88/repsaga/commit/01eec28e96572e8c5bc0a887ceea4a26686a990d)).
 The fix introduced `ExerciseSet.toRpcJson()` as the DRY single-source serializer
 shared by online + offline paths (BUG-001), a `dependsOn: List<String>` mechanism
@@ -95,7 +95,7 @@ when its parent saveWorkout is in backoff.
 
 ---
 
-### BUG-003 [P0] — No `PendingCreateExercise` queue variant
+### BUG-003 [P0] — ~~No `PendingCreateExercise` queue variant~~ ✅ RESOLVED in fix/cluster1-leftovers
 
 **What:** A user can create a custom exercise while offline and log sets against
 it in the same offline session. There is no `PendingCreateExercise` action; the
@@ -134,7 +134,7 @@ same user-visible message).
 
 ---
 
-### BUG-005 [P1] — Sync drain doesn't invalidate RPG/PR providers after success
+### BUG-005 [P1] — ~~Sync drain doesn't invalidate RPG/PR providers after success~~ ✅ RESOLVED in fix/cluster1-leftovers
 
 **What:** After `PendingSaveWorkout` drains successfully, the sync service
 collects user IDs only for `PendingUpsertRecords` reconciliation
@@ -163,7 +163,7 @@ if (drainedSaveWorkouts.isNotEmpty) {
 
 ---
 
-### BUG-006 [P1] — PR cache key mismatch between reconcile and detection
+### BUG-006 [P1] — ~~PR cache key mismatch between reconcile and detection~~ ✅ RESOLVED in fix/cluster1-leftovers
 
 **What:** `SyncService._reconcilePrCache` writes to `prCache` under key
 `'<userId>:<locale>'`. `ActiveWorkoutNotifier.detectPRs` reads from `prCache`
@@ -184,7 +184,7 @@ Recommend the former: clearer cache invalidation semantics.
 
 ---
 
-### BUG-007 [P1] — `OfflineQueueService` silently swallows Hive write failures
+### BUG-007 [P1] — ~~`OfflineQueueService` silently swallows Hive write failures~~ ✅ RESOLVED in fix/cluster1-leftovers
 
 **What:** Three methods (`enqueue`, `dequeue`, `updateAction`) catch and log
 without rethrowing. A failed enqueue means the action is permanently lost (no
@@ -204,7 +204,7 @@ increments, so the queue retries forever rather than reaching terminal state.
 
 ---
 
-### BUG-008 [P1] — Sync sheet retry CTA shown even for structural errors
+### BUG-008 [P1] — ~~Sync sheet retry CTA shown even for structural errors~~ ✅ RESOLVED in fix/cluster1-leftovers
 
 **What:** `PendingSyncSheet` renders "Tentar novamente" for every failed item,
 including structural errors (FK violations, type-cast crashes) that retry will
@@ -223,7 +223,7 @@ the queue auto-terminates after 6 attempts (data loss).
 
 ---
 
-### BUG-009 [P1] — Active workout notifier swallows PR-detection exceptions
+### BUG-009 [P1] — ~~Active workout notifier swallows PR-detection exceptions~~ ✅ RESOLVED in fix/cluster1-leftovers
 
 **What:** The PR detection catch block in `_finishWorkout` logs and continues.
 If `PersonalRecord.fromJson` throws a null cast inside the cache deserializer,

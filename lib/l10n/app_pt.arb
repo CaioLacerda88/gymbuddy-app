@@ -218,6 +218,7 @@
   "selectMuscleAndEquipment": "Selecione um grupo muscular e tipo de equipamento",
   "sessionExpired": "Sessão expirada. Faça login novamente.",
   "exerciseCreated": "Exercício criado com sucesso",
+  "exerciseCreatedOffline": "Exercício salvo localmente. Será sincronizado quando você voltar a ficar online.",
   "createExerciseButton": "CRIAR EXERCÍCIO",
   "description": "Descrição",
   "descriptionHint": "Breve descrição do exercício (opcional)",
@@ -402,6 +403,7 @@
   "pendingActionSaveWorkout": "Salvar treino",
   "pendingActionUpdateRecords": "Atualizar recordes",
   "pendingActionMarkComplete": "Marcar rotina como concluída",
+  "pendingActionCreateExercise": "Criar exercício",
   "queuedAt": "Na fila às {time}",
   "retryCount": "{count} tentativas",
 
@@ -409,6 +411,8 @@
   "syncErrorOffline": "Sem conexão. Os dados serão sincronizados quando voltar online.",
   "syncErrorSessionExpired": "Sessão expirada. Faça login novamente.",
   "syncErrorUnknown": "Algo deu errado. Vamos tentar novamente em alguns instantes.",
+  "syncErrorStructuralBody": "Não foi possível enviar — entre em contato com o suporte.",
+  "syncDismissAction": "Dispensar",
 
   "pendingSyncBadgeSingular": "1 treino pendente de sincronização",
   "pendingSyncBadgePlural": "{count} treinos pendentes de sincronização",

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:repsaga/core/data/base_repository.dart';
 import 'package:repsaga/core/local_storage/cache_service.dart';
+import 'package:repsaga/core/observability/sentry_report.dart';
 import 'package:repsaga/core/offline/offline_queue_service.dart';
 import 'package:repsaga/core/offline/pending_action.dart';
 import 'package:repsaga/core/offline/pending_sync_provider.dart';
@@ -32,6 +33,7 @@ import 'package:repsaga/features/rpg/data/rpg_repository.dart';
 import 'package:repsaga/features/rpg/models/body_part_progress.dart';
 import 'package:repsaga/features/rpg/providers/rpg_progress_provider.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:sentry_flutter/sentry_flutter.dart' show SentryId;
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
 
 import '../../../../fixtures/test_factories.dart';
@@ -3063,6 +3065,68 @@ void main() {
           capturedNotifier.enqueued.whereType<PendingUpsertRecords>(),
           isEmpty,
         );
+      },
+    );
+
+    // BUG-009: PR-detection failures must be Sentry-captured in addition
+    // to logged. Historically the catch silently swallowed errors which
+    // masked BUG-001 — null casts inside detectPRs hid for weeks because
+    // production never saw the exception rate.
+    test(
+      'BUG-009: PR-detection error is captured to Sentry while workout still saves',
+      () async {
+        var captureCount = 0;
+        Object? lastCaptured;
+        SentryReport.debugSetCaptureFn((error, {stackTrace}) async {
+          captureCount++;
+          lastCaptured = error;
+          return const SentryId.empty();
+        });
+        addTearDown(() => SentryReport.debugSetCaptureFn(null));
+
+        final initial = stateWithCompletedSets();
+        final container = makePRContainer(initial);
+        addTearDown(container.dispose);
+
+        when(
+          () => mockRepo.saveWorkout(
+            workout: any(named: 'workout'),
+            exercises: any(named: 'exercises'),
+            sets: any(named: 'sets'),
+          ),
+        ).thenAnswer(
+          (_) async => Workout.fromJson(TestWorkoutFactory.create()),
+        );
+
+        // Cache misses → falls back to prRepo, which throws a TypeError-like
+        // failure. The notifier's try/catch around detection must swallow
+        // it for the workout save AND forward to Sentry.
+        when(
+          () => mockCache.read<Map<String, List<PersonalRecord>>>(
+            any(),
+            any(),
+            any(),
+          ),
+        ).thenReturn(null);
+        when(
+          () => mockPRRepo.getRecordsForExercises(any()),
+        ).thenThrow(TypeError());
+
+        await container.read(activeWorkoutProvider.future);
+
+        // Workout finishes without throwing.
+        final prResult = await container
+            .read(activeWorkoutProvider.notifier)
+            .finishWorkout();
+
+        // State cleared (workout committed).
+        expect(container.read(activeWorkoutProvider).value, isNull);
+        // Detection never produced records → no PR result.
+        expect(prResult, isNull);
+
+        // Sentry must have received the detection failure exactly once.
+        expect(captureCount, 1);
+        expect(lastCaptured, isA<TypeError>());
       },
     );
 

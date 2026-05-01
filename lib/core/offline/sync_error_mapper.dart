@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import '../../l10n/app_localizations.dart';
 import '../exceptions/app_exception.dart' as app;
 import '../observability/sentry_report.dart';
+import 'pending_action.dart';
 
 /// Maps a thrown sync error to a user-safe, localized message.
 ///
@@ -17,6 +18,9 @@ import '../observability/sentry_report.dart';
 /// `DatabaseException: insert or update on table "personal_records" violates
 /// foreign key constraint "personal_records_set_id_fkey"`) and an information
 /// disclosure issue (OWASP A04:2021 — exposing internal schema).
+///
+/// **BUG-008:** also classifies the error into a [SyncErrorCategory] so the
+/// pending-sync sheet can pick between retry and dismiss CTAs.
 ///
 /// **Contract:**
 /// - The raw exception (with full stack) goes to `developer.log()` and Sentry
@@ -56,6 +60,39 @@ class SyncErrorMapper {
   /// without observing log/sentry side effects.
   static String classify(AppLocalizations l10n, Object error) =>
       _classify(l10n, error);
+
+  /// Returns the [SyncErrorCategory] for [error].
+  ///
+  /// Mirrors [classify] one-to-one — same inputs always map to the same
+  /// category and l10n key. This is the value [SyncService] writes to
+  /// [PendingAction.errorCategory] on each failed drain attempt so the
+  /// pending-sync sheet (BUG-008) can pick between retry vs dismiss without
+  /// re-classifying.
+  static SyncErrorCategory classifyCategory(Object error) {
+    if (error is app.AuthException) return SyncErrorCategory.session;
+    if (error is supabase.AuthException) return SyncErrorCategory.session;
+
+    if (error is SocketException) return SyncErrorCategory.network;
+    if (error is TimeoutException) return SyncErrorCategory.network;
+    if (error is HttpException) return SyncErrorCategory.network;
+    if (error is app.NetworkException) return SyncErrorCategory.network;
+
+    // Postgrest / database errors are structural — retrying without a code
+    // change won't fix an FK violation, RLS denial, or unique-constraint
+    // collision. The mapper still returns the generic "we'll retry" copy
+    // (BUG-042 information-disclosure contract) but the category drives the
+    // sheet to show "Dispensar" instead of "Tentar novamente".
+    if (error is supabase.PostgrestException) {
+      return SyncErrorCategory.structural;
+    }
+    if (error is app.DatabaseException) return SyncErrorCategory.structural;
+
+    // Dart-internal cast / type errors are always structural — the queued
+    // payload doesn't match what the deserializer expects.
+    if (error is TypeError) return SyncErrorCategory.structural;
+
+    return SyncErrorCategory.unknown;
+  }
 
   static String _classify(AppLocalizations l10n, Object error) {
     // Auth errors — both our wrapped AppException.AuthException and the
