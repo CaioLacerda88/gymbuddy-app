@@ -572,11 +572,16 @@ would fail with FK violation rather than CASCADE/SET NULL.
 **Resolution:** New migration
 `00047_personal_records_exercise_id_on_delete.sql`. Postgres does not allow
 mutating an FK's referential action via `ALTER CONSTRAINT`, so the migration
-follows 00008's pattern: drops the existing auto-named FK via a dynamic
-`information_schema` lookup, then re-adds it as
-`personal_records_exercise_id_fkey FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE SET NULL`.
-Also drops `NOT NULL` from `exercise_id` (it was originally `NOT NULL` in
-00001) so SET NULL can fire. Verified post-state via `\d personal_records`.
+drops the existing auto-named FK via a dynamic `information_schema` lookup
+and re-adds it as `personal_records_exercise_id_fkey FOREIGN KEY (exercise_id)
+REFERENCES exercises(id) ON DELETE CASCADE`. CASCADE was chosen over SET NULL
+(the original spec): a personal record is meaningless without its parent
+exercise, and CASCADE keeps the schema in sync with the Dart model's
+`required String exerciseId` (non-nullable) without coupling a model
+migration to this PR. The analogous 00008 (`set_id` → SET NULL) used SET NULL
+because `set_id` was already nullable in 00001 — same reasoning does not
+apply here. The ADD CONSTRAINT step is wrapped in an existence guard so
+partial-replay scenarios don't raise "constraint already exists".
 
 ### BUG-034 [P3] — ~~Cross-build backfill uses `now()` for all `earned_at` rows~~ ✅ RESOLVED in fix/cluster7-db-integrity
 

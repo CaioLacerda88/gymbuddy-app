@@ -49,12 +49,16 @@ DECLARE
   v_spread     numeric;
 BEGIN
   -- Ownership check (BUG-030).
-  -- Reject any caller that is not the user whose distribution is being
-  -- evaluated. The backfill in 00043 runs at migration time outside any
-  -- session — auth.uid() is NULL there — but this function is no longer
-  -- invoked from that backfill path (the seed INSERT is one-shot and
-  -- already committed). All future callers are authenticated sessions.
-  IF auth.uid() IS NULL OR auth.uid() != p_user_id THEN
+  -- Reject any AUTHENTICATED caller whose auth.uid() does not match
+  -- p_user_id. Sessions where auth.uid() is NULL — i.e., service_role,
+  -- postgres role, pg_cron jobs, future server-side detectors — are
+  -- intentionally allowed through. Those execution contexts have already
+  -- been authenticated at the infrastructure layer (DB role gating, JWT
+  -- service-role claim) and have legitimate cross-user reasons to invoke
+  -- this function (recompute, backfill, audit). The rejection is targeted
+  -- at the only attack surface that exists today: an authenticated end
+  -- user passing some other user's UUID via PostgREST.
+  IF auth.uid() IS NOT NULL AND auth.uid() != p_user_id THEN
     RAISE EXCEPTION 'unauthorized: caller does not own p_user_id'
       USING ERRCODE = '42501';
   END IF;
