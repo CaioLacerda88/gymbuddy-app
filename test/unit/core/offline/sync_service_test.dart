@@ -838,6 +838,140 @@ void main() {
     );
 
     // ------------------------------------------------------------------
+    // BUG-002: Dependency-ordered drain — children wait for live parents.
+    //
+    // When a PendingUpsertRecords carries `dependsOn: [parentWorkoutId]`
+    // and the parent PendingSaveWorkout is still queued (or fails on this
+    // pass), the child must NOT be drained ahead of it. Without this guard,
+    // FIFO order races the FK on `personal_records.set_id` and we get
+    // `personal_records_set_id_fkey` constraint violations on replay.
+    // ------------------------------------------------------------------
+
+    /// A complete record JSON that round-trips through
+    /// [PersonalRecord.fromJson] without throwing — required so the child
+    /// `_executeAction → upsertRecords` path doesn't blow up on
+    /// deserialization (which would mask the dependency-gate behavior).
+    Map<String, dynamic> recordJson() => <String, dynamic>{
+      'id': 'pr-record-1',
+      'user_id': 'user-1',
+      'exercise_id': 'ex-1',
+      'record_type': 'max_weight',
+      'value': 100.0,
+      'achieved_at': DateTime.utc(2026, 4, 17, 10, 0, 1).toIso8601String(),
+      'set_id': 's-1',
+      'reps': 5,
+    };
+
+    test(
+      'BUG-002: child upsertRecords waits for parent saveWorkout (live gate)',
+      () async {
+        final container = createContainer(initialOnline: false);
+
+        final notifier = container.read(pendingSyncProvider.notifier);
+
+        // Parent workout (queued first, FIFO) and a child PR upsert that
+        // depends on it. The child must wait for the parent to commit.
+        await notifier.enqueue(
+          _makeSaveWorkoutAction(
+            id: 'w-parent',
+            queuedAt: DateTime.utc(2026, 4, 17, 10, 0, 0),
+          ),
+        );
+        await notifier.enqueue(
+          PendingAction.upsertRecords(
+            id: 'pr-child',
+            recordsJson: [recordJson()],
+            userId: 'user-1',
+            queuedAt: DateTime.utc(2026, 4, 17, 10, 0, 1),
+            dependsOn: const ['w-parent'],
+          ),
+        );
+
+        // Parent fails on this drain pass with a transient error → it stays
+        // in the queue (and remains "live" from the dependency standpoint).
+        stubSaveWorkoutFailure(const SocketException('flaky network'));
+
+        // Child upsert is stubbed too — but if the gate works, it MUST NOT
+        // be invoked while the parent is still live.
+        when(() => mockPRRepo.upsertRecords(any())).thenAnswer((_) async {});
+
+        connectivityController.add(true);
+        // Wait long enough for the drain to attempt the parent (1s backoff
+        // for retryCount=1 plus margin).
+        await _pumpAsync(1500);
+
+        // Parent should have been attempted exactly once.
+        verify(
+          () => mockWorkoutRepo.saveWorkout(
+            workout: any(named: 'workout'),
+            exercises: any(named: 'exercises'),
+            sets: any(named: 'sets'),
+          ),
+        ).called(1);
+
+        // Child must NOT have been called — its parent never committed.
+        verifyNever(() => mockPRRepo.upsertRecords(any()));
+
+        // Both items remain in the queue.
+        final remaining = queueService.getAll();
+        expect(remaining, hasLength(2));
+        expect(remaining.map((a) => a.id).toSet(), {'w-parent', 'pr-child'});
+      },
+    );
+
+    test(
+      'BUG-002: child upsertRecords drains after parent commits (next pass)',
+      () async {
+        final container = createContainer(initialOnline: false);
+
+        final notifier = container.read(pendingSyncProvider.notifier);
+
+        await notifier.enqueue(
+          _makeSaveWorkoutAction(
+            id: 'w-parent-ok',
+            queuedAt: DateTime.utc(2026, 4, 17, 10, 0, 0),
+          ),
+        );
+        await notifier.enqueue(
+          PendingAction.upsertRecords(
+            id: 'pr-child-ok',
+            recordsJson: [recordJson()],
+            userId: 'user-1',
+            queuedAt: DateTime.utc(2026, 4, 17, 10, 0, 1),
+            dependsOn: const ['w-parent-ok'],
+          ),
+        );
+
+        // Parent succeeds on the same drain pass; the gate then sees the
+        // parent ID drop out of liveIds and the child becomes drainable.
+        stubSaveWorkoutSuccess(id: 'w-parent-ok');
+        when(() => mockPRRepo.upsertRecords(any())).thenAnswer((_) async {});
+        when(
+          () => mockPRRepo.getRecordsForUser(
+            userId: any(named: 'userId'),
+            locale: any(named: 'locale'),
+          ),
+        ).thenAnswer((_) async => <PersonalRecord>[]);
+
+        connectivityController.add(true);
+        await _pumpAsync(300);
+
+        // Both calls must have happened, parent before child.
+        verify(
+          () => mockWorkoutRepo.saveWorkout(
+            workout: any(named: 'workout'),
+            exercises: any(named: 'exercises'),
+            sets: any(named: 'sets'),
+          ),
+        ).called(1);
+        verify(() => mockPRRepo.upsertRecords(any())).called(1);
+
+        // Queue is empty — both committed.
+        expect(container.read(pendingSyncProvider), 0);
+      },
+    );
+
+    // ------------------------------------------------------------------
     // Phase 14d: SyncService reconciles PR cache after upsertRecords drain
     // ------------------------------------------------------------------
     group('PR cache reconciliation after upsertRecords drain', () {

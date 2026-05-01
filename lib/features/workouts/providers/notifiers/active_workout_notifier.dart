@@ -864,6 +864,16 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
 
         if (prResult!.hasNewRecords) {
           // Always enqueue — all PR writes go through the offline queue.
+          //
+          // BUG-002 fix: when the parent workout was saved offline, the new
+          // PR rows reference set IDs the server hasn't seen yet
+          // (`personal_records.set_id` FK -> `sets.id`). Tag this action with
+          // the parent workout ID so the drain holds the upsert until the
+          // parent commits. When the parent saved online, the sets are
+          // already durable server-side, so no `dependsOn` is needed.
+          final dependsOn = savedOffline
+              ? <String>[workout.id]
+              : const <String>[];
           await ref
               .read(pendingSyncProvider.notifier)
               .enqueue(
@@ -874,6 +884,7 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
                       .toList(),
                   userId: _userId,
                   queuedAt: now,
+                  dependsOn: dependsOn,
                 ),
               );
 

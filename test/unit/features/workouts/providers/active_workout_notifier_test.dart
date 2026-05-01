@@ -1283,6 +1283,135 @@ void main() {
       },
     );
 
+    // BUG-002 wiring pin: when the workout is saved offline, the resulting
+    // PendingUpsertRecords must declare its dependency on the parent
+    // PendingSaveWorkout so the drain holds it back until the FK target
+    // exists server-side. PR detection requires (a) a populated
+    // `WorkoutExercise.exercise` field, (b) at least one completed working
+    // set with a positive weight, and (c) an empty existingRecords map so
+    // every set produces a fresh record.
+    test(
+      'BUG-002: offline upsertRecords carries dependsOn = [parent workout id]',
+      () async {
+        final exercise = Exercise.fromJson(
+          TestExerciseFactory.create(
+            id: 'exercise-1',
+            name: 'Bench Press',
+            equipmentType: 'barbell',
+          ),
+        );
+        final we = WorkoutExercise(
+          id: 'we-1',
+          workoutId: 'workout-001',
+          exerciseId: 'exercise-1',
+          order: 0,
+          exercise: exercise,
+        );
+        final sets = [
+          ExerciseSet.fromJson(
+            TestSetFactory.create(
+              id: 'set-1',
+              workoutExerciseId: 'we-1',
+              setNumber: 1,
+              weight: 100.0,
+              reps: 8,
+              isCompleted: true,
+            ),
+          ),
+          ExerciseSet.fromJson(
+            TestSetFactory.create(
+              id: 'set-2',
+              workoutExerciseId: 'we-1',
+              setNumber: 2,
+              weight: 110.0,
+              reps: 6,
+              isCompleted: true,
+            ),
+          ),
+        ];
+        final initial = ActiveWorkoutState(
+          workout: Workout.fromJson(TestWorkoutFactory.create(isActive: true)),
+          exercises: [ActiveWorkoutExercise(workoutExercise: we, sets: sets)],
+        );
+
+        final mockRepo = MockWorkoutRepository();
+        final mockStorage = MockWorkoutLocalStorage();
+        final mockAuth = MockAuthRepository();
+        final mockCache = MockCacheService();
+        final mockPRRepo = MockPRRepository();
+        final capturedNotifier = _CapturingPendingSyncNotifier();
+
+        when(() => mockStorage.loadActiveWorkout()).thenReturn(initial);
+        when(
+          () => mockStorage.saveActiveWorkout(any()),
+        ).thenAnswer((_) async {});
+        when(() => mockStorage.clearActiveWorkout()).thenAnswer((_) async {});
+        when(() => mockAuth.currentUser).thenReturn(fakeUser());
+        when(() => mockRepo.getCachedWorkoutCount(any())).thenReturn(5);
+        when(
+          () => mockCache.write(any(), any(), any()),
+        ).thenAnswer((_) async {});
+
+        // Offline path: saveWorkout throws so the workout enqueues offline.
+        when(
+          () => mockRepo.saveWorkout(
+            workout: any(named: 'workout'),
+            exercises: any(named: 'exercises'),
+            sets: any(named: 'sets'),
+          ),
+        ).thenThrow(Exception('Network error'));
+        when(
+          () => mockRepo.getFinishedWorkoutCount(any()),
+        ).thenThrow(Exception('Offline'));
+
+        // Empty cache → all sets are fresh PRs.
+        when(
+          () => mockCache.read<Map<String, List<PersonalRecord>>>(
+            any(),
+            any(),
+            any(),
+          ),
+        ).thenReturn(<String, List<PersonalRecord>>{});
+
+        final container = ProviderContainer(
+          overrides: [
+            workoutRepositoryProvider.overrideWithValue(mockRepo),
+            workoutLocalStorageProvider.overrideWithValue(mockStorage),
+            authRepositoryProvider.overrideWithValue(mockAuth),
+            analyticsRepositoryProvider.overrideWithValue(
+              const _FakeAnalyticsRepository(),
+            ),
+            pendingSyncProvider.overrideWith(() => capturedNotifier),
+            cacheServiceProvider.overrideWithValue(mockCache),
+            prRepositoryProvider.overrideWithValue(mockPRRepo),
+            prDetectionServiceProvider.overrideWithValue(PRDetectionService()),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await container.read(activeWorkoutProvider.future);
+        await container.read(activeWorkoutProvider.notifier).finishWorkout();
+
+        // Both actions must be enqueued: the parent PendingSaveWorkout (the
+        // offline-path fallback for the failed RPC) and the child
+        // PendingUpsertRecords (the PR upsert).
+        final saves = capturedNotifier.enqueued
+            .whereType<PendingSaveWorkout>()
+            .toList();
+        final upserts = capturedNotifier.enqueued
+            .whereType<PendingUpsertRecords>()
+            .toList();
+        expect(saves, hasLength(1));
+        expect(upserts, hasLength(1));
+
+        // The wiring under test: the upsert must list the parent workout
+        // id in dependsOn so SyncService holds it back until the parent
+        // commits server-side.
+        final parentId = saves.single.id;
+        expect(upserts.single.dependsOn, [parentId]);
+      },
+    );
+
     test(
       'offline path: incrementCachedWorkoutCount is called when saveWorkout fails',
       () async {
