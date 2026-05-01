@@ -394,8 +394,13 @@ class _ProfileSetupPage extends StatelessWidget {
 /// (#EEE7FA) over `hotViolet` only achieves a 2.67:1 contrast ratio — well
 /// below WCAG AA's 4.5:1 floor for normal text. Switching the selected fill
 /// to [AppColors.primaryViolet] (#6A2FA8) lifts the ratio to ~6.69:1 while
-/// preserving the violet brand language. The hotViolet border still reads
-/// as the "selected" cue against the darker fill.
+/// preserving the violet brand language. The selected indicator is the
+/// fill itself — its 6.69:1 contrast against the surrounding card surface
+/// unambiguously conveys selected state. The hotViolet border (full alpha
+/// when selected, 0.4 alpha when idle) is a decorative brand element and
+/// is not relied on as a non-text UI cue: hotViolet against primaryViolet
+/// only reaches 2.53:1, which would not satisfy WCAG 1.4.11's 3:1 floor
+/// for non-text components if it were the sole indicator.
 ///
 /// **Sizing:** We deliberately keep this compact (matches the natural
 /// `ChoiceChip` footprint, ~32dp tall) so two `Wrap` rows fit on the
