@@ -511,8 +511,9 @@ export const ONBOARDING_FLOW = {
    */
   welcomeHeadline: '[flt-semantics-identifier="onboarding-welcome"]',
   /**
-   * Page 2 indicator: the "Beginner" ChoiceChip.
-   * Semantics(identifier: 'onboarding-beginner') wraps the ChoiceChip.
+   * Page 2 indicator: the "Beginner" pill (formerly ChoiceChip, now
+   * _BrandedPillChoice). Semantics(identifier: 'onboarding-beginner') wraps
+   * the pill — identifier is stable across the widget swap.
    */
   profileSetupHeadline: '[flt-semantics-identifier="onboarding-beginner"]',
   /**
@@ -521,9 +522,15 @@ export const ONBOARDING_FLOW = {
    */
   displayNameInput: '[flt-semantics-identifier="onboarding-display-name"]',
   /**
-   * "3x" frequency ChoiceChip — the default selection.
+   * "3x" frequency pill — the default selection.
+   *
+   * PR #130 (_BrandedPillChoice) replaced the M3 ChoiceChip. ChoiceChip sets
+   * Semantics(checked: ...) which Flutter exposes as role=checkbox in the AOM.
+   * _BrandedPillChoice is a plain InkWell with no toggled/checked property, so
+   * role=checkbox[name="3x"] no longer matches. Use the flt-semantics-identifier
+   * set by the outer Semantics(identifier: 'onboarding-freq-3') wrapper instead.
    */
-  frequency3x: 'role=checkbox[name="3x"]',
+  frequency3x: '[flt-semantics-identifier="onboarding-freq-3"]',
   /**
    * Back TextButton.icon on page 2.
    * TextButton label: Text('Back').
