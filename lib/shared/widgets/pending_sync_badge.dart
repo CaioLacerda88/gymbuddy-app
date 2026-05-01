@@ -33,7 +33,10 @@ class PendingSyncBadge extends ConsumerWidget {
               child: Semantics(
                 container: true,
                 identifier: 'offline-pending-badge',
-                label: '$label. Tap to manage.',
+                // BUG-021: Semantics label was hardcoded English. Composed
+                // through `pendingSyncBadgeSemantics(label)` so the localized
+                // visible string flows into the localized hint suffix.
+                label: l10n.pendingSyncBadgeSemantics(label),
                 button: true,
                 child: Material(
                   color: Colors.transparent,

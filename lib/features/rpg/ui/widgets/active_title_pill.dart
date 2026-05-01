@@ -21,20 +21,30 @@ class ActiveTitlePill extends StatelessWidget {
     final t = title;
     if (t == null || t.isEmpty) return const SizedBox.shrink();
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.surface2,
-        border: Border.all(
-          color: AppColors.hotViolet.withValues(alpha: 0.5),
-          width: 1,
+    // BUG-024: cap width and ellipsize so long pt-BR titles
+    // ("Forjado em Ferro" etc.) cannot push the pill past the safe area or
+    // clip horizontally. 220dp matches roughly 24-26 characters at this
+    // type size — enough headroom for every catalog title in en+pt while
+    // still clamping pathological cases (custom titles in a future phase).
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 220),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.surface2,
+          border: Border.all(
+            color: AppColors.hotViolet.withValues(alpha: 0.5),
+            width: 1,
+          ),
+          borderRadius: BorderRadius.circular(kRadiusSm + 2),
         ),
-        borderRadius: BorderRadius.circular(kRadiusSm + 2),
-      ),
-      child: Text(
-        t,
-        style: theme.textTheme.labelMedium?.copyWith(
-          color: AppColors.hotViolet,
+        child: Text(
+          t,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: AppColors.hotViolet,
+          ),
         ),
       ),
     );

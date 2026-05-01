@@ -77,7 +77,50 @@ class _SagaIntroOverlayState extends State<SagaIntroOverlay> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _StepIndicator(step: _step, total: 3),
+              // BUG-025: header strip holds the centered step indicator and a
+              // right-aligned Skip TextButton. Skip calls `widget.onDismiss`
+              // directly — the gate persists `saga_intro_seen` regardless of
+              // whether the user advanced through every step or bailed out.
+              // Hidden on the final step since [_PrimaryButton] already
+              // dismisses there ("BEGIN").
+              SizedBox(
+                height: 40,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    _StepIndicator(step: _step, total: 3),
+                    if (!isFinalStep)
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Semantics(
+                          container: true,
+                          identifier: 'saga-intro-skip',
+                          button: true,
+                          label: l10n.sagaIntroSkip,
+                          child: TextButton(
+                            onPressed: widget.onDismiss,
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.textDim,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
+                              minimumSize: const Size(48, 32),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: Text(
+                              l10n.sagaIntroSkip,
+                              style: AppTextStyles.label.copyWith(
+                                color: AppColors.textDim,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
               const Spacer(),
               Semantics(
                 container: true,

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_icons.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/radii.dart';
 import '../../../l10n/app_localizations.dart';
 import '../models/body_part.dart';
 import '../models/title.dart' as rpg;
@@ -90,19 +91,35 @@ class _TitlesScreenState extends ConsumerState<TitlesScreen> {
       identifier: 'titles-screen',
       child: Scaffold(
         appBar: AppBar(title: Text(l10n.titlesScreenTitle)),
-        body: catalogAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => _ErrorState(message: '$error'),
-          data: (catalog) {
-            return earnedAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => _ErrorState(message: '$error'),
-              data: (earned) =>
-                  _Body(catalog: catalog, earned: earned, onTapEarned: _equip),
-            );
-          },
-        ),
+        body: _buildBody(catalogAsync, earnedAsync),
       ),
+    );
+  }
+
+  /// BUG-027: combine the catalog + earned async branches into a single
+  /// loading/error/data switch. The previous implementation rendered a
+  /// `CircularProgressIndicator` once for the catalog and again for the
+  /// earned list — two stacked spinners that flashed in sequence on cold
+  /// open. Here we treat both providers as a unit: while either is loading
+  /// we show the branded [_TitlesSkeleton] (mirrors `_CharacterSheetSkeleton`),
+  /// and only enter the data branch once both have resolved.
+  Widget _buildBody(
+    AsyncValue<List<rpg.Title>> catalogAsync,
+    AsyncValue<List<EarnedTitleEntry>> earnedAsync,
+  ) {
+    if (catalogAsync.hasError) {
+      return _ErrorState(message: '${catalogAsync.error}');
+    }
+    if (earnedAsync.hasError) {
+      return _ErrorState(message: '${earnedAsync.error}');
+    }
+    if (catalogAsync.isLoading || earnedAsync.isLoading) {
+      return const _TitlesSkeleton();
+    }
+    return _Body(
+      catalog: catalogAsync.requireValue,
+      earned: earnedAsync.requireValue,
+      onTapEarned: _equip,
     );
   }
 
@@ -442,6 +459,60 @@ class _ErrorState extends StatelessWidget {
           style: AppTextStyles.body.copyWith(color: AppColors.textDim),
         ),
       ),
+    );
+  }
+}
+
+/// BUG-027: branded skeleton shown while the catalog and/or earned-titles
+/// providers are loading. Mirrors the `_CharacterSheetSkeleton` pattern: a
+/// progress-header placeholder followed by three sections of placeholder
+/// rows so the layout doesn't shift when real data lands.
+class _TitlesSkeleton extends StatelessWidget {
+  const _TitlesSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    Widget rowPlaceholder() => Container(
+      height: 56,
+      margin: const EdgeInsets.only(bottom: 6),
+      decoration: BoxDecoration(
+        color: AppColors.surface2,
+        borderRadius: BorderRadius.circular(kRadiusSm),
+      ),
+    );
+
+    Widget sectionHeaderPlaceholder() => Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 12),
+      child: Container(
+        height: 14,
+        width: 120,
+        decoration: BoxDecoration(
+          color: AppColors.surface2,
+          borderRadius: BorderRadius.circular(kRadiusSm),
+        ),
+      ),
+    );
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      children: [
+        // Progress header placeholder.
+        Container(
+          height: 16,
+          width: 160,
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.surface2,
+            borderRadius: BorderRadius.circular(kRadiusSm),
+          ),
+        ),
+        const SizedBox(height: 16),
+        for (var section = 0; section < 3; section++) ...[
+          sectionHeaderPlaceholder(),
+          for (var i = 0; i < 3; i++) rowPlaceholder(),
+          const SizedBox(height: 24),
+        ],
+      ],
     );
   }
 }

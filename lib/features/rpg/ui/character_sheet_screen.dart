@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/theme/app_icons.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/radii.dart';
 import '../../../l10n/app_localizations.dart';
@@ -328,7 +329,17 @@ class _CharacterSheetError extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, color: AppColors.textDim, size: 48),
+            // BUG-026: drop generic Material error glyph in favor of the
+            // brand hero sigil (dimmed) so the error state stays inside the
+            // Arcane Ascent visual language.
+            Opacity(
+              opacity: 0.4,
+              child: AppIcons.render(
+                AppIcons.hero,
+                color: AppColors.textDim,
+                size: 48,
+              ),
+            ),
             const SizedBox(height: 16),
             Text(
               l10n.error,

@@ -4,45 +4,51 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ---
 
-## Wave 2 / Cluster 5+6 — Localization, a11y, brand polish (fix/cluster5-6-ui-polish)
+## Wave 2 / Cluster 5+6 — Localization, a11y, brand polish (`fix/cluster5-6-ui-polish`)
 
-Per BUGS.md Cluster 5 (Localization & accessibility) + Cluster 6 (Brand consistency). Combined into one PR because the file scope is disjoint from Cluster 2 + Cluster 7 wave-2 branches.
+**Per BUGS.md Cluster 5 (BUG-021..025) + Cluster 6 (BUG-026..029).** Single PR
+because the file scope is disjoint from parallel Wave 2 PRs (Cluster 2 unsafe
+casts + Cluster 7 DB integrity). Strictly UI/text/a11y work — no router,
+migration, repository, or data-layer changes.
 
-### Cluster 5 — Localization & a11y
+### ARB / l10n
 
-- [ ] BUG-021 — `PendingSyncBadge` Semantics label hardcoded English (add `pendingSyncBadgeSemantics` ARB key with `{label}` placeholder)
-- [ ] BUG-022 — `equipmentBands` not localized in pt (`"Bands"` → `"Elásticos"`)
-- [ ] BUG-023 — Home status line WCAG AA contrast (alpha 0.55 → 0.75)
-- [ ] BUG-024 — `ActiveTitlePill` overflow handling (ellipsis + maxWidth)
-- [ ] BUG-025 — Saga intro overlay skip path (`sagaIntroSkip` ARB key + skip TextButton)
+- [x] `app_en.arb` — add `pendingSyncBadgeSemantics`, `sagaIntroSkip`, `routinesEmptyTitle`, `routinesEmptyBody`, `routinesEmptyCta`
+- [x] `app_pt.arb` — same five keys + flip `equipmentBands` from English `Bands` to `Elásticos` (BUG-022)
+- [x] Regenerate `lib/l10n/app_localizations*.dart` via `flutter gen-l10n`
 
-### Cluster 6 — Brand consistency
+### Source files
 
-- [ ] BUG-026 — Character-sheet error icon `Icons.error_outline` → `AppIcons.hero`
-- [ ] BUG-027 — Titles screen double `CircularProgressIndicator` → branded skeleton
-- [ ] BUG-028 — Onboarding `ChoiceChip` → branded pill buttons
-- [ ] BUG-029 — Routine list empty state branded (illustration + inline FilledButton)
+- [x] `lib/shared/widgets/pending_sync_badge.dart` — localized Semantics label (BUG-021)
+- [x] `lib/features/workouts/ui/widgets/home_status_line.dart` — alpha 0.55 → 0.75 on dim spans for WCAG AA (BUG-023)
+- [x] `lib/features/rpg/ui/widgets/active_title_pill.dart` — cap maxWidth 220dp + ellipsize (BUG-024)
+- [x] `lib/features/rpg/ui/saga_intro_overlay.dart` — Skip TextButton on steps 1-2, hidden on final (BUG-025)
+- [x] `lib/features/rpg/ui/character_sheet_screen.dart` — branded hero sigil replaces `Icons.error_outline` (BUG-026)
+- [x] `lib/features/rpg/ui/titles_screen.dart` — single combined loading branch + branded `_TitlesSkeleton` (BUG-027)
+- [x] `lib/features/auth/ui/onboarding_screen.dart` — `_BrandedPillChoice` replaces `ChoiceChip` on both selectors (BUG-028)
+- [x] `lib/features/routines/ui/routine_list_screen.dart` — `_CustomRoutinesEmptyState` with brand glyph + inline CTA (BUG-029)
 
-### Files in scope
+### Widget tests
 
-- `lib/l10n/app_en.arb`, `lib/l10n/app_pt.arb`
-- `lib/shared/widgets/pending_sync_badge.dart`
-- `lib/features/workouts/ui/widgets/home_status_line.dart`
-- `lib/features/rpg/ui/widgets/active_title_pill.dart`
-- `lib/features/rpg/ui/saga_intro_overlay.dart`
-- `lib/features/rpg/ui/character_sheet_screen.dart`
-- `lib/features/rpg/ui/titles_screen.dart`
-- `lib/features/auth/ui/onboarding_screen.dart`
-- `lib/features/routines/ui/routine_list_screen.dart`
-- Widget tests under `test/widget/...`
-- `BUGS.md` (mark BUG-021..029 RESOLVED)
+- [x] `test/widget/shared/pending_sync_badge_test.dart` — assert localized Semantics label (BUG-021)
+- [x] `test/widget/features/rpg/ui/widgets/active_title_pill_test.dart` (NEW) — assert ConstrainedBox 220dp + ellipsize on long pt-BR (BUG-024)
+- [x] `test/widget/features/rpg/ui/saga_intro_overlay_test.dart` — Skip visible steps 1-2, hidden on step 3, fires onDismiss (BUG-025)
+- [x] `test/widget/features/auth/ui/onboarding_screen_test.dart` — selection state via AnimatedContainer fill (BUG-028)
+- [x] `test/widget/features/routines/ui/routine_list_screen_test.dart` — empty-state title/body/CTA + FilledButton wrap + coexists with starter section (BUG-029)
 
-### Verification
+### Cleanup
 
-- [ ] `make ci` green (format + analyze + test + android-debug-build)
-- [ ] ARB completeness test passes
-- [ ] BUGS.md updated with ✅ RESOLVED tags for BUG-021..029
-- [ ] Branch pushed; do NOT open PR (orchestrator opens it)
+- [ ] Mark BUG-021..029 RESOLVED in `BUGS.md` with strikethrough heads + `RESOLVED in fix/cluster5-6-ui-polish`
+- [ ] `make ci` green (format + gen + analyze + test + android-debug-build)
+- [ ] Commit `fix(ui): Cluster 5+6 — localization, a11y, brand consistency (BUG-021..029)`
+- [ ] `git push -u origin fix/cluster5-6-ui-polish`
+
+### Out of scope (per task constraints)
+
+- `supabase/migrations/*`, `lib/features/personal_records/data/*`, `lib/features/rpg/data/*`, `lib/core/router/app_router.dart`, `analysis_options.yaml`
+- Cluster 2 (unsafe casts) — owned by parallel agent
+- Cluster 7 (DB integrity) — owned by separate PR
+- Opening the PR — task definition asks for branch + commit + push only
 
 ---
 

@@ -881,6 +881,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noCustomRoutines => 'No custom routines yet. Tap + to create one.';
 
   @override
+  String get routinesEmptyTitle => 'No routines yet';
+
+  @override
+  String get routinesEmptyBody =>
+      'Plan a workout sequence once and reuse it every session.';
+
+  @override
+  String get routinesEmptyCta => 'Create routine';
+
+  @override
   String get createRoutine => 'Create Routine';
 
   @override
@@ -1284,6 +1294,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String pendingSyncBadgeSemantics(String label) {
+    return '$label. Tap to manage.';
+  }
+
+  @override
   String get noExercisesFound => 'No exercises found';
 
   @override
@@ -1575,6 +1590,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sagaIntroBegin => 'BEGIN';
+
+  @override
+  String get sagaIntroSkip => 'Skip';
 
   @override
   String get sagaRankRookie => 'ROOKIE';

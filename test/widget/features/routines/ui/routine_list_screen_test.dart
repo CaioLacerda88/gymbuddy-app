@@ -109,4 +109,56 @@ void main() {
       expect(find.text('STARTER ROUTINES'), findsNothing);
     });
   });
+
+  group('RoutineListScreen - BUG-029 branded empty state', () {
+    testWidgets('renders branded empty state when there are no user routines', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_build(routines: const []));
+      await tester.pump();
+      await tester.pump();
+
+      // Title + body + CTA must all surface from the new ARB keys.
+      expect(find.text('No routines yet'), findsOneWidget);
+      expect(
+        find.text('Plan a workout sequence once and reuse it every session.'),
+        findsOneWidget,
+      );
+      expect(find.text('Create routine'), findsOneWidget);
+    });
+
+    testWidgets('empty-state CTA is wrapped in a FilledButton.icon', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_build(routines: const []));
+      await tester.pump();
+      await tester.pump();
+
+      // The CTA must be the inline FilledButton, not a TextButton or a
+      // pointer to the AppBar `+` icon — that was BUG-029's ergonomic miss.
+      expect(
+        find.widgetWithText(FilledButton, 'Create routine'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets(
+      'empty state still renders alongside STARTER ROUTINES when defaults exist',
+      (tester) async {
+        await tester.pumpWidget(
+          _build(
+            routines: [_routine(id: 'd-1', name: 'Full Body', isDefault: true)],
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        // The user has no custom routines → empty state renders. The starter
+        // section still ships below it.
+        expect(find.text('No routines yet'), findsOneWidget);
+        expect(find.text('STARTER ROUTINES'), findsOneWidget);
+        expect(find.text('Full Body'), findsOneWidget);
+      },
+    );
+  });
 }

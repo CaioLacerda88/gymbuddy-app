@@ -1664,11 +1664,29 @@ abstract class AppLocalizations {
   /// **'STARTER ROUTINES'**
   String get starterRoutinesSection;
 
-  /// Empty state: no custom routines
+  /// Empty state: no custom routines (legacy bare-text empty state, kept for ARB completeness).
   ///
   /// In en, this message translates to:
   /// **'No custom routines yet. Tap + to create one.'**
   String get noCustomRoutines;
+
+  /// Routines empty-state headline, branded illustration. BUG-029.
+  ///
+  /// In en, this message translates to:
+  /// **'No routines yet'**
+  String get routinesEmptyTitle;
+
+  /// Routines empty-state body copy, branded illustration. BUG-029.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan a workout sequence once and reuse it every session.'**
+  String get routinesEmptyBody;
+
+  /// Routines empty-state inline CTA — navigates to /routines/create. BUG-029.
+  ///
+  /// In en, this message translates to:
+  /// **'Create routine'**
+  String get routinesEmptyCta;
 
   /// Create routine screen title
   ///
@@ -2342,6 +2360,12 @@ abstract class AppLocalizations {
   /// **'{count} workouts pending sync'**
   String pendingSyncBadgePlural(int count);
 
+  /// Pending sync badge accessibility label, composed from the visible badge text plus the action hint. BUG-021.
+  ///
+  /// In en, this message translates to:
+  /// **'{label}. Tap to manage.'**
+  String pendingSyncBadgeSemantics(String label);
+
   /// Exercise picker: empty result
   ///
   /// In en, this message translates to:
@@ -2839,6 +2863,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'BEGIN'**
   String get sagaIntroBegin;
+
+  /// Saga intro overlay skip button label, top-right of the step indicator. Calls onDismiss directly. BUG-025.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get sagaIntroSkip;
 
   /// Rank name: rookie
   ///

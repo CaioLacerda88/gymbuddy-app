@@ -100,7 +100,7 @@
   "equipmentCable": "Cabo",
   "equipmentMachine": "Máquina",
   "equipmentBodyweight": "Peso Corporal",
-  "equipmentBands": "Bands",
+  "equipmentBands": "Elásticos",
   "equipmentKettlebell": "Kettlebell",
 
   "setTypeWorking": "Normal",
@@ -290,6 +290,9 @@
   "myRoutinesSection": "MINHAS ROTINAS",
   "starterRoutinesSection": "ROTINAS INICIAIS",
   "noCustomRoutines": "Nenhuma rotina personalizada ainda. Toque em + para criar.",
+  "routinesEmptyTitle": "Nenhuma rotina ainda",
+  "routinesEmptyBody": "Planeje uma sequência de exercícios uma vez e reutilize a cada treino.",
+  "routinesEmptyCta": "Criar rotina",
 
   "createRoutine": "Criar Rotina",
   "editRoutine": "Editar Rotina",
@@ -416,6 +419,7 @@
 
   "pendingSyncBadgeSingular": "1 treino pendente de sincronização",
   "pendingSyncBadgePlural": "{count} treinos pendentes de sincronização",
+  "pendingSyncBadgeSemantics": "{label}. Toque para gerenciar.",
 
   "noExercisesFound": "Nenhum exercício encontrado",
   "failedToLoadExercises": "Falha ao carregar exercícios",
@@ -524,6 +528,7 @@
   "sagaIntroStep3Body": "Sua jornada começa aqui. Continue treinando para subir de rank.",
   "sagaIntroNext": "PRÓXIMO",
   "sagaIntroBegin": "COMEÇAR",
+  "sagaIntroSkip": "Pular",
   "sagaRankRookie": "NOVATO",
   "sagaRankIron": "FERRO",
   "sagaRankCopper": "BRONZE",

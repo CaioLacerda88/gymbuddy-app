@@ -306,7 +306,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get equipmentBodyweight => 'Peso Corporal';
 
   @override
-  String get equipmentBands => 'Bands';
+  String get equipmentBands => 'Elásticos';
 
   @override
   String get equipmentKettlebell => 'Kettlebell';
@@ -887,6 +887,16 @@ class AppLocalizationsPt extends AppLocalizations {
       'Nenhuma rotina personalizada ainda. Toque em + para criar.';
 
   @override
+  String get routinesEmptyTitle => 'Nenhuma rotina ainda';
+
+  @override
+  String get routinesEmptyBody =>
+      'Planeje uma sequência de exercícios uma vez e reutilize a cada treino.';
+
+  @override
+  String get routinesEmptyCta => 'Criar rotina';
+
+  @override
   String get createRoutine => 'Criar Rotina';
 
   @override
@@ -1293,6 +1303,11 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String pendingSyncBadgeSemantics(String label) {
+    return '$label. Toque para gerenciar.';
+  }
+
+  @override
   String get noExercisesFound => 'Nenhum exercício encontrado';
 
   @override
@@ -1586,6 +1601,9 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get sagaIntroBegin => 'COMEÇAR';
+
+  @override
+  String get sagaIntroSkip => 'Pular';
 
   @override
   String get sagaRankRookie => 'NOVATO';
