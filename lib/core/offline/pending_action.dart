@@ -10,12 +10,18 @@ part 'pending_action.g.dart';
 /// drain attempt fails and stored on the action so the [PendingSyncSheet]
 /// can pick the right CTA without re-classifying:
 ///
-/// - [SyncErrorCategory.transient] / [SyncErrorCategory.network] → retry is
-///   meaningful; show "Tentar novamente".
-/// - [SyncErrorCategory.structural] / [SyncErrorCategory.session] /
-///   [SyncErrorCategory.unknown] → retry will not resolve it (FK violation,
-///   type-cast crash, expired session); show "Dispensar" + branded copy
-///   directing the user to support (BUG-008).
+/// - [SyncErrorCategory.none] / [SyncErrorCategory.network] /
+///   [SyncErrorCategory.transient] / [SyncErrorCategory.unknown] → retry is
+///   meaningful; show "Tentar novamente". `unknown` is intentionally NOT
+///   terminal — a genuinely unknown error class might be a one-off plugin
+///   crash that retry resolves, and forcing "Dispensar" removes the user's
+///   only recovery path. If the underlying issue is structural, the next
+///   attempt will surface a more specific exception class that the mapper
+///   routes to [structural].
+/// - [SyncErrorCategory.structural] / [SyncErrorCategory.session] → retry
+///   will not resolve it (FK violation, type-cast crash, expired session);
+///   show "Dispensar" + branded copy directing the user to support
+///   (BUG-008).
 enum SyncErrorCategory {
   /// Default for items that have not failed yet.
   none,
@@ -33,7 +39,8 @@ enum SyncErrorCategory {
   /// Authentication / token problem.
   session,
 
-  /// Catch-all: an unexpected exception class. Treat as terminal-leaning.
+  /// Catch-all: an unexpected exception class. Treated as non-terminal —
+  /// the user keeps a retry CTA. See doc comment above for rationale.
   unknown,
 }
 

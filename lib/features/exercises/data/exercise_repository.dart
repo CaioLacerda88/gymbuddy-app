@@ -285,6 +285,15 @@ class ExerciseRepository extends BaseRepository {
   /// Maps SQLSTATE 23505 (duplicate name) to [ValidationException].
   /// SQLSTATE 42501 (caller does not own `userId`) propagates as the mapped
   /// `AppException` from the base repository.
+  ///
+  /// **BUG-003 — optional [id]:** when supplied, the server INSERT uses
+  /// this UUID as the row's primary key. The offline-sync drain passes the
+  /// local stub UUID it generated at offline-create time so the committed
+  /// row's PK matches what the local Hive cache and any
+  /// `workout_exercises.exercise_id` references already wrote. The online
+  /// `create_exercise_screen` path leaves [id] null and lets the server
+  /// allocate a UUID — both paths produce the same observable outcome:
+  /// a row exists with a stable UUID. See migration 00044.
   Future<Exercise> createExercise({
     required String locale,
     required String name,
@@ -293,6 +302,7 @@ class ExerciseRepository extends BaseRepository {
     required String userId,
     String? description,
     String? formTips,
+    String? id,
   }) {
     return mapException(() async {
       try {
@@ -308,6 +318,13 @@ class ExerciseRepository extends BaseRepository {
                 ? description
                 : null,
             'p_form_tips': formTips?.isNotEmpty == true ? formTips : null,
+            // BUG-003: only forward `p_id` when the caller supplied one. The
+            // RPC defaults to gen_random_uuid() when the argument is NULL,
+            // so omitting the key keeps the online path's behaviour
+            // unchanged. Forwarding it explicitly when present makes the
+            // offline-replay path commit the same UUID the local session
+            // already wrote (see PendingCreateExercise.exerciseId contract).
+            'p_id': ?id,
           },
         );
         final rows = (data as List).cast<Map<String, dynamic>>();

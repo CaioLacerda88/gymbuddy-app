@@ -6,14 +6,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/analytics/data/models/analytics_event.dart';
 import '../../features/analytics/providers/analytics_providers.dart';
 import '../../features/exercises/providers/exercise_progress_provider.dart';
-import '../../features/personal_records/providers/pr_providers.dart';
 import '../../features/rpg/providers/character_sheet_provider.dart';
 import '../../features/rpg/providers/earned_titles_provider.dart';
 import '../../features/rpg/providers/rpg_progress_provider.dart';
 import '../../features/weekly_plan/providers/weekly_plan_provider.dart';
 import '../../features/workouts/providers/workout_history_providers.dart';
 import '../connectivity/connectivity_provider.dart';
-import '../l10n/locale_provider.dart';
 import '../local_storage/cache_service.dart';
 import '../local_storage/hive_service.dart';
 import '../observability/sentry_report.dart';
@@ -184,9 +182,7 @@ class SyncService extends Notifier<SyncState> {
       }
 
       // Batch PR cache reconciliation — once per unique userId.
-      for (final uid in reconciledUserIds) {
-        await _reconcilePrCache(uid);
-      }
+      await _reconcilePrCache(reconciledUserIds);
 
       // BUG-005: post-drain provider invalidation. Each ref.invalidate is
       // independent; one failure must not skip the rest, so they're guarded
@@ -366,41 +362,37 @@ class SyncService extends Notifier<SyncState> {
     }
   }
 
-  /// Refresh the PR cache from the server after a successful `upsertRecords`
-  /// drain.
+  /// Reconcile the PR cache after a successful `upsertRecords` drain.
   ///
   /// **BUG-006 cache invariant:** the PR cache (`HiveService.prCache`) is
   /// keyed by `'exercises:<sorted_exercise_ids>'` at the
   /// `ActiveWorkoutNotifier.detectPRs` write boundary. After a successful
   /// upsertRecords drain we have to clear those entries so the next offline
   /// PR detection re-fetches via `prRepo.getRecordsForExercises`, which
-  /// reconciles through the user-keyed bag we just refreshed from the
-  /// server. Without the clear, `detectPRs` keeps reading the stale
-  /// pre-reconciliation cache and falsely awards PRs the user already
-  /// holds. Decision: clear the entire `prCache` box rather than per-key —
-  /// the box is small (one entry per active exercise set) and complete
-  /// invalidation is the only way to guarantee correctness without tracking
-  /// which exercise IDs were touched by the just-drained PR rows.
-  Future<void> _reconcilePrCache(String userId) async {
-    if (userId.isEmpty) return;
+  /// reconciles through the user-keyed bag.  Without the clear, `detectPRs`
+  /// keeps reading the stale pre-reconciliation cache and falsely awards PRs
+  /// the user already holds.
+  ///
+  /// Decision: clear the entire `prCache` box rather than per-key — the box
+  /// is small (one entry per active exercise set) and complete invalidation
+  /// is the only way to guarantee correctness without tracking which
+  /// exercise IDs were touched by the just-drained PR rows.
+  ///
+  /// We do NOT pre-fetch server records here. The clear is sufficient: next
+  /// reader (`PRRepository.getRecordsForExercises`) re-seeds the cache via
+  /// the user-keyed bag. A pre-fetch would be a wasted round-trip whose only
+  /// observable effect was a Sentry breadcrumb count.
+  Future<void> _reconcilePrCache(Set<String> userIds) async {
+    if (userIds.isEmpty) return;
     try {
-      final prRepo = ref.read(prRepositoryProvider);
-      final locale = ref.read(localeProvider).languageCode;
-      final serverRecords = await prRepo.getRecordsForUser(
-        userId: userId,
-        locale: locale,
-      );
       // BUG-006: clear the exercise-keyed cache entries so next read
       // re-fetches from server (single source of truth post-reconcile).
-      try {
-        await ref.read(cacheServiceProvider).clearBox(HiveService.prCache);
-      } catch (e) {
-        log('PR cache clearBox failed: $e', name: 'SyncService', level: 900);
-      }
+      // One clearBox call covers all userIds — the box is per-device,
+      // not per-user, so we'd otherwise clear it N times for no benefit.
+      await ref.read(cacheServiceProvider).clearBox(HiveService.prCache);
       SentryReport.addBreadcrumb(
         category: 'sync.reconcile',
-        message: 'PR cache refreshed after upsertRecords drain',
-        data: {'server_record_count': serverRecords.length},
+        message: 'PR cache reconciled (cleared) for ${userIds.length} users',
       );
     } catch (e) {
       log(

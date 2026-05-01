@@ -11,9 +11,17 @@ import '../../l10n/app_localizations.dart';
 ///
 /// Each row shows the action type, timestamp, and a CTA whose label and
 /// behavior depend on the action's last classified error category
-/// (BUG-008): transient/network errors get "Retry"; structural / session /
-/// unknown errors that retry won't fix get "Dismiss" (which dequeues the
-/// item). On first display (no prior error) the CTA is always "Retry".
+/// (BUG-008): transient / network / unknown errors get "Retry"; only
+/// structural and session errors that retry definitively won't fix get
+/// "Dismiss" (which dequeues the item). On first display (no prior error)
+/// the CTA is always "Retry".
+///
+/// `unknown` is intentionally permissive — a genuinely unfamiliar exception
+/// class might be a one-off plugin crash that retry resolves; if the
+/// underlying issue IS structural, the next attempt will surface a more
+/// specific exception class that gets routed to [SyncErrorCategory.structural]
+/// and switches the CTA to "Dismiss" on its own. Forcing terminal here
+/// would strip the user's only recovery path with no diagnostic upside.
 class PendingSyncSheet extends ConsumerStatefulWidget {
   const PendingSyncSheet({super.key});
 
@@ -190,16 +198,18 @@ class _ActionRow extends StatelessWidget {
   };
 
   /// BUG-008: the CTA depends on the last classified error category. Only
-  /// transient / network / none → retry is meaningful. Structural, session,
-  /// and unknown errors won't be fixed by retry — show "Dismiss" instead so
-  /// the user can clear the bad item and move on.
+  /// errors retry definitively cannot fix — structural (FK / RLS / cast)
+  /// and session (expired token) — show "Dismiss". Everything else,
+  /// including [SyncErrorCategory.unknown], keeps the retry CTA so the
+  /// user has a recovery path; structural errors that initially classify
+  /// as `unknown` will surface a more specific exception class on the next
+  /// attempt and flip to "Dismiss" then.
   bool get _isStructural => switch (action.errorCategory) {
-    SyncErrorCategory.structural ||
-    SyncErrorCategory.session ||
-    SyncErrorCategory.unknown => true,
+    SyncErrorCategory.structural || SyncErrorCategory.session => true,
     SyncErrorCategory.none ||
     SyncErrorCategory.network ||
-    SyncErrorCategory.transient => false,
+    SyncErrorCategory.transient ||
+    SyncErrorCategory.unknown => false,
   };
 
   String _formatTime(DateTime dt) {

@@ -14,9 +14,15 @@ import '../../../helpers/test_material_app.dart';
 // ---------------------------------------------------------------------------
 // BUG-008: PendingSyncSheet shows the right CTA per action.errorCategory
 //
-// - errorCategory in {none, network, transient} -> "Retry" button
-// - errorCategory in {structural, session, unknown} -> "Dismiss" button
-//   plus a body line with the canned structural copy.
+// - errorCategory in {none, network, transient, unknown} -> "Retry" button
+// - errorCategory in {structural, session} -> "Dismiss" button plus a body
+//   line with the canned structural copy.
+//
+// `unknown` is intentionally permissive (PR #127 review): a genuinely
+// unfamiliar exception class might be a one-off transient crash that
+// retry resolves; if the underlying issue is actually structural, the next
+// attempt surfaces a more specific exception class that the mapper routes
+// to `structural` and the CTA flips to Dismiss then.
 //
 // We seed the offline queue Hive box directly with pre-classified actions
 // (the production write path goes through SyncErrorMapper.classifyCategory
@@ -167,6 +173,30 @@ void main() {
 
         expect(find.text('Dismiss'), findsOneWidget);
         expect(find.text('Retry'), findsNothing);
+      },
+    );
+
+    // PR #127 review: unknown is non-terminal — retry might still resolve
+    // a one-off plugin crash, and forcing Dismiss removes the user's
+    // recovery path. If the issue is genuinely structural the next attempt
+    // surfaces a specific exception class that re-classifies and flips
+    // the CTA on its own.
+    testWidgets(
+      'unknown error keeps Retry CTA (non-terminal, permissive policy)',
+      (tester) async {
+        await seedAndOpen(
+          tester,
+          seedSaveWorkout(id: 'w-unknown', category: SyncErrorCategory.unknown),
+        );
+
+        expect(find.text('Retry'), findsOneWidget);
+        expect(find.text('Dismiss'), findsNothing);
+
+        // No structural body copy when retry is still the offered path.
+        expect(
+          find.text("We couldn't send this — please contact support."),
+          findsNothing,
+        );
       },
     );
   });

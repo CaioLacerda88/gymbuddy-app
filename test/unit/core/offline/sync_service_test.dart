@@ -985,7 +985,20 @@ void main() {
     );
 
     // ------------------------------------------------------------------
-    // Phase 14d: SyncService reconciles PR cache after upsertRecords drain
+    // Phase 14d: SyncService reconciles PR cache after upsertRecords drain.
+    //
+    // Post PR-#127 review: `_reconcilePrCache` no longer fetches server
+    // records — the fetch was dead overhead because only its `.length` was
+    // used (for a Sentry breadcrumb). The reconcile is now strictly a
+    // `clearBox(prCache)` call: next reader re-seeds via PRRepository's
+    // user-keyed bag fallback. The behaviour these tests pin:
+    //
+    //   1. After a successful upsertRecords drain → clearBox is called.
+    //   2. After a saveWorkout-only drain → clearBox is NOT called.
+    //   3. clearBox is called once per drain pass regardless of how many
+    //      upsertRecords actions or distinct userIds drained — the box is
+    //      per-device, not per-user.
+    //   4. clearBox failure does NOT break the drain loop.
     // ------------------------------------------------------------------
     group('PR cache reconciliation after upsertRecords drain', () {
       /// Builds a minimal [PendingUpsertRecords] with userId for reconciliation.
@@ -1004,8 +1017,13 @@ void main() {
             as PendingUpsertRecords;
       }
 
-      /// Creates a container with PRRepo mock overrides for reconciliation tests.
-      ProviderContainer createReconcileContainer({bool initialOnline = true}) {
+      /// Creates a container with PRRepo + CacheService mock overrides for
+      /// reconciliation tests. The cache mock is the load-bearing assertion
+      /// surface now that the fetch was removed.
+      ({ProviderContainer container, _MockCacheService mockCache})
+      createReconcileContainer({bool initialOnline = true}) {
+        final mockCache = _MockCacheService();
+        when(() => mockCache.clearBox(any())).thenAnswer((_) async {});
         final container = ProviderContainer(
           overrides: [
             onlineStatusProvider.overrideWith(
@@ -1018,49 +1036,41 @@ void main() {
             workoutRepositoryProvider.overrideWithValue(mockWorkoutRepo),
             prRepositoryProvider.overrideWithValue(mockPRRepo),
             analyticsRepositoryProvider.overrideWithValue(mockAnalyticsRepo),
+            cacheServiceProvider.overrideWithValue(mockCache),
           ],
         );
         addTearDown(container.dispose);
         container.listen(syncServiceProvider, (_, _) {});
-        return container;
+        return (container: container, mockCache: mockCache);
       }
 
-      test(
-        'calls prRepo.getRecordsForUser after successful upsertRecords drain',
-        () async {
-          final container = createReconcileContainer(initialOnline: false);
+      test('clears prCache box after successful upsertRecords drain', () async {
+        final bundle = createReconcileContainer(initialOnline: false);
 
-          final notifier = container.read(pendingSyncProvider.notifier);
-          await notifier.enqueue(makeUpsertAction(id: 'pr-reconcile'));
+        final notifier = bundle.container.read(pendingSyncProvider.notifier);
+        await notifier.enqueue(makeUpsertAction(id: 'pr-reconcile'));
 
-          // Stub upsertRecords to succeed.
-          when(() => mockPRRepo.upsertRecords(any())).thenAnswer((_) async {});
+        when(() => mockPRRepo.upsertRecords(any())).thenAnswer((_) async {});
 
-          // Stub getRecordsForUser to succeed (named args per spec §8 contract).
-          when(
-            () => mockPRRepo.getRecordsForUser(
-              userId: any(named: 'userId'),
-              locale: any(named: 'locale'),
-            ),
-          ).thenAnswer((_) async => <PersonalRecord>[]);
+        connectivityController.add(true);
+        await _pumpAsync(200);
 
-          // Transition: offline -> online
-          connectivityController.add(true);
-          await _pumpAsync(200);
-
-          // prRepo.getRecordsForUser must have been called for reconciliation
-          // with the user's id and the current locale ('en' is the default
-          // when userPrefs has no entry).
-          verify(
-            () => mockPRRepo.getRecordsForUser(userId: 'user-1', locale: 'en'),
-          ).called(1);
-        },
-      );
+        // Reconciliation = clearBox; no server fetch.
+        verify(() => bundle.mockCache.clearBox(HiveService.prCache)).called(1);
+        // Defense-in-depth: getRecordsForUser must NOT be called by the
+        // reconcile path. Drift here = re-introducing the dead fetch.
+        verifyNever(
+          () => mockPRRepo.getRecordsForUser(
+            userId: any(named: 'userId'),
+            locale: any(named: 'locale'),
+          ),
+        );
+      });
 
       test('reconciliation failure does not break the drain loop', () async {
-        final container = createReconcileContainer(initialOnline: false);
+        final bundle = createReconcileContainer(initialOnline: false);
 
-        final notifier = container.read(pendingSyncProvider.notifier);
+        final notifier = bundle.container.read(pendingSyncProvider.notifier);
 
         // Enqueue an upsertRecords then a saveWorkout.
         await notifier.enqueue(
@@ -1080,11 +1090,8 @@ void main() {
 
         // Reconciliation throws — must not break drain.
         when(
-          () => mockPRRepo.getRecordsForUser(
-            userId: any(named: 'userId'),
-            locale: any(named: 'locale'),
-          ),
-        ).thenThrow(Exception('Network error during reconciliation'));
+          () => bundle.mockCache.clearBox(any()),
+        ).thenThrow(Exception('clearBox failed'));
 
         stubSaveWorkoutSuccess(id: 'w-after-pr');
 
@@ -1093,40 +1100,33 @@ void main() {
         await _pumpAsync(300);
 
         // Both items should be dequeued (drain completed despite reconcile failure).
-        expect(container.read(pendingSyncProvider), 0);
+        expect(bundle.container.read(pendingSyncProvider), 0);
       });
 
+      test('does NOT clear prCache after a saveWorkout-only drain', () async {
+        final bundle = createReconcileContainer(initialOnline: false);
+
+        final notifier = bundle.container.read(pendingSyncProvider.notifier);
+        await notifier.enqueue(_makeSaveWorkoutAction(id: 'w-no-reconcile'));
+
+        stubSaveWorkoutSuccess(id: 'w-no-reconcile');
+
+        connectivityController.add(true);
+        await _pumpAsync(200);
+
+        // No upsertRecords drained → no PR-cache reconcile.
+        verifyNever(() => bundle.mockCache.clearBox(any()));
+      });
+
+      // The prCache box is per-device, not per-user. Multiple users draining
+      // in the same pass should still trigger exactly one clearBox — clearing
+      // once is sufficient and clearing N times wastes no-op writes.
       test(
-        'does NOT call getRecordsForUser after a saveWorkout drain',
+        'clears prCache exactly once even when multiple users drain',
         () async {
-          final container = createReconcileContainer(initialOnline: false);
+          final bundle = createReconcileContainer(initialOnline: false);
 
-          final notifier = container.read(pendingSyncProvider.notifier);
-          await notifier.enqueue(_makeSaveWorkoutAction(id: 'w-no-reconcile'));
-
-          stubSaveWorkoutSuccess(id: 'w-no-reconcile');
-
-          connectivityController.add(true);
-          await _pumpAsync(200);
-
-          // getRecordsForUser must NOT be called for saveWorkout items.
-          verifyNever(
-            () => mockPRRepo.getRecordsForUser(
-              userId: any(named: 'userId'),
-              locale: any(named: 'locale'),
-            ),
-          );
-        },
-      );
-
-      // Reconciliation is batched after the drain loop — once per unique userId,
-      // not once per item. Two items for different users trigger two calls.
-      test(
-        'calls getRecordsForUser once per unique userId when multiple drain',
-        () async {
-          final container = createReconcileContainer(initialOnline: false);
-
-          final notifier = container.read(pendingSyncProvider.notifier);
+          final notifier = bundle.container.read(pendingSyncProvider.notifier);
 
           // Two upsertRecords items for different users.
           await notifier.enqueue(
@@ -1145,33 +1145,26 @@ void main() {
           );
 
           when(() => mockPRRepo.upsertRecords(any())).thenAnswer((_) async {});
-          when(
-            () => mockPRRepo.getRecordsForUser(
-              userId: any(named: 'userId'),
-              locale: any(named: 'locale'),
-            ),
-          ).thenAnswer((_) async => <PersonalRecord>[]);
 
           connectivityController.add(true);
           await _pumpAsync(300);
 
-          // Two unique userIds → two reconciliation calls (batched after loop).
+          // One clearBox call covers all drained users (box is per-device).
           verify(
-            () => mockPRRepo.getRecordsForUser(userId: 'user-a', locale: 'en'),
-          ).called(1);
-          verify(
-            () => mockPRRepo.getRecordsForUser(userId: 'user-b', locale: 'en'),
+            () => bundle.mockCache.clearBox(HiveService.prCache),
           ).called(1);
         },
       );
 
-      // Two items for the SAME user should only trigger one reconciliation call.
+      // Two items for the SAME user should also trigger one clearBox call —
+      // pin the de-duplication so the gate stays at "did at least one upsert
+      // drain successfully" rather than "how many".
       test(
-        'calls getRecordsForUser only once for duplicate userId across items',
+        'clears prCache exactly once for duplicate userId across items',
         () async {
-          final container = createReconcileContainer(initialOnline: false);
+          final bundle = createReconcileContainer(initialOnline: false);
 
-          final notifier = container.read(pendingSyncProvider.notifier);
+          final notifier = bundle.container.read(pendingSyncProvider.notifier);
 
           // Two upsertRecords items for the same user.
           await notifier.enqueue(
@@ -1190,20 +1183,12 @@ void main() {
           );
 
           when(() => mockPRRepo.upsertRecords(any())).thenAnswer((_) async {});
-          when(
-            () => mockPRRepo.getRecordsForUser(
-              userId: any(named: 'userId'),
-              locale: any(named: 'locale'),
-            ),
-          ).thenAnswer((_) async => <PersonalRecord>[]);
 
           connectivityController.add(true);
           await _pumpAsync(300);
 
-          // Same userId for both items → only one reconciliation call.
           verify(
-            () =>
-                mockPRRepo.getRecordsForUser(userId: 'user-same', locale: 'en'),
+            () => bundle.mockCache.clearBox(HiveService.prCache),
           ).called(1);
         },
       );
@@ -1302,6 +1287,7 @@ void main() {
               userId: any(named: 'userId'),
               description: any(named: 'description'),
               formTips: any(named: 'formTips'),
+              id: any(named: 'id'),
             ),
           ).thenAnswer((_) async {
             callOrder.add('create-exercise');
@@ -1333,6 +1319,23 @@ void main() {
           // Parent commits first, child second.
           expect(callOrder, ['create-exercise', 'save-workout']);
           expect(container.read(pendingSyncProvider), 0);
+
+          // BUG-003: the drain MUST forward the local stub UUID as `id` so
+          // the server row's PK matches what the local Hive cache and any
+          // queued workout's `exercise_id` already wrote. Without this the
+          // post-drain workout_exercises row holds a dangling FK pointer.
+          verify(
+            () => mockExerciseRepo.createExercise(
+              locale: any(named: 'locale'),
+              name: any(named: 'name'),
+              muscleGroup: any(named: 'muscleGroup'),
+              equipmentType: any(named: 'equipmentType'),
+              userId: any(named: 'userId'),
+              description: any(named: 'description'),
+              formTips: any(named: 'formTips'),
+              id: 'ex-local-1',
+            ),
+          ).called(1);
         },
       );
 
@@ -1371,6 +1374,7 @@ void main() {
               userId: any(named: 'userId'),
               description: any(named: 'description'),
               formTips: any(named: 'formTips'),
+              id: any(named: 'id'),
             ),
           ).thenThrow(const SocketException('flaky network'));
 
@@ -1391,6 +1395,7 @@ void main() {
               userId: any(named: 'userId'),
               description: any(named: 'description'),
               formTips: any(named: 'formTips'),
+              id: any(named: 'id'),
             ),
           ).called(1);
           verifyNever(
@@ -1463,9 +1468,7 @@ void main() {
     // ------------------------------------------------------------------
     // BUG-006: After a successful upsertRecords drain, the
     // `_reconcilePrCache` helper clears the per-exercise pr_cache box so
-    // subsequent offline `detectPRs` re-fetches via the user-keyed bag we
-    // just refreshed. We override `cacheServiceProvider` with a mock and
-    // assert `clearBox(prCache)` was called.
+    // subsequent offline `detectPRs` re-fetches via the user-keyed bag.
     // ------------------------------------------------------------------
     test(
       'BUG-006: PR cache box is cleared after upsertRecords reconcile',
@@ -1502,12 +1505,6 @@ void main() {
         );
 
         when(() => mockPRRepo.upsertRecords(any())).thenAnswer((_) async {});
-        when(
-          () => mockPRRepo.getRecordsForUser(
-            userId: any(named: 'userId'),
-            locale: any(named: 'locale'),
-          ),
-        ).thenAnswer((_) async => <PersonalRecord>[]);
 
         connectivityController.add(true);
         await _pumpAsync(200);

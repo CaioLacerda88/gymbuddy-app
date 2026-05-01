@@ -146,15 +146,18 @@ class PendingSyncNotifier extends Notifier<int> {
         :final formTips,
       ):
         // BUG-003: replay the offline exercise creation so the row exists
-        // server-side BEFORE any dependent PendingSaveWorkout drains. The
-        // local exerciseId was already stamped onto Hive at enqueue time,
-        // but the server allocates a new UUID — we accept the divergence
-        // because the workout JSON references the local UUID and the
-        // server-side row's name+user_id pairing is what surfaces in the UI;
-        // the local stub is evicted from `exercise_cache` as soon as the
-        // localized list provider re-fetches.
+        // server-side BEFORE any dependent PendingSaveWorkout drains. We
+        // forward the local stub [exerciseId] as `p_id` so the server row's
+        // PK matches what the local Hive cache and any queued
+        // `PendingSaveWorkout.exercisesJson` (whose `exercise_id` is the
+        // local stub) already wrote. Without this the server allocates a
+        // fresh UUID and downstream `workout_exercises.exercise_id` rows
+        // commit with a dangling FK pointer — the dependsOn gate prevents a
+        // crash but the data is structurally broken. Migration 00044 added
+        // the optional `p_id` parameter to fn_insert_user_exercise.
         final repo = ref.read(exerciseRepositoryProvider);
         await repo.createExercise(
+          id: exerciseId,
           locale: locale,
           name: name,
           muscleGroup: MuscleGroup.fromString(muscleGroup),
@@ -163,9 +166,6 @@ class PendingSyncNotifier extends Notifier<int> {
           description: description,
           formTips: formTips,
         );
-        // exerciseId is intentionally read-only here — see doc comment above.
-        // ignore: unused_local_variable
-        final _ = exerciseId;
     }
   }
 
