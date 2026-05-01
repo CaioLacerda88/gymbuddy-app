@@ -28,6 +28,12 @@
 @Tags(['integration'])
 library;
 
+// Helpers in this file accept Supabase clients as `dynamic` to avoid leaking
+// the test-only differentiation between admin and user clients into the typed
+// surface. Production code does not use this pattern — the
+// `avoid_dynamic_calls` lint stays enabled everywhere else.
+// ignore_for_file: avoid_dynamic_calls
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:repsaga/features/rpg/domain/xp_calculator.dart';
 import 'package:repsaga/features/rpg/domain/xp_distribution.dart';

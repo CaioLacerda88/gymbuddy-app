@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 import '../../../core/data/base_repository.dart';
+import '../../../core/data/json_helpers.dart';
 import '../../../core/exceptions/app_exception.dart';
 import '../models/body_part.dart';
 import '../models/body_part_progress.dart';
@@ -22,11 +23,11 @@ class CharacterState {
   });
 
   factory CharacterState.fromJson(Map<String, dynamic> json) => CharacterState(
-    userId: json['user_id'] as String,
-    characterLevel: (json['character_level'] as num).toInt(),
-    maxRank: (json['max_rank'] as num).toInt(),
-    minRank: (json['min_rank'] as num).toInt(),
-    lifetimeXp: (json['lifetime_xp'] as num).toDouble(),
+    userId: requireField<String>(json, 'user_id'),
+    characterLevel: requireInt(json, 'character_level'),
+    maxRank: requireInt(json, 'max_rank'),
+    minRank: requireInt(json, 'min_rank'),
+    lifetimeXp: requireDouble(json, 'lifetime_xp'),
   );
 
   /// Default state for a brand-new user (no rows in `body_part_progress`).
@@ -312,17 +313,13 @@ class BackfillProgress {
 
   factory BackfillProgress.fromJson(Map<String, dynamic> json) {
     return BackfillProgress(
-      userId: json['user_id'] as String,
-      lastSetId: json['last_set_id'] as String?,
-      lastSetTs: json['last_set_ts'] == null
-          ? null
-          : DateTime.parse(json['last_set_ts'] as String),
-      setsProcessed: (json['sets_processed'] as num).toInt(),
-      startedAt: DateTime.parse(json['started_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
-      completedAt: json['completed_at'] == null
-          ? null
-          : DateTime.parse(json['completed_at'] as String),
+      userId: requireField<String>(json, 'user_id'),
+      lastSetId: optionalField<String>(json, 'last_set_id'),
+      lastSetTs: optionalDateTime(json, 'last_set_ts'),
+      setsProcessed: requireInt(json, 'sets_processed'),
+      startedAt: requireDateTime(json, 'started_at'),
+      updatedAt: requireDateTime(json, 'updated_at'),
+      completedAt: optionalDateTime(json, 'completed_at'),
     );
   }
 

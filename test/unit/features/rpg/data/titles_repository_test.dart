@@ -9,6 +9,7 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:repsaga/core/exceptions/app_exception.dart';
 import 'package:repsaga/features/rpg/data/titles_repository.dart';
 import 'package:repsaga/features/rpg/models/body_part.dart';
 import 'package:repsaga/features/rpg/models/title.dart';
@@ -163,6 +164,88 @@ void main() {
 
         // Cardio has no entries in v1.
         expect(await repo.forBodyPart(BodyPart.cardio), isEmpty);
+      },
+    );
+  });
+
+  group('EarnedTitleRow.fromJson', () {
+    Map<String, dynamic> validRow() => <String, dynamic>{
+      'user_id': 'u-001',
+      'title_id': 'chest_r5_initiate',
+      'earned_at': '2026-04-30T12:00:00Z',
+      'is_active': true,
+    };
+
+    test('parses a well-formed row', () {
+      final row = EarnedTitleRow.fromJson(validRow());
+      expect(row.userId, 'u-001');
+      expect(row.titleId, 'chest_r5_initiate');
+      expect(row.isActive, isTrue);
+    });
+
+    test('treats missing is_active as false (schema default)', () {
+      final json = validRow()..remove('is_active');
+      expect(EarnedTitleRow.fromJson(json).isActive, isFalse);
+    });
+
+    test('treats null is_active as false', () {
+      final json = validRow()..['is_active'] = null;
+      expect(EarnedTitleRow.fromJson(json).isActive, isFalse);
+    });
+
+    test('throws DatabaseException naming user_id when missing (BUG-010)', () {
+      final json = validRow()..remove('user_id');
+      expect(
+        () => EarnedTitleRow.fromJson(json),
+        throwsA(
+          isA<DatabaseException>().having(
+            (e) => e.message,
+            'message',
+            contains('user_id'),
+          ),
+        ),
+      );
+    });
+
+    test('throws DatabaseException naming title_id when missing', () {
+      final json = validRow()..remove('title_id');
+      expect(
+        () => EarnedTitleRow.fromJson(json),
+        throwsA(
+          isA<DatabaseException>().having(
+            (e) => e.message,
+            'message',
+            contains('title_id'),
+          ),
+        ),
+      );
+    });
+
+    test(
+      'throws DatabaseException with timestamp code when earned_at malformed',
+      () {
+        final json = validRow()..['earned_at'] = 'not-a-timestamp';
+        expect(
+          () => EarnedTitleRow.fromJson(json),
+          throwsA(
+            isA<DatabaseException>().having(
+              (e) => e.code,
+              'code',
+              'json_bad_timestamp',
+            ),
+          ),
+        );
+      },
+    );
+
+    test(
+      'throws DatabaseException on wrong-typed is_active (schema drift)',
+      () {
+        final json = validRow()..['is_active'] = 'yes';
+        expect(
+          () => EarnedTitleRow.fromJson(json),
+          throwsA(isA<DatabaseException>()),
+        );
       },
     );
   });

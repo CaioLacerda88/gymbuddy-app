@@ -11,7 +11,15 @@
 /// Each test creates an isolated user via Supabase Admin Auth API, runs
 /// the scenario, and deletes the user in tearDown. No shared state between
 /// tests.
+///
+/// **Lint suppression:** This file deliberately uses `dynamic` for the
+/// `ExerciseDef` argument to `seedMultiExerciseWorkout` to avoid an import
+/// cycle between integration setup helpers and per-test fixtures. The cycle
+/// avoidance is documented inline at the call site. Production code uses
+/// `requireField` / typed casts everywhere; the lint stays enabled there.
 library;
+
+// ignore_for_file: avoid_dynamic_calls
 
 import 'dart:convert';
 import 'dart:math' as math;

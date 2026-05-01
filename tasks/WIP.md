@@ -46,6 +46,52 @@ Per BUGS.md Cluster 5 (Localization & accessibility) + Cluster 6 (Brand consiste
 
 ---
 
+## Wave 2 / Cluster 2 — Unsafe casts in repository layer (`fix/cluster2-unsafe-casts`)
+
+Per `BUGS.md` BUG-010: replace `as T` casts at four untrusted Supabase/state.extra
+boundaries with typed exceptions. Prevents cryptic Dart cast errors from leaking
+to users / Sentry without context. Dart-only PR — no schema or migration changes.
+
+### Scope
+
+- [x] Add `lib/core/data/json_helpers.dart` with `requireField<T>`, `optionalField<T>`,
+      `requireInt`, `requireDouble`, `requireDateTime`, `optionalDateTime`. All
+      throw `DatabaseException` (code: `json_missing_field`, `json_wrong_type`,
+      `json_bad_timestamp`).
+- [x] `lib/features/personal_records/data/pr_repository.dart:267` — `setRows.map<String>((r) => r['id'] as String)` → `requireField<String>(r, 'id')`.
+- [x] `lib/features/rpg/data/rpg_repository.dart` — `CharacterState.fromJson` (5 casts) and `BackfillProgress.fromJson` (7 casts) routed through helpers.
+- [x] `lib/features/rpg/data/titles_repository.dart` — `EarnedTitleRow.fromJson` (4 casts) + `getActiveTitleSlug` row cast routed through helpers.
+- [x] `lib/core/router/app_router.dart` — `/pr-celebration` GoRoute extras now flow through new top-level `PrCelebrationArgs.fromExtra(extra)` (throws `StateError` naming the bad field) + `validatePrCelebrationExtra` redirect gate (returns false → `/home`).
+- [x] `analysis_options.yaml` — enable `avoid_dynamic_calls` lint to catch future regressions at compile time.
+
+### Tests
+
+- [x] `test/unit/core/data/json_helpers_test.dart` — full coverage of all 6 helpers (valid, missing, null, wrong type, malformed timestamp).
+- [x] `test/unit/features/personal_records/data/pr_repository_test.dart` — added BUG-010 regression test (sets row missing `id`).
+- [x] `test/unit/features/rpg/data/rpg_repository_test.dart` (NEW) — `CharacterState.fromJson` + `BackfillProgress.fromJson` exception cases.
+- [x] `test/unit/features/rpg/data/titles_repository_test.dart` — added `EarnedTitleRow.fromJson` group with 8 cases.
+- [x] `test/unit/core/router/pr_celebration_args_test.dart` (NEW) — pins both the redirect-gate validator and the builder fallback factory.
+
+### CI gate fixes encountered
+
+- `avoid_dynamic_calls` flagged 19 violations in test files. Fixed `rank_curve_test.dart` properly with typed intermediate maps; suppressed in 3 integration tests with `// ignore_for_file: avoid_dynamic_calls` and rationale (RPG test fixtures form a dynamic Map cycle by design).
+- Pre-existing `FakePRFilterBuilder.then<S>` in `pr_repository_test.dart` used `Future.value(onValue(data))` which calls the post-await continuation synchronously. The new BUG-010 sync throw in the body exposed this — the throw escaped past `throwsA`/`try-catch` and leaked to the zone error handler. Fixed the fake to forward through `Future<T>.value(data).then(onValue, onError: onError)` so post-await throws become proper future rejections.
+
+### Verification
+
+- [x] `dart format .` clean.
+- [x] `dart analyze --fatal-infos` clean (`No issues found!`).
+- [x] `flutter test --exclude-tags integration` — 2187/2187 pass.
+- [x] `flutter build apk --debug --no-shrink` — green.
+
+### Next steps
+
+- [ ] Mark BUG-010 RESOLVED in `BUGS.md` with branch reference.
+- [ ] Commit `fix(core): Cluster 2 — repository unsafe-cast audit (BUG-010)`.
+- [ ] `git push -u origin fix/cluster2-unsafe-casts` (no PR open — orchestrator handles).
+
+---
+
 ## Phase 16 — Subscription Monetization — PARKED (2026-04-22)
 
 **Why parked:** Phase 16 keeps hitting external blockers (Brazilian merchant account, Play Console → upload signed AAB required before subscription product can be created, license-tester account setup). Phase 17 gamification is fully internal code work with no external gates and produces the retention moat that makes Phase 16's paywall pitch compelling. Decision: ship Phase 17 (Gamification) before resuming 16b/c/d.

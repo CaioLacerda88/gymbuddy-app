@@ -139,18 +139,27 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/pr-celebration',
         redirect: (context, state) {
-          if (state.extra == null || state.extra is! Map<String, dynamic>) {
-            return '/home';
-          }
-          return null;
+          // Validate the entire envelope here so the builder never has to
+          // assert types on `state.extra`. A redirect is the right place for
+          // this — the alternative (throwing inside the builder) would crash
+          // the navigator with a typed `StateError` instead of a graceful
+          // redirect to /home, which is what we want for a programmer error
+          // that slipped past compile time.
+          return validatePrCelebrationExtra(state.extra) ? null : '/home';
         },
         builder: (context, state) {
-          final extra = state.extra! as Map<String, dynamic>;
+          // The redirect above guarantees the shape; build a typed
+          // [PrCelebrationArgs] so a future refactor that breaks the contract
+          // surfaces as a typed `StateError` (programmer error) rather than a
+          // cryptic Dart cast crash. Keep these checks in addition to the
+          // redirect — the builder may be re-invoked on rebuild even after
+          // the redirect approved the entry. Defense in depth (BUG-010).
+          final args = PrCelebrationArgs.fromExtra(state.extra);
           return PRCelebrationScreen(
-            result: extra['result'] as PRDetectionResult,
-            exerciseNames: extra['exerciseNames'] as Map<String, String>,
-            planPromptRoutineId: extra['planPromptRoutineId'] as String?,
-            planPromptRoutineName: extra['planPromptRoutineName'] as String?,
+            result: args.result,
+            exerciseNames: args.exerciseNames,
+            planPromptRoutineId: args.planPromptRoutineId,
+            planPromptRoutineName: args.planPromptRoutineName,
           );
         },
       ),
@@ -240,6 +249,90 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+/// Typed envelope for the `/pr-celebration` route's `state.extra`.
+///
+/// **Why a class instead of inline casts:** the route receives a freeform
+/// `Map<String, dynamic>` because GoRouter's `extra` is `Object?`. Pulling the
+/// validation into a single named factory means there is exactly ONE place to
+/// keep the schema in sync with the navigator pushes — and a unit test can
+/// pin the contract without standing up a full router.
+///
+/// All factories throw [StateError] (programmer error) on shape mismatch
+/// rather than a cryptic Dart cast — the redirect on the route catches the
+/// `false` return of [validatePrCelebrationExtra] before the builder runs, so
+/// the StateError only fires if the redirect was bypassed (e.g. a builder
+/// rebuild without re-running the redirect). It IS a programmer error in
+/// that case, and a typed StateError makes the bug visible.
+@immutable
+class PrCelebrationArgs {
+  const PrCelebrationArgs({
+    required this.result,
+    required this.exerciseNames,
+    this.planPromptRoutineId,
+    this.planPromptRoutineName,
+  });
+
+  /// Validates and unpacks the freeform `state.extra` shape pushed by the
+  /// finish-workout flow. Throws [StateError] with a field-naming message on
+  /// any drift; callers that prefer a soft fallback (the redirect) should
+  /// gate on [validatePrCelebrationExtra] first.
+  factory PrCelebrationArgs.fromExtra(Object? extra) {
+    if (extra is! Map<String, dynamic>) {
+      throw StateError('PR celebration extra is not a Map<String, dynamic>');
+    }
+    final result = extra['result'];
+    if (result is! PRDetectionResult) {
+      throw StateError(
+        'PR celebration extra.result is not a PRDetectionResult',
+      );
+    }
+    final exerciseNames = extra['exerciseNames'];
+    if (exerciseNames is! Map<String, String>) {
+      throw StateError(
+        'PR celebration extra.exerciseNames is not a Map<String, String>',
+      );
+    }
+    final routineId = extra['planPromptRoutineId'];
+    if (routineId != null && routineId is! String) {
+      throw StateError(
+        'PR celebration extra.planPromptRoutineId is not a String',
+      );
+    }
+    final routineName = extra['planPromptRoutineName'];
+    if (routineName != null && routineName is! String) {
+      throw StateError(
+        'PR celebration extra.planPromptRoutineName is not a String',
+      );
+    }
+    return PrCelebrationArgs(
+      result: result,
+      exerciseNames: exerciseNames,
+      planPromptRoutineId: routineId as String?,
+      planPromptRoutineName: routineName as String?,
+    );
+  }
+
+  final PRDetectionResult result;
+  final Map<String, String> exerciseNames;
+  final String? planPromptRoutineId;
+  final String? planPromptRoutineName;
+}
+
+/// Returns true when [extra] satisfies the [PrCelebrationArgs] contract.
+/// Used by the route's `redirect` to soft-fail to /home on a malformed push
+/// rather than throwing inside the navigator.
+@visibleForTesting
+bool validatePrCelebrationExtra(Object? extra) {
+  if (extra is! Map<String, dynamic>) return false;
+  if (extra['result'] is! PRDetectionResult) return false;
+  if (extra['exerciseNames'] is! Map<String, String>) return false;
+  final routineId = extra['planPromptRoutineId'];
+  if (routineId != null && routineId is! String) return false;
+  final routineName = extra['planPromptRoutineName'];
+  if (routineName != null && routineName is! String) return false;
+  return true;
+}
 
 /// Notifies GoRouter when auth state changes so it re-evaluates redirects.
 class _RouterRefreshListenable extends ChangeNotifier {
