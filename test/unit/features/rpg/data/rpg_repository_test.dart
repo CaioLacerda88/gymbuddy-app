@@ -149,11 +149,7 @@ void main() {
           throwsA(
             isA<DatabaseException>()
                 .having((e) => e.message, 'message', contains('started_at'))
-                .having(
-                  (e) => e.code,
-                  'code',
-                  'json_bad_timestamp',
-                ),
+                .having((e) => e.code, 'code', 'json_bad_timestamp'),
           ),
         );
       },
