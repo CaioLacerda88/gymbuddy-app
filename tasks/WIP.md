@@ -50,6 +50,43 @@ migration, repository, or data-layer changes.
 - Cluster 7 (DB integrity) — owned by separate PR
 - Opening the PR — task definition asks for branch + commit + push only
 
+### Post-PR-#130 regression follow-up (CI run 25236850529)
+
+**Symptom:** `onboarding.spec.ts:122` failed with `[flt-semantics-identifier="onboarding-freq-3"]`
+not matching any DOM node, plus 8 cascading routines failures gated on the
+same login flow. Investigated via `superpowers:systematic-debugging`.
+
+**Root cause (Phase 1):** Flutter 3.41.6 web's semantics tree compactor
+non-deterministically strips outer `Semantics(container: true, identifier:)`
+wrappers when their sole child is a tap-target node (InkWell). Live DOM
+probes against a fresh `flutter build web` confirm the fitness-level Wrap
+(3 pills) keeps its wrappers — `onboarding-beginner/intermediate/advanced`
+all emit — but the structurally-identical frequency Wrap (5 pills) gets
+its wrappers compacted away. Three structural fix attempts on
+`_BrandedPillChoice` (Semantics-inside-InkWell; container+button+label+
+ExcludeSemantics; ValueKey per pill) all failed to make the frequency
+wrappers survive compaction. Per the 3-attempt stop rule we stopped
+fighting Flutter framework internals.
+
+**Fix:** Switch `helpers/selectors.ts › ONBOARDING_FLOW.frequency3x` from
+`[flt-semantics-identifier="onboarding-freq-3"]` to the AOM-stable
+`role=checkbox[name="3x"]`. Per CLAUDE.md E2E Conventions ("use Playwright
+`role=TYPE[name*="..."]` selectors (accessibility protocol), NOT CSS
+`flt-semantics[...]`"), the role-based selector targets the AOM directly
+and is unaffected by which intermediate `flt-semantics` nodes the compactor
+preserves. Verified empirically: every pill emits
+`role="checkbox" aria-label="<freq>x" aria-checked="true|false"` regardless
+of how many wrappers survive.
+
+- [x] Selector swap in `test/e2e/helpers/selectors.ts`
+- [x] Updated docblock explaining why role-based not identifier-based
+- [x] `dart format` + `dart analyze --fatal-infos` clean (no Dart changes)
+- [x] `onboarding.spec.ts:122` green locally (1 passed in 26s)
+- [x] Full `onboarding.spec.ts` green locally (4 passed)
+- [x] `routines.spec.ts:580` green locally (was a downstream cascading failure)
+- [x] Full `--grep @smoke` green locally (111 passed in 14m)
+- [ ] Commit + push to `fix/cluster5-6-ui-polish`
+
 ---
 
 ## Phase 16 — Subscription Monetization — PARKED (2026-04-22)

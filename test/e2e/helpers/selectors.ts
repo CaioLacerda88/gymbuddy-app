@@ -524,13 +524,28 @@ export const ONBOARDING_FLOW = {
   /**
    * "3x" frequency pill — the default selection.
    *
-   * PR #130 (_BrandedPillChoice) replaced the M3 ChoiceChip. ChoiceChip sets
-   * Semantics(checked: ...) which Flutter exposes as role=checkbox in the AOM.
-   * _BrandedPillChoice is a plain InkWell with no toggled/checked property, so
-   * role=checkbox[name="3x"] no longer matches. Use the flt-semantics-identifier
-   * set by the outer Semantics(identifier: 'onboarding-freq-3') wrapper instead.
+   * Why role=checkbox[name="3x"] instead of [flt-semantics-identifier=...]:
+   * Flutter 3.41.6's semantics tree compactor non-deterministically strips
+   * outer `Semantics(container: true, identifier: ...)` wrappers when their
+   * sole child is a tap-target node (InkWell). Live DOM probes against
+   * build/web confirm: the fitness-level Wrap (3 pills) keeps the wrapper
+   * nodes — so `flt-semantics-identifier="onboarding-beginner"` etc. are
+   * emitted — but the structurally-identical frequency Wrap (5 pills) gets
+   * its wrappers compacted away, leaving only the inner InkWell node with
+   * `role="checkbox" aria-label="3x"`. Three structural fix attempts
+   * (Semantics-inside-InkWell, container+button+label+ExcludeSemantics,
+   * ValueKey per pill) all failed to make the frequency wrappers survive
+   * compaction. Per CLAUDE.md "use Playwright `role=TYPE[name*=...]`
+   * selectors (accessibility protocol), NOT CSS `flt-semantics[...]`":
+   * the role-based selector targets the AOM directly and is unaffected
+   * by which intermediate `flt-semantics` nodes the compactor preserves.
+   * Empirically, `_BrandedPillChoice`'s tap-target node is exposed in the
+   * AOM as `role="checkbox" aria-label="3x" aria-checked="true|false"` for
+   * every frequency option (verified via DOM probe against build/web).
+   * `role=checkbox[name="3x"]` matches that node directly through
+   * Playwright's accessibility protocol.
    */
-  frequency3x: '[flt-semantics-identifier="onboarding-freq-3"]',
+  frequency3x: 'role=checkbox[name="3x"]',
   /**
    * Back TextButton.icon on page 2.
    * TextButton label: Text('Back').
