@@ -280,20 +280,29 @@ assertions that schema/constraint names never appear in the output).
 Multiple `as String` / `as Map` / `!` patterns throughout the repository layer
 will throw the same cryptic null-cast error if any DB column shape drifts.
 
-### BUG-010 [P1] — `as String` casts without null guards (audit list)
+### ~~BUG-010 [P1] — `as String` casts without null guards (audit list)~~ ✅ RESOLVED in `fix/cluster2-unsafe-casts`
 
 **Where (high priority — call paths that fire on workout save / PR sync):**
-- `lib/features/personal_records/data/pr_repository.dart:261` — `setRows.map<String>((r) => r['id'] as String)`
-- `lib/features/rpg/data/rpg_repository.dart:25, 315-325` — `CharacterState.fromJson` and `BackfillProgress.fromJson` field casts
-- `lib/features/rpg/data/titles_repository.dart:43-45` — `earned_titles` view casts
-- `lib/core/router/app_router.dart:148-151` — `extra['result'] as PRDetectionResult` and `extra['exerciseNames'] as Map<String, String>`
+- ~~`lib/features/personal_records/data/pr_repository.dart:261` — `setRows.map<String>((r) => r['id'] as String)`~~
+- ~~`lib/features/rpg/data/rpg_repository.dart:25, 315-325` — `CharacterState.fromJson` and `BackfillProgress.fromJson` field casts~~
+- ~~`lib/features/rpg/data/titles_repository.dart:43-45` — `earned_titles` view casts~~
+- ~~`lib/core/router/app_router.dart:148-151` — `extra['result'] as PRDetectionResult` and `extra['exerciseNames'] as Map<String, String>`~~
 
-**Fix pattern:** For every untrusted external boundary, replace `as T` with
-`as T?` plus a null check that throws a typed `app.DatabaseException` with
-context. Consider a helper `T requireField<T>(Map<String, dynamic> json, String key)`.
-
-**Lint:** Enable `avoid_dynamic_calls` in `analysis_options.yaml` to surface
-new instances at compile time.
+**Fix shipped:** Introduced `lib/core/data/json_helpers.dart` with
+`requireField<T>` / `optionalField<T>` / `requireInt` / `requireDouble` /
+`requireDateTime` / `optionalDateTime`, all throwing `DatabaseException` with
+typed codes (`json_missing_field`, `json_wrong_type`, `json_bad_timestamp`)
+that name the offending field. Replaced every audit-site `as T` with the
+appropriate helper. Router `state.extra` casts moved into a new
+`PrCelebrationArgs.fromExtra(extra)` factory that throws `StateError` (a
+programmer-error class, not a database-error one) plus a
+`validatePrCelebrationExtra` redirect gate that soft-fails to `/home`. Enabled
+`avoid_dynamic_calls` in `analysis_options.yaml` to catch future regressions
+at compile time. Pinned with unit tests in `test/unit/core/data/json_helpers_test.dart`,
+`test/unit/features/rpg/data/rpg_repository_test.dart` (new),
+`test/unit/features/rpg/data/titles_repository_test.dart` (extended),
+`test/unit/features/personal_records/data/pr_repository_test.dart` (extended),
+and `test/unit/core/router/pr_celebration_args_test.dart` (new).
 
 ---
 

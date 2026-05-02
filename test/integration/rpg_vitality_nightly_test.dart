@@ -44,6 +44,11 @@
 @Tags(['integration'])
 library;
 
+// Test helpers accept Supabase admin clients as `dynamic` to avoid leaking
+// admin-vs-user client typing into the non-test typed surface. Production
+// code uses the strongly-typed `SupabaseClient` API everywhere.
+// ignore_for_file: avoid_dynamic_calls
+
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter_test/flutter_test.dart';

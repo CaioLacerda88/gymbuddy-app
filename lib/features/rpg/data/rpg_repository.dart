@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 import '../../../core/data/base_repository.dart';
+import '../../../core/data/json_helpers.dart';
 import '../../../core/exceptions/app_exception.dart';
 import '../models/body_part.dart';
 import '../models/body_part_progress.dart';
@@ -22,11 +23,11 @@ class CharacterState {
   });
 
   factory CharacterState.fromJson(Map<String, dynamic> json) => CharacterState(
-    userId: json['user_id'] as String,
-    characterLevel: (json['character_level'] as num).toInt(),
-    maxRank: (json['max_rank'] as num).toInt(),
-    minRank: (json['min_rank'] as num).toInt(),
-    lifetimeXp: (json['lifetime_xp'] as num).toDouble(),
+    userId: requireField<String>(json, 'user_id'),
+    characterLevel: requireInt(json, 'character_level'),
+    maxRank: requireInt(json, 'max_rank'),
+    minRank: requireInt(json, 'min_rank'),
+    lifetimeXp: requireDouble(json, 'lifetime_xp'),
   );
 
   /// Default state for a brand-new user (no rows in `body_part_progress`).
@@ -246,8 +247,9 @@ class RpgRepository extends BaseRepository {
           params: {'p_user_id': user.id, 'p_chunk_size': chunkSize},
         );
         final row = _firstRow(result);
-        final isComplete = (row['out_is_complete'] as bool?) ?? false;
-        totalProcessed = (row['out_total_processed'] as num?)?.toInt() ?? 0;
+        final isComplete = optionalField<bool>(row, 'out_is_complete') ?? false;
+        final processedRaw = optionalField<num>(row, 'out_total_processed');
+        totalProcessed = processedRaw?.toInt() ?? 0;
         if (isComplete) {
           return totalProcessed;
         }
@@ -265,7 +267,14 @@ class RpgRepository extends BaseRepository {
   /// of maps even when the function returns a single row.
   Map<String, dynamic> _firstRow(dynamic result) {
     if (result is List && result.isNotEmpty) {
-      return Map<String, dynamic>.from(result.first as Map);
+      final first = result.first;
+      if (first is! Map) {
+        throw const DatabaseException(
+          'backfill_rpg_v1 returned a non-Map row',
+          code: 'json_wrong_type',
+        );
+      }
+      return Map<String, dynamic>.from(first);
     }
     if (result is Map) {
       return Map<String, dynamic>.from(result);
@@ -312,17 +321,13 @@ class BackfillProgress {
 
   factory BackfillProgress.fromJson(Map<String, dynamic> json) {
     return BackfillProgress(
-      userId: json['user_id'] as String,
-      lastSetId: json['last_set_id'] as String?,
-      lastSetTs: json['last_set_ts'] == null
-          ? null
-          : DateTime.parse(json['last_set_ts'] as String),
-      setsProcessed: (json['sets_processed'] as num).toInt(),
-      startedAt: DateTime.parse(json['started_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
-      completedAt: json['completed_at'] == null
-          ? null
-          : DateTime.parse(json['completed_at'] as String),
+      userId: requireField<String>(json, 'user_id'),
+      lastSetId: optionalField<String>(json, 'last_set_id'),
+      lastSetTs: optionalDateTime(json, 'last_set_ts'),
+      setsProcessed: requireInt(json, 'sets_processed'),
+      startedAt: requireDateTime(json, 'started_at'),
+      updatedAt: requireDateTime(json, 'updated_at'),
+      completedAt: optionalDateTime(json, 'completed_at'),
     );
   }
 

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:repsaga/core/exceptions/app_exception.dart';
 import 'package:repsaga/core/local_storage/cache_service.dart';
 import 'package:repsaga/features/exercises/data/exercise_repository.dart';
 import 'package:repsaga/features/exercises/models/exercise.dart';
@@ -112,7 +113,16 @@ class FakePRFilterBuilder extends Fake
         _parent.error!,
       ).then<S>(onValue, onError: onError);
     }
-    return Future.value(onValue(_parent.data));
+    // Forward through a real `Future.value(...)` so the await machinery sees
+    // standard then-semantics: if the post-await continuation throws (e.g. a
+    // `requireField` cast inside the body), the error becomes a future
+    // rejection AND propagates to the caller's `onError` — not a zone-level
+    // unhandled error. The naive `Future.value(onValue(_parent.data))`
+    // invokes `onValue` synchronously, which leaks throws past `throwsA`
+    // (see BUG-010 missing-`id` test below).
+    return Future<List<Map<String, dynamic>>>.value(
+      _parent.data,
+    ).then<S>(onValue, onError: onError);
   }
 }
 
@@ -134,7 +144,8 @@ class FakePRTransformBuilder<T> extends Fake
     if (_parent.error != null) {
       return Future<T>.error(_parent.error!).then<S>(onValue, onError: onError);
     }
-    return Future.value(onValue(_result));
+    // See FakePRFilterBuilder.then for why we forward through Future.value.
+    return Future<T>.value(_result).then<S>(onValue, onError: onError);
   }
 }
 
@@ -586,6 +597,42 @@ void main() {
       await repo.getPRsForWorkout(workoutId, 'user-001');
 
       expect(prBuilder.calledMethods, contains('inFilter:set_id'));
+    });
+
+    test('throws DatabaseException naming the field when a sets row is missing '
+        "'id' (BUG-010)", () async {
+      // The historical bug: a sets row without `id` produced the cryptic
+      // `type 'Null' is not a subtype of type 'String' in type cast`. Pin
+      // that the boundary now surfaces a typed [DatabaseException] with
+      // the field name in the message — actionable for a Sentry breadcrumb.
+      const workoutId = 'workout-001';
+      const userId = 'user-001';
+
+      // Row missing the `id` key entirely (simulates an RLS / projection
+      // drift hiding the column).
+      final malformedSetRow = <String, dynamic>{
+        'workout_exercises': {'workout_id': workoutId},
+      };
+      final setsBuilder = FakePRQueryBuilder(data: [malformedSetRow]);
+      final prBuilder = FakePRQueryBuilder(data: []);
+
+      final repo = PRRepository(
+        FakeRoutingSupabaseClient({
+          'sets': setsBuilder,
+          'personal_records': prBuilder,
+        }),
+        const CacheService(),
+        mockExerciseRepo,
+      );
+
+      await expectLater(
+        () => repo.getPRsForWorkout(workoutId, userId),
+        throwsA(
+          isA<DatabaseException>()
+              .having((e) => e.message, 'message', contains("'id'"))
+              .having((e) => e.code, 'code', 'json_missing_field'),
+        ),
+      );
     });
   });
 }

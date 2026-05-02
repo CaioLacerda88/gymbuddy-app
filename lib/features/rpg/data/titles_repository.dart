@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 import '../../../core/data/base_repository.dart';
+import '../../../core/data/json_helpers.dart';
 import '../models/body_part.dart';
 import '../models/title.dart';
 
@@ -40,10 +41,13 @@ class EarnedTitleRow {
 
   factory EarnedTitleRow.fromJson(Map<String, dynamic> json) {
     return EarnedTitleRow(
-      userId: json['user_id'] as String,
-      titleId: json['title_id'] as String,
-      earnedAt: DateTime.parse(json['earned_at'] as String),
-      isActive: (json['is_active'] as bool?) ?? false,
+      userId: requireField<String>(json, 'user_id'),
+      titleId: requireField<String>(json, 'title_id'),
+      earnedAt: requireDateTime(json, 'earned_at'),
+      // `is_active` is NOT NULL with default `false` in the schema; treat
+      // missing/null as `false` and let a wrong-type drift surface via
+      // `optionalField`'s typed exception.
+      isActive: optionalField<bool>(json, 'is_active') ?? false,
     );
   }
 
@@ -224,7 +228,7 @@ class TitlesRepository extends BaseRepository {
           .maybeSingle();
 
       if (row == null) return null;
-      return row['title_id'] as String;
+      return requireField<String>(row, 'title_id');
     });
   }
 

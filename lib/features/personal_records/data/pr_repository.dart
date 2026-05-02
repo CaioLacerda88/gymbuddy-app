@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 import '../../../core/data/base_repository.dart';
+import '../../../core/data/json_helpers.dart';
 import '../../../core/local_storage/cache_service.dart';
 import '../../../core/local_storage/hive_service.dart';
 import '../../exercises/data/exercise_repository.dart';
@@ -258,7 +259,13 @@ class PRRepository extends BaseRepository {
           .select('id, workout_exercises!inner(workout_id)')
           .eq('workout_exercises.workout_id', workoutId);
 
-      final setIds = setRows.map<String>((r) => r['id'] as String).toList();
+      // Each row is `{ id: <set uuid>, workout_exercises: { workout_id } }`.
+      // The `id` cast historically threw a cryptic `Null is not a subtype of
+      // String` if RLS/visibility hides the row; route through `requireField`
+      // so a schema drift surfaces as `DatabaseException` with the field name.
+      final setIds = setRows
+          .map<String>((r) => requireField<String>(r, 'id'))
+          .toList();
 
       if (setIds.isEmpty) return [];
 

@@ -21,12 +21,14 @@ void main() {
 
   group('Constants parity with Python sim', () {
     test('xp_base == 60', () {
-      expect(RankCurve.xpBase, fixtures['meta']['xp_base']);
+      final meta = fixtures['meta'] as Map<String, dynamic>;
+      expect(RankCurve.xpBase, meta['xp_base']);
       expect(RankCurve.xpBase, 60);
     });
 
     test('xp_growth == 1.10', () {
-      expect(RankCurve.xpGrowth, fixtures['meta']['xp_growth']);
+      final meta = fixtures['meta'] as Map<String, dynamic>;
+      expect(RankCurve.xpGrowth, meta['xp_growth']);
       expect(RankCurve.xpGrowth, 1.10);
     });
 
@@ -53,7 +55,8 @@ void main() {
     });
 
     test('every spec milestone matches the Python sim within tolerance', () {
-      final milestones = fixtures['rank_curve']['milestones'] as List<dynamic>;
+      final rankCurve = fixtures['rank_curve'] as Map<String, dynamic>;
+      final milestones = rankCurve['milestones'] as List<dynamic>;
       for (final raw in milestones) {
         final m = raw as Map<String, dynamic>;
         final rank = m['rank'] as int;
@@ -97,7 +100,8 @@ void main() {
 
   group('rankForXp — inverse + boundary semantics', () {
     test('every fixture lookup matches the Python sim', () {
-      final lookups = fixtures['rank_curve']['lookups'] as List<dynamic>;
+      final rankCurve = fixtures['rank_curve'] as Map<String, dynamic>;
+      final lookups = rankCurve['lookups'] as List<dynamic>;
       for (final raw in lookups) {
         final l = raw as Map<String, dynamic>;
         final total = (l['total_xp'] as num).toInt();
