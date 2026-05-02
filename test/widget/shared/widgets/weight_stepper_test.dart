@@ -415,6 +415,51 @@ void main() {
       });
     });
 
+    group('tap target sizing (BUG-019)', () {
+      testWidgets(
+        'increment + decrement buttons are >=40x48 dp on a 360dp viewport',
+        (tester) async {
+          // Pin: on a Moto G / Samsung A width (360dp), the stepper buttons
+          // must satisfy 40 minWidth + 48 minHeight so a sweaty thumb still
+          // lands on the right control. Regressing below this re-opens
+          // BUG-019. We force the surface size to 360dp to mirror the bug
+          // repro envelope.
+          tester.view.physicalSize = const Size(360, 800);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+
+          await tester.pumpWidget(
+            buildTestWidget(WeightStepper(value: 60.0, onChanged: (_) {})),
+          );
+
+          for (final icon in const [Icons.add, Icons.remove]) {
+            final btn = tester.widget<IconButton>(
+              find.widgetWithIcon(IconButton, icon),
+            );
+            expect(
+              btn.constraints,
+              isNotNull,
+              reason:
+                  'WeightStepper IconButton (${icon.codePoint.toRadixString(16)}) '
+                  'must declare explicit constraints; otherwise Material defaults to '
+                  '48x48 which is fine but BUG-019 pins the explicit floor.',
+            );
+            expect(
+              btn.constraints!.minWidth,
+              greaterThanOrEqualTo(40),
+              reason: 'BUG-019: stepper minWidth must be >=40dp.',
+            );
+            expect(
+              btn.constraints!.minHeight,
+              greaterThanOrEqualTo(48),
+              reason: 'BUG-019: stepper minHeight must be >=48dp.',
+            );
+          }
+        },
+      );
+    });
+
     group('custom increment', () {
       testWidgets('uses default increment of 2.5 when not specified', (
         tester,

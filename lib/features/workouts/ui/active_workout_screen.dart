@@ -589,41 +589,6 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
                   ? AppLocalizations.of(context).exitReorderModeTooltip
                   : AppLocalizations.of(context).reorderExercisesTooltip,
             ),
-          // Phase 18c §13: Finish button moves from bottomNavigationBar
-          // FilledButton to the AppBar trailing as an OutlinedButton in
-          // hotViolet. Top-right is intentionally hard to reach one-handed
-          // — friction is a feature for a destructive action. The
-          // confirmation dialog is the second gate.
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: Semantics(
-              container: true,
-              identifier: 'workout-finish-btn',
-              child: OutlinedButton(
-                onPressed: _hasCompletedSet ? _onFinish : null,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.hotViolet,
-                  side: const BorderSide(color: AppColors.hotViolet, width: 1),
-                  minimumSize: const Size(0, 44),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: Text(
-                  AppLocalizations.of(context).finishButtonLabel,
-                  style: AppTextStyles.headline.copyWith(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.04 * 13,
-                    color: _hasCompletedSet
-                        ? AppColors.hotViolet
-                        : AppColors.textDim,
-                  ),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
       body: widget.state.exercises.isEmpty
@@ -633,6 +598,15 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
               onAddExercise: _onAddExercise,
               reorderMode: _reorderMode,
             ),
+      // BUG-020 (reverses Phase 18c §13): the AppBar trailing OutlinedButton
+      // was moved here as a persistent bottom bar. Discoverability + one-
+      // handed reach were the real failures; intentional friction stays via
+      // the FinishWorkoutDialog confirmation, not via obscure placement.
+      // Hidden on the empty body — _EmptyWorkoutBody owns its own CTA and a
+      // Finish bar with no logged sets would just be dead chrome.
+      bottomNavigationBar: widget.state.exercises.isEmpty
+          ? null
+          : _FinishBottomBar(enabled: _hasCompletedSet, onPressed: _onFinish),
       floatingActionButton: widget.state.exercises.isNotEmpty
           ? _AddExerciseFab(onPressed: _onAddExercise)
           : null,
@@ -1269,6 +1243,75 @@ class _SetColumnHeaders extends StatelessWidget {
           ),
           const SizedBox(width: 48),
         ],
+      ),
+    );
+  }
+}
+
+/// Persistent bottom bar hosting the "Finish workout" action.
+///
+/// BUG-020: previously rendered as an AppBar trailing OutlinedButton (Phase
+/// 18c §13). Moved here so the action is reachable one-handed and discoverable
+/// to first-time users. The [FinishWorkoutDialog] (gated by [onPressed]) is
+/// the safety net — placement is no longer the gate.
+///
+/// Styling mirrors the original AppBar button: hotViolet outline + label,
+/// 44dp min height, full-width minus 16dp horizontal padding. A top divider
+/// separates it visually from the scrolling exercise list. SafeArea handles
+/// gesture insets on iOS / Android-with-bottom-bar.
+class _FinishBottomBar extends StatelessWidget {
+  const _FinishBottomBar({required this.enabled, required this.onPressed});
+
+  final bool enabled;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Material(
+      color: theme.colorScheme.surface,
+      child: SafeArea(
+        top: false,
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(
+                color: theme.colorScheme.outline.withValues(alpha: 0.2),
+                width: 1,
+              ),
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Semantics(
+            container: true,
+            identifier: 'workout-finish-btn',
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: enabled ? onPressed : null,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.hotViolet,
+                  side: const BorderSide(color: AppColors.hotViolet, width: 1),
+                  minimumSize: const Size(0, 44),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Text(
+                  AppLocalizations.of(context).finishButtonLabel,
+                  style: AppTextStyles.headline.copyWith(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.04 * 13,
+                    color: enabled ? AppColors.hotViolet : AppColors.textDim,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

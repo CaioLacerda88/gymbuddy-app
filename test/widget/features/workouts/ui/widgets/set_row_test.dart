@@ -549,6 +549,48 @@ void main() {
       );
     });
 
+    group('tap target sizing', () {
+      testWidgets(
+        'set-number cell is at least 48x48 dp (BUG-018, Material tap min)',
+        (tester) async {
+          // Pin: the number cell's BoxConstraints must satisfy Material's 48dp
+          // minimum so the tap-to-copy / long-press-to-cycle interaction lands
+          // reliably mid-workout. Regressing below 48 would re-open BUG-018.
+          final set = makeSet(setNumber: 1);
+          await tester.pumpWidget(
+            buildTestWidget(SetRow(set: set, workoutExerciseId: 'we-001')),
+          );
+
+          // The number-cell Container is the unique one whose constraints
+          // enforce the new tap-target floor. Find by predicate over Container
+          // widgets so we don't accidentally match decorative or layout
+          // containers in the row.
+          final numberCells = tester
+              .widgetList<Container>(find.byType(Container))
+              .where((c) {
+                final bc = c.constraints;
+                return bc != null &&
+                    bc.minWidth >= 48 &&
+                    bc.minHeight >= 48 &&
+                    bc.minWidth < 100 &&
+                    bc.minHeight < 100;
+              })
+              .toList();
+
+          expect(
+            numberCells,
+            isNotEmpty,
+            reason:
+                'Set-number cell BoxConstraints must be >=48dp on both axes '
+                '(Material tap-target minimum). See BUG-018.',
+          );
+          final cell = numberCells.first;
+          expect(cell.constraints!.minWidth, greaterThanOrEqualTo(48));
+          expect(cell.constraints!.minHeight, greaterThanOrEqualTo(48));
+        },
+      );
+    });
+
     group('accessibility semantics', () {
       testWidgets('set number has correct semantics label with type info', (
         tester,

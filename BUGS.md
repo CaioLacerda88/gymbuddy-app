@@ -441,19 +441,19 @@ spec choice.
 Core gym-context interactions below the 48dp Material minimum. High impact
 because they're on the primary logging flow.
 
-### BUG-018 [P1] — Set-row number cell is 40dp (below 48dp tap target)
+### BUG-018 [P1] — ~~Set-row number cell is 40dp (below 48dp tap target)~~ ✅ RESOLVED in PR #NN
 
 **Where:** `lib/features/workouts/ui/widgets/set_row.dart:236-241`
 **Fix:** Bump `minWidth: 48, minHeight: 48`.
 
-### BUG-019 [P1] — Weight stepper buttons can render at 32dp on 360dp screens
+### BUG-019 [P1] — ~~Weight stepper buttons can render at 32dp on 360dp screens~~ ✅ RESOLVED in PR #NN
 
-**Where:** `lib/features/workouts/ui/widgets/set_row.dart:298-322` (the
-`flex: 3` weight column compresses on Moto G / Samsung A widths)
-**Fix:** Raise stepper button constraints to `minWidth: 40, minHeight: 48` and
-audit at 360dp.
+**Where:** `lib/shared/widgets/weight_stepper.dart:141,186` (audit also covered
+the structurally-identical sibling `lib/shared/widgets/reps_stepper.dart:117,153`)
+**Fix:** Raised stepper button constraints to `minWidth: 40, minHeight: 48` on
+both steppers; pinned with widget tests at a 360dp viewport.
 
-### BUG-020 [P1] — Workout "Finish" button is AppBar-only (one-handed reach hard)
+### BUG-020 [P1] — ~~Workout "Finish" button is AppBar-only (one-handed reach hard)~~ ✅ RESOLVED in PR #NN
 
 **What:** Comment in code calls this "intentional friction" — but the issue
 isn't the friction (a confirmation dialog gates it), it's the discoverability
@@ -461,9 +461,11 @@ isn't the friction (a confirmation dialog gates it), it's the discoverability
 devices the AppBar trailing area is a precise micro-tap.
 
 **Where:** `lib/features/workouts/ui/active_workout_screen.dart:592-627`
-**Fix:** Move the button to a persistent bottom bar so users can reach it
-one-handed. Keep the confirmation dialog as the safety gate — the friction
-remains, the obscurity goes away.
+**Fix:** Moved the button to a persistent `_FinishBottomBar`
+(`Scaffold.bottomNavigationBar`); same `Semantics(identifier:
+'workout-finish-btn')` so E2E selectors continue to resolve. Hidden on the
+empty body. Confirmation dialog kept untouched as the safety gate — reverses
+the Phase 18c §13 placement decision.
 
 ---
 
