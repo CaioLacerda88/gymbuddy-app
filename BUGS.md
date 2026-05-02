@@ -469,32 +469,32 @@ remains, the obscurity goes away.
 
 ## Cluster 5 — Localization & accessibility (P1/P2)
 
-### BUG-021 [P1] — ~~`PendingSyncBadge` Semantics label hardcoded English~~ ✅ RESOLVED in fix/cluster5-6-ui-polish
+### BUG-021 [P1] — ~~`PendingSyncBadge` Semantics label hardcoded English~~ ✅ RESOLVED in PR #130
 
 **Where:** `lib/shared/widgets/pending_sync_badge.dart:36`
 **Fix:** Add `pendingSyncBadgeSemantics` ARB key; localize the
 `'$label. Tap to manage.'` string.
 
-### BUG-022 [P2] — ~~`equipmentBands` not localized (one of seven equipment chips)~~ ✅ RESOLVED in fix/cluster5-6-ui-polish
+### BUG-022 [P2] — ~~`equipmentBands` not localized (one of seven equipment chips)~~ ✅ RESOLVED in PR #130
 
 **Where:** `lib/l10n/app_pt.arb:103` — `"equipmentBands": "Bands"` (English)
 **Fix:** Change to `"Elásticos"` (or `"Faixas"` per BR gym vocabulary).
 
-### BUG-023 [P2] — ~~Home status line fails WCAG AA contrast (2.8:1)~~ ✅ RESOLVED in fix/cluster5-6-ui-polish
+### BUG-023 [P2] — ~~Home status line fails WCAG AA contrast (2.8:1)~~ ✅ RESOLVED in PR #130
 
 **Where:** `lib/features/workouts/ui/widgets/home_status_line.dart:68-87`
 **What:** `titleLarge` at alpha 0.55 over `abyss` background ≈ 2.8:1 ratio
 (WCAG AA requires 4.5:1 for normal text).
 **Fix:** Increase dim portion to alpha 0.75 minimum.
 
-### BUG-024 [P2] — ~~`ActiveTitlePill` lacks max-width / overflow handling~~ ✅ RESOLVED in fix/cluster5-6-ui-polish
+### BUG-024 [P2] — ~~`ActiveTitlePill` lacks max-width / overflow handling~~ ✅ RESOLVED in PR #130
 
 **Where:** `lib/features/rpg/ui/widgets/active_title_pill.dart:34-39`
 **What:** Long pt-BR titles will overflow.
 **Fix:** Add `Text(..., overflow: TextOverflow.ellipsis, maxLines: 1)` plus
 a `BoxConstraints(maxWidth: ...)`.
 
-### BUG-025 [P3] — ~~Saga intro overlay has no skip path~~ ✅ RESOLVED in fix/cluster5-6-ui-polish
+### BUG-025 [P3] — ~~Saga intro overlay has no skip path~~ ✅ RESOLVED in PR #130
 
 **Where:** `lib/features/rpg/ui/saga_intro_overlay.dart:68-107`
 **Fix:** Add a "Pular" `TextButton` in the top-right of the step-indicator row
@@ -507,26 +507,26 @@ calling `onDismiss` directly.
 The RPG screens are the most brand-expressive surfaces. Several use vanilla
 Material widgets that read as generic-AI default.
 
-### BUG-026 [P2] — ~~Character sheet error state uses `Icons.error_outline`~~ ✅ RESOLVED in fix/cluster5-6-ui-polish
+### BUG-026 [P2] — ~~Character sheet error state uses `Icons.error_outline`~~ ✅ RESOLVED in PR #130
 
 **Where:** `lib/features/rpg/ui/character_sheet_screen.dart:331`
 **Fix:** Replace with `AppIcons.render(AppIcons.hero, ...)` to stay on-brand.
 Single most egregious generic-AI smell on a flagship screen.
 
-### BUG-027 [P2] — ~~Titles screen loading uses double `CircularProgressIndicator`~~ ✅ RESOLVED in fix/cluster5-6-ui-polish
+### BUG-027 [P2] — ~~Titles screen loading uses double `CircularProgressIndicator`~~ ✅ RESOLVED in PR #130
 
 **Where:** `lib/features/rpg/ui/titles_screen.dart:95-96`
 **Fix:** Combine `catalogAsync.isLoading || earnedAsync.isLoading` into one
 branch; show a branded skeleton (mirror `_CharacterSheetSkeleton`'s pattern).
 
-### BUG-028 [P2] — ~~Onboarding page 2 uses raw `ChoiceChip` widgets~~ ✅ RESOLVED in fix/cluster5-6-ui-polish
+### BUG-028 [P2] — ~~Onboarding page 2 uses raw `ChoiceChip` widgets~~ ✅ RESOLVED in PR #130
 
 **Where:** `lib/features/auth/ui/onboarding_screen.dart:312-330, 350-369`
 **What:** Visual language switches from branded welcome page to generic M3.
 **Fix:** Replace `ChoiceChip` with branded pill-buttons matching the
 exercise-screen filter chip style.
 
-### BUG-029 [P2] — ~~Routine list empty state is bare `Text`~~ ✅ RESOLVED in fix/cluster5-6-ui-polish
+### BUG-029 [P2] — ~~Routine list empty state is bare `Text`~~ ✅ RESOLVED in PR #130
 
 **Where:** `lib/features/routines/ui/routine_list_screen.dart:74-89`
 **Fix:** Add a branded illustration + inline `FilledButton("Criar rotina")`
