@@ -69,8 +69,10 @@ test.describe('Exercise list localization', { tag: '@smoke' }, () => {
     // deterministic waitForResponse on fn_search_exercises_localized eliminates
     // the race regardless of network / worker load. Timeout of 15s accommodates
     // cold Supabase containers in local and CI environments.
+    // Don't filter on status — a 4xx surfaces as a meaningful test failure instead
+    // of a 15s timeout, revealing auth/RLS issues in CI early.
     const searchResponsePromise = page.waitForResponse(
-      (resp) => resp.url().includes('fn_search_exercises_localized') && resp.status() === 200,
+      (resp) => resp.url().includes('fn_search_exercises_localized'),
       { timeout: 15_000 },
     );
     await flutterFill(page, EXERCISE_LIST.searchInput, ptBenchName.substring(0, 6));
@@ -96,8 +98,9 @@ test.describe('Exercise list localization', { tag: '@smoke' }, () => {
     //
     // Flake fix (#20/A2): same deterministic waitForResponse pattern as A1.
     // Register before flutterFill so we don't miss the Supabase RPC response.
+    // Don't filter on status — 4xx is a fast, clear failure vs a 15s timeout.
     const searchResponsePromise = page.waitForResponse(
-      (resp) => resp.url().includes('fn_search_exercises_localized') && resp.status() === 200,
+      (resp) => resp.url().includes('fn_search_exercises_localized'),
       { timeout: 15_000 },
     );
     await flutterFill(page, EXERCISE_LIST.searchInput, ptBenchName.substring(0, 8));
@@ -284,8 +287,9 @@ test.describe('Exercise list pt locale filters and search', () => {
     const ptBenchName = EXERCISE_NAMES.barbell_bench_press.pt;
 
     // Flake fix (#20/B1): same deterministic waitForResponse pattern as A1/A2.
+    // Don't filter on status — 4xx is a fast, clear failure vs a 15s timeout.
     const searchResponsePromise = page.waitForResponse(
-      (resp) => resp.url().includes('fn_search_exercises_localized') && resp.status() === 200,
+      (resp) => resp.url().includes('fn_search_exercises_localized'),
       { timeout: 15_000 },
     );
     await flutterFill(page, EXERCISE_LIST.searchInput, 'supino');
@@ -307,8 +311,15 @@ test.describe('Exercise list pt locale filters and search', () => {
     const ptBenchName = EXERCISE_NAMES.barbell_bench_press.pt;
     const enBenchName = EXERCISE_NAMES.barbell_bench_press.en;
 
+    // Flake fix (#20/B2): same deterministic waitForResponse pattern as A1/B1.
+    // Register the promise BEFORE flutterFill so the RPC response is never missed.
+    // Don't filter on status — 4xx is a fast, clear failure vs a 15s timeout.
+    const searchResponsePromise = page.waitForResponse(
+      (resp) => resp.url().includes('fn_search_exercises_localized'),
+      { timeout: 15_000 },
+    );
     await flutterFill(page, EXERCISE_LIST.searchInput, 'bench');
-    await page.waitForTimeout(800);
+    await searchResponsePromise;
 
     // Hard assertion: the pt-named bench press card MUST appear. This is B2's
     // primary contract — cross-locale search by en query returns a result for

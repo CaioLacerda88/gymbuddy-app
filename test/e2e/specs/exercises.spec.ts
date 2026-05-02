@@ -528,19 +528,35 @@ test.describe('Exercise form tips', { tag: '@smoke' }, () => {
     });
 
     // Search for and open the custom exercise.
+    // Flake fix (#20/form-tips): register waitForResponse BEFORE flutterFillByInput
+    // so the fn_search_exercises_localized RPC response is never missed.
+    // Don't filter on status — 4xx is a fast, clear failure vs a 15s timeout.
+    const searchResponsePromise = page.waitForResponse(
+      (resp) => resp.url().includes('fn_search_exercises_localized'),
+      { timeout: 15_000 },
+    );
     await flutterFillByInput(page, 'Search exercises', customName.substring(0, 10));
-    await page.waitForTimeout(800);
+    await searchResponsePromise;
 
     const card = page.locator(EXERCISE_LIST.exerciseCard(customName)).first();
     await expect(card).toBeVisible({ timeout: 10_000 });
     await card.click();
 
+    // Wait for the detail screen to be fully rendered before asserting absence
+    // of the FORM TIPS section — this anchors the negative assertion to the
+    // correct screen and prevents a false pass during navigation transitions.
     await expect(page.locator(EXERCISE_DETAIL.appBarTitle)).toBeVisible({
       timeout: 10_000,
     });
+    // Ensure the custom badge is visible to confirm we're past the loading state.
+    await expect(page.locator(EXERCISE_DETAIL.customBadge)).toBeVisible({
+      timeout: 5_000,
+    });
 
     // "FORM TIPS" section must NOT be visible when there are no tips.
-    await expect(page.locator('text=FORM TIPS')).not.toBeVisible({
+    // EXERCISE_DETAIL.formTipsSection = 'text=FORM TIPS'; safe after confirming
+    // detail screen is rendered above.
+    await expect(page.locator(EXERCISE_DETAIL.formTipsSection)).not.toBeVisible({
       timeout: 3_000,
     });
   });

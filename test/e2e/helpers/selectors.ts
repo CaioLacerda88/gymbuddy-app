@@ -156,6 +156,14 @@ export const EXERCISE_DETAIL = {
    */
   endImage: (name: string) => `role=img[name*="${name} end position"]`,
   /**
+   * "FORM TIPS" section heading on the exercise detail screen (en locale).
+   * The ExerciseFormTipsSection widget renders the formTipsSection l10n string
+   * as plain Text. This selector is safe to use after EXERCISE_DETAIL.appBarTitle
+   * and EXERCISE_DETAIL.customBadge are confirmed visible (detail screen rendered).
+   * For pt locale use EXERCISE_LOC.formTipsSectionText('pt') ('DICAS DE FORMA').
+   */
+  formTipsSection: 'text=FORM TIPS',
+  /**
    * BL-3: "Progress (kg)" section heading was removed. The unit now lives on
    * the Y-axis; the trend summary line is the first text row.
    *
