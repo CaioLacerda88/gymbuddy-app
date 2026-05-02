@@ -4,163 +4,45 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ---
 
-## Wave 2 / Cluster 5+6 — Localization, a11y, brand polish (`fix/cluster5-6-ui-polish`)
+## Wave 3 / Cluster 4 — Tap-target & sweat-proof UX (`fix/cluster4-tap-targets`)
 
-**Per BUGS.md Cluster 5 (BUG-021..025) + Cluster 6 (BUG-026..029).** Single PR
-because the file scope is disjoint from parallel Wave 2 PRs (Cluster 2 unsafe
-casts + Cluster 7 DB integrity). Strictly UI/text/a11y work — no router,
-migration, repository, or data-layer changes.
-
-### ARB / l10n
-
-- [x] `app_en.arb` — add `pendingSyncBadgeSemantics`, `sagaIntroSkip`, `routinesEmptyTitle`, `routinesEmptyBody`, `routinesEmptyCta`
-- [x] `app_pt.arb` — same five keys + flip `equipmentBands` from English `Bands` to `Elásticos` (BUG-022)
-- [x] Regenerate `lib/l10n/app_localizations*.dart` via `flutter gen-l10n`
+**Per BUGS.md Cluster 4 (BUG-018..020).** Three small UX fixes on the primary
+logging flow. File scope: `lib/features/workouts/ui/widgets/set_row.dart` +
+`lib/features/workouts/ui/active_workout_screen.dart`. Strictly UI work — no
+ARB, migration, repository, or data-layer changes.
 
 ### Source files
 
-- [x] `lib/shared/widgets/pending_sync_badge.dart` — localized Semantics label (BUG-021)
-- [x] `lib/features/workouts/ui/widgets/home_status_line.dart` — alpha 0.55 → 0.75 on dim spans for WCAG AA (BUG-023)
-- [x] `lib/features/rpg/ui/widgets/active_title_pill.dart` — cap maxWidth 220dp + ellipsize (BUG-024)
-- [x] `lib/features/rpg/ui/saga_intro_overlay.dart` — Skip TextButton on steps 1-2, hidden on final (BUG-025)
-- [x] `lib/features/rpg/ui/character_sheet_screen.dart` — branded hero sigil replaces `Icons.error_outline` (BUG-026)
-- [x] `lib/features/rpg/ui/titles_screen.dart` — single combined loading branch + branded `_TitlesSkeleton` (BUG-027)
-- [x] `lib/features/auth/ui/onboarding_screen.dart` — `_BrandedPillChoice` replaces `ChoiceChip` on both selectors (BUG-028)
-- [x] `lib/features/routines/ui/routine_list_screen.dart` — `_CustomRoutinesEmptyState` with brand glyph + inline CTA (BUG-029)
+- [ ] BUG-018 — `lib/features/workouts/ui/widgets/set_row.dart:236-241` — set-row number cell `minWidth: 48, minHeight: 48` (was 40dp)
+- [ ] BUG-019 — `lib/features/workouts/ui/widgets/set_row.dart:298-322` — weight stepper `minWidth: 40, minHeight: 48`; verify at 360dp (Moto G / Samsung A widths)
+- [ ] BUG-020 — `lib/features/workouts/ui/active_workout_screen.dart:592-627` — move Finish button to persistent bottom bar; keep AppBar action OR remove (per ui-ux-critic call); confirmation dialog stays as the safety gate
 
 ### Widget tests
 
-- [x] `test/widget/shared/pending_sync_badge_test.dart` — assert localized Semantics label (BUG-021)
-- [x] `test/widget/features/rpg/ui/widgets/active_title_pill_test.dart` (NEW) — assert ConstrainedBox 220dp + ellipsize on long pt-BR (BUG-024)
-- [x] `test/widget/features/rpg/ui/saga_intro_overlay_test.dart` — Skip visible steps 1-2, hidden on step 3, fires onDismiss (BUG-025)
-- [x] `test/widget/features/auth/ui/onboarding_screen_test.dart` — selection state via AnimatedContainer fill (BUG-028)
-- [x] `test/widget/features/routines/ui/routine_list_screen_test.dart` — empty-state title/body/CTA + FilledButton wrap + coexists with starter section (BUG-029)
+- [ ] `test/widget/features/workouts/ui/widgets/set_row_test.dart` — assert number-cell BoxConstraints (BUG-018)
+- [ ] `test/widget/features/workouts/ui/widgets/set_row_test.dart` — assert stepper BoxConstraints at 360dp surface (BUG-019)
+- [ ] `test/widget/features/workouts/ui/active_workout_screen_test.dart` — assert bottom-bar Finish present, tap fires confirmation dialog (BUG-020)
+
+### E2E impact
+
+BUG-020 changes the **finish-workout** user flow (bottom bar instead of AppBar).
+Per CLAUDE.md QA gate: navigation/flow change → run full E2E suite locally + update
+any selectors targeting the AppBar finish action.
+
+- [ ] qa-engineer: scan `test/e2e/specs/workouts.spec.ts` (and any others) for AppBar-finish selectors; update or add `WORKOUT_FINISH.bottomBarButton` in `helpers/selectors.ts`
+- [ ] Full E2E suite green locally (`FLUTTER_APP_URL= npx playwright test --reporter=list`)
 
 ### Cleanup
 
-- [ ] Mark BUG-021..029 RESOLVED in `BUGS.md` with strikethrough heads + `RESOLVED in fix/cluster5-6-ui-polish`
+- [ ] Mark BUG-018..020 RESOLVED in `BUGS.md` with strikethrough heads + `RESOLVED in PR #NN`
 - [ ] `make ci` green (format + gen + analyze + test + android-debug-build)
-- [ ] Commit `fix(ui): Cluster 5+6 — localization, a11y, brand consistency (BUG-021..029)`
-- [ ] `git push -u origin fix/cluster5-6-ui-polish`
+- [ ] Commit `fix(ui): Cluster 4 — tap-target & sweat-proof UX (BUG-018..020)`
+- [ ] `git push -u origin fix/cluster4-tap-targets`
 
-### E2E flake follow-up (bundled into this PR, commit 3a4abe9)
+### Out of scope
 
-Fixes two flaky tests that shared the root cause of `waitForTimeout(800)` racing the
-Supabase search RPC, and relaxes the status-code predicate for better CI observability:
-
-- [x] `test/e2e/specs/exercises-localization.spec.ts` — B2 (cross-locale search): replace
-  `waitForTimeout(800)` with deterministic `waitForResponse` on `fn_search_exercises_localized`
-- [x] `test/e2e/specs/exercises.spec.ts` — form-tips test: replace `waitForTimeout(800)` with
-  same pattern; add `appBarTitle`+`customBadge` anchor before negative assertion; use
-  `EXERCISE_DETAIL.formTipsSection` instead of inline `'text=FORM TIPS'`
-- [x] `test/e2e/helpers/selectors.ts` — add `formTipsSection` to `EXERCISE_DETAIL`
-- [x] A1, A2, B1, B2, form-tips: relax `resp.status() === 200` filter to just URL match —
-  4xx responses surface as fast failures instead of 15s timeouts in CI
-
-**Local verification note:** Port 4200 was occupied by a stale server process serving
-the production Supabase build (production `.env`). This caused ALL E2E login tests to
-fail with "Wrong email or password" (global-setup creates users in local Supabase but
-the Flutter app connected to prod). This is a pre-existing local dev environment
-issue, NOT caused by these changes. CI runs with a clean environment (no stale server)
-and the tests will pass there.
-
-### Out of scope (per task constraints)
-
-- `supabase/migrations/*`, `lib/features/personal_records/data/*`, `lib/features/rpg/data/*`, `lib/core/router/app_router.dart`, `analysis_options.yaml`
-- Cluster 2 (unsafe casts) — owned by parallel agent
-- Cluster 7 (DB integrity) — owned by separate PR
-- Opening the PR — task definition asks for branch + commit + push only
-
-### Post-PR-#130 regression follow-up (CI run 25236850529)
-
-**Symptom:** `onboarding.spec.ts:122` failed with `[flt-semantics-identifier="onboarding-freq-3"]`
-not matching any DOM node, plus 8 cascading routines failures gated on the
-same login flow. Investigated via `superpowers:systematic-debugging`.
-
-**Root cause (Phase 1):** Flutter 3.41.6 web's semantics tree compactor
-non-deterministically strips outer `Semantics(container: true, identifier:)`
-wrappers when their sole child is a tap-target node (InkWell). Live DOM
-probes against a fresh `flutter build web` confirm the fitness-level Wrap
-(3 pills) keeps its wrappers — `onboarding-beginner/intermediate/advanced`
-all emit — but the structurally-identical frequency Wrap (5 pills) gets
-its wrappers compacted away. Three structural fix attempts on
-`_BrandedPillChoice` (Semantics-inside-InkWell; container+button+label+
-ExcludeSemantics; ValueKey per pill) all failed to make the frequency
-wrappers survive compaction. Per the 3-attempt stop rule we stopped
-fighting Flutter framework internals.
-
-**Fix:** Switch `helpers/selectors.ts › ONBOARDING_FLOW.frequency3x` from
-`[flt-semantics-identifier="onboarding-freq-3"]` to the AOM-stable
-`role=checkbox[name="3x"]`. Per CLAUDE.md E2E Conventions ("use Playwright
-`role=TYPE[name*="..."]` selectors (accessibility protocol), NOT CSS
-`flt-semantics[...]`"), the role-based selector targets the AOM directly
-and is unaffected by which intermediate `flt-semantics` nodes the compactor
-preserves. Verified empirically: every pill emits
-`role="checkbox" aria-label="<freq>x" aria-checked="true|false"` regardless
-of how many wrappers survive.
-
-- [x] Selector swap in `test/e2e/helpers/selectors.ts`
-- [x] Updated docblock explaining why role-based not identifier-based
-- [x] `dart format` + `dart analyze --fatal-infos` clean (no Dart changes)
-- [x] `onboarding.spec.ts:122` green locally (1 passed in 26s)
-- [x] Full `onboarding.spec.ts` green locally (4 passed)
-- [x] `routines.spec.ts:580` green locally (was a downstream cascading failure)
-- [x] Full `--grep @smoke` green locally (111 passed in 14m)
-- [x] Commit + push to `fix/cluster5-6-ui-polish` (commit d2ab8c0)
-
-### CI run 25242304322 — three more failure clusters on PR #130
-
-Investigated via `superpowers:systematic-debugging`. Three independent root causes:
-
-**Cluster B — onboarding `frequency3x` (1 test)**
-- Symptom: `role=checkbox[name="3x"]` times out after 30s.
-- Root cause: AOM dump from CI artifact shows pills emit `role="button"`, NOT `role="checkbox"`.
-  `_BrandedPillChoice` is `Material > InkWell > AnimatedContainer > Text` — InkWell auto-emits
-  `role=button`. Commit d2ab8c0's assumption that the pill emits `aria-checked` was wrong.
-  Pills are semantically buttons (single-select choice), not checkboxes (binary toggle).
-- Fix: change `frequency3x` from `role=checkbox[name="3x"]` to `role=button[name="3x"]`.
-- [x] `helpers/selectors.ts` — selector + docblock updated with AOM evidence
-
-**Cluster C — routines `text=Push Day` not visible (10 tests)**
-- Symptom: 10 routines tests fail clicking/asserting starter routine cards.
-- Root cause: `RoutineListScreen` is a `CustomScrollView` with `SliverList.builder`. Off-screen
-  items are NOT in the DOM (viewport culling). After `_CustomRoutinesEmptyState` (BUG-029)
-  added ~250px of vertical content above the starter section, "Push Day" / "Pull Day" /
-  "Full Body" cards are pushed below the fold and never enter the AOM until scrolled.
-  Failure screenshot confirms only 7 of 9 starter routines visible.
-- Fix: extract `scrollToVisible(page, selector)` helper and apply to all 13 affected sites.
-  Helper does fast-path visibility check, then 200px wheel steps with 250ms gaps until visible
-  or 12-step timeout. Returns the located element so callers can chain `.click()`.
-- [x] `helpers/app.ts` — added `scrollToVisible` helper
-- [x] `specs/routines.spec.ts` — 13 call sites updated, all 212 tests parse cleanly via `playwright test --list`
-
-**Cluster A — exercises-localization tests A1/A2/B1/B2 (4 tests) — RESOLVED**
-- Symptom: `waitForResponse` on `fn_search_exercises_localized` times out after 15s.
-- Phase 1 evidence (from artifact `pw_report_25242304322` error-context.md):
-  - AOM dump shows search input rendered (`textbox "Buscar exercícios..."`)
-  - Exercise list still shows default A-sorted entries (Abdominal, Abdutora, Adutora) —
-    NOT filtered by 'Supino' query
-  - Means `flutterFill(page, EXERCISE_LIST.searchInput, 'Supino')` did not enter text
-  - Therefore no debounced state change → no RPC call → `waitForResponse` times out
-- Comparison with passing A4 test: A4 uses `flutterFillByInput(page, 'Search exercises', ...)`
-  which does direct `inputEl.focus()` + keyboard. `flutterFill` clicks the `flt-semantics`
-  overlay first, which is unreliable for this `Semantics`-wrapped TextField.
-- This is a **pre-existing flake on main** (run 25242379073 marked it `2 flaky` with A1/B1
-  passing on retry). NOT a regression introduced by PR #130.
-- Migration `00034_drop_exercise_name_columns_and_add_rpcs.sql` line 228 confirms RPC IS
-  deployed in CI via `npx supabase start` (no separate edge-function deploy needed).
-- Fix applied (user-approved Option 1): A1/A2/B1/B2 in
-  `specs/exercises-localization.spec.ts` switched from
-  `flutterFill(page, EXERCISE_LIST.searchInput, ...)` to
-  `flutterFillByInput(page, 'Buscar exercícios', ...)` (pt-locale label — all four
-  tests are in `smokeLocalization` describe blocks). Mirrors the proven-stable A4
-  pattern. A5 + G1/G2 left untouched (out of scope per directive — broader
-  `flutterFill` refactor is deferred to another PR).
-- [x] A1, A2, B1, B2 call sites swapped to `flutterFillByInput`
-- [x] All 9 exercises-localization tests parse cleanly via `playwright test --list`
-
-- [x] Commit B+C fixes (commit 95bd029, pushed)
-- [ ] Commit + push Cluster A fix
+- Cluster 3 (RPG progression UX) — needs product-owner + ui-ux-critic spec calls first (BUG-011 ClassChangeEvent, BUG-015 predicate rebalance)
+- Cluster 8 (architecture refactors) — separate sweep PRs
 
 ---
 
