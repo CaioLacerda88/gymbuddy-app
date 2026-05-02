@@ -102,5 +102,61 @@ void main() {
       expect(find.textContaining('LVL 8'), findsOneWidget);
       expect(find.textContaining('IRON'), findsOneWidget);
     });
+
+    // BUG-025: the overlay has to expose a "Skip" path on steps 1 + 2 that
+    // calls `onDismiss` directly — the gate persists `saga_intro_seen`
+    // regardless of whether the user advanced through every step or bailed.
+    testWidgets('renders Skip button on steps 1 and 2 (BUG-025)', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        TestMaterialApp(home: SagaIntroOverlay(onDismiss: () {})),
+      );
+      await tester.pumpAndSettle();
+
+      // Step 1: skip is visible.
+      expect(find.text('Skip'), findsOneWidget);
+
+      await tester.tap(find.text('NEXT'));
+      await tester.pumpAndSettle();
+
+      // Step 2: still visible.
+      expect(find.text('Skip'), findsOneWidget);
+    });
+
+    testWidgets('Skip button is hidden on the final step (BUG-025)', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        TestMaterialApp(home: SagaIntroOverlay(onDismiss: () {})),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('NEXT'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('NEXT'));
+      await tester.pumpAndSettle();
+
+      // BEGIN already dismisses on step 3, so the redundant Skip is hidden.
+      expect(find.text('BEGIN'), findsOneWidget);
+      expect(find.text('Skip'), findsNothing);
+    });
+
+    testWidgets('tapping Skip on step 1 fires onDismiss (BUG-025)', (
+      tester,
+    ) async {
+      var dismissed = 0;
+      await tester.pumpWidget(
+        TestMaterialApp(
+          home: SagaIntroOverlay(onDismiss: () => dismissed += 1),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Skip'));
+      await tester.pumpAndSettle();
+
+      expect(dismissed, 1);
+    });
   });
 }

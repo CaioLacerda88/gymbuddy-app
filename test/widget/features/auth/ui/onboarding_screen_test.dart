@@ -8,6 +8,29 @@ import 'package:repsaga/features/profile/models/profile.dart';
 import 'package:repsaga/features/profile/providers/profile_providers.dart';
 import '../../../../helpers/test_material_app.dart';
 
+/// BUG-028: the fitness-level + frequency pickers were `ChoiceChip` widgets
+/// (raw M3) and were replaced by a private `_BrandedPillChoice` Container.
+/// Selection now manifests through a primaryViolet fill on the inner
+/// [AnimatedContainer]. (The pre-review draft used hotViolet, but textCream
+/// over hotViolet only reached 2.67:1 — below WCAG AA 4.5:1 — so the
+/// selected fill was darkened to primaryViolet which clears 6.69:1.)
+/// Walking up from the label `Text` to the nearest AnimatedContainer and
+/// reading its decoration color is how we assert the selected state without
+/// exposing the private widget type.
+Color? _pillFillFor(WidgetTester tester, String label) {
+  final ancestor = tester.widget<AnimatedContainer>(
+    find
+        .ancestor(
+          of: find.text(label),
+          matching: find.byType(AnimatedContainer),
+        )
+        .first,
+  );
+  final decoration = ancestor.decoration;
+  if (decoration is BoxDecoration) return decoration.color;
+  return null;
+}
+
 // Minimal stub to avoid hitting Supabase during widget tests.
 class _FakeProfileNotifier extends ProfileNotifier {
   @override
@@ -152,46 +175,43 @@ void main() {
       expect(find.text('Alice'), findsOneWidget);
     });
 
-    testWidgets('selecting a fitness level chip marks it as selected', (
-      tester,
-    ) async {
-      await tester.pumpWidget(buildTestWidget());
+    testWidgets(
+      'selecting a fitness level pill marks it as selected (BUG-028)',
+      (tester) async {
+        await tester.pumpWidget(buildTestWidget());
 
-      await tester.tap(find.text('GET STARTED'));
-      await tester.pumpAndSettle();
+        await tester.tap(find.text('GET STARTED'));
+        await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Intermediate'));
-      await tester.pump();
+        // Default selection ('beginner') is primaryViolet at mount time.
+        expect(_pillFillFor(tester, 'Beginner'), AppColors.primaryViolet);
+        expect(_pillFillFor(tester, 'Intermediate'), AppColors.surface2);
 
-      final chip = tester.widget<ChoiceChip>(
-        find.widgetWithText(ChoiceChip, 'Intermediate'),
-      );
-      expect(chip.selected, isTrue);
-    });
+        await tester.tap(find.text('Intermediate'));
+        await tester.pumpAndSettle();
 
-    testWidgets('only one fitness level chip can be selected at a time', (
-      tester,
-    ) async {
-      await tester.pumpWidget(buildTestWidget());
+        // After tap: Intermediate is filled, Beginner falls back to surface2.
+        expect(_pillFillFor(tester, 'Intermediate'), AppColors.primaryViolet);
+      },
+    );
 
-      await tester.tap(find.text('GET STARTED'));
-      await tester.pumpAndSettle();
+    testWidgets(
+      'only one fitness level pill can be selected at a time (BUG-028)',
+      (tester) async {
+        await tester.pumpWidget(buildTestWidget());
 
-      // Select Beginner first, then Intermediate.
-      await tester.tap(find.text('Beginner'));
-      await tester.pump();
-      await tester.tap(find.text('Intermediate'));
-      await tester.pump();
+        await tester.tap(find.text('GET STARTED'));
+        await tester.pumpAndSettle();
 
-      final beginnerChip = tester.widget<ChoiceChip>(
-        find.widgetWithText(ChoiceChip, 'Beginner'),
-      );
-      final intermediateChip = tester.widget<ChoiceChip>(
-        find.widgetWithText(ChoiceChip, 'Intermediate'),
-      );
-      expect(beginnerChip.selected, isFalse);
-      expect(intermediateChip.selected, isTrue);
-    });
+        await tester.tap(find.text('Beginner'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Intermediate'));
+        await tester.pumpAndSettle();
+
+        expect(_pillFillFor(tester, 'Beginner'), AppColors.surface2);
+        expect(_pillFillFor(tester, 'Intermediate'), AppColors.primaryViolet);
+      },
+    );
 
     // PO-007: page 2 must have a back button that returns the user to page 1.
     testWidgets('PO-007: profile setup page shows a Back button', (

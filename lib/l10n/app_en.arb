@@ -679,8 +679,12 @@
   "@myRoutinesSection": { "description": "Section header: my routines" },
   "starterRoutinesSection": "STARTER ROUTINES",
   "@starterRoutinesSection": { "description": "Section header: starter routines" },
-  "noCustomRoutines": "No custom routines yet. Tap + to create one.",
-  "@noCustomRoutines": { "description": "Empty state: no custom routines" },
+  "routinesEmptyTitle": "No routines yet",
+  "@routinesEmptyTitle": { "description": "Routines empty-state headline, branded illustration. BUG-029." },
+  "routinesEmptyBody": "Plan a workout sequence once and reuse it every session.",
+  "@routinesEmptyBody": { "description": "Routines empty-state body copy, branded illustration. BUG-029." },
+  "routinesEmptyCta": "Create routine",
+  "@routinesEmptyCta": { "description": "Routines empty-state inline CTA — navigates to /routines/create. BUG-029." },
 
   "createRoutine": "Create Routine",
   "@createRoutine": { "description": "Create routine screen title" },
@@ -1016,6 +1020,13 @@
       "count": { "type": "int", "example": "3" }
     }
   },
+  "pendingSyncBadgeSemantics": "{label}. Tap to manage.",
+  "@pendingSyncBadgeSemantics": {
+    "description": "Pending sync badge accessibility label, composed from the visible badge text plus the action hint. BUG-021.",
+    "placeholders": {
+      "label": { "type": "String", "example": "3 workouts pending sync" }
+    }
+  },
 
   "noExercisesFound": "No exercises found",
   "@noExercisesFound": { "description": "Exercise picker: empty result" },
@@ -1303,6 +1314,8 @@
   "@sagaIntroNext": { "description": "Saga intro overlay primary button, non-final steps" },
   "sagaIntroBegin": "BEGIN",
   "@sagaIntroBegin": { "description": "Saga intro overlay primary button, final step (dismisses)" },
+  "sagaIntroSkip": "Skip",
+  "@sagaIntroSkip": { "description": "Saga intro overlay skip button label, top-right of the step indicator. Calls onDismiss directly. BUG-025." },
   "sagaRankRookie": "ROOKIE",
   "@sagaRankRookie": { "description": "Rank name: rookie" },
   "sagaRankIron": "IRON",

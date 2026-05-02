@@ -61,19 +61,31 @@ test.describe('Exercise list localization', { tag: '@smoke' }, () => {
 
     // Search for the pt name of Barbell Bench Press ("Supino" — starts with S,
     // off-screen in the initial A-sorted viewport).
-    // Use identifier-based searchInput (locale-independent, pt aria-label = "Buscar exercícios").
     //
-    // Flake fix (#20/A1): register the waitForResponse promise BEFORE flutterFill
-    // so we never miss the RPC response that fires as soon as the debounce expires
-    // (~300ms). The old waitForTimeout(800) raced CI latency — replacing with a
-    // deterministic waitForResponse on fn_search_exercises_localized eliminates
-    // the race regardless of network / worker load. Timeout of 15s accommodates
-    // cold Supabase containers in local and CI environments.
+    // Flake fix (CI run 25242304322 — A1/A2/B1/B2): switch from
+    // `flutterFill(page, EXERCISE_LIST.searchInput, ...)` to
+    // `flutterFillByInput(page, 'Buscar exercícios', ...)`. The flt-semantics-
+    // identifier overlay click in `flutterFill` is unreliable for the
+    // Semantics-wrapped TextField in exercise_list_screen.dart — AOM dump
+    // showed the input was rendered but no query landed, so the debounced
+    // state change never fired and the RPC was never called (15s timeout).
+    // `flutterFillByInput` does direct `inputEl.focus()` + keyboard, mirroring
+    // the proven-stable A4 pattern.
+    //
+    // Flake fix (#20/A1): register the waitForResponse promise BEFORE the fill
+    // so we never miss the RPC response that fires as soon as the debounce
+    // expires (~300ms). The old waitForTimeout(800) raced CI latency —
+    // replacing with a deterministic waitForResponse on
+    // fn_search_exercises_localized eliminates the race regardless of network
+    // / worker load. Timeout of 15s accommodates cold Supabase containers in
+    // local and CI environments. Don't filter on status — a 4xx surfaces as
+    // a meaningful test failure instead of a 15s timeout, revealing auth/RLS
+    // issues in CI early.
     const searchResponsePromise = page.waitForResponse(
-      (resp) => resp.url().includes('fn_search_exercises_localized') && resp.status() === 200,
+      (resp) => resp.url().includes('fn_search_exercises_localized'),
       { timeout: 15_000 },
     );
-    await flutterFill(page, EXERCISE_LIST.searchInput, ptBenchName.substring(0, 6));
+    await flutterFillByInput(page, 'Buscar exercícios', ptBenchName.substring(0, 6));
     await searchResponsePromise;
     await expect(
       page.locator(EXERCISE_LOC.exerciseCard(ptBenchName, 'pt')).first(),
@@ -92,15 +104,19 @@ test.describe('Exercise list localization', { tag: '@smoke' }, () => {
     const ptBenchName = EXERCISE_NAMES.barbell_bench_press.pt;
 
     // Search for the pt name of Barbell Bench Press.
-    // Use identifier-based searchInput (locale-independent — pt label is "Buscar exercícios").
+    //
+    // Flake fix (CI run 25242304322 — A1/A2/B1/B2): use flutterFillByInput
+    // (direct inputEl.focus() + keyboard) instead of flutterFill (flt-semantics
+    // overlay click) — see A1 docblock above for the AOM-dump evidence.
     //
     // Flake fix (#20/A2): same deterministic waitForResponse pattern as A1.
-    // Register before flutterFill so we don't miss the Supabase RPC response.
+    // Register before the fill so we don't miss the Supabase RPC response.
+    // Don't filter on status — 4xx is a fast, clear failure vs a 15s timeout.
     const searchResponsePromise = page.waitForResponse(
-      (resp) => resp.url().includes('fn_search_exercises_localized') && resp.status() === 200,
+      (resp) => resp.url().includes('fn_search_exercises_localized'),
       { timeout: 15_000 },
     );
-    await flutterFill(page, EXERCISE_LIST.searchInput, ptBenchName.substring(0, 8));
+    await flutterFillByInput(page, 'Buscar exercícios', ptBenchName.substring(0, 8));
     await searchResponsePromise;
 
     const card = page
@@ -283,12 +299,17 @@ test.describe('Exercise list pt locale filters and search', () => {
   }) => {
     const ptBenchName = EXERCISE_NAMES.barbell_bench_press.pt;
 
+    // Flake fix (CI run 25242304322 — A1/A2/B1/B2): use flutterFillByInput
+    // (direct inputEl.focus() + keyboard) instead of flutterFill (flt-semantics
+    // overlay click) — see A1 docblock for the AOM-dump evidence.
+    //
     // Flake fix (#20/B1): same deterministic waitForResponse pattern as A1/A2.
+    // Don't filter on status — 4xx is a fast, clear failure vs a 15s timeout.
     const searchResponsePromise = page.waitForResponse(
-      (resp) => resp.url().includes('fn_search_exercises_localized') && resp.status() === 200,
+      (resp) => resp.url().includes('fn_search_exercises_localized'),
       { timeout: 15_000 },
     );
-    await flutterFill(page, EXERCISE_LIST.searchInput, 'supino');
+    await flutterFillByInput(page, 'Buscar exercícios', 'supino');
     await searchResponsePromise;
 
     // At least one result must appear containing the pt bench press name.
@@ -307,8 +328,19 @@ test.describe('Exercise list pt locale filters and search', () => {
     const ptBenchName = EXERCISE_NAMES.barbell_bench_press.pt;
     const enBenchName = EXERCISE_NAMES.barbell_bench_press.en;
 
-    await flutterFill(page, EXERCISE_LIST.searchInput, 'bench');
-    await page.waitForTimeout(800);
+    // Flake fix (CI run 25242304322 — A1/A2/B1/B2): use flutterFillByInput
+    // (direct inputEl.focus() + keyboard) instead of flutterFill (flt-semantics
+    // overlay click) — see A1 docblock for the AOM-dump evidence.
+    //
+    // Flake fix (#20/B2): same deterministic waitForResponse pattern as A1/B1.
+    // Register the promise BEFORE the fill so the RPC response is never missed.
+    // Don't filter on status — 4xx is a fast, clear failure vs a 15s timeout.
+    const searchResponsePromise = page.waitForResponse(
+      (resp) => resp.url().includes('fn_search_exercises_localized'),
+      { timeout: 15_000 },
+    );
+    await flutterFillByInput(page, 'Buscar exercícios', 'bench');
+    await searchResponsePromise;
 
     // Hard assertion: the pt-named bench press card MUST appear. This is B2's
     // primary contract — cross-locale search by en query returns a result for

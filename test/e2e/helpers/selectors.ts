@@ -156,6 +156,14 @@ export const EXERCISE_DETAIL = {
    */
   endImage: (name: string) => `role=img[name*="${name} end position"]`,
   /**
+   * "FORM TIPS" section heading on the exercise detail screen (en locale).
+   * The ExerciseFormTipsSection widget renders the formTipsSection l10n string
+   * as plain Text. This selector is safe to use after EXERCISE_DETAIL.appBarTitle
+   * and EXERCISE_DETAIL.customBadge are confirmed visible (detail screen rendered).
+   * For pt locale use EXERCISE_LOC.formTipsSectionText('pt') ('DICAS DE FORMA').
+   */
+  formTipsSection: 'text=FORM TIPS',
+  /**
    * BL-3: "Progress (kg)" section heading was removed. The unit now lives on
    * the Y-axis; the trend summary line is the first text row.
    *
@@ -511,8 +519,9 @@ export const ONBOARDING_FLOW = {
    */
   welcomeHeadline: '[flt-semantics-identifier="onboarding-welcome"]',
   /**
-   * Page 2 indicator: the "Beginner" ChoiceChip.
-   * Semantics(identifier: 'onboarding-beginner') wraps the ChoiceChip.
+   * Page 2 indicator: the "Beginner" pill (formerly ChoiceChip, now
+   * _BrandedPillChoice). Semantics(identifier: 'onboarding-beginner') wraps
+   * the pill — identifier is stable across the widget swap.
    */
   profileSetupHeadline: '[flt-semantics-identifier="onboarding-beginner"]',
   /**
@@ -521,9 +530,35 @@ export const ONBOARDING_FLOW = {
    */
   displayNameInput: '[flt-semantics-identifier="onboarding-display-name"]',
   /**
-   * "3x" frequency ChoiceChip — the default selection.
+   * "3x" frequency pill — the default selection.
+   *
+   * Why role=button[name="3x"] instead of [flt-semantics-identifier=...]:
+   * Flutter 3.41.6's semantics tree compactor non-deterministically strips
+   * outer `Semantics(container: true, identifier: ...)` wrappers when their
+   * sole child is a tap-target node (InkWell). Live DOM probes against
+   * build/web confirm: the fitness-level Wrap (3 pills) keeps the wrapper
+   * nodes — so `flt-semantics-identifier="onboarding-beginner"` etc. are
+   * emitted — but the structurally-identical frequency Wrap (5 pills) gets
+   * its wrappers compacted away, leaving only the inner InkWell node.
+   * Per CLAUDE.md "use Playwright `role=TYPE[name*=...]` selectors
+   * (accessibility protocol), NOT CSS `flt-semantics[...]`": the role-based
+   * selector targets the AOM directly and is unaffected by which
+   * intermediate `flt-semantics` nodes the compactor preserves.
+   *
+   * Why `role=button` and not `role=checkbox`: the AOM dump from the CI
+   * failure (run 25242304322) shows the frequency pills emit `role=button`,
+   * not `role=checkbox`:
+   *   `- button "2x" - button "3x" - button "4x" - button "5x" - button "6x"`
+   * `_BrandedPillChoice` is `Material > InkWell > AnimatedContainer > Text`
+   * with no `Semantics(checked: ...)` wrapper. Flutter auto-emits `button`
+   * semantics for `InkWell` tap-targets — there is no `aria-checked`
+   * attribute. An earlier change (d2ab8c0) assumed the pill emitted a
+   * `checkbox` role; that assumption was wrong and caused the selector to
+   * never resolve in CI. The pill is semantically a single-select choice
+   * (tapping one deselects siblings) — `button` is the correct role
+   * emission for this pattern.
    */
-  frequency3x: 'role=checkbox[name="3x"]',
+  frequency3x: 'role=button[name="3x"]',
   /**
    * Back TextButton.icon on page 2.
    * TextButton label: Text('Back').

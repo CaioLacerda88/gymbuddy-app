@@ -452,3 +452,73 @@ export async function flutterLongPress(
   await page.waitForTimeout(duration);
   await page.mouse.up();
 }
+
+/**
+ * Scroll a Flutter `CustomScrollView`/`SliverList.builder` until the element
+ * matched by `selector` is in the viewport, then return the located element.
+ *
+ * Background — Flutter web (CanvasKit) only renders sliver list items that
+ * intersect the viewport. Off-screen items are NOT in the DOM at all, so
+ * Playwright's `.scrollIntoViewIfNeeded()` and plain locator waits never see
+ * them. The Routines list is currently long enough (custom routines empty
+ * state + 9 starter routines) that the lower starter routines (Push Day,
+ * Full Body) render below the 720px default viewport on a fresh user — see
+ * BUG-029 follow-up where `_CustomRoutinesEmptyState` (~250px) pushed the
+ * default routines off-screen.
+ *
+ * Implementation notes:
+ *   - Hover the centre of the viewport so subsequent `mouse.wheel` events are
+ *     dispatched against the scrollable area, not the AppBar/NavBar.
+ *   - Step in 200px chunks (matches BUG-004 pattern) so we never blow past
+ *     the target. Wait 250ms between steps so Flutter has time to paint the
+ *     newly-revealed sliver children before we re-check visibility.
+ *   - Bail out as soon as the element is visible — don't fight the smooth-
+ *     scroll easing.
+ *
+ * @param page         - Playwright page.
+ * @param selector     - Selector for the target element (typically
+ *                       `ROUTINE.routineName('Push Day')`).
+ * @param maxScrollSteps - Maximum 200px scroll steps before giving up.
+ *                         Default 12 (≈2400px — well past the longest
+ *                         realistic routines list).
+ * @returns The Playwright `Locator` for the now-visible element. Callers can
+ *          chain `.click()` or further assertions on it.
+ */
+export async function scrollToVisible(
+  page: Page,
+  selector: string,
+  maxScrollSteps = 12,
+): Promise<ReturnType<Page['locator']>> {
+  const element = page.locator(selector).first();
+
+  // Fast path: already in viewport.
+  const alreadyVisible = await element
+    .waitFor({ state: 'visible', timeout: 3_000 })
+    .then(() => true)
+    .catch(() => false);
+  if (alreadyVisible) return element;
+
+  // Position the cursor over the scrollable area (centre-ish, biased down so
+  // we're definitely inside the body, not on the AppBar).
+  const vp = page.viewportSize();
+  const cx = vp ? vp.width / 2 : 400;
+  const cy = vp ? vp.height * 0.6 : 400;
+  await page.mouse.move(cx, cy);
+
+  for (let i = 0; i < maxScrollSteps; i++) {
+    await page.mouse.wheel(0, 200);
+    await page.waitForTimeout(250);
+    const found = await element
+      .waitFor({ state: 'visible', timeout: 1_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (found) return element;
+  }
+
+  // Last attempt: throw a clear error so the test fails fast with a useful
+  // message instead of timing out on a click() against an off-screen element.
+  throw new Error(
+    `scrollToVisible: '${selector}' did not enter viewport after ` +
+      `${maxScrollSteps} scroll steps (≈${maxScrollSteps * 200}px).`,
+  );
+}

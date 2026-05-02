@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:repsaga/core/offline/pending_action.dart';
@@ -57,6 +58,53 @@ void main() {
       // It shows "Pending Sync" title and "All synced!" since the fake
       // notifier getAll returns empty.
       expect(find.text('Pending Sync'), findsOneWidget);
+    });
+
+    // BUG-021: Semantics label was hardcoded English. The badge must compose
+    // the localized visible label through `pendingSyncBadgeSemantics(label)`
+    // so screen-readers in pt-BR don't read English while the visible text
+    // is Portuguese. We pin the composed string by walking the Semantics
+    // tree under the badge and reading the merged label off the node that
+    // carries the `offline-pending-badge` identifier.
+    testWidgets('exposes localized Semantics label (BUG-021)', (tester) async {
+      await tester.pumpWidget(buildSubject(pendingCount: 2));
+      await tester.pumpAndSettle();
+
+      // Walk the merged semantics tree depth-first from the badge's
+      // [Semantics] node and look for any descendant whose label contains
+      // the localized hint suffix the widget composes via
+      // `pendingSyncBadgeSemantics(label)` ("{label}. Tap to manage."). The
+      // badge merges its container into ancestor nodes, so we start from
+      // the badge's containing widget rather than the [Semantics] widget
+      // directly. `getSemantics` enables semantics for the duration of the
+      // test internally — no explicit `ensureSemantics()` needed.
+      final node = tester.getSemantics(find.byType(PendingSyncBadge));
+
+      bool labelMatches(SemanticsNode n) {
+        final data = n.getSemanticsData();
+        if (data.label.contains('Tap to manage') &&
+            data.label.contains('2 workouts pending sync')) {
+          return true;
+        }
+        var found = false;
+        n.visitChildren((child) {
+          if (labelMatches(child)) {
+            found = true;
+            return false;
+          }
+          return true;
+        });
+        return found;
+      }
+
+      expect(
+        labelMatches(node),
+        isTrue,
+        reason:
+            'Expected the badge to expose a localized semantics label of the '
+            'form "{plural label}. Tap to manage." but no merged node '
+            'matched. Hardcoded English label regression (BUG-021).',
+      );
     });
   });
 }

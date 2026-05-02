@@ -74,8 +74,11 @@ class HomeStatusLine extends ConsumerWidget {
               ),
               TextSpan(
                 text: l10n.homeStatusProgress(total),
+                // BUG-023: WCAG AA contrast. textCream (#EEE7FA) at alpha 0.55
+                // over abyss (#0D0319) was ~2.8:1 (fails AA 4.5:1 for normal
+                // text). 0.75 yields ~8:1 which clears AA with margin.
                 style: theme.textTheme.titleLarge?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -100,8 +103,9 @@ class HomeStatusLine extends ConsumerWidget {
         identifier: 'home-status-line',
         child: Text(
           l10n.noPlanThisWeek,
+          // BUG-023: same WCAG AA bump as the active-plan span above.
           style: theme.textTheme.titleMedium?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
             fontWeight: FontWeight.w600,
           ),
           maxLines: 1,

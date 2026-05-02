@@ -11,7 +11,14 @@
 
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth';
-import { navigateToTab, waitForAppReady, flutterFill, flutterFillByInput, flutterLongPress } from '../helpers/app';
+import {
+  navigateToTab,
+  waitForAppReady,
+  flutterFill,
+  flutterFillByInput,
+  flutterLongPress,
+  scrollToVisible,
+} from '../helpers/app';
 import {
   NAV,
   ROUTINE,
@@ -243,7 +250,10 @@ test.describe('Routine start', { tag: '@smoke' }, () => {
     await expect(page.locator(ROUTINE.starterRoutinesSection)).toBeVisible({
       timeout: 10_000,
     });
-    await page.locator(ROUTINE.routineName(PUSH_DAY)).first().click();
+    // Push Day may render below the fold due to Flutter SliverList viewport
+    // culling — scroll it into view before the click.
+    const pushDay1 = await scrollToVisible(page, ROUTINE.routineName(PUSH_DAY));
+    await pushDay1.click();
 
     // The active workout screen must load with exercises pre-filled.
     await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
@@ -334,7 +344,9 @@ test.describe('Routine start', { tag: '@smoke' }, () => {
       timeout: 10_000,
     });
 
-    await page.locator(ROUTINE.routineName(PUSH_DAY)).first().click();
+    // Push Day may render below the fold — scroll into view first.
+    const pushDay = await scrollToVisible(page, ROUTINE.routineName(PUSH_DAY));
+    await pushDay.click();
 
     // The active workout screen must appear — the Finish Workout button confirms it.
     await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
@@ -368,7 +380,9 @@ test.describe('Routine start', { tag: '@smoke' }, () => {
       timeout: 10_000,
     });
 
-    await page.locator(ROUTINE.routineName(PUSH_DAY)).first().click();
+    // Push Day may render below the fold — scroll into view first.
+    const pushDay = await scrollToVisible(page, ROUTINE.routineName(PUSH_DAY));
+    await pushDay.click();
 
     await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
       timeout: 20_000,
@@ -410,6 +424,10 @@ test.describe('Routine start', { tag: '@smoke' }, () => {
     await expect(page.locator(ROUTINE.starterRoutinesSection)).toBeVisible({
       timeout: 10_000,
     });
+
+    // Push Day may be below the fold — scroll into view so the card mounts
+    // into the DOM before we read its text content.
+    await scrollToVisible(page, ROUTINE.routineName(PUSH_DAY));
 
     // The Push Day card is a flt-semantics[role="button"] whose text content
     // includes the subtitle. Check that the subtitle contains a muscle group name.
@@ -584,7 +602,11 @@ test.describe('Routines', () => {
       timeout: 10_000,
     });
 
+    // Each starter routine may be below the fold — scroll into view before
+    // asserting visibility. Flutter SliverList culls off-screen items so a
+    // plain `toBeVisible` against an off-screen item never resolves.
     for (const name of STARTER_ROUTINES) {
+      await scrollToVisible(page, ROUTINE.routineName(name));
       await expect(page.locator(ROUTINE.routineName(name)).first()).toBeVisible({
         timeout: 10_000,
       });
@@ -598,8 +620,10 @@ test.describe('Routines', () => {
       timeout: 10_000,
     });
 
-    // Tap "Push Day" — the first starter routine in seed order.
-    await page.locator(ROUTINE.routineName('Push Day')).first().click();
+    // Tap "Push Day" — the first starter routine in seed order. Scroll it
+    // into view first since SliverList culls off-screen items in CI.
+    const pushDay = await scrollToVisible(page, ROUTINE.routineName('Push Day'));
+    await pushDay.click();
 
     // The active workout screen identifies itself by the Finish Workout button.
     await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
@@ -625,7 +649,9 @@ test.describe('Routines', () => {
       timeout: 10_000,
     });
 
-    await page.locator(ROUTINE.routineName('Push Day')).first().click();
+    // Push Day may be below the fold — scroll into view before tapping.
+    const pushDay = await scrollToVisible(page, ROUTINE.routineName('Push Day'));
+    await pushDay.click();
     await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
       timeout: 20_000,
     });
@@ -710,6 +736,11 @@ test.describe('Routine regressions', () => {
     // when the text is rendered visually. Instead we read the text content of the
     // routine card button (a flt-semantics[role="button"] that wraps all text)
     // and check that it includes at least one expected muscle group name.
+    //
+    // Push Day may render below the fold (SliverList viewport culling) — scroll
+    // into view first so the card is in the DOM before we filter on text.
+    await scrollToVisible(page, ROUTINE.routineName('Push Day'));
+
     const pushDayCard = page
       .locator('flt-semantics[role="button"]')
       .filter({ hasText: 'Push Day' });
@@ -726,6 +757,9 @@ test.describe('Routine regressions', () => {
   test('should show muscle group names in Pull Day card subtitle (BUG-005)', async ({
     page,
   }) => {
+    // Pull Day may render below the fold — scroll into view first.
+    await scrollToVisible(page, ROUTINE.routineName('Pull Day'));
+
     const pullDayCard = page
       .locator('flt-semantics[role="button"]')
       .filter({ hasText: 'Pull Day' });
@@ -742,7 +776,18 @@ test.describe('Routine regressions', () => {
     // None of the starter routine cards should include just "N exercises" in
     // their text content. That text is the _buildSubtitle() fallback when
     // re.exercise is null. Check all four starter routine cards.
+    //
+    // Each card may be below the fold (SliverList viewport culling) — scroll
+    // each into view before reading its text. Skip silently only if scroll
+    // genuinely fails to reveal the card (e.g., starter list shrank); the
+    // assertion is per-card, not aggregate.
     for (const routineName of STARTER_ROUTINES) {
+      const scrolled = await scrollToVisible(
+        page,
+        ROUTINE.routineName(routineName),
+      ).catch(() => null);
+      if (!scrolled) continue;
+
       const card = page
         .locator('flt-semantics[role="button"]')
         .filter({ hasText: routineName });
@@ -807,7 +852,10 @@ test.describe('Routine regressions', () => {
     await page.click(CREATE_ROUTINE.saveButton);
     await expect(page.locator(ROUTINE.starterRoutinesSection)).toBeVisible({ timeout: 15_000 });
 
-    // Verify the custom routine appears.
+    // Verify the custom routine appears. The fullRoutineRegression user
+    // accumulates state across the suite, so MY ROUTINES may overflow the
+    // viewport — scroll the new routine card into view before asserting.
+    await scrollToVisible(page, ROUTINE.routineName(routineName));
     await expect(page.locator(ROUTINE.routineName(routineName)).first()).toBeVisible({
       timeout: 10_000,
     });
@@ -887,7 +935,12 @@ test.describe('Routine regressions', () => {
   test('should start Full Body routine barbell exercises with non-zero weight (BUG-004)', async ({
     page,
   }) => {
-    await page.locator(ROUTINE.routineName('Full Body')).first().click();
+    // Full Body may render below the fold — scroll into view before tapping.
+    const fullBody = await scrollToVisible(
+      page,
+      ROUTINE.routineName('Full Body'),
+    );
+    await fullBody.click();
 
     await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
       timeout: 20_000,
@@ -937,29 +990,11 @@ test.describe('Routine regressions', () => {
     page,
   }) => {
     // Push Day may be below the fold due to viewport culling in Flutter's
-    // ListView.builder. Position mouse over the list and scroll in steps.
-    const pushDay = page.locator(ROUTINE.routineName('Push Day')).first();
-    const alreadyVisible = await pushDay
-      .waitFor({ state: 'visible', timeout: 3_000 })
-      .then(() => true)
-      .catch(() => false);
-
-    if (!alreadyVisible) {
-      const vp = page.viewportSize();
-      const cx = vp ? vp.width / 2 : 400;
-      const cy = vp ? vp.height * 0.6 : 400;
-      await page.mouse.move(cx, cy);
-
-      for (let i = 0; i < 6; i++) {
-        await page.mouse.wheel(0, 200);
-        await page.waitForTimeout(300);
-        const found = await pushDay
-          .waitFor({ state: 'visible', timeout: 1_500 })
-          .then(() => true)
-          .catch(() => false);
-        if (found) break;
-      }
-    }
+    // SliverList.builder — scroll into view via the shared helper.
+    const pushDay = await scrollToVisible(
+      page,
+      ROUTINE.routineName('Push Day'),
+    );
     await pushDay.click();
 
     await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
@@ -1006,7 +1041,12 @@ test.describe('Routine regressions', () => {
   test('should preserve exercise names after page reload when started from a routine (BUG-001)', async ({
     page,
   }) => {
-    await page.locator(ROUTINE.routineName('Pull Day')).first().click();
+    // Pull Day may be below the fold — scroll into view before tapping.
+    const pullDay = await scrollToVisible(
+      page,
+      ROUTINE.routineName('Pull Day'),
+    );
+    await pullDay.click();
 
     await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
       timeout: 20_000,

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_icons.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/section_header.dart';
 import 'widgets/routine_action_sheet.dart';
@@ -74,20 +76,8 @@ class RoutineListScreen extends ConsumerWidget {
               const SliverToBoxAdapter(child: SizedBox(height: 8)),
               if (userRoutines.isEmpty)
                 SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.only(
-                      left: 16,
-                      right: 16,
-                      bottom: 8,
-                    ),
-                    child: Text(
-                      l10n.noCustomRoutines,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.5,
-                        ),
-                      ),
-                    ),
+                  child: _CustomRoutinesEmptyState(
+                    onCreateTap: () => context.go('/routines/create'),
                   ),
                 )
               else
@@ -155,6 +145,72 @@ class RoutineListScreen extends ConsumerWidget {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+/// BUG-029: branded empty state for the "MY ROUTINES" section. The previous
+/// implementation was a single dim line of text pointing at the AppBar `+`
+/// icon — easy to miss on first launch. This version adds a 56dp brand
+/// glyph (the routines plan icon, also used in the bottom nav bar) plus an
+/// inline `FilledButton` that navigates to `/routines/create` so the
+/// primary action is right under the user's thumb instead of buried in the
+/// AppBar.
+class _CustomRoutinesEmptyState extends StatelessWidget {
+  const _CustomRoutinesEmptyState({required this.onCreateTap});
+
+  final VoidCallback onCreateTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      child: Semantics(
+        container: true,
+        identifier: 'routines-empty-state',
+        child: Column(
+          children: [
+            Opacity(
+              opacity: 0.6,
+              child: AppIcons.render(
+                AppIcons.plan,
+                color: AppColors.hotViolet,
+                size: 56,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              l10n.routinesEmptyTitle,
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: AppColors.textCream,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              l10n.routinesEmptyBody,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: AppColors.textDim,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Semantics(
+              container: true,
+              identifier: 'routines-empty-create-btn',
+              button: true,
+              child: FilledButton.icon(
+                onPressed: onCreateTap,
+                icon: const Icon(Icons.add, size: 18),
+                label: Text(l10n.routinesEmptyCta),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
