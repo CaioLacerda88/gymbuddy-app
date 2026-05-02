@@ -532,28 +532,33 @@ export const ONBOARDING_FLOW = {
   /**
    * "3x" frequency pill — the default selection.
    *
-   * Why role=checkbox[name="3x"] instead of [flt-semantics-identifier=...]:
+   * Why role=button[name="3x"] instead of [flt-semantics-identifier=...]:
    * Flutter 3.41.6's semantics tree compactor non-deterministically strips
    * outer `Semantics(container: true, identifier: ...)` wrappers when their
    * sole child is a tap-target node (InkWell). Live DOM probes against
    * build/web confirm: the fitness-level Wrap (3 pills) keeps the wrapper
    * nodes — so `flt-semantics-identifier="onboarding-beginner"` etc. are
    * emitted — but the structurally-identical frequency Wrap (5 pills) gets
-   * its wrappers compacted away, leaving only the inner InkWell node with
-   * `role="checkbox" aria-label="3x"`. Three structural fix attempts
-   * (Semantics-inside-InkWell, container+button+label+ExcludeSemantics,
-   * ValueKey per pill) all failed to make the frequency wrappers survive
-   * compaction. Per CLAUDE.md "use Playwright `role=TYPE[name*=...]`
-   * selectors (accessibility protocol), NOT CSS `flt-semantics[...]`":
-   * the role-based selector targets the AOM directly and is unaffected
-   * by which intermediate `flt-semantics` nodes the compactor preserves.
-   * Empirically, `_BrandedPillChoice`'s tap-target node is exposed in the
-   * AOM as `role="checkbox" aria-label="3x" aria-checked="true|false"` for
-   * every frequency option (verified via DOM probe against build/web).
-   * `role=checkbox[name="3x"]` matches that node directly through
-   * Playwright's accessibility protocol.
+   * its wrappers compacted away, leaving only the inner InkWell node.
+   * Per CLAUDE.md "use Playwright `role=TYPE[name*=...]` selectors
+   * (accessibility protocol), NOT CSS `flt-semantics[...]`": the role-based
+   * selector targets the AOM directly and is unaffected by which
+   * intermediate `flt-semantics` nodes the compactor preserves.
+   *
+   * Why `role=button` and not `role=checkbox`: the AOM dump from the CI
+   * failure (run 25242304322) shows the frequency pills emit `role=button`,
+   * not `role=checkbox`:
+   *   `- button "2x" - button "3x" - button "4x" - button "5x" - button "6x"`
+   * `_BrandedPillChoice` is `Material > InkWell > AnimatedContainer > Text`
+   * with no `Semantics(checked: ...)` wrapper. Flutter auto-emits `button`
+   * semantics for `InkWell` tap-targets — there is no `aria-checked`
+   * attribute. An earlier change (d2ab8c0) assumed the pill emitted a
+   * `checkbox` role; that assumption was wrong and caused the selector to
+   * never resolve in CI. The pill is semantically a single-select choice
+   * (tapping one deselects siblings) — `button` is the correct role
+   * emission for this pattern.
    */
-  frequency3x: 'role=checkbox[name="3x"]',
+  frequency3x: 'role=button[name="3x"]',
   /**
    * Back TextButton.icon on page 2.
    * TextButton label: Text('Back').

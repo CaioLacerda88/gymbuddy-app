@@ -106,7 +106,55 @@ of how many wrappers survive.
 - [x] Full `onboarding.spec.ts` green locally (4 passed)
 - [x] `routines.spec.ts:580` green locally (was a downstream cascading failure)
 - [x] Full `--grep @smoke` green locally (111 passed in 14m)
-- [ ] Commit + push to `fix/cluster5-6-ui-polish`
+- [x] Commit + push to `fix/cluster5-6-ui-polish` (commit d2ab8c0)
+
+### CI run 25242304322 — three more failure clusters on PR #130
+
+Investigated via `superpowers:systematic-debugging`. Three independent root causes:
+
+**Cluster B — onboarding `frequency3x` (1 test)**
+- Symptom: `role=checkbox[name="3x"]` times out after 30s.
+- Root cause: AOM dump from CI artifact shows pills emit `role="button"`, NOT `role="checkbox"`.
+  `_BrandedPillChoice` is `Material > InkWell > AnimatedContainer > Text` — InkWell auto-emits
+  `role=button`. Commit d2ab8c0's assumption that the pill emits `aria-checked` was wrong.
+  Pills are semantically buttons (single-select choice), not checkboxes (binary toggle).
+- Fix: change `frequency3x` from `role=checkbox[name="3x"]` to `role=button[name="3x"]`.
+- [x] `helpers/selectors.ts` — selector + docblock updated with AOM evidence
+
+**Cluster C — routines `text=Push Day` not visible (10 tests)**
+- Symptom: 10 routines tests fail clicking/asserting starter routine cards.
+- Root cause: `RoutineListScreen` is a `CustomScrollView` with `SliverList.builder`. Off-screen
+  items are NOT in the DOM (viewport culling). After `_CustomRoutinesEmptyState` (BUG-029)
+  added ~250px of vertical content above the starter section, "Push Day" / "Pull Day" /
+  "Full Body" cards are pushed below the fold and never enter the AOM until scrolled.
+  Failure screenshot confirms only 7 of 9 starter routines visible.
+- Fix: extract `scrollToVisible(page, selector)` helper and apply to all 13 affected sites.
+  Helper does fast-path visibility check, then 200px wheel steps with 250ms gaps until visible
+  or 12-step timeout. Returns the located element so callers can chain `.click()`.
+- [x] `helpers/app.ts` — added `scrollToVisible` helper
+- [x] `specs/routines.spec.ts` — 13 call sites updated, all 212 tests parse cleanly via `playwright test --list`
+
+**Cluster A — exercises-localization tests A1/A2/B1/B2 (4 tests) — HYPOTHESIS, NOT YET FIXED**
+- Symptom: `waitForResponse` on `fn_search_exercises_localized` times out after 15s.
+- Phase 1 evidence (from artifact `pw_report_25242304322` error-context.md):
+  - AOM dump shows search input rendered (`textbox "Buscar exercícios..."`)
+  - Exercise list still shows default A-sorted entries (Abdominal, Abdutora, Adutora) —
+    NOT filtered by 'Supino' query
+  - Means `flutterFill(page, EXERCISE_LIST.searchInput, 'Supino')` did not enter text
+  - Therefore no debounced state change → no RPC call → `waitForResponse` times out
+- Comparison with passing A4 test: A4 uses `flutterFillByInput(page, 'Search exercises', ...)`
+  which does direct `inputEl.focus()` + keyboard. `flutterFill` clicks the `flt-semantics`
+  overlay first, which is unreliable for this `Semantics`-wrapped TextField.
+- This is a **pre-existing flake on main** (run 25242379073 marked it `2 flaky` with A1/B1
+  passing on retry). NOT a regression introduced by PR #130.
+- Migration `00034_drop_exercise_name_columns_and_add_rpcs.sql` line 228 confirms RPC IS
+  deployed in CI via `npx supabase start` (no separate edge-function deploy needed).
+- Proposed fix: switch A1/A2/B1/B2 in `specs/exercises-localization.spec.ts` from `flutterFill`
+  to `flutterFillByInput` with locale-appropriate aria-label substring.
+- [ ] **Awaiting user decision: include in PR #130 or treat as separate flake-debt item.**
+
+- [ ] Commit B+C fixes
+- [ ] Push to `fix/cluster5-6-ui-polish`
 
 ---
 
