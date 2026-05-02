@@ -1255,10 +1255,13 @@ class _SetColumnHeaders extends StatelessWidget {
 /// to first-time users. The [FinishWorkoutDialog] (gated by [onPressed]) is
 /// the safety net — placement is no longer the gate.
 ///
-/// Styling mirrors the original AppBar button: hotViolet outline + label,
-/// 44dp min height, full-width minus 16dp horizontal padding. A top divider
-/// separates it visually from the scrolling exercise list. SafeArea handles
-/// gesture insets on iOS / Android-with-bottom-bar.
+/// Styling: filled primaryViolet button (Cluster 4 review — was OutlinedButton,
+/// which read as a secondary action despite being THE next-step CTA). 44dp min
+/// height, full-width minus 16dp horizontal padding. Top divider uses the
+/// canonical [AppColors.hair] token (Cluster 4 review — was
+/// `outline.withValues(alpha: 0.2)`, which composited to ~2.8% effective alpha
+/// on top of the already 14%-alpha hair token, making the line invisible).
+/// SafeArea handles gesture insets on iOS / Android-with-bottom-bar.
 class _FinishBottomBar extends StatelessWidget {
   const _FinishBottomBar({required this.enabled, required this.onPressed});
 
@@ -1270,17 +1273,13 @@ class _FinishBottomBar extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Material(
+      key: const ValueKey('finish-bottom-bar'),
       color: theme.colorScheme.surface,
       child: SafeArea(
         top: false,
         child: Container(
-          decoration: BoxDecoration(
-            border: Border(
-              top: BorderSide(
-                color: theme.colorScheme.outline.withValues(alpha: 0.2),
-                width: 1,
-              ),
-            ),
+          decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: AppColors.hair, width: 1)),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Semantics(
@@ -1288,11 +1287,18 @@ class _FinishBottomBar extends StatelessWidget {
             identifier: 'workout-finish-btn',
             child: SizedBox(
               width: double.infinity,
-              child: OutlinedButton(
+              child: FilledButton(
                 onPressed: enabled ? onPressed : null,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.hotViolet,
-                  side: const BorderSide(color: AppColors.hotViolet, width: 1),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primaryViolet,
+                  foregroundColor: AppColors.textCream,
+                  // Disabled state: dim the violet to ~30% so the bar reads as
+                  // "intentionally unavailable" rather than broken. Foreground
+                  // (textDim) keeps AA contrast against the dimmed background.
+                  disabledBackgroundColor: AppColors.primaryViolet.withValues(
+                    alpha: 0.3,
+                  ),
+                  disabledForegroundColor: AppColors.textDim,
                   minimumSize: const Size(0, 44),
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   shape: RoundedRectangleBorder(
@@ -1304,8 +1310,10 @@ class _FinishBottomBar extends StatelessWidget {
                   style: AppTextStyles.headline.copyWith(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
+                    // headline encodes 0.02em tracking; the Finish CTA wants
+                    // tighter chip-style 0.04em tracking — kept explicitly.
                     letterSpacing: 0.04 * 13,
-                    color: enabled ? AppColors.hotViolet : AppColors.textDim,
+                    color: enabled ? AppColors.textCream : AppColors.textDim,
                   ),
                 ),
               ),

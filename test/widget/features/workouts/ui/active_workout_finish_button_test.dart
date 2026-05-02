@@ -305,15 +305,16 @@ void main() {
         await tester.pump();
         await tester.pump();
 
-        // Tap the OutlinedButton inside the bottom bar carrying the Finish
-        // semantics identifier.
+        // Tap the FilledButton inside the bottom bar carrying the Finish
+        // semantics identifier. (Cluster 4 review: was OutlinedButton; swapped
+        // to FilledButton so the bar reads as the primary CTA.)
         final finishButton = find.descendant(
           of: find.byWidgetPredicate(
             (w) =>
                 w is Semantics &&
                 w.properties.identifier == 'workout-finish-btn',
           ),
-          matching: find.byType(OutlinedButton),
+          matching: find.byType(FilledButton),
         );
         expect(finishButton, findsOneWidget);
 
@@ -329,6 +330,55 @@ void main() {
         );
       },
     );
+
+    testWidgets('FAB sits above bottomNavigationBar with non-zero gap', (
+      tester,
+    ) async {
+      // Cluster 4 review pin: ui-ux-critic worried that the
+      // FloatingActionButton.extended would visually crash into the
+      // _FinishBottomBar. Flutter's default `FloatingActionButtonLocation
+      // .endFloat` actually anchors the FAB *above* the bottomNavigationBar
+      // with a small spec'd gap — this test pins that geometry so a future
+      // refactor (e.g. swapping to `centerDocked` or moving the FAB into the
+      // bar) cannot silently regress one-handed reach for either action.
+      final state = _makeStateWithSets([
+        _makeSet(setNumber: 1, isCompleted: false),
+      ]);
+
+      // Pin at a realistic narrow phone width so the gap math reflects
+      // the worst-case mobile layout, not a wide tablet canvas.
+      await tester.binding.setSurfaceSize(const Size(360, 720));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(_buildScreen(state));
+      await tester.pump();
+      await tester.pump();
+
+      final fabRect = tester.getRect(find.byType(FloatingActionButton));
+      final bottomBarRect = tester.getRect(
+        find.byKey(const ValueKey('finish-bottom-bar')),
+      );
+
+      expect(
+        fabRect.bottom < bottomBarRect.top,
+        isTrue,
+        reason:
+            'FAB.bottom (${fabRect.bottom}) must be above '
+            'bottomBar.top (${bottomBarRect.top}). If this fails, '
+            'FloatingActionButtonLocation.endFloat is no longer keeping the '
+            'FAB clear of the bottomNavigationBar — the layout regressed.',
+      );
+
+      final gap = bottomBarRect.top - fabRect.bottom;
+      expect(
+        gap >= 8,
+        isTrue,
+        reason:
+            'Gap between FAB.bottom and bottomBar.top is $gap dp; needs '
+            '>= 8 dp so the two stacked actions read as separate elements '
+            'rather than touching. ui-ux-critic Cluster 4 review.',
+      );
+    });
 
     testWidgets(
       'FAB and bottomNavigationBar coexist without one suppressing the other',
