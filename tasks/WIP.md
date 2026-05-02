@@ -30,14 +30,13 @@ BUG-020 changes the **finish-workout** user flow (bottom bar instead of AppBar).
 Per CLAUDE.md QA gate: navigation/flow change → run full E2E suite locally + update
 any selectors targeting the AppBar finish action.
 
-- [ ] qa-engineer: scan `test/e2e/specs/workouts.spec.ts` (and any others) for AppBar-finish selectors; update or add `WORKOUT_FINISH.bottomBarButton` in `helpers/selectors.ts`
-- [ ] Full E2E suite green locally (`FLUTTER_APP_URL= npx playwright test --reporter=list`)
+- [x] qa-engineer: scan all spec files for AppBar-finish selectors; updated `helpers/selectors.ts` comment, fixed `startEmptyWorkout` sentinel in `workout.ts`, patched all pre-exercise `finishButton.toBeVisible` assertions in `workouts.spec.ts`, `rank-up-celebration.spec.ts`, `home.spec.ts`, `workouts-localization.spec.ts`, `offline-sync.spec.ts`
+- [x] Full E2E suite: **211/212 passed** (1 pre-existing failure: `manage-data.spec.ts` account-deletion redirect timeout, unchanged from main, outside Cluster 4 scope)
 
 ### Cleanup
 
 - [ ] Mark BUG-018..020 RESOLVED in `BUGS.md` with strikethrough heads + `RESOLVED in PR #NN`
 - [ ] `make ci` green (format + gen + analyze + test + android-debug-build)
-- [ ] Commit `fix(ui): Cluster 4 — tap-target & sweat-proof UX (BUG-018..020)`
 - [ ] `git push -u origin fix/cluster4-tap-targets`
 
 ### Out of scope
