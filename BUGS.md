@@ -280,7 +280,7 @@ assertions that schema/constraint names never appear in the output).
 Multiple `as String` / `as Map` / `!` patterns throughout the repository layer
 will throw the same cryptic null-cast error if any DB column shape drifts.
 
-### ~~BUG-010 [P1] — `as String` casts without null guards (audit list)~~ ✅ RESOLVED in `fix/cluster2-unsafe-casts`
+### ~~BUG-010 [P1] — `as String` casts without null guards (audit list)~~ ✅ RESOLVED in PR #129
 
 **Where (high priority — call paths that fire on workout save / PR sync):**
 - ~~`lib/features/personal_records/data/pr_repository.dart:261` — `setRows.map<String>((r) => r['id'] as String)`~~
