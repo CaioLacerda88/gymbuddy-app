@@ -794,16 +794,16 @@ export const CELEBRATION = {
   /** PR chip inline in set row — Semantics(identifier: 'workout-pr-chip') */
   prChip: '[flt-semantics-identifier="workout-pr-chip"]',
   /**
-   * Finish button in AppBar trailing (Phase 18c reposition from bottom bar).
-   * Semantics(identifier: 'workout-finish-btn') — same identifier as before,
-   * just physically moved to AppBar trailing OutlinedButton.
-   * Existing WORKOUT.finishButton selector continues to work unchanged.
+   * Finish button — now in the persistent bottom bar (_FinishBottomBar).
+   * BUG-020 reversed Phase 18c §13: moved back from AppBar trailing to
+   * Scaffold.bottomNavigationBar for one-handed reach + discoverability.
+   * Semantics(identifier: 'workout-finish-btn') unchanged — selector works
+   * without modification. Alias for WORKOUT.finishButton.
    */
   finishButton: '[flt-semantics-identifier="workout-finish-btn"]',
   /**
-   * "Add exercise" FAB (Phase 18c: FAB freed from Finish, repurposed for addExercise).
-   * Semantics(identifier: 'workout-add-exercise') — same identifier as before.
-   * Existing WORKOUT.addExerciseFab selector continues to work unchanged.
+   * "Add exercise" FAB — Semantics(identifier: 'workout-add-exercise').
+   * Alias for WORKOUT.addExerciseFab. Selector unchanged.
    */
   addExerciseFab: '[flt-semantics-identifier="workout-add-exercise"]',
   /** TitlesScreen root — Semantics(identifier: 'titles-screen') */

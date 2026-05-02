@@ -233,6 +233,64 @@ void main() {
           );
         },
       );
+
+      testWidgets(
+        'tapping set number on set#2+ copies weight+reps from the previous set (BUG-018)',
+        (tester) async {
+          // Pin: onTap is only wired when setNumber > 1. Tapping set#2 must
+          // copy the previous set's weight and reps into set#2. This confirms
+          // the 48dp tap target is not just sized correctly but is also
+          // functionally reachable: the InkWell registers the tap.
+          final stateJson = TestActiveWorkoutStateFactory.createWithExercises(
+            exerciseCount: 1,
+            setsPerExercise: 2,
+          );
+          final workoutState = ActiveWorkoutState.fromJson(stateJson);
+          final weId = workoutState.exercises.first.workoutExercise.id;
+          final set1 = workoutState.exercises.first.sets.first;
+          final set2 = workoutState.exercises.first.sets[1];
+          expect(set2.setNumber, 2, reason: 'sanity check: set2 is set #2');
+
+          // Mutate set1 to have known weight/reps so we can assert the copy.
+          final stateWithSet1Values = workoutState.copyWith(
+            exercises: [
+              workoutState.exercises.first.copyWith(
+                sets: [set1.copyWith(weight: 80.0, reps: 8), set2],
+              ),
+            ],
+          );
+
+          final container = makeContainer(stateWithSet1Values);
+          addTearDown(container.dispose);
+          await container.read(activeWorkoutProvider.future);
+
+          await tester.pumpWidget(
+            buildTestWidget(
+              SetRow(set: set2, workoutExerciseId: weId),
+              container: container,
+            ),
+          );
+
+          // Tap the set-number cell on set #2.
+          await tester.tap(find.text('${set2.setNumber}'));
+          await tester.pump();
+
+          final updatedState = container.read(activeWorkoutProvider).value;
+          final updatedSet2 = updatedState?.exercises.first.sets[1];
+          expect(
+            updatedSet2?.weight,
+            80.0,
+            reason:
+                'BUG-018 tap-to-copy: set#2 weight must be copied from set#1.',
+          );
+          expect(
+            updatedSet2?.reps,
+            8,
+            reason:
+                'BUG-018 tap-to-copy: set#2 reps must be copied from set#1.',
+          );
+        },
+      );
     });
 
     group('ghost text (previous session hint)', () {

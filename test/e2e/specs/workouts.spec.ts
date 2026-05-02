@@ -42,13 +42,13 @@ test.describe('Workouts', { tag: '@smoke' }, () => {
     // Start an empty workout.
     await startEmptyWorkout(page);
 
-    // The active workout screen should be reachable.
+    // Add Barbell Bench Press (BUG-020: Finish button hidden on empty body).
+    await addExercise(page, SEED_EXERCISES.benchPress);
+
+    // After adding, the Finish button becomes visible in the bottom bar.
     await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
       timeout: 15_000,
     });
-
-    // Add Barbell Bench Press.
-    await addExercise(page, SEED_EXERCISES.benchPress);
 
     // Wait for the exercise card with its set row. Use .first() to guard
     // against strict mode violation when the workout starts with pre-filled
@@ -112,11 +112,15 @@ test.describe('Workouts', { tag: '@smoke' }, () => {
     // 1. Start an empty workout from the home screen.
     await startEmptyWorkout(page);
 
-    // Active workout screen is visible — the finish button is in the bottom bar.
-    await expect(page.locator(WORKOUT.finishButton)).toBeVisible();
-
     // 2. Add Barbell Bench Press from the exercise picker.
+    // BUG-020: Finish button is hidden until exercises exist; add first.
     await addExercise(page, SEED_EXERCISES.benchPress);
+
+    // Active workout screen is visible — finish button appears in the bottom
+    // bar now that an exercise exists.
+    await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
+      timeout: 10_000,
+    });
 
     // After adding, an exercise card with at least one set row should appear.
     // The add-set button confirms the exercise card is rendered. Use .first()
@@ -381,13 +385,22 @@ test.describe('Workout logging', () => {
     );
   });
 
-  test('should show Finish Workout and Add Exercise buttons after starting empty workout', async ({
+  test('should show Add Exercise button on empty workout and Finish button after adding exercise', async ({
     page,
   }) => {
     await startEmptyWorkout(page);
 
-    await expect(page.locator(WORKOUT.finishButton)).toBeVisible();
+    // BUG-020: Finish button is hidden on the empty workout body — the bottom
+    // bar (_FinishBottomBar) only renders when exercises.isNotEmpty. The empty
+    // body owns its own CTA (Add Exercise) as the sole action.
     await expect(page.locator(WORKOUT.addExerciseFab)).toBeVisible();
+    await expect(page.locator(WORKOUT.finishButton)).not.toBeVisible();
+
+    // Add an exercise — now the bottom bar should appear.
+    await addExercise(page, SEED_EXERCISES.benchPress);
+    await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
+      timeout: 10_000,
+    });
 
     // Clean up by discarding.
     await page.locator(WORKOUT.discardButton).click();

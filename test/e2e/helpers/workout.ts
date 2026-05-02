@@ -78,8 +78,13 @@ export async function startEmptyWorkout(page: Page): Promise<void> {
     // Flutter CanvasKit may need a second tap to fire the InkWell after the
     // first click activates the semantics overlay.
     await page.waitForTimeout(800);
+    // BUG-020: WORKOUT.finishButton is no longer used as the navigation
+    // sentinel here. After BUG-020 the Finish button lives in the bottom bar
+    // and is HIDDEN on the empty workout body (no exercises yet). Use the
+    // Add Exercise FAB / empty-state CTA instead — it is always visible on
+    // the active workout screen regardless of exercise count.
     const navigated = await page
-      .locator(WORKOUT.finishButton)
+      .locator(WORKOUT.addExerciseFab)
       .isVisible({ timeout: 2_000 })
       .catch(() => false);
     if (!navigated) {
@@ -88,7 +93,10 @@ export async function startEmptyWorkout(page: Page): Promise<void> {
     }
   }
 
-  await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
+  // BUG-020: confirm we reached the active workout screen by waiting for the
+  // Add Exercise entry point (visible on both empty-body and FAB states).
+  // The Finish button is now hidden on the empty body — do NOT use it here.
+  await expect(page.locator(WORKOUT.addExerciseFab)).toBeVisible({
     timeout: 20_000,
   });
 }

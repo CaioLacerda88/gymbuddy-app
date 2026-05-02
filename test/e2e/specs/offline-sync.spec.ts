@@ -117,9 +117,8 @@ test.describe('Offline sync', { tag: '@smoke' }, () => {
     // ActiveWorkoutNotifier enqueues the workout in Hive.
     await blockSupabaseRest(page);
 
-    // Phase 18c moved "Finish Workout" from the bottom bar to an AppBar
-    // trailing "FINISH" OutlinedButton. Use the stable semantics identifier
-    // instead of the old text= selector which no longer matches.
+    // BUG-020 moved "Finish Workout" back to the persistent bottom bar.
+    // The stable semantics identifier remains unchanged.
     await page.click(WORKOUT.finishButton);
 
     // The finish confirmation dialog appears — confirm save.
@@ -174,7 +173,7 @@ test.describe('Offline sync', { tag: '@smoke' }, () => {
     // Block REST just before finishing so the save gets queued.
     await blockSupabaseRest(page);
 
-    // Phase 18c moved "Finish Workout" to the AppBar trailing "FINISH" button.
+    // BUG-020: Finish button in persistent bottom bar.
     await page.click(WORKOUT.finishButton);
     const dialogFinish2 = page.locator(WORKOUT.dialogFinishButton);
     await expect(dialogFinish2).toBeVisible({ timeout: 8_000 });
@@ -300,7 +299,7 @@ test.describe('Offline sync — badge interaction', () => {
     // Block REST just before finishing so the save gets queued.
     await blockSupabaseRest(page);
 
-    // Phase 18c moved "Finish Workout" to the AppBar trailing "FINISH" button.
+    // BUG-020: Finish button in persistent bottom bar.
     await page.click(WORKOUT.finishButton);
     const dialogFinish3 = page.locator(WORKOUT.dialogFinishButton);
     await expect(dialogFinish3).toBeVisible({ timeout: 8_000 });
@@ -387,7 +386,7 @@ test.describe('Offline sync — badge interaction', () => {
     // Block REST just before finishing so the save gets queued.
     await blockSupabaseRest(page);
 
-    // Phase 18c moved "Finish Workout" to the AppBar trailing "FINISH" button.
+    // BUG-020: Finish button in persistent bottom bar.
     await page.click(WORKOUT.finishButton);
     const dialogFinish4 = page.locator(WORKOUT.dialogFinishButton);
     await expect(dialogFinish4).toBeVisible({ timeout: 8_000 });

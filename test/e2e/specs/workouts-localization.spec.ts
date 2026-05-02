@@ -56,11 +56,8 @@ test.describe('Active workout pt locale', { tag: '@smoke' }, () => {
   }) => {
     await startEmptyWorkout(page);
 
-    await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
-      timeout: 15_000,
-    });
-
-    // Open the exercise picker.
+    // BUG-020: Finish button only appears after first exercise is added.
+    // Open the exercise picker immediately.
     await page.click(WORKOUT.addExerciseFab);
     await expect(page.locator(EXERCISE_PICKER.searchInput)).toBeVisible({
       timeout: 10_000,
@@ -150,10 +147,7 @@ test.describe('Locale switch during workout', () => {
     await navigateToTab(page, 'Home');
 
     await startEmptyWorkout(page);
-    await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
-      timeout: 15_000,
-    });
-
+    // BUG-020: Finish button only appears after first exercise is added.
     // Step 3: Open the exercise picker — it must show pt exercise names.
     await page.click(WORKOUT.addExerciseFab);
     await expect(page.locator(EXERCISE_PICKER.searchInput)).toBeVisible({

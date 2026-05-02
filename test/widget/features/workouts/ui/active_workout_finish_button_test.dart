@@ -329,5 +329,40 @@ void main() {
         );
       },
     );
+
+    testWidgets(
+      'FAB and bottomNavigationBar coexist without one suppressing the other',
+      (tester) async {
+        // Pin: when exercises exist, Scaffold must have BOTH a non-null
+        // floatingActionButton (_AddExerciseFab) AND a non-null
+        // bottomNavigationBar (_FinishBottomBar). Before BUG-020 the FAB was
+        // tied to the Finish button being in the AppBar; this regression pin
+        // ensures no future refactor silently disables the FAB when the
+        // bottom bar is present (or vice-versa), which would regress one-
+        // handed discoverability on either action.
+        final state = _makeStateWithSets([
+          _makeSet(setNumber: 1, isCompleted: false),
+        ]);
+
+        await tester.pumpWidget(_buildScreen(state));
+        await tester.pump();
+        await tester.pump();
+
+        final scaffold = _findActiveWorkoutScaffold(tester);
+        expect(
+          scaffold.bottomNavigationBar,
+          isNotNull,
+          reason:
+              'BUG-020: _FinishBottomBar must be present when exercises exist.',
+        );
+        expect(
+          scaffold.floatingActionButton,
+          isNotNull,
+          reason:
+              '_AddExerciseFab must be present when exercises exist — it must '
+              'not be suppressed by the presence of the bottom bar.',
+        );
+      },
+    );
   });
 }
