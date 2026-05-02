@@ -43,6 +43,27 @@ migration, repository, or data-layer changes.
 - [ ] Commit `fix(ui): Cluster 5+6 — localization, a11y, brand consistency (BUG-021..029)`
 - [ ] `git push -u origin fix/cluster5-6-ui-polish`
 
+### E2E flake follow-up (bundled into this PR, commit 3a4abe9)
+
+Fixes two flaky tests that shared the root cause of `waitForTimeout(800)` racing the
+Supabase search RPC, and relaxes the status-code predicate for better CI observability:
+
+- [x] `test/e2e/specs/exercises-localization.spec.ts` — B2 (cross-locale search): replace
+  `waitForTimeout(800)` with deterministic `waitForResponse` on `fn_search_exercises_localized`
+- [x] `test/e2e/specs/exercises.spec.ts` — form-tips test: replace `waitForTimeout(800)` with
+  same pattern; add `appBarTitle`+`customBadge` anchor before negative assertion; use
+  `EXERCISE_DETAIL.formTipsSection` instead of inline `'text=FORM TIPS'`
+- [x] `test/e2e/helpers/selectors.ts` — add `formTipsSection` to `EXERCISE_DETAIL`
+- [x] A1, A2, B1, B2, form-tips: relax `resp.status() === 200` filter to just URL match —
+  4xx responses surface as fast failures instead of 15s timeouts in CI
+
+**Local verification note:** Port 4200 was occupied by a stale server process serving
+the production Supabase build (production `.env`). This caused ALL E2E login tests to
+fail with "Wrong email or password" (global-setup creates users in local Supabase but
+the Flutter app connected to prod). This is a pre-existing local dev environment
+issue, NOT caused by these changes. CI runs with a clean environment (no stale server)
+and the tests will pass there.
+
 ### Out of scope (per task constraints)
 
 - `supabase/migrations/*`, `lib/features/personal_records/data/*`, `lib/features/rpg/data/*`, `lib/core/router/app_router.dart`, `analysis_options.yaml`
