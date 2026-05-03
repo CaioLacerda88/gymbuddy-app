@@ -311,7 +311,7 @@ and `test/unit/core/router/pr_celebration_args_test.dart` (new).
 The RPG system is the retention moat (per PLAN.md Phase 17–18 framing). Several
 gaps blunt the motivational loop.
 
-### ~~BUG-011 [P1] — Class promotion (Initiate → first earned class) silent~~ — RESOLVED in PR #NN (Cluster 3)
+### ~~BUG-011 [P1] — Class promotion (Initiate → first earned class) silent~~ — RESOLVED in PR #134
 
 **What:** When `maxRank < 5`, `ClassResolver` returns `CharacterClass.initiate`.
 On the first rank-5 cross-over, the resolver returns a dominant class (e.g.
@@ -330,7 +330,7 @@ overlay (one-time, not on every workout). High-priority for retention.
 
 ---
 
-### ~~BUG-012 [P1] — Saga intro overlay collides with rank-up celebration~~ — RESOLVED in PR #NN (Cluster 3)
+### ~~BUG-012 [P1] — Saga intro overlay collides with rank-up celebration~~ — RESOLVED in PR #134
 
 **What:** Saga intro fires after the first XP is earned. If the user's first
 workout produces a rank-up overlay AND the saga intro is gated on first XP,
@@ -350,7 +350,7 @@ in the celebration orchestrator and queue.
 
 ---
 
-### ~~BUG-013 [P1] — Cap-at-3 celebration logic drops all rank-ups when 3+ closers fire~~ — RESOLVED in PR #NN (Cluster 3)
+### ~~BUG-013 [P1] — Cap-at-3 celebration logic drops all rank-ups when 3+ closers fire~~ — RESOLVED in PR #134
 
 **What:** `celebration_event_builder.dart:103-104` calculates
 `closersCount = levelUps.length + titles.length`, then
@@ -368,7 +368,7 @@ Trade off one closer if needed to make room.
 
 ---
 
-### ~~BUG-014 [P1] — Cross-build titles are hidden cheevos with no progress hint~~ — RESOLVED in PR #NN (Cluster 3)
+### ~~BUG-014 [P1] — Cross-build titles are hidden cheevos with no progress hint~~ — RESOLVED in PR #134
 
 **What:** `_pillarWalker`, `_broadShouldered`, `_evenHanded`, `_ironBound`,
 `_sagaForged` are binary unlocks with no in-app surface that reveals trigger
@@ -387,7 +387,7 @@ descriptions in pt-BR (`"Aumente Costas e Pernas para 60 — falta {N} no Peito"
 
 ---
 
-### ~~BUG-015 [P1] — `_broadShouldered` predicate is effectively unreachable for balanced lifters~~ — RESOLVED in PR #NN (Cluster 3)
+### ~~BUG-015 [P1] — `_broadShouldered` predicate is effectively unreachable for balanced lifters~~ — RESOLVED in PR #134
 
 **What:** The predicate requires `Chest+Back+Shoulders >= 2*(Legs+Core)`. Any
 lifter who does serious leg day cannot hit this — chest=50, back=50,
@@ -403,7 +403,7 @@ with PO before changing math.
 
 ---
 
-### ~~BUG-016 [P1] — Class names hardcoded English (likely; verify)~~ — RESOLVED in PR #NN (Cluster 3)
+### ~~BUG-016 [P1] — Class names hardcoded English (likely; verify)~~ — RESOLVED in PR #134
 
 **What:** `ClassBadge` displays the class name. If the class names are
 hardcoded English in `CharacterClass` enum without ARB l10n, switching to
