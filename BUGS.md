@@ -631,7 +631,7 @@ exits.
 
 ## Cluster 8 — Architecture leaks & SOLID violations (P2)
 
-### BUG-035 [P2] — ~~Domain layer imports Flutter framework~~ RESOLVED in PR #TBD
+### BUG-035 [P2] — ~~Domain layer imports Flutter framework~~ RESOLVED in PR #136
 
 **Where:** `lib/features/rpg/domain/vitality_state_mapper.dart:1,4` (imports
 `package:flutter/painting.dart` and `AppLocalizations`)
@@ -668,7 +668,7 @@ account deletion, social links).
 **Where:** `lib/features/weekly_plan/ui/plan_management_screen.dart`
 **Fix:** Extract `_WeekDayBucket`, `_RoutineSlot`, `_EmptyPlanCta`.
 
-### BUG-039 [P2] — ~~`ActiveWorkoutNotifier.savedOffline` is a public field, not in state~~ RESOLVED in PR #TBD
+### BUG-039 [P2] — ~~`ActiveWorkoutNotifier.savedOffline` is a public field, not in state~~ RESOLVED in PR #136
 
 **Where:** `lib/features/workouts/providers/notifiers/active_workout_notifier.dart:47-98`
 **What:** UI reads `notifier.savedOffline` via `ref.read` — breaks
@@ -689,7 +689,7 @@ test pins that `(notifier as dynamic).savedOffline` throws
 `NoSuchMethodError` so any future regression that re-introduces the
 field fails immediately.
 
-### BUG-040 [P2] — ~~Provider keepAlive with no logout invalidation~~ RESOLVED in PR #TBD
+### BUG-040 [P2] — ~~Provider keepAlive with no logout invalidation~~ RESOLVED in PR #136
 
 **Where:** `lib/features/workouts/providers/workout_history_providers.dart`,
 `workout_providers.dart` (`workoutCountProvider`)
