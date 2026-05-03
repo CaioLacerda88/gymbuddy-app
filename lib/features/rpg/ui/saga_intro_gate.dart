@@ -10,6 +10,82 @@ import '../../auth/providers/auth_providers.dart';
 import '../providers/rpg_progress_provider.dart';
 import 'saga_intro_overlay.dart';
 
+// ---------------------------------------------------------------------------
+// BUG-012 (Cluster 3) — saga-intro / celebration sequencing
+// ---------------------------------------------------------------------------
+//
+// Pre-Cluster-3 the saga intro overlay and post-workout celebration
+// overlays could collide on the same frame: the intro renders over the
+// shell via [SagaIntroGate]'s Stack, while celebrations come up via
+// `showDialog` on the root navigator (which paints ABOVE the intro
+// Stack). A first workout that produced a rank-up would show both at
+// once with the celebration on top, hiding the intro.
+//
+// **Sequencing contract (locked, PO call 2026-05-02):**
+//   1. Saga intro ALWAYS plays first when it would otherwise show.
+//   2. Celebration queue drains AFTER the intro dismisses.
+//   3. 200ms gap between intro dismissal and the first celebration so
+//      the eye doesn't get a hard cut.
+//   4. NO event suppression — the intro never absorbs rank-up events.
+//
+// Implementation: a singleton sequencer keyed by user ID. The gate
+// completes the per-user [Completer] on dismiss; the celebration screen
+// awaits the future before invoking [`CelebrationPlayer.play`]. If the
+// intro is already dismissed (Hive flag set), the future resolves
+// immediately — same code path, no special "first-launch" branch.
+//
+// **Why a global singleton instead of a Riverpod provider:** the
+// completer must outlive provider invalidations (the gate could be
+// rebuilt mid-await, e.g. on hot reload, without breaking the sequence).
+// A static map keyed by userId gives that lifetime without coupling to
+// Riverpod's container lifecycle.
+class SagaIntroSequencer {
+  const SagaIntroSequencer._();
+
+  /// Per-user completer. Lazily created on first read; completed once
+  /// either the gate fires [markIntroDismissedForSequencer] OR the gate
+  /// detects the Hive `saga_intro_seen` flag was already set on mount
+  /// (existing user — intro never showed for them).
+  // TODO(multi-account): entries persist for the app-process lifetime; GC'd
+  // only on process kill. Fine for single-account use; a future multi-account
+  // flow should clear the map (or per-user entries) on sign-out.
+  static final Map<String, Completer<void>> _completersByUser = {};
+
+  /// Completer for [userId]. Returns a fresh completer the first time;
+  /// subsequent calls return the same one (so multiple awaiters share
+  /// the same fate).
+  static Completer<void> _completerFor(String userId) {
+    return _completersByUser.putIfAbsent(userId, Completer<void>.new);
+  }
+
+  /// Future that resolves when the saga intro is no longer in the way
+  /// for [userId] — either after dismissal this session OR immediately
+  /// if the gate determined the intro was already seen on a prior run.
+  static Future<void> waitForIntroDismissed(String userId) {
+    return _completerFor(userId).future;
+  }
+
+  /// Mark the intro as no longer blocking for [userId]. Called by the
+  /// gate from two paths:
+  ///   * On mount when `hasSeenSagaIntroForUser(userId)` already returns
+  ///     true (the intro never showed — celebrations can fire right away).
+  ///   * On user-dismiss (final BEGIN tap or Skip).
+  /// Idempotent — only the first call resolves the completer; later
+  /// calls are no-ops.
+  static void markIntroDismissedForSequencer(String userId) {
+    final c = _completerFor(userId);
+    if (!c.isCompleted) c.complete();
+  }
+
+  /// Reset the completer for [userId] — only used by tests so each test
+  /// gets a fresh state. Production code never calls this; the gate
+  /// determines when to complete on its own per session.
+  @visibleForTesting
+  static void resetForTesting() {
+    _completersByUser.clear();
+  }
+}
+
 /// First-launch gate that wraps the authenticated shell and, per user:
 ///
 ///   1. Triggers the retroactive RPG backfill exactly once
@@ -55,6 +131,16 @@ class _SagaIntroGateState extends ConsumerState<SagaIntroGate> {
     final snapshotAsync = ref.watch(rpgProgressProvider);
     final retroDone = hasRunRetroForUser(userId);
     final alreadySeen = hasSeenSagaIntroForUser(userId);
+
+    // BUG-012 sequencer: complete the per-user "intro is done" Future as
+    // soon as we know the intro will NOT be shown for this user. Two
+    // cases:
+    //   * Already dismissed in a previous session (Hive flag set).
+    //   * Dismissed earlier this session (state flag set).
+    // The completer is idempotent — duplicate completions are no-ops.
+    if (alreadySeen || _dismissedThisSession) {
+      SagaIntroSequencer.markIntroDismissedForSequencer(userId);
+    }
 
     final shouldShow =
         !_dismissedThisSession &&
@@ -111,6 +197,9 @@ class _SagaIntroGateState extends ConsumerState<SagaIntroGate> {
     // flush() lands in markSagaIntroSeenForUser.
     setState(() => _dismissedThisSession = true);
     unawaited(markSagaIntroSeenForUser(userId));
+    // BUG-012: release any awaiters in the celebration orchestrator now
+    // that the intro has fully dismissed.
+    SagaIntroSequencer.markIntroDismissedForSequencer(userId);
   }
 }
 

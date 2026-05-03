@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:repsaga/features/rpg/domain/celebration_queue.dart';
 import 'package:repsaga/features/rpg/models/body_part.dart';
 import 'package:repsaga/features/rpg/models/celebration_event.dart';
+import 'package:repsaga/features/rpg/models/character_class.dart';
 
 void main() {
   group('CelebrationQueue.build', () {
@@ -93,10 +94,17 @@ void main() {
       expect(result.overflow, isNull);
     });
 
-    test('cap-at-3: rank-ups fight for slots before level-up + title', () {
-      // 4 rank-ups + 1 level-up + 1 title = 6 events, cap at 3. Spec §13.2:
-      // narrative reads cleaner when at least one rank-up + the level-up +
-      // the title survive. Trim from the LOW-rank end of the rank-up list.
+    test('cap-at-3 reservation: 4 rank-ups + 1 level + 1 title → top rank-up '
+        'reserved, then more rank-ups, closers trimmed (BUG-013)', () {
+      // BUG-013 inversion (Cluster 3): rank-ups never lose to closers.
+      // 4 rank-ups + 1 level-up + 1 title = 6 events, cap at 3.
+      // Reservation policy: slot 1 (class — none here) → slot 2 (top
+      // rank-up = 30) → spillover takes the next two highest rank-ups
+      // (20, 10). Both closers (level-up + title) drop silently — the
+      // BUG-013 invariant prefers visceral rank-up payoff over closers.
+      // Note: this contrasts with the (1 rank-up + 1 level + 1 title)
+      // case where the title survives — see the "BUG-017 regression"
+      // test below.
       final result = CelebrationQueue.build(
         events: const [
           CelebrationEvent.rankUp(bodyPart: BodyPart.chest, newRank: 30),
@@ -108,15 +116,16 @@ void main() {
         ],
       );
 
-      // Top rank-up wins, then the level-up + title (causal closers).
       expect(result.queue, hasLength(3));
-      expect(result.queue[0], isA<RankUpEvent>());
-      expect((result.queue[0] as RankUpEvent).newRank, 30);
-      expect(result.queue[1], isA<LevelUpEvent>());
-      expect(result.queue[2], isA<TitleUnlockEvent>());
-      // 3 rank-ups got dropped in favor of level + title.
+      expect(result.queue.every((e) => e is RankUpEvent), isTrue);
+      expect(
+        result.queue.whereType<RankUpEvent>().map((e) => e.newRank).toList(),
+        [30, 20, 10],
+      );
+      // 1 rank-up dropped (rank 5); the level-up + title are silently
+      // absorbed by the cap.
       expect(result.overflow, isNotNull);
-      expect(result.overflow!.remainingRankUps, 3);
+      expect(result.overflow!.remainingRankUps, 1);
     });
 
     test(
@@ -172,5 +181,231 @@ void main() {
       expect(result.queue.whereType<TitleUnlockEvent>(), hasLength(2));
       expect(result.overflow, isNull);
     });
+  });
+
+  // -------------------------------------------------------------------------
+  // BUG-011 + BUG-013 — Class change + reservation policy boundary tests
+  // -------------------------------------------------------------------------
+  group('CelebrationQueue.build — class change + reservation policy', () {
+    test('class change is placed at the head of the queue (BUG-011)', () {
+      // Slot 1 is reserved for ClassChangeEvent. Even when the input order
+      // has rank-ups first, the queue surfaces the class change first.
+      final result = CelebrationQueue.build(
+        events: const [
+          CelebrationEvent.rankUp(bodyPart: BodyPart.chest, newRank: 5),
+          CelebrationEvent.classChange(
+            fromClass: CharacterClass.initiate,
+            toClass: CharacterClass.bulwark,
+          ),
+        ],
+      );
+      expect(result.queue, hasLength(2));
+      expect(result.queue.first, isA<ClassChangeEvent>());
+      expect(result.queue[1], isA<RankUpEvent>());
+    });
+
+    test('boundary: 1 closer (level-up only) → kept, no overflow', () {
+      // Trivial baseline. No class, no rank-up, single level-up.
+      final result = CelebrationQueue.build(
+        events: const [CelebrationEvent.levelUp(newLevel: 3)],
+      );
+      expect(result.queue, hasLength(1));
+      expect(result.queue.first, isA<LevelUpEvent>());
+      expect(result.overflow, isNull);
+    });
+
+    test('boundary: 3 closers (level + 2 titles) → all kept, no overflow', () {
+      // Cap exactly absorbs 3 closers. Order: level-up plays before titles
+      // (the level-up overlay is the "summing" beat that frames the body-
+      // part jumps, then the title sheet crowns the workout).
+      final result = CelebrationQueue.build(
+        events: const [
+          CelebrationEvent.titleUnlock(slug: 'chest_r5_initiate_of_the_forge'),
+          CelebrationEvent.titleUnlock(slug: 'chest_r10_plate_bearer'),
+          CelebrationEvent.levelUp(newLevel: 5),
+        ],
+      );
+      expect(result.queue, hasLength(3));
+      expect(result.queue[0], isA<LevelUpEvent>());
+      expect(result.queue.whereType<TitleUnlockEvent>(), hasLength(2));
+      expect(result.overflow, isNull);
+    });
+
+    test('boundary: 1 class change + 3 closers → class wins + 2 closers fit '
+        '(BUG-011 + BUG-013 + BUG-017: title is the crown)', () {
+      // Cap=3 with a class change means slot 1 is reserved for the class
+      // and only 2 closer slots remain. Per BUG-017 ("title is the
+      // crown"), title beats level-up in the closer priority order:
+      // when both fire, the title survives and the level-up drops to
+      // silent absorption (still re-derivable on the saga screen).
+      final result = CelebrationQueue.build(
+        events: const [
+          CelebrationEvent.classChange(
+            fromClass: CharacterClass.initiate,
+            toClass: CharacterClass.bulwark,
+          ),
+          CelebrationEvent.titleUnlock(slug: 'chest_r5_initiate_of_the_forge'),
+          CelebrationEvent.titleUnlock(slug: 'chest_r10_plate_bearer'),
+          CelebrationEvent.levelUp(newLevel: 5),
+        ],
+      );
+      expect(result.queue, hasLength(3));
+      expect(result.queue[0], isA<ClassChangeEvent>());
+      // Title-1 reserved (slot 3), title-2 spills into the remaining
+      // closer slot, level-up drops silently. Within the title group
+      // they preserve catalog/builder emission order.
+      expect(result.queue.whereType<TitleUnlockEvent>(), hasLength(2));
+      expect(result.queue.whereType<LevelUpEvent>(), isEmpty);
+      // Closers don't overflow the rank-up overflow card — they're
+      // absorbed silently.
+      expect(result.overflow, isNull);
+    });
+
+    test('boundary: 1 class change + 1 rank-up + 3 closers → class + rank-up + '
+        'top title (BUG-013 + BUG-017)', () {
+      // Cap=3. Slot 1 = class, slot 2 = top rank-up, slot 3 = top title
+      // (BUG-017: "title is the crown"). The second title and the
+      // level-up drop silently. Critical: rank-up survives (BUG-013)
+      // AND the title survives (BUG-017) — pre-fix the title was
+      // dropped here, dropping the rarest, most identity-defining
+      // closer in the loop.
+      final result = CelebrationQueue.build(
+        events: const [
+          CelebrationEvent.classChange(
+            fromClass: CharacterClass.initiate,
+            toClass: CharacterClass.bulwark,
+          ),
+          CelebrationEvent.rankUp(bodyPart: BodyPart.chest, newRank: 5),
+          CelebrationEvent.levelUp(newLevel: 5),
+          CelebrationEvent.titleUnlock(slug: 'chest_r5_initiate_of_the_forge'),
+          CelebrationEvent.titleUnlock(slug: 'chest_r10_plate_bearer'),
+        ],
+      );
+      expect(result.queue, hasLength(3));
+      expect(result.queue[0], isA<ClassChangeEvent>());
+      expect(result.queue[1], isA<RankUpEvent>());
+      expect(result.queue[2], isA<TitleUnlockEvent>());
+      expect(
+        (result.queue[2] as TitleUnlockEvent).slug,
+        'chest_r5_initiate_of_the_forge',
+      );
+      expect(result.queue.whereType<LevelUpEvent>(), isEmpty);
+      // No rank-up overflow (only one rank-up, it survived).
+      expect(result.overflow, isNull);
+    });
+
+    test('BUG-013 + BUG-017 invariant: 3 closers + 1 rank-up → top rank-up '
+        'survives, closer slot keeps title (level-up drops)', () {
+      // Pre-Cluster-3 behaviour: closers (level + 2 titles) filled all 3
+      // slots and the rank-up overflowed. Cluster-3 BUG-013: slot 2
+      // reserved for rank-up. Cluster-3 BUG-017: slot 3 reserved for
+      // top title (the crown). The remaining slot in the closer queue
+      // goes to the additional title in catalog order; the level-up
+      // drops silently.
+      final result = CelebrationQueue.build(
+        events: const [
+          CelebrationEvent.rankUp(bodyPart: BodyPart.chest, newRank: 10),
+          CelebrationEvent.titleUnlock(slug: 'chest_r5_initiate_of_the_forge'),
+          CelebrationEvent.titleUnlock(slug: 'chest_r10_plate_bearer'),
+          CelebrationEvent.levelUp(newLevel: 5),
+        ],
+      );
+      expect(result.queue, hasLength(3));
+      expect(result.queue[0], isA<RankUpEvent>());
+      // Two title slots survived (slot 3 reserved + spillover); level-up
+      // dropped to silent absorption.
+      expect(result.queue.whereType<TitleUnlockEvent>(), hasLength(2));
+      expect(result.queue.whereType<LevelUpEvent>(), isEmpty);
+      // No rank-up overflow (the single rank-up survived).
+      expect(result.overflow, isNull);
+    });
+
+    test(
+      'BUG-017 regression: chest R4→R5 finish (rank-up + level-up + title + '
+      'class-change + first-awakening) keeps the title in the visible queue',
+      () {
+        // E2E rank-up-celebration.spec.ts:431 scenario:
+        //   * pre: chest at rank 4, others rank 1
+        //   * one bench set crosses chest to rank 5
+        //   * derived character level rolls 1 → 2
+        //   * dominant-class flips Initiate → Bulwark
+        //   * shoulders awakens (bench attribution)
+        //   * chest_r5_initiate_of_the_forge title fires
+        //
+        // Builder emits 5 events. Pre-fix the queue dropped the title
+        // because the cap-at-3 reservation policy gave the third closer
+        // slot to level-up. New policy (BUG-017) reserves slot 3 for
+        // the title, which means level-up drops to silent absorption
+        // and the title sheet plays after the rank-up overlay.
+        final result = CelebrationQueue.build(
+          events: const [
+            CelebrationEvent.rankUp(bodyPart: BodyPart.chest, newRank: 5),
+            CelebrationEvent.levelUp(newLevel: 2),
+            CelebrationEvent.classChange(
+              fromClass: CharacterClass.initiate,
+              toClass: CharacterClass.bulwark,
+            ),
+            CelebrationEvent.titleUnlock(
+              slug: 'chest_r5_initiate_of_the_forge',
+            ),
+            CelebrationEvent.firstAwakening(bodyPart: BodyPart.shoulders),
+          ],
+        );
+        // First-awakening bypasses the cap and leads. Class + rank-up +
+        // title fill the 3-slot cap. Level-up drops silently (still
+        // re-derivable on the saga screen).
+        expect(result.queue, hasLength(4));
+        expect(result.queue[0], isA<FirstAwakeningEvent>());
+        expect(result.queue[1], isA<ClassChangeEvent>());
+        expect(result.queue[2], isA<RankUpEvent>());
+        expect(result.queue[3], isA<TitleUnlockEvent>());
+        expect(
+          (result.queue[3] as TitleUnlockEvent).slug,
+          'chest_r5_initiate_of_the_forge',
+        );
+        expect(result.queue.whereType<LevelUpEvent>(), isEmpty);
+        expect(result.overflow, isNull);
+      },
+    );
+
+    test(
+      'defensive: 2 ClassChangeEvents in input → only 1 surfaced (take(1) guard)',
+      () {
+        // ClassChangeEvent is structurally impossible to produce twice in
+        // one workout finish (the builder calls ClassResolver.resolve once
+        // on pre + once on post and emits at most one diff). This test pins
+        // the queue's defensive `.take(1)` so a hypothetical builder bug or
+        // future cross-session replay path cannot surface two class-change
+        // overlays in a row — the queue contract is ONE slot maximum.
+        final result = CelebrationQueue.build(
+          events: const [
+            CelebrationEvent.classChange(
+              fromClass: CharacterClass.initiate,
+              toClass: CharacterClass.bulwark,
+            ),
+            CelebrationEvent.classChange(
+              fromClass: CharacterClass.bulwark,
+              toClass: CharacterClass.sentinel,
+            ),
+          ],
+        );
+        // Only the first class-change survives (FIFO within the class bucket;
+        // the queue takes 1 and discards the rest).
+        expect(result.queue, hasLength(1));
+        expect(result.queue.first, isA<ClassChangeEvent>());
+        expect(
+          (result.queue.first as ClassChangeEvent).fromClass,
+          CharacterClass.initiate,
+        );
+        expect(
+          (result.queue.first as ClassChangeEvent).toClass,
+          CharacterClass.bulwark,
+        );
+        // Class-change overflow is NOT surfaced — the queue has no
+        // `remainingClassChanges` field because the structural guarantee
+        // makes it impossible in production.
+        expect(result.overflow, isNull);
+      },
+    );
   });
 }

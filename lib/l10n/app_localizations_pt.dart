@@ -1709,6 +1709,77 @@ class AppLocalizationsPt extends AppLocalizations {
   String get titlesSectionCrossBuild => 'DISTINÇÃO';
 
   @override
+  String get classTaglineInitiate => 'o caminho começa';
+
+  @override
+  String get classTaglineBerserker => 'a fúria responde';
+
+  @override
+  String get classTaglineBulwark => 'o pilar se move';
+
+  @override
+  String get classTaglineSentinel => 'o sentinela desperta';
+
+  @override
+  String get classTaglinePathfinder => 'o chão segura';
+
+  @override
+  String get classTaglineAtlas => 'o ombro carrega';
+
+  @override
+  String get classTaglineAnchor => 'a linha aguenta';
+
+  @override
+  String get classTaglineAscendant => 'o equilíbrio foi conquistado';
+
+  @override
+  String get classChangeOverlaySubtitle => 'Sua jornada ganhou um nome.';
+
+  @override
+  String classChangePreviousLabel(String className) {
+    return 'antes: $className';
+  }
+
+  @override
+  String classChangeOverflowMore(int count) {
+    return '+$count mais mudança de classe';
+  }
+
+  @override
+  String crossBuildHintBroadShouldered(int gap, String muscleName) {
+    return 'Domine os pilares superiores — peito, costas e ombros acima de rank 30, com dominância clara sobre membros inferiores. Falta $gap de rank em $muscleName.';
+  }
+
+  @override
+  String crossBuildHintPillarWalker(int gap) {
+    return 'Suas pernas devem falar mais alto que seus braços. Falta $gap de rank nas pernas.';
+  }
+
+  @override
+  String crossBuildHintEvenHanded(int gap, String muscleName) {
+    return 'Todo músculo no mesmo nível — nenhum elo fraco. Falta $gap de rank em $muscleName.';
+  }
+
+  @override
+  String crossBuildHintIronBound(int gap, String muscleName) {
+    return 'Peito, costas, pernas — os três pilares acima de rank 60. Falta $gap de rank em $muscleName.';
+  }
+
+  @override
+  String crossBuildHintSagaForged(int gap, String muscleName) {
+    return 'O fim da jornada começa aqui — todo atributo acima de rank 60. Falta $gap de rank em $muscleName.';
+  }
+
+  @override
+  String get crossBuildHintSatisfied =>
+      'Todas as condições atendidas — predicado satisfeito.';
+
+  @override
+  String rankUpOverflowFlipbookLabel(int count) {
+    return '+$count ranks';
+  }
+
+  @override
   String get title_chest_r5_initiate_of_the_forge_name => 'Iniciado da Forja';
 
   @override

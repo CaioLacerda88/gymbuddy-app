@@ -7,6 +7,7 @@ import '../domain/celebration_queue.dart';
 import '../models/celebration_event.dart';
 import '../models/title.dart' as rpg;
 import 'overlays/celebration_overflow_card.dart';
+import 'overlays/class_change_overlay.dart';
 import 'overlays/first_awakening_overlay.dart';
 import 'overlays/level_up_overlay.dart';
 import 'overlays/rank_up_overlay.dart';
@@ -90,9 +91,24 @@ class CelebrationPlayer {
 
   /// Default per-overlay hold time (matches the longest internal animation
   /// of [RankUpOverlay] — 1100ms — so all built-in choreography completes
-  /// before the player advances).
+  /// before the player advances). [holdFor] returns this for overlays that
+  /// don't override their own duration.
   @visibleForTesting
   static const Duration overlayHold = Duration(milliseconds: 1100);
+
+  /// Class-change overlay's choreography is 1600ms (BUG-011, Cluster 3).
+  /// The player schedules its auto-pop against [`ClassChangeOverlay.totalDuration`]
+  /// so a future tweak to the timeline cascades automatically.
+  static const Duration _classChangeHold = ClassChangeOverlay.totalDuration;
+
+  /// Per-event hold time. Default is [overlayHold]; class-change overrides
+  /// to its own longer 1600ms timeline.
+  static Duration holdFor(CelebrationEvent event) {
+    return switch (event) {
+      ClassChangeEvent() => _classChangeHold,
+      _ => overlayHold,
+    };
+  }
 
   /// Inter-event gap. Spec §13.2 — 200ms reads as "beat" rather than
   /// abrupt transition.
@@ -201,14 +217,15 @@ class CelebrationPlayer {
     final navigator = Navigator.of(context, rootNavigator: true);
 
     // Schedule the auto-pop BEFORE showDialog returns — the timer drives
-    // the close, not the dialog itself. Using `addPostFrameCallback` keeps
-    // the timer aligned with the same frame the dialog mounts on so a
-    // mock-time test can simulate the entire 1.1s + tear-down with one
-    // pump.
+    // the close, not the dialog itself. Per-event hold via [holdFor] so
+    // the class-change overlay (1600ms) gets its full choreography while
+    // the rank-up / level-up / first-awakening overlays keep their 1100ms
+    // window.
     Timer? popTimer;
+    final hold = holdFor(event);
 
     void schedulePop() {
-      popTimer = Timer(overlayHold, () {
+      popTimer = Timer(hold, () {
         if (!completer.isCompleted) {
           if (navigator.canPop()) {
             navigator.pop();
@@ -225,6 +242,11 @@ class CelebrationPlayer {
       barrierColor: switch (event) {
         // Spec §13: rank-up dims to abyss @ 0.72 for the gold-stamp moment.
         RankUpEvent() => AppColors.abyss.withValues(alpha: 0.72),
+        // Class-change: heavier dim (0.85) so the violet sigil dominates.
+        // The overlay paints its own backdrop too — both layers compose
+        // multiplicatively, but the dialog barrier is needed so the
+        // showDialog blocking semantics are correct.
+        ClassChangeEvent() => AppColors.abyss.withValues(alpha: 0.85),
         // Level-up: NO dim — stacking dim layers would oppress the eye.
         LevelUpEvent() => Colors.transparent,
         // First-awakening: NO dim (800ms compressed window, recover eyes
@@ -240,6 +262,8 @@ class CelebrationPlayer {
           bodyPart: bodyPart,
           newRank: newRank,
         ),
+        ClassChangeEvent(:final fromClass, :final toClass) =>
+          ClassChangeOverlay(fromClass: fromClass, toClass: toClass),
         LevelUpEvent(:final newLevel) => LevelUpOverlay(newLevel: newLevel),
         FirstAwakeningEvent(:final bodyPart) => FirstAwakeningOverlay(
           bodyPart: bodyPart,

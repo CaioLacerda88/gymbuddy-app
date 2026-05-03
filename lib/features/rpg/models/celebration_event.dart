@@ -2,6 +2,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'body_part.dart';
+import 'character_class.dart';
 
 part 'celebration_event.freezed.dart';
 
@@ -63,4 +64,33 @@ sealed class CelebrationEvent with _$CelebrationEvent {
   /// silently as a rune-state change on the next character-sheet read.
   const factory CelebrationEvent.firstAwakening({required BodyPart bodyPart}) =
       FirstAwakeningEvent;
+
+  /// The user's derived [CharacterClass] changed between the pre-finish and
+  /// post-finish snapshots — fires the 1600ms class-change overlay (BUG-011,
+  /// Cluster 3).
+  ///
+  /// Detection lives in [`CelebrationEventBuilder`] which compares
+  /// [`ClassResolver.resolve(pre.ranks)`] against the post-finish equivalent.
+  /// Fires on EVERY transition, not just Initiate→first — a Bulwark-to-
+  /// Ascendant cross is just as celebration-worthy as the day-1 Initiate→
+  /// Bulwark cross.
+  ///
+  /// **Why both `from` and `to` are payload, not just `to`:** the overlay
+  /// shows a small "before: {Initiate}" subtitle on the first non-Initiate
+  /// transition (PO call: gives the day-1 user a sense of "you graduated").
+  /// Subsequent class crosses suppress the fromClass display since lifters
+  /// past Initiate have a stronger sense of identity that the previous-class
+  /// line would dilute. Carrying both payload pieces keeps that branch in
+  /// the overlay (presentation), not in the event constructor.
+  ///
+  /// **Cap-at-3 priority:** the celebration queue's reservation policy
+  /// gives slot 1 to ClassChangeEvent when present (the rarest event), then
+  /// the highest rank-up, then the level-up + title closers. This event
+  /// never enters the overflow card — there's only one class change per
+  /// finish ever needs to play, and dropping it would silently delete the
+  /// rarest progression beat in the entire loop.
+  const factory CelebrationEvent.classChange({
+    required CharacterClass fromClass,
+    required CharacterClass toClass,
+  }) = ClassChangeEvent;
 }

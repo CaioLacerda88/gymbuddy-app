@@ -490,6 +490,19 @@ test.describe('Saga — class label updates after rank cross (S12)', () => {
     await completeSet(page, 0);
     await finishWorkout(page);
 
+    // BUG-011 (Cluster 3): the Initiate→Bulwark transition fires a
+    // ClassChangeOverlay (1600ms choreography) ahead of the rank-up
+    // overlay. We don't wait for it explicitly because the celebration
+    // player auto-dismisses after the timeline; the overlay surfaces
+    // and disappears within `dismissCelebrationIfPresent`'s 25s budget.
+    // Best-effort visibility check (don't fail the test if the rank-up
+    // overlay races us — the unit tests pin the queue order).
+    await page
+      .locator(CELEBRATION.classChangeOverlay)
+      .first()
+      .waitFor({ state: 'visible', timeout: 10_000 })
+      .catch(() => {});
+
     // Dismiss any celebration overlays (rank-up, level-up, title-unlock, overflow).
     await dismissCelebrationIfPresent(page, 25_000);
 

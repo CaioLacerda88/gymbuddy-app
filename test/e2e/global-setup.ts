@@ -885,12 +885,35 @@ async function seedRpgRankUpThresholdUser(supabase: SupabaseClient): Promise<voi
 }
 
 /**
- * Seed rpgMultiCelebration user:
- * chest at rank 4 boundary (≈ 187 XP); all others at rank 1 (0 XP).
- * One chest set → chest rank 5 + character level 2 + chest Rank 5 title unlock.
+ * Seed rpgMultiCelebration user (BUG-017, Cluster 3):
+ * Pre-state designed so a single bench set produces EXACTLY 3 celebration
+ * events — rank-up + level-up + title — with NO class-change and NO
+ * first-awakening overlay sneaking in. The pre-fix seed (chest R4→R5)
+ * triggered both a class-change (Initiate→Bulwark) and a shoulders
+ * first-awakening alongside the intended trio, and the cap-at-3 queue
+ * silently dropped the title.
  *
- * Rank 4 threshold = 60 × (1.10^3 - 1) / 0.10 ≈ 198.6 XP.
- * We seed chest at 185 XP so one working set reliably crosses rank 4 → 5.
+ * Pre-state:
+ *   * chest:                rank 9 (810 XP — just below rank-10 cumulative 815)
+ *   * back, legs, shoulders: rank 2 (65 XP each — past rank-2 cumulative 60)
+ *   * arms, core:           rank 1 (1 XP each — > 0 prevents first-awakening
+ *                                    if attribution touches them)
+ *
+ * Workout: one bench set @ 80 kg × 5 reps (≈ 30 XP to chest).
+ *
+ * Post-state derivation:
+ *   * chest: 810 + ~30 = ~840 XP, rank 10 → RankUpEvent(chest, 10)
+ *   * sum_pre = 9 + 2 + 2 + 2 + 1 + 1 = 17, level = floor(11/4) + 1 = 3
+ *   * sum_post = 10 + 2 + 2 + 2 + 1 + 1 = 18, level = floor(12/4) + 1 = 4
+ *     → LevelUpEvent(4)
+ *   * pre-class: max=9 (chest), min=1, ratio>30%, dominant=chest = Bulwark
+ *     post-class: max=10 (chest), min=1, ratio>30%, dominant=chest = Bulwark
+ *     → NO class change
+ *   * shoulders/arms/core all have pre-XP > 0 → NO first-awakening
+ *   * chest_r10_plate_bearer title fires (threshold 10, in (9, 10])
+ *
+ * Final queue: [rankUp(chest, 10), levelUp(4), titleUnlock(chest_r10)]
+ * Exactly fits cap-at-3 — no overflow, no silent drops.
  */
 async function seedRpgMultiCelebrationUser(supabase: SupabaseClient): Promise<void> {
   const email = 'e2e-rpg-multi-celebration@test.local';
@@ -927,19 +950,21 @@ async function seedRpgMultiCelebrationUser(supabase: SupabaseClient): Promise<vo
     { onConflict: 'id' },
   );
 
-  // chest at 185 XP (rank 3, near rank-4 threshold 198.6 XP → add one set → rank 4? No).
-  // Actually we need rank 4 → 5. Rank 5 cumulative ≈ 278.46 XP.
-  // Rank 4 starts at cumulative 198.6 XP. We seed chest at 270 XP (rank 4, near R5).
-  // Then: character level with chest=4, others=1:
-  //   level = floor((4 + 5×1 - 6) / 4) + 1 = floor(3/4) + 1 = 1
-  // After rank-up to 5: level = floor((5 + 5×1 - 6) / 4) + 1 = floor(4/4) + 1 = 2
-  // So seeding chest at 270 XP → one set → chest R5 + level 2 + title unlock.
-  const bodyParts = ['chest', 'back', 'legs', 'shoulders', 'arms', 'core'];
-  for (const bp of bodyParts) {
-    const xp = bp === 'chest' ? 270 : 0;
-    const rank = bp === 'chest' ? 4 : 1;
+  // BUG-017 seed shape — see doc comment above for the full derivation.
+  // Three rank-2 body parts + two rank-1 with > 0 XP avoid the first-
+  // awakening overlay; chest at rank 9 with chest already dominant
+  // avoids the Initiate→Bulwark class change.
+  const bodyPartSeed: Record<string, { xp: number; rank: number }> = {
+    chest:     { xp: 810, rank: 9 },
+    back:      { xp: 65,  rank: 2 },
+    legs:      { xp: 65,  rank: 2 },
+    shoulders: { xp: 65,  rank: 2 },
+    arms:      { xp: 1,   rank: 1 },
+    core:      { xp: 1,   rank: 1 },
+  };
+  for (const [bp, seed] of Object.entries(bodyPartSeed)) {
     const { error } = await supabase.from('body_part_progress').upsert(
-      { user_id: userId, body_part: bp, total_xp: xp, rank },
+      { user_id: userId, body_part: bp, total_xp: seed.xp, rank: seed.rank },
       { onConflict: 'user_id,body_part' },
     );
     if (error) {
@@ -968,7 +993,7 @@ async function seedRpgMultiCelebrationUser(supabase: SupabaseClient): Promise<vo
 
   await seedMinimalWorkout(supabase, userId);
 
-  console.log('[global-setup] Seeded rpgMultiCelebrationUser (chest 270 XP / rank 4, others rank 1)');
+  console.log('[global-setup] Seeded rpgMultiCelebrationUser (chest 810 XP / rank 9 → R10 + level 4 + chest_r10 title; class stable, no first-awakening)');
 }
 
 /**

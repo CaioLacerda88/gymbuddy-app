@@ -76,32 +76,67 @@ void main() {
   });
 
   group('CrossBuildTitleEvaluator — broad_shouldered', () {
-    test('upper-body floor + 2x ratio at exact boundary → fires', () {
-      // chest+back+shoulders = 90 = 2 * (legs+core = 45). All three upper
-      // tracks at the 30 floor. The ratio uses `>=` so equality fires.
-      final result = CrossBuildTitleEvaluator.evaluate(
-        _ranks(chest: 30, back: 30, shoulders: 30, legs: 30, core: 15),
-      );
-      expect(result, contains('broad_shouldered'));
-    });
+    test(
+      'upper-body floor + ratio at exact 1.6x boundary → fires (BUG-015)',
+      () {
+        // BUG-015 rebalance (2026-05-02): the predicate is now
+        // `upper * 10 >= lower * 16` (i.e. upper >= 1.6 * lower). At the exact
+        // boundary upper = 96, lower = 60 → 96 * 10 = 960, 60 * 16 = 960 →
+        // equality fires (the predicate uses `>=`). Each upper track also
+        // clears the per-track floor of 30.
+        final result = CrossBuildTitleEvaluator.evaluate(
+          _ranks(chest: 32, back: 32, shoulders: 32, legs: 30, core: 30),
+        );
+        expect(result, contains('broad_shouldered'));
+      },
+    );
 
     test('chest below 30 (others above) → does not fire', () {
       // The per-track upper-body floor short-circuits before the ratio.
       // chest=29 fails the floor even though the sum (29+30+30=89) still
-      // beats 2*(20+10=30) → 60.
+      // beats 1.6 * (20+10=30) = 48.
       final result = CrossBuildTitleEvaluator.evaluate(
         _ranks(chest: 29, back: 30, shoulders: 30, legs: 20, core: 10),
       );
       expect(result, isNot(contains('broad_shouldered')));
     });
 
-    test('all upper tracks at 30 but ratio just under 2x → does not fire', () {
-      // chest+back+shoulders = 90, legs+core = 46 → 2 * 46 = 92 > 90.
-      // The ratio is < 2x, so the predicate fails despite the floors.
+    test(
+      'all upper tracks at 30 but ratio just under 1.6x → does not fire (BUG-015)',
+      () {
+        // upper = 90, lower = 57 → 90 * 10 = 900, 57 * 16 = 912 → 900 < 912.
+        // 1.5789...× is just under 1.6×, so the predicate fails by a hair
+        // while every upper track still clears the rank-30 floor.
+        final result = CrossBuildTitleEvaluator.evaluate(
+          _ranks(chest: 30, back: 30, shoulders: 30, legs: 30, core: 27),
+        );
+        expect(result, isNot(contains('broad_shouldered')));
+      },
+    );
+
+    test(
+      'ratio just over 1.6x (1.61x) → fires (BUG-015 boundary upper bound)',
+      () {
+        // upper = 96, lower = 59 → 96 * 10 = 960, 59 * 16 = 944 → 960 >= 944.
+        // Slightly above 1.6× (1.6271...×) — predicate fires.
+        final result = CrossBuildTitleEvaluator.evaluate(
+          _ranks(chest: 32, back: 32, shoulders: 32, legs: 30, core: 29),
+        );
+        expect(result, contains('broad_shouldered'));
+      },
+    );
+
+    test('realistic upper-specialist build (PO target) → fires (BUG-015)', () {
+      // PO scenario: typical Brazilian academy lifter who pushes/pulls
+      // 3-4×/week and legs 1×/week. With chest/back/shoulders at 50 each
+      // (upper = 150) and legs at 60 + core at 30 (lower = 90), the old
+      // 2× predicate failed (2*90 = 180 > 150) while 1.6× passes
+      // (1.6*90 = 144 < 150). This is the realistic-build case the
+      // rebalance was specifically chosen to admit.
       final result = CrossBuildTitleEvaluator.evaluate(
-        _ranks(chest: 30, back: 30, shoulders: 30, legs: 30, core: 16),
+        _ranks(chest: 50, back: 50, shoulders: 50, legs: 60, core: 30),
       );
-      expect(result, isNot(contains('broad_shouldered')));
+      expect(result, contains('broad_shouldered'));
     });
   });
 
@@ -304,6 +339,177 @@ void main() {
       );
       ranks[BodyPart.cardio] = 99;
       expect(CrossBuildTitleEvaluator.evaluate(ranks), contains('saga_forged'));
+    });
+
+    // -------------------------------------------------------------------------
+    // BUG-014 (Cluster 3) — gapHintFor cross-build progress hints
+    // -------------------------------------------------------------------------
+    group('gapHintFor — cross-build progress hints (BUG-014)', () {
+      test('pillar_walker: surfaces gap to legs floor 40', () {
+        final hint = CrossBuildTitleEvaluator.gapHintFor(
+          'pillar_walker',
+          _ranks(legs: 32),
+        );
+        expect(hint, isNotNull);
+        expect(hint!.bodyPart, BodyPart.legs);
+        expect(hint.gap, 8);
+      });
+
+      test(
+        'pillar_walker: returns null when legs already clears the floor',
+        () {
+          // legs >= 40 → predicate satisfied along this axis. UI falls back
+          // to "predicate satisfied" copy.
+          expect(
+            CrossBuildTitleEvaluator.gapHintFor(
+              'pillar_walker',
+              _ranks(legs: 50, arms: 1),
+            ),
+            isNull,
+          );
+        },
+      );
+
+      test(
+        'broad_shouldered: surfaces smallest gap among chest/back/shoulders',
+        () {
+          // chest=20 (gap 10), back=15 (gap 15), shoulders=29 (gap 1). The
+          // smallest gap is shoulders at 1.
+          final hint = CrossBuildTitleEvaluator.gapHintFor(
+            'broad_shouldered',
+            _ranks(chest: 20, back: 15, shoulders: 29),
+          );
+          expect(hint, isNotNull);
+          expect(hint!.bodyPart, BodyPart.shoulders);
+          expect(hint.gap, 1);
+        },
+      );
+
+      test(
+        'broad_shouldered: returns null when all three upper guards clear floor',
+        () {
+          // All three >= 30. Even if the ratio fails, the gap-along-floor
+          // axis is satisfied → no body-part-floor hint to surface.
+          expect(
+            CrossBuildTitleEvaluator.gapHintFor(
+              'broad_shouldered',
+              _ranks(chest: 30, back: 30, shoulders: 30),
+            ),
+            isNull,
+          );
+        },
+      );
+
+      test('even_handed: surfaces single body part furthest from floor 30', () {
+        // arms=10 (gap 20), core=29 (gap 1), others=35. The largest gap
+        // is arms at 20.
+        final hint = CrossBuildTitleEvaluator.gapHintFor(
+          'even_handed',
+          _ranks(
+            chest: 35,
+            back: 35,
+            legs: 35,
+            shoulders: 35,
+            arms: 10,
+            core: 29,
+          ),
+        );
+        expect(hint, isNotNull);
+        expect(hint!.bodyPart, BodyPart.arms);
+        expect(hint.gap, 20);
+      });
+
+      test('iron_bound: surfaces smallest gap among chest/back/legs to 60', () {
+        // chest=50 (gap 10), back=40 (gap 20), legs=58 (gap 2). Smallest
+        // gap is legs at 2.
+        final hint = CrossBuildTitleEvaluator.gapHintFor(
+          'iron_bound',
+          _ranks(chest: 50, back: 40, legs: 58),
+        );
+        expect(hint, isNotNull);
+        expect(hint!.bodyPart, BodyPart.legs);
+        expect(hint.gap, 2);
+      });
+
+      test('saga_forged: surfaces single body part furthest from floor 60', () {
+        // arms=20 (gap 40), others=60. arms is furthest.
+        final hint = CrossBuildTitleEvaluator.gapHintFor(
+          'saga_forged',
+          _ranks(
+            chest: 60,
+            back: 60,
+            legs: 60,
+            shoulders: 60,
+            arms: 20,
+            core: 60,
+          ),
+        );
+        expect(hint, isNotNull);
+        expect(hint!.bodyPart, BodyPart.arms);
+        expect(hint.gap, 40);
+      });
+
+      test('unknown slug → returns null (defensive)', () {
+        expect(
+          CrossBuildTitleEvaluator.gapHintFor('not_a_real_slug', _ranks()),
+          isNull,
+        );
+      });
+
+      test(
+        'empty ranks map → defaults all body parts to rank 1, hints compute correctly',
+        () {
+          // Brand-new user: the ranks map may be empty (no rows in
+          // body_part_progress yet). The evaluator uses `ranks[bp] ?? 1`
+          // so every missing entry projects to rank 1 — matching the SQL
+          // default-row contract. The hints must still return a meaningful
+          // gap rather than crashing or returning null.
+          //
+          // pillar_walker: legs defaults to 1, floor=40 → gap=39.
+          final hint = CrossBuildTitleEvaluator.gapHintFor('pillar_walker', {});
+          expect(hint, isNotNull);
+          expect(hint!.bodyPart, BodyPart.legs);
+          expect(hint.gap, 39); // 40 - 1
+
+          // iron_bound: chest defaults to 1, back to 1, legs to 1.
+          // Smallest gap = 59 (60 - 1) for all three — first-found
+          // tie-break selects chest (first in the iteration order of the
+          // `parts` list: [chest, back, legs]).
+          final ironHint = CrossBuildTitleEvaluator.gapHintFor(
+            'iron_bound',
+            {},
+          );
+          expect(ironHint, isNotNull);
+          expect(ironHint!.bodyPart, BodyPart.chest);
+          expect(ironHint.gap, 59); // 60 - 1
+        },
+      );
+
+      test('rank=0 explicit entry → treated as 0, gap computed correctly', () {
+        // Defensive: the domain never produces rank 0 (SQL default is 1)
+        // but if the caller explicitly passes 0 the function must not
+        // crash. `_smallestGapAmong` does NOT use the ?? 1 fallback —
+        // it reads directly from the passed `ranks` map (which may
+        // contain an explicit 0). gap = floor - 0 = floor.
+        final hint = CrossBuildTitleEvaluator.gapHintFor('pillar_walker', {
+          BodyPart.legs: 0,
+        });
+        expect(hint, isNotNull);
+        expect(hint!.bodyPart, BodyPart.legs);
+        // floor is 40, rank is 0 → gap is 40.
+        expect(hint.gap, 40);
+      });
+
+      test('value-equal hints compare equal (toString + hashCode)', () {
+        const a = CrossBuildHint(bodyPart: BodyPart.chest, gap: 5);
+        const b = CrossBuildHint(bodyPart: BodyPart.chest, gap: 5);
+        const c = CrossBuildHint(bodyPart: BodyPart.chest, gap: 6);
+        expect(a, equals(b));
+        expect(a.hashCode, equals(b.hashCode));
+        expect(a, isNot(equals(c)));
+        expect(a.toString(), contains('chest'));
+        expect(a.toString(), contains('5'));
+      });
     });
 
     test('missing entries default to rank 1', () {

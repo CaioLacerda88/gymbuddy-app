@@ -8,6 +8,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:repsaga/features/rpg/ui/overlays/celebration_overflow_card.dart';
+import 'package:repsaga/features/rpg/ui/overlays/rank_up_overlay.dart';
 
 import '../../../../helpers/test_material_app.dart';
 
@@ -29,22 +30,31 @@ Widget _wrap({
 
 void main() {
   group('CelebrationOverflowCard', () {
-    testWidgets('renders pluralized "N more rank-ups" copy', (tester) async {
+    testWidgets('renders flipbook label "+{N} ranks" (BUG-013)', (
+      tester,
+    ) async {
+      // BUG-013 (Cluster 3): the text "{N} more rank-ups — open Saga"
+      // was replaced with a mini-flipbook (3 cycling muscle sigils) +
+      // a Rajdhani 700 24sp "+{N} ranks" label. The "open Saga"
+      // affordance moved to the AOM accessible label so existing E2E
+      // selectors still find the card by accessible name.
       await tester.pumpWidget(_wrap(count: 2));
       await tester.pump();
 
-      expect(find.textContaining('2'), findsWidgets);
-      expect(find.textContaining('rank-ups'), findsOneWidget);
-      expect(find.textContaining('Saga'), findsOneWidget);
+      expect(find.text('+2 ranks'), findsOneWidget);
     });
 
-    testWidgets('renders singular form when overflowCount == 1', (
+    testWidgets('renders the same "+{N} ranks" label for singular count', (
       tester,
     ) async {
+      // English copy ships with a fixed plural form "ranks" — short and
+      // gym-vernacular. Singular is rare here (overflow only triggers
+      // when 4+ rank-ups fire) but pin the contract: count == 1 still
+      // reads cleanly.
       await tester.pumpWidget(_wrap(count: 1));
       await tester.pump();
 
-      expect(find.textContaining('1 more rank-up'), findsOneWidget);
+      expect(find.text('+1 ranks'), findsOneWidget);
     });
 
     testWidgets('renders muted "Tap to continue" hint for discoverability', (
@@ -83,6 +93,20 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
     });
+
+    testWidgets(
+      'embeds the RankUpOverflowFlipbook with three muscle sigils (BUG-013)',
+      (tester) async {
+        // The flipbook is the visual hero of the card — three muscle
+        // SVG sigils cycling left-to-right. Find by widget type rather
+        // than by SVG string so the test survives an asset re-pathing.
+        await tester.pumpWidget(_wrap(count: 5));
+        await tester.pump();
+
+        expect(find.byType(RankUpOverflowFlipbook), findsOneWidget);
+        expect(find.text('+5 ranks'), findsOneWidget);
+      },
+    );
 
     testWidgets('does NOT auto-dismiss after unmount', (tester) async {
       var dismissed = 0;

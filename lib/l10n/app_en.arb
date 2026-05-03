@@ -1416,6 +1416,90 @@
   "titlesSectionCrossBuild": "DISTINCTION",
   "@titlesSectionCrossBuild": { "description": "Phase 18e titles screen section header for cross-build distinction titles (Pillar-Walker, Saga-Forged, etc.)." },
 
+  "classTaglineInitiate": "the path begins",
+  "@classTaglineInitiate": { "description": "BUG-011 class-change overlay tagline for CharacterClass.initiate. Short declarative phrase, lowercase. Brand voice: masculine-emphatic. Used as `classChangeOverlayHeadline(className, tagline)` formatting." },
+  "classTaglineBerserker": "the fury answers",
+  "@classTaglineBerserker": { "description": "BUG-011 class-change overlay tagline for CharacterClass.berserker (arms-dominant)." },
+  "classTaglineBulwark": "the pillar moves",
+  "@classTaglineBulwark": { "description": "BUG-011 class-change overlay tagline for CharacterClass.bulwark (chest-dominant). PO example." },
+  "classTaglineSentinel": "the watcher wakes",
+  "@classTaglineSentinel": { "description": "BUG-011 class-change overlay tagline for CharacterClass.sentinel (back-dominant). PO example." },
+  "classTaglinePathfinder": "the ground holds",
+  "@classTaglinePathfinder": { "description": "BUG-011 class-change overlay tagline for CharacterClass.pathfinder (legs-dominant)." },
+  "classTaglineAtlas": "the shoulder carries",
+  "@classTaglineAtlas": { "description": "BUG-011 class-change overlay tagline for CharacterClass.atlas (shoulders-dominant). Brand voice update (Cluster-3 review 2026-05-02): 'the sky bends' read as too soft for a shoulder-dominant archetype; 'the shoulder carries' is direct + load-bearing." },
+  "classTaglineAnchor": "the line holds",
+  "@classTaglineAnchor": { "description": "BUG-011 class-change overlay tagline for CharacterClass.anchor (core-dominant)." },
+  "classTaglineAscendant": "the balance was conquered",
+  "@classTaglineAscendant": { "description": "BUG-011 class-change overlay tagline for CharacterClass.ascendant (balanced — rare, prestigious). Brand voice update (Cluster-3 review 2026-05-02): 'the balance is rare' was a state, not an action; 'the balance was conquered' is declarative past-tense as completed mastery, matching the action-driven voice of the other taglines." },
+
+  "classChangeOverlaySubtitle": "Your journey has earned a name.",
+  "@classChangeOverlaySubtitle": { "description": "BUG-011 class-change overlay subtitle (Inter 14sp textDim) — appears at t=1400-1600ms beneath the class name." },
+  "classChangePreviousLabel": "before: {className}",
+  "@classChangePreviousLabel": {
+    "description": "BUG-011 class-change overlay previous-class line. Only shown on the Initiate→first transition; later class-changes don't surface fromClass. Lowercase 'before' is intentional — reads as a footnote, not a heading.",
+    "placeholders": {
+      "className": { "type": "String", "example": "Initiate" }
+    }
+  },
+  "classChangeOverflowMore": "+{count} more class change",
+  "@classChangeOverflowMore": {
+    "description": "BUG-011 condensed overflow line when multiple class changes fire in one workout — exceedingly rare (would require multiple class crosses in a single finish). Singular 'class change' is correct since {count} is always 1+ additional after the first overlay fires; English doesn't pluralize 'change' here.",
+    "placeholders": {
+      "count": { "type": "int", "example": "1" }
+    }
+  },
+
+  "crossBuildHintBroadShouldered": "Master the upper pillars — chest, back, and shoulders above rank 30, with clear dominance over the lower body. {gap} more rank in {muscleName}.",
+  "@crossBuildHintBroadShouldered": {
+    "description": "BUG-014 cross-build progress hint for broad_shouldered. Surfaces only the smallest gap among the three upper guards (chest/back/shoulders). {gap} is the rank delta to the next floor; {muscleName} is the localized body-part name (e.g. 'shoulders').",
+    "placeholders": {
+      "gap": { "type": "int", "example": "8" },
+      "muscleName": { "type": "String", "example": "shoulders" }
+    }
+  },
+  "crossBuildHintPillarWalker": "Your legs must speak louder than your arms. {gap} more rank in legs.",
+  "@crossBuildHintPillarWalker": {
+    "description": "BUG-014 cross-build progress hint for pillar_walker. Single body-part gap (always legs) — the predicate has a hard floor of 40 on legs.",
+    "placeholders": {
+      "gap": { "type": "int", "example": "12" }
+    }
+  },
+  "crossBuildHintEvenHanded": "Every muscle at the same level — no weak link. {gap} more rank in {muscleName}.",
+  "@crossBuildHintEvenHanded": {
+    "description": "BUG-014 cross-build progress hint for even_handed. Surfaces the single body part furthest from rank 30 (the floor every track must clear).",
+    "placeholders": {
+      "gap": { "type": "int", "example": "5" },
+      "muscleName": { "type": "String", "example": "core" }
+    }
+  },
+  "crossBuildHintIronBound": "Chest, back, legs — the three pillars above rank 60. {gap} more rank in {muscleName}.",
+  "@crossBuildHintIronBound": {
+    "description": "BUG-014 cross-build progress hint for iron_bound. Surfaces the smallest gap among the big three (chest/back/legs).",
+    "placeholders": {
+      "gap": { "type": "int", "example": "3" },
+      "muscleName": { "type": "String", "example": "legs" }
+    }
+  },
+  "crossBuildHintSagaForged": "The end of the journey starts here — every attribute above rank 60. {gap} more rank in {muscleName}.",
+  "@crossBuildHintSagaForged": {
+    "description": "BUG-014 cross-build progress hint for saga_forged. Surfaces the single body part furthest from rank 60 (the floor every track must clear).",
+    "placeholders": {
+      "gap": { "type": "int", "example": "15" },
+      "muscleName": { "type": "String", "example": "arms" }
+    }
+  },
+  "crossBuildHintSatisfied": "All conditions met — predicate satisfied.",
+  "@crossBuildHintSatisfied": { "description": "BUG-014 fallback for cross-build hints when the predicate evaluates true but the title hasn't been awarded yet (rare race window between award and UI refresh)." },
+
+  "rankUpOverflowFlipbookLabel": "+{count} ranks",
+  "@rankUpOverflowFlipbookLabel": {
+    "description": "BUG-013 mini-flipbook label rendered alongside the three cycling muscle sigils when more than 3 rank-ups fire in one workout. Plural 'ranks' is grammatically correct here — overflow always means count >= 1 additional rank-up.",
+    "placeholders": {
+      "count": { "type": "int", "example": "5" }
+    }
+  },
+
   "title_chest_r5_initiate_of_the_forge_name": "Initiate of the Forge",
   "@title_chest_r5_initiate_of_the_forge_name": { "description": "Phase 18c chest R5 title display name." },
   "title_chest_r5_initiate_of_the_forge_flavor": "First sparks struck against iron.",

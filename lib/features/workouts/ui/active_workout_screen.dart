@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,9 +24,11 @@ import '../../personal_records/providers/pr_providers.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../../personal_records/models/record_type.dart';
 import '../../personal_records/ui/widgets/pr_type_icon.dart';
+import '../../auth/providers/auth_providers.dart';
 import '../../routines/providers/notifiers/routine_list_notifier.dart';
 import '../../rpg/providers/earned_titles_provider.dart';
 import '../../rpg/ui/celebration_player.dart';
+import '../../rpg/ui/saga_intro_gate.dart';
 import '../../weekly_plan/providers/weekly_plan_provider.dart';
 import '../providers/workout_providers.dart';
 import '../providers/workout_history_providers.dart';
@@ -377,12 +380,68 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
       if (!wasSavedOffline && mounted) {
         final celebration = notifier.consumeLastCelebration();
         if (celebration != null) {
-          // Whether the user already had earned titles BEFORE this finish.
-          // The player uses this to decide which unlock — if any — gets the
-          // first-ever heroGold treatment on the half-sheet.
+          // BUG-012 (Cluster 3) sequencing — saga intro overlay must
+          // complete BEFORE celebration overlays render. If the intro is
+          // already dismissed (returning user, Hive flag set), the
+          // sequencer's future resolves immediately and we proceed
+          // without delay. If it's still up (first workout for a fresh
+          // user), we wait for the BEGIN tap, then a 200ms gap so the
+          // eye doesn't get a hard cut between the intro dismiss and
+          // the first celebration frame.
+          //
+          // Cluster-3 review (2026-05-02): a 5s timeout is layered on
+          // top of the wait. The active-workout screen is rendered
+          // OUTSIDE the shell route (no SagaIntroGate above it), so
+          // there are paths — most notably "fresh user signs in →
+          // immediately starts a workout without ever returning to
+          // home" — where the gate never gets a chance to mount, never
+          // kicks the retro backfill, and therefore never resolves the
+          // sequencer. Without the timeout, the await blocks forever
+          // and the celebration queue is silently dropped (the regression
+          // qa-engineer caught: 17 E2E tests timing out at finishWorkout()).
+          // 5 s is generous enough that a real intro dismiss path
+          // (BEGIN tap on a slow device) still falls inside the window
+          // — typical fresh-user dismissal completes in ~1-2 s.
+          //
+          // CRITICAL — provider reads must happen BEFORE the await. The
+          // notifier transitioned to AsyncData(null) inside finishWorkout(),
+          // which causes ActiveWorkoutScreen.build to swap this body out
+          // for the CircularProgressIndicator scaffold ON THE NEXT FRAME.
+          // That dispose runs while we're awaiting the sequencer, so any
+          // post-await `ref.read(...)` would throw a StateError on a
+          // disposed ConsumerStatefulWidget. Snapshotting these now keeps
+          // the celebration code path independent of this State's lifecycle
+          // — celebrations play on rootContext (root navigator), not on
+          // this body's context, and the data they need is captured before
+          // we yield.
+          final userId = ref.read(currentUserIdProvider);
           final priorEarned = ref.read(earnedTitlesProvider).value ?? const [];
           final hasPriorEarnedTitles = priorEarned.isNotEmpty;
           final catalog = ref.read(titleCatalogProvider).value ?? const [];
+
+          if (userId != null) {
+            await SagaIntroSequencer.waitForIntroDismissed(userId).timeout(
+              const Duration(seconds: 5),
+              onTimeout: () {
+                developer.log(
+                  'SagaIntroSequencer timed out — proceeding with '
+                  'celebration without intro dismissal signal',
+                  name: 'CelebrationPlayer',
+                );
+              },
+            );
+            await Future<void>.delayed(const Duration(milliseconds: 200));
+          }
+
+          // Mounted check on rootContext (NOT `mounted` — this body's
+          // State has likely been disposed during the await above; see
+          // capture comment). rootContext is the root navigator's context
+          // which stays alive for the full app session, so this guard
+          // only fires if the app is being torn down (process exit).
+          if (!rootContext.mounted) {
+            _isFinishHandled = false;
+            return;
+          }
           final celebrationResult = await CelebrationPlayer.play(
             rootContext, // ignore: use_build_context_synchronously — root navigator context stays alive for full app session; intentionally used across async gaps (see rootContext capture comment above)
             result: celebration,

@@ -16,6 +16,7 @@
 ///   - dismiss persists `saga_intro_seen:` and prevents re-show
 library;
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -253,6 +254,188 @@ void main() {
     test('defaults to false for an untouched user', () {
       expect(hasRunRetroForUser('user-001'), isFalse);
     });
+  });
+
+  // ---------------------------------------------------------------------------
+  // BUG-012 (Cluster 3) — saga-intro / celebration sequencing
+  //
+  // The sequencer ensures the celebration queue waits for intro dismissal
+  // before draining. Two paths:
+  //   * already-seen user: future resolves on first gate mount
+  //   * fresh user: future resolves on dismiss (BEGIN tap)
+  // ---------------------------------------------------------------------------
+  group('SagaIntroSequencer (BUG-012)', () {
+    setUp(() {
+      // Reset between tests so each test gets a fresh per-user completer.
+      SagaIntroSequencer.resetForTesting();
+    });
+
+    testWidgets(
+      'returning user (intro already seen) → sequencer resolves immediately on '
+      'first gate mount',
+      (tester) async {
+        await tester.runAsync(() async {
+          await markSagaIntroSeenForUser('seq-1');
+          final box = Hive.box<dynamic>('user_prefs');
+          await box.put('saga_retro_run:seq-1', true);
+        });
+
+        // Subscribe BEFORE pumping the gate so we observe the resolution
+        // on the first build (idempotency check).
+        final future = SagaIntroSequencer.waitForIntroDismissed('seq-1');
+        var resolved = false;
+        unawaited(future.then((_) => resolved = true));
+
+        final repo = _FakeRpgRepository();
+        await _pumpGate(tester, userId: 'seq-1', repo: repo);
+        // Drain microtasks so the .then callback fires.
+        await tester.runAsync(() async {});
+        await tester.pump();
+
+        expect(resolved, isTrue);
+      },
+    );
+
+    testWidgets(
+      'fresh user → sequencer remains pending until BEGIN tap, then resolves',
+      (tester) async {
+        await tester.runAsync(() async {
+          final box = Hive.box<dynamic>('user_prefs');
+          await box.put('saga_retro_run:seq-2', true);
+        });
+
+        var resolved = false;
+        unawaited(
+          SagaIntroSequencer.waitForIntroDismissed(
+            'seq-2',
+          ).then((_) => resolved = true),
+        );
+
+        final repo = _FakeRpgRepository();
+        await _pumpGate(tester, userId: 'seq-2', repo: repo);
+        // Intro is showing — sequencer should NOT have resolved yet.
+        await tester.runAsync(() async {});
+        await tester.pump();
+        expect(resolved, isFalse);
+
+        // Dismiss the intro via the full step sequence.
+        await tester.runAsync(() async {
+          await tester.tap(find.text('NEXT'));
+          await tester.pump();
+          await tester.tap(find.text('NEXT'));
+          await tester.pump();
+          await tester.tap(find.text('BEGIN'));
+          await tester.pump();
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+          await tester.pump();
+        });
+
+        // Sequencer fires on dismiss.
+        expect(resolved, isTrue);
+      },
+    );
+
+    testWidgets('duplicate dismissals are no-ops (idempotent completer)', (
+      tester,
+    ) async {
+      // The completer is single-fire by construction. A double-dismiss
+      // (e.g. session re-mount after Hive flag was set in another tab)
+      // must not throw. This pins the safe behaviour.
+      SagaIntroSequencer.markIntroDismissedForSequencer('seq-3');
+      // Should not throw on the second call.
+      SagaIntroSequencer.markIntroDismissedForSequencer('seq-3');
+
+      final future = SagaIntroSequencer.waitForIntroDismissed('seq-3');
+      // Future is already complete.
+      await expectLater(future, completes);
+    });
+
+    // Cluster-3 review (2026-05-02): the active-workout screen layers a
+    // 5-second `.timeout(...)` on top of `waitForIntroDismissed` so the
+    // celebration queue can still drain when the gate never gets a chance
+    // to mount (e.g. fresh user signs in → immediately starts a workout
+    // without ever returning to the home shell — gate never builds, never
+    // kicks retro, never marks the sequencer complete).
+    //
+    // This test pins the contract that the same `Future<void>` returned
+    // by `waitForIntroDismissed` is `.timeout(...)`-friendly: the await
+    // resolves cleanly via the `onTimeout` callback rather than hanging
+    // or throwing past the workout screen's 5 s window.
+    test('waitForIntroDismissed plays nicely with .timeout — onTimeout '
+        'callback fires when sequencer never resolves', () async {
+      // Subscribe but never mark complete. Use a 50 ms timeout so the
+      // test stays fast; the production code uses 5 s for the same
+      // structural reason.
+      var timedOut = false;
+      await SagaIntroSequencer.waitForIntroDismissed('seq-timeout').timeout(
+        const Duration(milliseconds: 50),
+        onTimeout: () {
+          timedOut = true;
+        },
+      );
+      expect(
+        timedOut,
+        isTrue,
+        reason:
+            'Future.timeout must invoke onTimeout when the underlying '
+            'completer never resolves. If this fails, the active-workout '
+            'screen 5-second fallback (Cluster-3 review fix for the '
+            '17-E2E-test timeout regression) will hang the celebration '
+            'queue forever.',
+      );
+    });
+
+    testWidgets(
+      'per-user isolation: user A completing intro does not affect user B '
+      '(sign-out → sign-in scenario)',
+      (tester) async {
+        // Production scenario: user A uses the app, dismisses the intro
+        // (completer for "user-A" is resolved). User A signs out. User B
+        // signs in on the same device. User B has NOT dismissed the intro
+        // yet — their completer must start PENDING, not inherit user A's
+        // completed state.
+        //
+        // Why this matters: `_completersByUser` is a static map keyed by
+        // userId. Each key is independent, so user B's completer is lazily
+        // created the first time `waitForIntroDismissed('user-B')` is
+        // called — it never touches user A's slot. This test pins that
+        // isolation contract.
+
+        // User A: mark intro dismissed (simulates prior session or sign-out
+        // then sign back in for user A).
+        SagaIntroSequencer.markIntroDismissedForSequencer('switch-user-A');
+        final futureA = SagaIntroSequencer.waitForIntroDismissed(
+          'switch-user-A',
+        );
+        await tester.runAsync(() async {});
+        await tester.pump();
+        // User A's future must be complete.
+        var resolvedA = false;
+        unawaited(futureA.then((_) => resolvedA = true));
+        await tester.runAsync(() async {});
+        await tester.pump();
+        expect(resolvedA, isTrue);
+
+        // User B: new user signs in. Their completer has never been touched.
+        var resolvedB = false;
+        unawaited(
+          SagaIntroSequencer.waitForIntroDismissed(
+            'switch-user-B',
+          ).then((_) => resolvedB = true),
+        );
+        await tester.runAsync(() async {});
+        await tester.pump();
+        // User B's future must still be PENDING — user A's resolved state
+        // must NOT have leaked across to user B's key.
+        expect(resolvedB, isFalse);
+
+        // Confirm resolution fires when user B's gate marks dismissed.
+        SagaIntroSequencer.markIntroDismissedForSequencer('switch-user-B');
+        await tester.runAsync(() async {});
+        await tester.pump();
+        expect(resolvedB, isTrue);
+      },
+    );
   });
 
   // The ladder is the source of truth for the saga intro overlay's
