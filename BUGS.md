@@ -691,11 +691,36 @@ bit-for-bit, single-instance discard-coordinator invariant holds, clean
 coordinator boundaries with no cross-contamination), 2274 unit/widget
 tests, 9 vitality integration tests, and 212 E2E tests all green.
 
-### BUG-037 [P2] — `profile_settings_screen.dart` is 801 lines, mixes 5 responsibilities
+### BUG-037 [P2] — ~~`profile_settings_screen.dart` is 801 lines, mixes 5 responsibilities~~ RESOLVED in PR #140
 
 **Where:** `lib/features/profile/ui/profile_settings_screen.dart`
 **Fix:** Extract per-section widgets (language picker, crash report toggle,
 account deletion, social links).
+
+**Resolution (Cluster 8 PR C):** Decomposed the 801-line monolith into a
+169-line orchestration shell (79% reduction). Nine section widgets extracted
+to `lib/features/profile/ui/widgets/`:
+- `identity_card.dart` — `IdentityCard` + `_LoadingPlaceholder` + the public
+  `showEditDisplayNameDialog` helper (was top-level `_showEditNameDialog`)
+- `stats_row.dart` — `StatsRow` + `_StatCard`
+- `weight_unit_toggle.dart` — `WeightUnitToggle` (kg/lbs SegmentedButton)
+- `weekly_goal_row.dart` — `WeeklyGoalRow` with private `_showFrequencySheet`
+- `profile_language_row.dart` — `ProfileLanguageRow` triggering the existing
+  `LanguagePickerSheet`
+- `manage_data_tile.dart` — `ManageDataTile` (extracted from inline build)
+- `legal_tile.dart` — `LegalTile` (the reusable legal/privacy/TOS row)
+- `crash_reports_toggle.dart` — `CrashReportsToggle` (extracted from inline)
+- `logout_button.dart` — `LogoutButton` with private `_confirmLogout`
+
+All 10 E2E selector contracts (`profile-heading`, `profile-kg`, `profile-lbs`,
+`profile-goal-label`, `profile-goal-sheet-title`, `profile-manage-data`,
+`profile-language-row`, `profile-logout-btn`, `profile-logout-dialog`,
+`profile-cancel-btn`) preserved verbatim. Provider read patterns unchanged
+(each widget keeps its prior `ConsumerWidget` vs `StatelessWidget` type;
+`ref.watch(profileProvider)` stays at screen-level for sections that need
+the value, with `StatsRow`'s self-contained watch documented inline as
+intentional). Pure refactor — zero behavior change. 2283/2283 unit/widget
+tests pass; 16/16 E2E (`profile.spec.ts` + `manage-data.spec.ts`) pass.
 
 ### BUG-038 [P2] — `plan_management_screen.dart` is 752 lines
 
