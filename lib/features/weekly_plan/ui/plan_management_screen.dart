@@ -5,8 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/device/platform_info.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/theme/radii.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../analytics/data/analytics_repository.dart';
 import '../../analytics/data/models/analytics_event.dart';
@@ -19,6 +17,9 @@ import '../../workouts/providers/workout_history_providers.dart';
 import '../data/models/weekly_plan.dart';
 import '../providers/weekly_plan_provider.dart';
 import 'add_routines_sheet.dart';
+import 'widgets/plan_add_routine_row.dart';
+import 'widgets/plan_empty_state.dart';
+import 'widgets/plan_routine_row.dart';
 
 /// Plan management screen at `/plan/week`.
 ///
@@ -176,7 +177,7 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
         children: [
           Expanded(
             child: _bucketRoutines.isEmpty
-                ? _EmptyState(
+                ? PlanEmptyState(
                     onAddRoutines: () => _showAddSheet(allRoutines),
                     onAutoFill: () => _autoFill(allRoutines, trainingFrequency),
                   )
@@ -191,7 +192,7 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
                     itemBuilder: (context, index) {
                       if (index == _bucketRoutines.length) {
                         // Add routine row.
-                        return _AddRoutineRow(
+                        return PlanAddRoutineRow(
                           key: const ValueKey('add-routine'),
                           atSoftCap: atSoftCap,
                           bucketCount: _bucketRoutines.length,
@@ -206,7 +207,7 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
                       final name = routine?.name ?? l10n.unknownRoutine;
                       final exerciseCount = routine?.exercises.length ?? 0;
 
-                      return _RoutineRow(
+                      return PlanRoutineRow(
                         key: ValueKey(bucket.routineId),
                         index: index,
                         routineId: bucket.routineId,
@@ -496,256 +497,6 @@ class _PlanManagementScreenState extends ConsumerState<PlanManagementScreen> {
         ),
         platform: currentPlatform(),
         appVersion: currentAppVersion(),
-      ),
-    );
-  }
-}
-
-class _RoutineRow extends StatelessWidget {
-  const _RoutineRow({
-    required super.key,
-    required this.index,
-    required this.routineId,
-    required this.sequenceNumber,
-    required this.name,
-    required this.exerciseCount,
-    required this.isDone,
-    this.onDismissed,
-  });
-
-  final int index;
-  final String routineId;
-  final int sequenceNumber;
-  final String name;
-  final int exerciseCount;
-  final bool isDone;
-  final VoidCallback? onDismissed;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    // Use the theme primary color (M3 green) instead of a hardcoded hex so
-    // future brand/theme changes propagate here automatically.
-    final primary = theme.colorScheme.primary;
-
-    final content = Container(
-      margin: const EdgeInsets.only(bottom: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: isDone
-            ? primary.withValues(alpha: 0.08)
-            : theme.cardTheme.color ?? theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(kRadiusMd),
-      ),
-      child: Row(
-        children: [
-          // Sequence number or checkmark.
-          if (isDone)
-            Icon(Icons.check_circle, color: primary, size: 24)
-          else
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
-                ),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                '$sequenceNumber',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          const SizedBox(width: 12),
-          // Name and exercise count.
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: isDone ? primary : null,
-                  ),
-                ),
-                Text(
-                  l10n.exercisesCount(exerciseCount),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Drag handle (only for non-completed).
-          if (!isDone)
-            ReorderableDragStartListener(
-              index: index,
-              child: Icon(
-                Icons.drag_handle,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
-              ),
-            ),
-        ],
-      ),
-    );
-
-    if (isDone || onDismissed == null) return content;
-
-    return Dismissible(
-      key: ValueKey('dismiss-$routineId'),
-      direction: DismissDirection.endToStart,
-      onDismissed: (_) => onDismissed?.call(),
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.error,
-          borderRadius: BorderRadius.circular(kRadiusMd),
-        ),
-        child: const Icon(Icons.delete, color: AppColors.textCream),
-      ),
-      child: content,
-    );
-  }
-}
-
-class _AddRoutineRow extends StatelessWidget {
-  const _AddRoutineRow({
-    required super.key,
-    required this.atSoftCap,
-    required this.bucketCount,
-    required this.trainingFrequency,
-    required this.onTap,
-  });
-
-  final bool atSoftCap;
-  final int bucketCount;
-  final int trainingFrequency;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(kRadiusMd),
-              onTap: onTap,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: theme.colorScheme.onSurface.withValues(
-                      alpha: atSoftCap ? 0.1 : 0.2,
-                    ),
-                    width: 1,
-                  ),
-                  borderRadius: BorderRadius.circular(kRadiusMd),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.add,
-                      color: theme.colorScheme.onSurface.withValues(
-                        alpha: atSoftCap ? 0.3 : 0.55,
-                      ),
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Semantics(
-                      container: true,
-                      identifier: 'weekly-plan-add-routine-row',
-                      child: Text(
-                        l10n.addRoutine,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurface.withValues(
-                            alpha: atSoftCap ? 0.3 : 0.55,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Text(
-              atSoftCap
-                  ? l10n.plannedReadyToGo(trainingFrequency, trainingFrequency)
-                  : l10n.plannedThisWeek(bucketCount, trainingFrequency),
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.onAddRoutines, required this.onAutoFill});
-
-  final VoidCallback onAddRoutines;
-  final VoidCallback onAutoFill;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.calendar_today,
-            size: 48,
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            l10n.noRoutinesPlanned,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Semantics(
-            container: true,
-            identifier: 'weekly-plan-add-routines',
-            child: FilledButton.icon(
-              onPressed: onAddRoutines,
-              icon: const Icon(Icons.add),
-              label: Text(l10n.addRoutines),
-            ),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: onAutoFill,
-            icon: const Icon(Icons.repeat),
-            label: Text(l10n.autoFill),
-          ),
-        ],
       ),
     );
   }

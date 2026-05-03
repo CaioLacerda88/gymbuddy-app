@@ -452,7 +452,7 @@ void main() {
         addTearDown(tester.view.resetDevicePixelRatio);
 
         // Profile with trainingFrequencyPerWeek = 0 is a degenerate edge case.
-        // The _AddRoutineRow counter must not crash (no division by zero).
+        // The PlanAddRoutineRow counter must not crash (no division by zero).
         final routines = [_routine(id: 'r-001', name: 'Push Day')];
         final plan = _plan(routines: [_bucket(routineId: 'r-001', order: 1)]);
 

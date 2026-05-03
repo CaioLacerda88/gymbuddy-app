@@ -85,6 +85,63 @@ All checklist items above completed. Phase 16a external setup can proceed with `
 
 ---
 
+## Cluster 8 PR D — `plan_management_screen.dart` decomposition (BUG-038)
+
+**Branch:** `fix/cluster8-plan-management-extraction`
+**Source:** BUGS.md BUG-038 (752-line file with 3 leaf widgets and a complex Stateful screen).
+**Risk:** LOW — pure mechanical leaf extraction. The Stateful screen has critical analytics + save debounce lifecycle that must NOT be touched; extractions are limited to the three private widgets at the bottom of the file.
+
+### Goals
+
+1. Drop `plan_management_screen.dart` from 752 lines to under ~520 lines (orchestration + state lifecycle remains).
+2. Extract the three leaf widgets to `widgets/`.
+3. **DO NOT modify `_PlanManagementScreenState`'s lifecycle logic** — analytics debounce, save debounce, `_dirty`/`_seeded` gates, dispose flush, `ref.listenManual` are all load-bearing and stay verbatim.
+
+### Files to create
+
+- `widgets/plan_routine_row.dart` — `PlanRoutineRow` (currently `_RoutineRow`, 113 lines). Self-contained: name + sequence/check + drag handle + Dismissible.
+- `widgets/plan_add_routine_row.dart` — `PlanAddRoutineRow` (currently `_AddRoutineRow`, 85 lines). The bottom add-routine bordered tap target.
+- `widgets/plan_empty_state.dart` — `PlanEmptyState` (currently `_EmptyState`, 47 lines). The icon + label + add/auto-fill CTAs shown when bucket is empty.
+
+### Hard constraints (DO NOT VIOLATE)
+
+- **Selectors preserved verbatim:** `weekly-plan-title`, `weekly-plan-overflow`, `weekly-plan-clear-week`, `weekly-plan-clear-confirm`, `weekly-plan-add-routine-row`, `weekly-plan-add-routines`. The first four stay in the screen file (they wrap AppBar + dialog elements, not extracted widgets); the last two move with their widgets.
+- **ValueKeys preserved verbatim:** `ValueKey('add-routine')` (on `PlanAddRoutineRow`), `ValueKey(bucket.routineId)` (on `PlanRoutineRow`), `ValueKey('dismiss-$routineId')` (on the inner `Dismissible`). These gate Flutter's reorder + dismissible identity.
+- **Public class `PlanManagementScreen`** keeps the same import path and constructor. Routing wiring untouched.
+- **`_PlanManagementScreenState`'s lifecycle is OFF LIMITS** — analytics debounce fields, save debounce, `dispose()` flush sequence (cancel timer → flush save → flush analytics → super.dispose), `ref.listenManual(weeklyPlanProvider)` in postFrameCallback, `_savePlan` capture pattern (notifier + repo + userId + frequency), `_dirty` / `_seeded` gates — all stay verbatim. The whole point is that this State is correct and the only thing wrong is the leaf-widget bloat. Only `build`'s widget composition changes.
+- **All `const` constructors** that existed before are preserved on the promoted public classes.
+- **No new `dynamic` casts**, no swallowed errors, no new `// ignore:` directives.
+
+### Build steps (tech-lead)
+
+- [x] Read full `lib/features/weekly_plan/ui/plan_management_screen.dart` (752 lines)
+- [x] Inventory selectors + ValueKeys; confirm zero tests reference private widget names by grepping `_RoutineRow\|_AddRoutineRow\|_EmptyState` in `test/` (only one stale comment in `plan_management_screen_test.dart` line 455 — updated to `PlanAddRoutineRow`)
+- [x] Create `widgets/plan_empty_state.dart` (62 lines, smallest leaf) → analyze + test clean
+- [x] Create `widgets/plan_add_routine_row.dart` (99 lines) → analyze + test clean
+- [x] Create `widgets/plan_routine_row.dart` (129 lines) → analyze + test clean
+- [x] Update screen file imports + replace inline class refs with imported public names. Build method's `ReorderableListView` now references the three new public widgets verbatim; `_PlanManagementScreenState` lifecycle methods are byte-identical to main.
+- [x] Run `dart format . && dart analyze --fatal-infos` → 0 issues (464 files)
+- [x] Run `flutter test` → 2283/2283 passed
+- [x] Selector grep + ValueKey grep: confirm all 6 selectors + 3 ValueKey strings still present in `lib/features/weekly_plan/ui/`
+- [x] `wc -l lib/features/weekly_plan/ui/plan_management_screen.dart` → 503 lines (target <520)
+- [x] Update `tasks/WIP.md` checklist
+
+### QA gate (qa-engineer)
+
+- [ ] Selector audit: all 6 identifier strings present
+- [ ] Selector impact assessment: read `test/e2e/helpers/selectors.ts` weekly-plan section
+- [ ] Run `specs/weekly-plan.spec.ts` (or whatever spec covers this screen) — must pass
+- [ ] **Full local E2E NOT required** per CLAUDE.md ("visual-only / no flow change" — leaf widget extraction with zero state-logic / navigation / provider changes)
+
+### Acceptance
+
+- All `make ci` green
+- `wc -l lib/features/weekly_plan/ui/plan_management_screen.dart` returns < 520
+- All 6 Semantics identifiers + 3 ValueKey strings preserved verbatim
+- `_PlanManagementScreenState`'s lifecycle code (analytics debounce, save debounce, dispose, listenManual) is bit-for-bit identical to current main
+
+---
+
 ## Cluster 8 PR C — `profile_settings_screen.dart` decomposition (BUG-037)
 
 **Branch:** `fix/cluster8-profile-settings-extraction`
