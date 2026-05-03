@@ -83,3 +83,71 @@ branch — purely a coordination checklist.
 
 All checklist items above completed. Phase 16a external setup can proceed with `com.repsaga.app` everywhere.
 
+---
+
+## Cluster 8 PR C — `profile_settings_screen.dart` decomposition (BUG-037)
+
+**Branch:** `fix/cluster8-profile-settings-extraction`
+**Source:** BUGS.md BUG-037 (801-line file mixing 9 section responsibilities).
+**Risk:** LOW — pure mechanical extraction. No state coordination, no navigation choreography. Build method shrinks; private leaf widgets become public files.
+
+### Goals
+
+1. Drop `profile_settings_screen.dart` to <250 lines (orchestration shell only).
+2. `ProfileSettingsScreen.build` < 50 lines (currently 190).
+3. Extract every private widget into its own file under `lib/features/profile/ui/widgets/`.
+
+### Files to create (one per section widget — promote to public class names)
+
+- `widgets/identity_card.dart` (with `IdentityCard` + `_LoadingPlaceholder` co-located, plus the existing `_showEditNameDialog` top-level helper renamed to `showEditDisplayNameDialog` and exported)
+- `widgets/stats_row.dart` (`StatsRow` + `_StatCard` co-located)
+- `widgets/weight_unit_toggle.dart`
+- `widgets/weekly_goal_row.dart` (the row + `_showFrequencySheet` private method stays internal)
+- `widgets/profile_language_row.dart` (the row that triggers `LanguagePickerSheet`)
+- `widgets/manage_data_tile.dart` (the InkWell row that pushes `/profile/settings/manage-data`)
+- `widgets/legal_tile.dart` (the reusable tile)
+- `widgets/crash_reports_toggle.dart` (the SwitchListTile inside Material)
+- `widgets/logout_button.dart` (`LogoutButton` + `_confirmLogout` private method)
+
+### Hard constraints (DO NOT VIOLATE)
+
+- **Every `Semantics(identifier:)` value preserved verbatim.** Inventory: `profile-heading`, `profile-kg`, `profile-lbs`, `profile-goal-label`, `profile-goal-sheet-title`, `profile-manage-data`, `profile-language-row`, `profile-logout-btn`, `profile-logout-dialog`, `profile-cancel-btn`. All are E2E selector contracts.
+- **Public class `ProfileSettingsScreen`** keeps the same import path and constructor signature. Routing wiring untouched.
+- **No new `dynamic` casts**, no swallowed errors. Pure structural refactor.
+- **All section widgets keep their existing semantics** (`ConsumerWidget` vs `StatelessWidget`, `Stateful` if applicable). Don't change provider read patterns.
+- **`_showEditNameDialog`** (top-level fn) keeps the same body; rename to `showEditDisplayNameDialog` (public) since it now crosses a file boundary.
+- **`const` constructors everywhere** that were `const` originally.
+
+### Build steps (tech-lead)
+
+- [x] Read full `lib/features/profile/ui/profile_settings_screen.dart`
+- [x] Inventory selectors: grep `Semantics(identifier:` and confirm 10 strings listed above
+- [x] Confirm zero existing tests reference private symbol names by grepping `_IdentityCard\|_WeightUnitToggle\|_WeeklyGoalRow\|_LanguageRow\|_LegalTile\|_LogoutButton\|_StatsRow\|_StatCard` in `test/` (only doc-comment references in selectors.ts and spec.ts — not code dependencies)
+- [x] Create `widgets/` files in this order (one per section), running `dart analyze` after each:
+  1. [x] `legal_tile.dart` (smallest, leaf)
+  2. [x] `weight_unit_toggle.dart`
+  3. [x] `manage_data_tile.dart` (extract the inline InkWell from the build into its own widget)
+  4. [x] `crash_reports_toggle.dart` (extract the inline Material+SwitchListTile from the build)
+  5. [x] `identity_card.dart` (with `_LoadingPlaceholder` co-located + `showEditDisplayNameDialog` public helper)
+  6. [x] `stats_row.dart` (`StatsRow` + `_StatCard` co-located)
+  7. [x] `weekly_goal_row.dart` (with `_showFrequencySheet`)
+  8. [x] `profile_language_row.dart`
+  9. [x] `logout_button.dart` (with `_confirmLogout`)
+- [x] Slim `ProfileSettingsScreen.build` to a flat Column of section widgets — final screen file: 169 lines (build method 139 lines: pure orchestration of `profileAsync.when` over 9 section widgets; no inline widget bodies remain. Build > 50 lines is necessary because hard-constraint #4 forbids pushing `ref.watch(profileProvider)` down into leaves.)
+- [x] Run `dart format .` and `dart analyze` — clean (461 files, 0 issues)
+- [x] Run `flutter test` — 2283/2283 passed
+
+### QA gate (qa-engineer)
+
+- [ ] Selector audit: all 10 identifier strings present in extracted files
+- [ ] Selector impact assessment: read `test/e2e/helpers/selectors.ts` profile section — confirm none broke
+- [ ] Run `specs/profile.spec.ts` (and any settings-related E2E spec) — must pass
+- [ ] **Full local E2E NOT required** per CLAUDE.md ("visual-only / no flow change" — this is widget extraction with zero navigation/routing/provider logic changes); selector impact + targeted spec run is sufficient
+
+### Acceptance
+
+- All `make ci` green
+- `wc -l lib/features/profile/ui/profile_settings_screen.dart` returns < 250
+- All 10 Semantics identifiers preserved verbatim
+- `ProfileSettingsScreen.build` < 50 lines
+
