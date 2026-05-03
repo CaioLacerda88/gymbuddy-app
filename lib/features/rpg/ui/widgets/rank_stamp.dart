@@ -3,6 +3,10 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../models/vitality_state.dart';
+// Pulled in for the `VitalityStateColor.borderColor` extension on
+// VitalityState (rank-stamp border tint). Extension lives in ui/utils/
+// post-BUG-035 so the model file stays Flutter-agnostic.
+import '../utils/vitality_state_styles.dart';
 
 /// Circular rank badge — Rajdhani 700 numeral on the elevated [surface2]
 /// disc, with the border color driven by the body-part's [VitalityState].

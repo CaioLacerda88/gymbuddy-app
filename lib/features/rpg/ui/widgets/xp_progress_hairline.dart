@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../models/vitality_state.dart';
+// Pulled in for the `VitalityStateColor` extension that exposes
+// `state.borderColor` (BUG-035 — extension moved out of
+// models/vitality_state.dart so the model file stays Flutter-agnostic).
+import '../utils/vitality_state_styles.dart';
 
 /// 1px hairline + dot marker showing rank progress (xp_in_rank /
 /// xp_for_next_rank).

@@ -319,7 +319,7 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
       // play uninterrupted (GoRouter's go() does a full-stack replacement
       // which would instantly pop any showDialog overlay).
       _isFinishHandled = true;
-      final prResult = await notifier.finishWorkout(notes: result.notes);
+      final finishResult = await notifier.finishWorkout(notes: result.notes);
       if (!mounted) {
         _isFinishHandled = false;
         return;
@@ -336,7 +336,13 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
         return;
       }
 
-      final wasSavedOffline = notifier.savedOffline;
+      // BUG-039: read offline-queued + PR-detection outcome from the
+      // explicit return record instead of poking at notifier internals.
+      // `finishResult == null` means the early-return guards inside
+      // `finishWorkout` short-circuited (no active workout, or a concurrent
+      // finish was already in flight) — treat both as a successful no-op.
+      final wasSavedOffline = finishResult?.savedOffline ?? false;
+      final prResult = finishResult?.prResult;
 
       // Invalidate caches so stat cards and lists reflect the new workout.
       if (!wasSavedOffline) {

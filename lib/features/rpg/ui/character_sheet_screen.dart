@@ -10,6 +10,7 @@ import '../../../l10n/app_localizations.dart';
 import '../models/character_sheet_state.dart';
 import '../models/vitality_state.dart';
 import '../providers/character_sheet_provider.dart';
+import 'utils/vitality_state_styles.dart';
 import 'widgets/active_title_pill.dart';
 import 'widgets/body_part_rank_row.dart';
 import 'widgets/class_badge.dart';

@@ -1171,7 +1171,7 @@ void main() {
         when(() => bundle.mockRepo.getCachedWorkoutCount(any())).thenReturn(1);
 
         await bundle.container.read(activeWorkoutProvider.future);
-        await bundle.container
+        final finishResult = await bundle.container
             .read(activeWorkoutProvider.notifier)
             .finishWorkout();
 
@@ -1180,11 +1180,10 @@ void main() {
         expect(result, isA<AsyncData<ActiveWorkoutState?>>());
         expect(result.value, isNull);
 
-        // savedOffline flag must be set.
-        expect(
-          bundle.container.read(activeWorkoutProvider.notifier).savedOffline,
-          isTrue,
-        );
+        // BUG-039: savedOffline is exposed via the explicit return record,
+        // not as a notifier field — pin the new contract.
+        expect(finishResult, isNotNull);
+        expect(finishResult!.savedOffline, isTrue);
 
         // Hive must be cleared (local state flushed even on offline finish).
         verify(() => bundle.mockStorage.clearActiveWorkout()).called(1);
@@ -1610,17 +1609,70 @@ void main() {
       ).thenAnswer((_) async => makeWorkout(isActive: false));
 
       await bundle.container.read(activeWorkoutProvider.future);
-      await bundle.container
+      final finishResult = await bundle.container
           .read(activeWorkoutProvider.notifier)
           .finishWorkout();
 
-      expect(
-        bundle.container.read(activeWorkoutProvider.notifier).savedOffline,
-        isFalse,
-      );
+      // BUG-039: savedOffline is on the return record, not the notifier.
+      expect(finishResult, isNotNull);
+      expect(finishResult!.savedOffline, isFalse);
       // Nothing enqueued on success.
       expect(bundle.capturedNotifier.enqueued, isEmpty);
     });
+
+    // BUG-039 contract pin: `savedOffline` must be returned via the
+    // `FinishWorkoutResult` record, NOT exposed as a public field on the
+    // notifier. Pin both arms (online + offline) at the API surface so any
+    // future refactor that re-introduces a notifier-side field fails this
+    // test.
+    test(
+      'BUG-039: savedOffline lives on FinishWorkoutResult, not the notifier',
+      () async {
+        final initial = makeState(exerciseCount: 1, setsPerExercise: 1);
+        final bundle = makeOfflineContainer(initial);
+        addTearDown(bundle.container.dispose);
+
+        when(() => bundle.mockAuth.currentUser).thenReturn(fakeUser());
+        when(
+          () => bundle.mockRepo.saveWorkout(
+            workout: any(named: 'workout'),
+            exercises: any(named: 'exercises'),
+            sets: any(named: 'sets'),
+          ),
+        ).thenThrow(Exception('Network error'));
+        when(
+          () => bundle.mockRepo.getFinishedWorkoutCount(any()),
+        ).thenThrow(Exception('Offline'));
+        when(() => bundle.mockRepo.getCachedWorkoutCount(any())).thenReturn(0);
+
+        await bundle.container.read(activeWorkoutProvider.future);
+        final finishResult = await bundle.container
+            .read(activeWorkoutProvider.notifier)
+            .finishWorkout();
+
+        // Result record exists and carries the offline flag.
+        expect(finishResult, isNotNull);
+        expect(finishResult!.savedOffline, isTrue);
+
+        // The notifier object itself must not expose a `savedOffline`
+        // member — restoring unidirectional Riverpod data flow. We assert
+        // this by reading the notifier through its concrete type and
+        // confirming the dynamic dispatch returns the record's flag (the
+        // *only* surface that should expose it).
+        final notifier = bundle.container.read(activeWorkoutProvider.notifier);
+        // Sanity: instance is the concrete notifier type (not a mock).
+        expect(notifier, isA<ActiveWorkoutNotifier>());
+        // Pin: any callsite trying `(notifier as dynamic).savedOffline`
+        // must throw NoSuchMethodError — the notifier no longer carries
+        // that field. Reading via dynamic dispatch is the only way to
+        // assert the absence of a member at compile time without breaking
+        // the test compile.
+        expect(
+          () => (notifier as dynamic).savedOffline,
+          throwsNoSuchMethodError,
+        );
+      },
+    );
 
     test('double-enqueue is prevented: same workout ID enqueued twice writes '
         'only one action (last-write-wins via identical ID key)', () async {
@@ -3145,7 +3197,7 @@ void main() {
         ).thenReturn(<String, List<PersonalRecord>>{});
 
         await container.read(activeWorkoutProvider.future);
-        final prResult = await container
+        final finishResult = await container
             .read(activeWorkoutProvider.notifier)
             .finishWorkout();
 
@@ -3158,8 +3210,9 @@ void main() {
           isEmpty,
         );
 
-        // finishWorkout still succeeds (returns null or empty prResult).
-        expect(prResult?.hasNewRecords ?? false, isFalse);
+        // finishWorkout still succeeds; inner prResult has no new records.
+        expect(finishResult, isNotNull);
+        expect(finishResult!.prResult?.hasNewRecords ?? false, isFalse);
       },
     );
 
@@ -3199,15 +3252,18 @@ void main() {
         await container.read(activeWorkoutProvider.future);
 
         // Must not throw — workout finishes even when PR detection is broken.
-        final prResult = await container
+        final finishResult = await container
             .read(activeWorkoutProvider.notifier)
             .finishWorkout();
 
         // State is null (workout cleared).
         expect(container.read(activeWorkoutProvider).value, isNull);
 
-        // PR result is null because detection threw.
-        expect(prResult, isNull);
+        // The finish itself succeeded (record returned); inner prResult is
+        // null because detection threw and the catch block left prResult
+        // unset.
+        expect(finishResult, isNotNull);
+        expect(finishResult!.prResult, isNull);
 
         // upsertRecords must NOT be enqueued (detection never produced records).
         expect(
@@ -3264,14 +3320,16 @@ void main() {
         await container.read(activeWorkoutProvider.future);
 
         // Workout finishes without throwing.
-        final prResult = await container
+        final finishResult = await container
             .read(activeWorkoutProvider.notifier)
             .finishWorkout();
 
         // State cleared (workout committed).
         expect(container.read(activeWorkoutProvider).value, isNull);
-        // Detection never produced records → no PR result.
-        expect(prResult, isNull);
+        // Finish itself returned a record; inner prResult is null because
+        // detection threw — pin both for clarity.
+        expect(finishResult, isNotNull);
+        expect(finishResult!.prResult, isNull);
 
         // Sentry must have received the detection failure exactly once.
         expect(captureCount, 1);

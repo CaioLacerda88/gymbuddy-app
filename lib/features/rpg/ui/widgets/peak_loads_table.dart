@@ -6,9 +6,9 @@ import '../../../../core/format/number_format.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../profile/providers/profile_providers.dart';
-import '../../domain/vitality_state_mapper.dart';
 import '../../models/body_part.dart';
 import '../../models/stats_deep_dive_state.dart';
+import '../utils/vitality_state_styles.dart';
 import 'body_part_localization.dart';
 
 /// Per-body-part peak-loads list rendered as a column of [ExpansionTile]s on
@@ -138,7 +138,7 @@ class _PeakLoadsExpansion extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final bodyPartTint =
-        VitalityStateMapper.bodyPartColor[bodyPart] ?? AppColors.hotViolet;
+        VitalityStateStyles.bodyPartColor[bodyPart] ?? AppColors.hotViolet;
     final localizedName = localizedBodyPartName(bodyPart, l10n);
 
     return Theme(

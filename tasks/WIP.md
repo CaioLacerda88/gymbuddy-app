@@ -4,6 +4,45 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ---
 
+## Wave 5 / Cluster 8 PR A — small architecture refactors (`fix/cluster8-small-refactors`)
+
+**Per BUGS.md Cluster 8 (BUG-035, 039, 040).** Three independent mechanical fixes
+bundled because each is small and they touch disjoint files. Pure refactor — no
+behavior change. The three larger extractions (BUG-036/037/038) ship as separate PRs.
+
+### Source files
+
+- [x] **BUG-035** — `lib/features/rpg/domain/vitality_state_mapper.dart` — stripped `package:flutter/painting.dart` + `AppLocalizations`. Color resolution + l10n copy moved to new `lib/features/rpg/ui/utils/vitality_state_styles.dart` (with the `VitalityStateColor` extension carrying the legacy `state.borderColor` shape). The `borderColor` extension also migrated out of `lib/features/rpg/models/vitality_state.dart` so the model file is Flutter-agnostic. Eight UI callsites updated to import the new utils file.
+- [x] **BUG-039** — `lib/features/workouts/providers/notifiers/active_workout_notifier.dart` — added `savedOffline` field to `ActiveWorkoutState` (Freezed, `@Default(false)`) AND changed `finishWorkout` return type to `FinishWorkoutResult` record (`prResult`, `savedOffline`). Public notifier field deleted. Screen reads via the explicit return record (the spec listed both options; the return-record path solves the "state is null after finish" gap that the state-only approach hits).
+- [x] **BUG-040** — `lib/features/workouts/providers/workout_history_providers.dart` — added `_invalidateOnUserIdChange(Ref)` helper that listens to `authStateProvider` and invalidates the calling provider when the user-id slice transitions. Wired into `workoutHistoryProvider.build()` and `workoutCountProvider`. Token-refresh emissions short-circuit (same user-id → no re-fetch).
+
+### Tests
+
+- [x] **BUG-035** — split into two files: `test/unit/features/rpg/domain/vitality_state_mapper_test.dart` (pure-domain boundary tests, ZERO Flutter imports — structural canary) + new `test/unit/features/rpg/ui/utils/vitality_state_styles_test.dart` (Color + l10n + `VitalityStateColor.borderColor` extension).
+- [x] **BUG-039** — added `BUG-039: savedOffline lives on FinishWorkoutResult, not the notifier` test in `active_workout_notifier_test.dart`. Pins both the result-record contract AND that `(notifier as dynamic).savedOffline` throws `NoSuchMethodError`.
+- [x] **BUG-040** — new `workout_history_providers_test.dart` with two tests: invalidates on user-id change (drives synthetic `authStateProvider` stream), and does NOT re-fetch on token-refresh emissions (same user-id short-circuit).
+
+### E2E
+
+No user-facing flow change — pure internal refactor. Selector impact assessment
+sufficient (qa-engineer scans for any tests that depend on the public `notifier.savedOffline`
+API surface and updates if needed). No new E2E specs.
+
+### Cleanup
+
+- [x] Mark BUG-035, 039, 040 RESOLVED in `BUGS.md` with strikethrough heads + `RESOLVED in PR #NN`
+- [x] `make ci` green (full test suite 2257 passed; analyze clean; android-debug build clean)
+- [x] Commit `refactor(arch): Cluster 8 PR A — small architecture leaks (BUG-035, 039, 040)`
+- [x] `git push -u origin fix/cluster8-small-refactors`
+
+### Out of scope (separate PRs to follow)
+
+- BUG-036 + BUG-041 → PR B (`active_workout_screen.dart` decomposition, bundled to avoid file-level merge conflicts)
+- BUG-037 → PR C (`profile_settings_screen.dart` decomposition)
+- BUG-038 → PR D (`plan_management_screen.dart` decomposition)
+
+---
+
 ## Phase 16 — Subscription Monetization — PARKED (2026-04-22)
 
 **Why parked:** Phase 16 keeps hitting external blockers (Brazilian merchant account, Play Console → upload signed AAB required before subscription product can be created, license-tester account setup). Phase 17 gamification is fully internal code work with no external gates and produces the retention moat that makes Phase 16's paywall pitch compelling. Decision: ship Phase 17 (Gamification) before resuming 16b/c/d.

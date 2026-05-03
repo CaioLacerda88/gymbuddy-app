@@ -31,6 +31,17 @@ abstract class ActiveWorkoutState with _$ActiveWorkoutState {
     /// The source routine's ID when this workout was started from a routine.
     /// Used for matching bucket completion in the weekly plan.
     String? routineId,
+
+    /// Whether the most recent `finishWorkout` saved to the offline queue
+    /// instead of syncing to the server.
+    ///
+    /// Lives on the state (not the notifier) so UI consumers read it through
+    /// the same `ref.watch(activeWorkoutProvider)` channel as every other
+    /// field — keeps Riverpod's unidirectional data flow intact (BUG-039).
+    /// `false` while a workout is in progress; the notifier flips it to
+    /// `true` inside `finishWorkout` when the network save fails and the
+    /// workout is enqueued for later sync.
+    @JsonKey(defaultValue: false) @Default(false) bool savedOffline,
   }) = _ActiveWorkoutState;
 
   factory ActiveWorkoutState.fromJson(Map<String, dynamic> json) =>

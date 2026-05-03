@@ -4,9 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../domain/vitality_state_mapper.dart';
 import '../../models/body_part.dart';
 import '../../models/stats_deep_dive_state.dart';
+import '../utils/vitality_state_styles.dart';
 
 /// Per-body-part Vitality % trend chart for `/saga/stats`.
 ///
@@ -93,7 +93,7 @@ class VitalityTrendChart extends StatelessWidget {
     final xMax = spanDays <= 0 ? 1.0 : spanDays.toDouble();
 
     final selectedColor =
-        VitalityStateMapper.bodyPartColor[selectedBodyPart] ??
+        VitalityStateStyles.bodyPartColor[selectedBodyPart] ??
         AppColors.hotViolet;
     final ghostColor = AppColors.textDim.withValues(alpha: _ghostOpacity);
 
