@@ -1724,13 +1724,13 @@ class AppLocalizationsPt extends AppLocalizations {
   String get classTaglinePathfinder => 'o chão segura';
 
   @override
-  String get classTaglineAtlas => 'o céu cede';
+  String get classTaglineAtlas => 'o ombro carrega';
 
   @override
   String get classTaglineAnchor => 'a linha aguenta';
 
   @override
-  String get classTaglineAscendant => 'o equilíbrio é raro';
+  String get classTaglineAscendant => 'o equilíbrio foi conquistado';
 
   @override
   String get classChangeOverlaySubtitle => 'Sua jornada ganhou um nome.';

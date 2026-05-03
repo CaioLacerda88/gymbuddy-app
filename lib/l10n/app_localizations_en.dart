@@ -1714,13 +1714,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get classTaglinePathfinder => 'the ground holds';
 
   @override
-  String get classTaglineAtlas => 'the sky bends';
+  String get classTaglineAtlas => 'the shoulder carries';
 
   @override
   String get classTaglineAnchor => 'the line holds';
 
   @override
-  String get classTaglineAscendant => 'the balance is rare';
+  String get classTaglineAscendant => 'the balance was conquered';
 
   @override
   String get classChangeOverlaySubtitle => 'Your journey has earned a name.';

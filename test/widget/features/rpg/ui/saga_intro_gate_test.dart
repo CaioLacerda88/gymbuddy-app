@@ -350,6 +350,41 @@ void main() {
       await expectLater(future, completes);
     });
 
+    // Cluster-3 review (2026-05-02): the active-workout screen layers a
+    // 5-second `.timeout(...)` on top of `waitForIntroDismissed` so the
+    // celebration queue can still drain when the gate never gets a chance
+    // to mount (e.g. fresh user signs in → immediately starts a workout
+    // without ever returning to the home shell — gate never builds, never
+    // kicks retro, never marks the sequencer complete).
+    //
+    // This test pins the contract that the same `Future<void>` returned
+    // by `waitForIntroDismissed` is `.timeout(...)`-friendly: the await
+    // resolves cleanly via the `onTimeout` callback rather than hanging
+    // or throwing past the workout screen's 5 s window.
+    test('waitForIntroDismissed plays nicely with .timeout — onTimeout '
+        'callback fires when sequencer never resolves', () async {
+      // Subscribe but never mark complete. Use a 50 ms timeout so the
+      // test stays fast; the production code uses 5 s for the same
+      // structural reason.
+      var timedOut = false;
+      await SagaIntroSequencer.waitForIntroDismissed('seq-timeout').timeout(
+        const Duration(milliseconds: 50),
+        onTimeout: () {
+          timedOut = true;
+        },
+      );
+      expect(
+        timedOut,
+        isTrue,
+        reason:
+            'Future.timeout must invoke onTimeout when the underlying '
+            'completer never resolves. If this fails, the active-workout '
+            'screen 5-second fallback (Cluster-3 review fix for the '
+            '17-E2E-test timeout regression) will hang the celebration '
+            'queue forever.',
+      );
+    });
+
     testWidgets(
       'per-user isolation: user A completing intro does not affect user B '
       '(sign-out → sign-in scenario)',

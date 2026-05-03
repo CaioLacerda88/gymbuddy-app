@@ -447,7 +447,11 @@ class _RankUpOverflowFlipbookState extends State<RankUpOverflowFlipbook>
                   final t = (_ticker.value - phase) % 1.0;
                   // Triangle wave: 0 → 1 → 0 across the cycle so each
                   // slot pulses smoothly in and out without a pop.
-                  final opacity = (1 - (t * 2 - 1).abs()).clamp(0.4, 1.0);
+                  // Cluster-3 review (2026-05-02): floor lowered from 0.4
+                  // → 0.15 so "off" slots are clearly subordinate to the
+                  // active slot — reads as left-to-right handoff rather
+                  // than three icons pulsing in phase.
+                  final opacity = (1 - (t * 2 - 1).abs()).clamp(0.15, 1.0);
                   return Padding(
                     padding: EdgeInsets.only(left: i == 0 ? 0 : 6),
                     child: Opacity(

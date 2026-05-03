@@ -128,6 +128,10 @@ class _ClassChangeOverlayState extends State<ClassChangeOverlay>
       parent: _timeline,
       curve: const Interval(300 / total, 700 / total, curve: Curves.easeInOut),
     );
+    // Cluster-3 review (2026-05-02): the 300-700ms border trace is the
+    // longest visual beat; linear interpolation read as mechanical. easeOut
+    // gives the last 30% a deceleration that lets the color "land" on
+    // primaryViolet rather than snapping to it.
     _borderColorEarly =
         ColorTween(
           begin: AppColors.textDim.withValues(alpha: 0.2),
@@ -138,7 +142,7 @@ class _ClassChangeOverlayState extends State<ClassChangeOverlay>
             curve: const Interval(
               300 / total,
               700 / total,
-              curve: Curves.linear,
+              curve: Curves.easeOut,
             ),
           ),
         );
@@ -494,9 +498,14 @@ class _BorderTracePainter extends CustomPainter {
 /// Headline composition: class name (Rajdhani 700 36sp uppercase, letter
 /// reveal) + tagline (Inter italic 14sp textDim, fade-in with subtitle).
 ///
-/// The letter reveal is a `ClipRect` that grows left-to-right driven by
-/// [revealProgress]. Simpler than per-glyph opacity and works against any
-/// font without measuring glyph advance widths.
+/// The letter reveal is a per-character opacity stagger driven by
+/// [revealProgress]. Earlier revisions used a `ClipRect` wipe that grew
+/// `width=0 → width=size.width`, but for long pt-BR class names like
+/// "DESBRAVADOR" (11 chars) or "ASCENDENTE" (10 chars) the wipe cut
+/// mid-glyph and showed half-rendered letters during the 700-1000ms beat.
+/// Per-character opacity gating fades each glyph in one-at-a-time across
+/// the same window — visually crisper and works against any font without
+/// measuring glyph advance widths.
 class _ClassHeadline extends StatelessWidget {
   const _ClassHeadline({
     required this.className,
@@ -508,7 +517,10 @@ class _ClassHeadline extends StatelessWidget {
   final String className;
   final String tagline;
 
-  /// 0..1 — fraction of the class name revealed so far.
+  /// 0..1 — fraction of the class name revealed so far. Drives the
+  /// per-character stagger: char `i` of `n` becomes fully opaque once
+  /// `revealProgress >= (i + 1) / n`, with a 1/n width per-character
+  /// linear ramp so adjacent letters cross-fade rather than pop.
   final double revealProgress;
 
   /// 0..1 — opacity of the tagline (rides on the same timing as the
@@ -517,6 +529,13 @@ class _ClassHeadline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Use [String.characters] (grapheme clusters) so accented letters in
+    // pt-BR class names render as one unit rather than splitting at
+    // combining-mark boundaries. `ASCENDENTE` is plain ASCII today, but
+    // `IRMÃO`-style strings would break with `split('')`.
+    final chars = className.toUpperCase().characters.toList(growable: false);
+    final charCount = chars.length;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -528,13 +547,23 @@ class _ClassHeadline extends StatelessWidget {
           child: Semantics(
             identifier: 'class-change-name-label',
             label: className,
-            child: ClipRect(
-              clipper: _LeftToRightRevealClipper(progress: revealProgress),
-              child: Text(
-                className.toUpperCase(),
-                textAlign: TextAlign.center,
-                style: GoogleFontsRajdhani.headline,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var i = 0; i < charCount; i++)
+                  Opacity(
+                    opacity: _glyphOpacity(
+                      index: i,
+                      total: charCount,
+                      progress: revealProgress,
+                    ),
+                    child: Text(
+                      chars[i],
+                      textAlign: TextAlign.center,
+                      style: GoogleFontsRajdhani.headline,
+                    ),
+                  ),
+              ],
             ),
           ),
         ),
@@ -554,22 +583,29 @@ class _ClassHeadline extends StatelessWidget {
       ],
     );
   }
-}
 
-/// Clip rect that reveals a child left-to-right based on a 0..1 progress.
-class _LeftToRightRevealClipper extends CustomClipper<Rect> {
-  _LeftToRightRevealClipper({required this.progress});
-
-  final double progress;
-
-  @override
-  Rect getClip(Size size) {
-    return Rect.fromLTWH(0, 0, size.width * progress.clamp(0, 1), size.height);
+  /// Per-glyph opacity for the staggered reveal.
+  ///
+  /// Each glyph owns a `1/total` slice of [progress] (0..1). Within its
+  /// slice the opacity ramps linearly 0..1 so adjacent glyphs cross-fade
+  /// rather than pop. After its slice ends the glyph stays fully opaque.
+  ///
+  /// Pulled out as a static helper so the reveal math is unit-testable
+  /// without mounting the overlay (and so a future glyph-curve change —
+  /// e.g. easeIn per glyph — has a single edit point).
+  static double _glyphOpacity({
+    required int index,
+    required int total,
+    required double progress,
+  }) {
+    if (total <= 0) return 1;
+    final slice = 1.0 / total;
+    final start = index * slice;
+    final end = start + slice;
+    if (progress <= start) return 0;
+    if (progress >= end) return 1;
+    return ((progress - start) / slice).clamp(0.0, 1.0);
   }
-
-  @override
-  bool shouldReclip(covariant _LeftToRightRevealClipper old) =>
-      old.progress != progress;
 }
 
 /// Local typography token — the class-change name uses a 36sp Rajdhani 700

@@ -3062,10 +3062,10 @@ abstract class AppLocalizations {
   /// **'the ground holds'**
   String get classTaglinePathfinder;
 
-  /// BUG-011 class-change overlay tagline for CharacterClass.atlas (shoulders-dominant).
+  /// BUG-011 class-change overlay tagline for CharacterClass.atlas (shoulders-dominant). Brand voice update (Cluster-3 review 2026-05-02): 'the sky bends' read as too soft for a shoulder-dominant archetype; 'the shoulder carries' is direct + load-bearing.
   ///
   /// In en, this message translates to:
-  /// **'the sky bends'**
+  /// **'the shoulder carries'**
   String get classTaglineAtlas;
 
   /// BUG-011 class-change overlay tagline for CharacterClass.anchor (core-dominant).
@@ -3074,10 +3074,10 @@ abstract class AppLocalizations {
   /// **'the line holds'**
   String get classTaglineAnchor;
 
-  /// BUG-011 class-change overlay tagline for CharacterClass.ascendant (balanced — rare, prestigious).
+  /// BUG-011 class-change overlay tagline for CharacterClass.ascendant (balanced — rare, prestigious). Brand voice update (Cluster-3 review 2026-05-02): 'the balance is rare' was a state, not an action; 'the balance was conquered' is declarative past-tense as completed mastery, matching the action-driven voice of the other taglines.
   ///
   /// In en, this message translates to:
-  /// **'the balance is rare'**
+  /// **'the balance was conquered'**
   String get classTaglineAscendant;
 
   /// BUG-011 class-change overlay subtitle (Inter 14sp textDim) — appears at t=1400-1600ms beneath the class name.

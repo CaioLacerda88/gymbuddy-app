@@ -46,6 +46,9 @@ class SagaIntroSequencer {
   /// either the gate fires [markIntroDismissedForSequencer] OR the gate
   /// detects the Hive `saga_intro_seen` flag was already set on mount
   /// (existing user — intro never showed for them).
+  // TODO(multi-account): entries persist for the app-process lifetime; GC'd
+  // only on process kill. Fine for single-account use; a future multi-account
+  // flow should clear the map (or per-user entries) on sign-out.
   static final Map<String, Completer<void>> _completersByUser = {};
 
   /// Completer for [userId]. Returns a fresh completer the first time;

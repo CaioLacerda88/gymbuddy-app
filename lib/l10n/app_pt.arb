@@ -563,9 +563,9 @@
   "classTaglineBulwark": "o pilar se move",
   "classTaglineSentinel": "o sentinela desperta",
   "classTaglinePathfinder": "o chão segura",
-  "classTaglineAtlas": "o céu cede",
+  "classTaglineAtlas": "o ombro carrega",
   "classTaglineAnchor": "a linha aguenta",
-  "classTaglineAscendant": "o equilíbrio é raro",
+  "classTaglineAscendant": "o equilíbrio foi conquistado",
 
   "classChangeOverlaySubtitle": "Sua jornada ganhou um nome.",
   "classChangePreviousLabel": "antes: {className}",

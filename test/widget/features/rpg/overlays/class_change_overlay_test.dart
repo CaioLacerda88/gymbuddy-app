@@ -106,8 +106,34 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 1000));
 
-      // Bulwark name renders uppercase via the headline transform.
-      expect(find.text('BULWARK'), findsOneWidget);
+      // Cluster-3 review (2026-05-02): the headline now renders the class
+      // name with a per-character stagger (each glyph is its own Text
+      // widget so the 700-1000ms reveal can fade letter-by-letter). The
+      // previous `ClipRect` wipe cut mid-glyph for long pt-BR names like
+      // "DESBRAVADOR". Pin the new structural contract: scope the search
+      // to the inner `class-change-name-label` Semantics node and join
+      // its Text descendants in tree order.
+      final headlineSemantics = find.byWidgetPredicate(
+        (w) =>
+            w is Semantics &&
+            w.properties.identifier == 'class-change-name-label',
+      );
+      expect(headlineSemantics, findsOneWidget);
+      final glyphFinder = find.descendant(
+        of: headlineSemantics,
+        matching: find.byType(Text),
+      );
+      final glyphs = tester
+          .widgetList<Text>(glyphFinder)
+          .toList(growable: false);
+      final rendered = glyphs.map((t) => t.data ?? '').join();
+      expect(
+        rendered,
+        equals('BULWARK'),
+        reason:
+            'Per-character reveal should produce one Text per uppercase '
+            'glyph; concatenating in tree order must equal the class name.',
+      );
     });
 
     testWidgets('renders subtitle line at the end of the choreography', (
