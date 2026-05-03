@@ -87,6 +87,9 @@ void main() {
       'setTypeAbbrDropset', // D
       'setTypeAbbrFailure', // F
       'or', // OU (different but short)
+      // Cluster 3 — gym-vernacular loanwords. pt-BR Brazilian gym slang
+      // uses "ranks" verbatim; "+5 ranks" reads natively in both locales.
+      'rankUpOverflowFlipbookLabel',
     };
 
     /// Pattern for format-only strings (only placeholders and punctuation).

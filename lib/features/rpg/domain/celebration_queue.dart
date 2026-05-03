@@ -30,26 +30,40 @@ class OverflowPayload {
 /// Pure transform that takes the unordered events from a workout finish and
 /// produces the playback queue.
 ///
-/// **Ordering rules (locked, spec §13.2):**
+/// **Ordering rules (locked, spec §13.2 + Cluster 3 BUG-011/BUG-013):**
 ///   1. First-awakening events lead — they narratively precede the body part
 ///      ranking up at all. Throttled to one per workout upstream.
-///   2. Rank-up events follow, sorted by `newRank` descending (biggest jump
-///      first as tiebreaker — the lifter's biggest win leads the narrative).
-///   3. The character level-up event (at most one per workout — character
+///   2. ClassChangeEvent — the rarest progression beat (slot 1 reserved).
+///   3. Rank-up events, sorted by `newRank` descending (biggest jump first
+///      as tiebreaker — the lifter's biggest win leads the narrative).
+///   4. The character level-up event (at most one per workout — character
 ///      level is a pure function of body-part ranks).
-///   4. Title-unlock events close — they are the crown on the workout. Both
-///      titles in a multi-unlock workout survive (no cap on titles).
+///   5. Title-unlock events close — they are the crown on the workout.
 ///
-/// **Cap-at-3 rule (locked, PO):**
+/// **Cap-at-3 rule with reservation policy (BUG-013, Cluster 3):**
 ///   * Total visible queue capped at 3 to keep the celebration under ~3.5s.
-///   * First-awakening overlays bypass the cap (they're an onboarding moment,
-///     800ms compressed, not part of the rank-celebration churn).
-///   * When the cap bites, the *closing* events (level-up + titles) survive
-///     and rank-ups are trimmed from the lowest-rank end. The narrative
-///     "you ranked up the biggest body part, leveled up, earned a title"
-///     reads better than "three rank-ups, no payoff."
+///   * First-awakening overlays bypass the cap (separate onboarding moment).
+///   * **Slot 1 reserved for ClassChangeEvent** when present — the rarest
+///     progression event in the entire loop.
+///   * **Slot 2 reserved for the highest rank-up** when any rank-up exists
+///     — the most viscerally satisfying moment in the loop. The pre-Cluster-3
+///     logic let closers (level-up + titles) starve rank-ups entirely; the
+///     PO call locked this to "rank-ups never lose to closers".
+///   * Remaining slots (3 minus class + reserved rank-up) fill in the
+///     priority order: additional rank-ups (descending) → level-up → titles.
 ///   * Trimmed rank-ups are summarized in [OverflowPayload.remainingRankUps]
-///     so the overflow card can render "{N} more rank-ups — open Saga."
+///     so the overflow card (BUG-013 mini-flipbook) can render
+///     "+{N} ranks" with three cycling muscle sigils.
+///   * Trimmed level-ups + titles are dropped silently — they remain
+///     server-side and surface in the saga screen / titles library on
+///     next visit. Adding a separate overflow surface for closers was
+///     considered and deferred — the rank-up overflow card already
+///     fronts a "go look at the rest" affordance.
+///
+/// **Why ClassChangeEvent never enters the overflow card:** there's only
+/// ever one class change per finish (a user can't cross two class boundaries
+/// in a single workout — the resolver is a single function over the rank
+/// distribution). Slot 1 is enough.
 ///
 /// **Idempotency:** same input → same output. The dismiss-skip-end semantic
 /// is owned by the runtime scheduler (`ActiveWorkoutNotifier`), not the
@@ -70,6 +84,7 @@ class CelebrationQueue {
     // Bucket by event kind. Order within each bucket is canonicalized
     // before we apply the cap.
     final firstAwakenings = <FirstAwakeningEvent>[];
+    final classChanges = <ClassChangeEvent>[];
     final rankUps = <RankUpEvent>[];
     final levelUps = <LevelUpEvent>[];
     final titles = <TitleUnlockEvent>[];
@@ -78,6 +93,8 @@ class CelebrationQueue {
       switch (e) {
         case FirstAwakeningEvent():
           firstAwakenings.add(e);
+        case ClassChangeEvent():
+          classChanges.add(e);
         case RankUpEvent():
           rankUps.add(e);
         case LevelUpEvent():
@@ -96,26 +113,65 @@ class CelebrationQueue {
       return a.bodyPart.dbValue.compareTo(b.bodyPart.dbValue);
     });
 
-    // Compute how many rank-ups can fit alongside the closers. Cap excludes
-    // first-awakenings (separate onboarding overlay).
+    // ----- Reservation policy (BUG-011 + BUG-013) -----
     //
-    // capacity = capExcludingAwakening - (level-ups kept) - (titles kept)
-    final closersCount = levelUps.length + titles.length;
-    final rankUpCapacity = (_capExcludingAwakening - closersCount).clamp(
-      0,
-      rankUps.length,
-    );
+    // Allocate slots in priority order so the rarest events always survive
+    // the cap.
+    //   slot 1: class change (at most 1 — the resolver yields a single
+    //           class per snapshot, so multi-class-change in one finish
+    //           is structurally impossible)
+    //   slot 2: highest rank-up
+    //   slot 3+: additional rank-ups → level-up → titles (FIFO within bucket)
+    //
+    // Pure-function arithmetic: same inputs → same allocation. Using
+    // direct `take(n)` calls instead of a builder loop because the budget
+    // math is cleaner to reason about with explicit per-bucket allocations.
+    var remaining = _capExcludingAwakening;
 
-    final keptRankUps = rankUps.take(rankUpCapacity).toList(growable: false);
-    final overflowCount = rankUps.length - keptRankUps.length;
+    // Slot 1: class change. Take at most one (`classChanges.length` will
+    // be 0 or 1 in practice; we still .take(1) defensively).
+    final keptClassChange = classChanges.take(1).toList(growable: false);
+    remaining -= keptClassChange.length;
 
+    // Slot 2: top rank-up — reserved when ANY rank-up exists, regardless
+    // of how many closers are queued. This is the BUG-013 invariant.
+    final keptTopRankUp = rankUps.isNotEmpty
+        ? <RankUpEvent>[rankUps.first]
+        : const <RankUpEvent>[];
+    remaining -= keptTopRankUp.length;
+
+    // Remaining slots: additional rank-ups (descending) → level-up → titles.
+    final additionalRankUps = rankUps
+        .skip(keptTopRankUp.length)
+        .take(remaining < 0 ? 0 : remaining)
+        .toList(growable: false);
+    remaining -= additionalRankUps.length;
+
+    final keptLevelUps = levelUps
+        .take(remaining < 0 ? 0 : remaining)
+        .toList(growable: false);
+    remaining -= keptLevelUps.length;
+
+    final keptTitles = titles
+        .take(remaining < 0 ? 0 : remaining)
+        .toList(growable: false);
+    // remaining -= keptTitles.length; — bookkeeping irrelevant past the
+    // last bucket; intentionally elided to avoid a dead store warning.
+
+    // Compose final queue in playback order.
     final queue = <CelebrationEvent>[
       ...firstAwakenings,
-      ...keptRankUps,
-      ...levelUps,
-      ...titles,
+      ...keptClassChange,
+      ...keptTopRankUp,
+      ...additionalRankUps,
+      ...keptLevelUps,
+      ...keptTitles,
     ];
 
+    // Overflow currently surfaces only the trimmed rank-up count — closers
+    // dropped by the cap are silently absorbed (see class-level docstring).
+    final overflowCount =
+        rankUps.length - keptTopRankUp.length - additionalRankUps.length;
     final overflow = overflowCount > 0
         ? OverflowPayload(remainingRankUps: overflowCount)
         : null;

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../l10n/app_localizations.dart';
+import 'rank_up_overlay.dart';
 
 /// Condensed overflow card surfaced after the cap-at-3 rule trims rank-ups
 /// (Phase 18c, spec §13).
@@ -86,19 +87,12 @@ class _CelebrationOverflowCardState extends State<CelebrationOverflowCard> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    // Composite AOM label: the flipbook's "+N ranks" headline + the
+    // legacy "open Saga" hint give assistive tech (and Playwright AOM
+    // selectors) a stable accessible name that matches the visible
+    // content. We keep `celebrationOverflowLabel` as the AOM string
+    // because existing E2E selectors target it.
     final label = l10n.celebrationOverflowLabel(widget.overflowCount);
-    // Semantics(button + onTap) is the AOM-dispatched tap path that DOM clicks
-    // (e.g. Playwright `force:true` clicks) travel through on Flutter web.
-    // Without an explicit `onTap` on the Semantics widget itself, a tap on
-    // [flt-semantics-identifier="celebration-overflow-card"] never reaches
-    // the InkWell — the inner InkWell creates its own descendant semantics
-    // node that the outer identifier wrapper does not own. `container: true`
-    // collapses the subtree into a single AOM node so the assistive-tech
-    // (and Playwright AOM) tap target lines up with the visual hit region.
-    // `widget.onTap` is wired to BOTH the Semantics and the InkWell so
-    // Flutter-native gestures (`tester.tap` in widget tests, real-device
-    // touches) keep the visual ripple while AOM dispatch still resolves
-    // the same callback.
     return Semantics(
       identifier: 'celebration-overflow-card',
       container: true,
@@ -124,15 +118,12 @@ class _CelebrationOverflowCardState extends State<CelebrationOverflowCard> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  l10n.celebrationOverflowLabel(widget.overflowCount),
-                  style: AppTextStyles.body.copyWith(
-                    fontSize: 14,
-                    color: AppColors.textCream,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
+                // BUG-013 (Cluster 3): mini-flipbook of 3 cycling muscle
+                // sigils + "+{N} ranks" label, replacing the previous
+                // text-only "{N} more rank-ups — open Saga" line.
+                RankUpOverflowFlipbook(overflowCount: widget.overflowCount),
                 const SizedBox(height: 6),
+                // Hint copy retained — signals the entire card is tappable.
                 Text(
                   l10n.celebrationOverflowTapHint,
                   style: AppTextStyles.body.copyWith(

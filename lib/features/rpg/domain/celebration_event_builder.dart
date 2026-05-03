@@ -3,6 +3,7 @@ import '../models/body_part_progress.dart';
 import '../models/celebration_event.dart';
 import '../models/title.dart';
 import '../providers/rpg_progress_provider.dart';
+import 'class_resolver.dart';
 import 'title_unlock_detector.dart';
 
 /// Pure builder that derives the post-finish [CelebrationEvent] list from the
@@ -69,13 +70,22 @@ class CelebrationEventBuilder {
     final events = <CelebrationEvent>[];
 
     // ---- Rank-ups + rank deltas (also fed into the title detector) ----
+    //
+    // Build complete pre + post rank maps in one pass over [activeBodyParts]
+    // so downstream consumers (class resolver, cross-build detector) read
+    // from a single canonical source. Missing rows project to rank 1
+    // (matches `RpgProgressSnapshot.progressFor` + the SQL default-row
+    // contract).
     final deltas = <RankDelta>[];
+    final preRanks = <BodyPart, int>{
+      for (final bp in activeBodyParts) bp: pre.byBodyPart[bp]?.rank ?? 1,
+    };
+    final postRanks = <BodyPart, int>{
+      for (final bp in activeBodyParts) bp: post.byBodyPart[bp]?.rank ?? 1,
+    };
     for (final bodyPart in activeBodyParts) {
-      final preRow = pre.byBodyPart[bodyPart];
-      final postRow = post.byBodyPart[bodyPart];
-      if (postRow == null) continue;
-      final oldRank = preRow?.rank ?? 1;
-      final newRank = postRow.rank;
+      final oldRank = preRanks[bodyPart]!;
+      final newRank = postRanks[bodyPart]!;
       if (newRank > oldRank) {
         events.add(
           CelebrationEvent.rankUp(bodyPart: bodyPart, newRank: newRank),
@@ -91,6 +101,27 @@ class CelebrationEventBuilder {
         pre.characterState.characterLevel) {
       events.add(
         CelebrationEvent.levelUp(newLevel: post.characterState.characterLevel),
+      );
+    }
+
+    // ---- Class change (BUG-011, Cluster 3) ----
+    //
+    // Compare the resolver's output for the pre-finish vs post-finish rank
+    // distribution. Fires on EVERY transition (Initiate→Bulwark on a
+    // day-1 lifter is just as worth celebrating as Bulwark→Ascendant on a
+    // year-3 lifter — both moments are rare and identity-defining).
+    //
+    // Why we resolve from the rank map and not from `characterState`:
+    // `RpgProgressSnapshot` doesn't carry a derived class (the resolver
+    // is the single source of truth — see `class_provider.dart`). Running
+    // the same pure function against pre + post ensures the diff matches
+    // exactly what the badge will display once the post snapshot lands in
+    // the UI.
+    final preClass = ClassResolver.resolve(preRanks);
+    final postClass = ClassResolver.resolve(postRanks);
+    if (preClass != postClass) {
+      events.add(
+        CelebrationEvent.classChange(fromClass: preClass, toClass: postClass),
       );
     }
 
@@ -139,12 +170,9 @@ class CelebrationEventBuilder {
       }
 
       // Cross-build — runs every finish (predicates are O(1) and the
-      // already-earned guard handles idempotency). Built from the post
-      // snapshot's rank map to capture any structural threshold the
-      // workout pushed the user across.
-      final postRanks = <BodyPart, int>{
-        for (final bp in activeBodyParts) bp: post.byBodyPart[bp]?.rank ?? 1,
-      };
+      // already-earned guard handles idempotency). Reuses the [postRanks]
+      // map built above so the cross-build detector and the class resolver
+      // see the same rank distribution.
       final crossBuildUnlocked = TitleUnlockDetector.detectCrossBuild(
         rankMap: postRanks,
         alreadyEarnedSlugs: earnedSoFar,

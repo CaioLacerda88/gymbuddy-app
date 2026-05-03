@@ -26,6 +26,7 @@ import 'package:repsaga/features/rpg/domain/celebration_event_builder.dart';
 import 'package:repsaga/features/rpg/models/body_part.dart';
 import 'package:repsaga/features/rpg/models/body_part_progress.dart';
 import 'package:repsaga/features/rpg/models/celebration_event.dart';
+import 'package:repsaga/features/rpg/models/character_class.dart';
 import 'package:repsaga/features/rpg/models/title.dart' as rpg;
 import 'package:repsaga/features/rpg/providers/rpg_progress_provider.dart';
 
@@ -415,6 +416,106 @@ void main() {
       );
 
       expect(events.whereType<TitleUnlockEvent>(), isEmpty);
+    });
+
+    // -------------------------------------------------------------------------
+    // BUG-011 (Cluster 3) — ClassChangeEvent detection
+    // -------------------------------------------------------------------------
+    test(
+      'emits ClassChangeEvent on Initiate → Bulwark transition (BUG-011)',
+      () {
+        // Day-1 lifter completes their first chest workout. Pre snapshot:
+        // every body part at rank 1 → ClassResolver returns Initiate.
+        // Post snapshot: chest at rank 5, others at rank 1 → ClassResolver
+        // returns Bulwark (chest-dominant, max=5≥5, spread=0.80>0.30).
+        final pre = _snapshot(
+          rows: {BodyPart.chest: _row(BodyPart.chest, totalXp: 200, rank: 4)},
+          level: 1,
+        );
+        final post = _snapshot(
+          rows: {BodyPart.chest: _row(BodyPart.chest, totalXp: 280, rank: 5)},
+          level: 1,
+        );
+
+        final events = CelebrationEventBuilder.build(
+          pre: pre,
+          post: post,
+          catalog: const <rpg.Title>[],
+          alreadyEarnedSlugs: const {},
+          suppressFirstAwakening: false,
+        );
+
+        final classChanges = events.whereType<ClassChangeEvent>().toList();
+        expect(classChanges, hasLength(1));
+        expect(classChanges.single.fromClass, CharacterClass.initiate);
+        expect(classChanges.single.toClass, CharacterClass.bulwark);
+      },
+    );
+
+    test('does NOT emit ClassChangeEvent when pre and post classes match', () {
+      // Idempotency floor for class transitions. A workout that pushes
+      // chest from rank 8 to rank 9 keeps the lifter in Bulwark — no
+      // class-change overlay should fire.
+      final pre = _snapshot(
+        rows: {BodyPart.chest: _row(BodyPart.chest, totalXp: 600, rank: 8)},
+        level: 2,
+      );
+      final post = _snapshot(
+        rows: {BodyPart.chest: _row(BodyPart.chest, totalXp: 700, rank: 9)},
+        level: 2,
+      );
+
+      final events = CelebrationEventBuilder.build(
+        pre: pre,
+        post: post,
+        catalog: const <rpg.Title>[],
+        alreadyEarnedSlugs: const {},
+        suppressFirstAwakening: false,
+      );
+
+      expect(events.whereType<ClassChangeEvent>(), isEmpty);
+    });
+
+    test('emits ClassChangeEvent on a non-Initiate transition (Bulwark → '
+        'Sentinel)', () {
+      // Spec: every transition fires, not just from Initiate. A back
+      // workout that pulls back's rank past chest's flips the dominant
+      // class from chest (Bulwark) to back (Sentinel).
+      final pre = _snapshot(
+        rows: {
+          BodyPart.chest: _row(BodyPart.chest, totalXp: 1000, rank: 10),
+          BodyPart.back: _row(BodyPart.back, totalXp: 100, rank: 5),
+          BodyPart.legs: _row(BodyPart.legs, totalXp: 100, rank: 5),
+          BodyPart.shoulders: _row(BodyPart.shoulders, totalXp: 100, rank: 5),
+          BodyPart.arms: _row(BodyPart.arms, totalXp: 100, rank: 5),
+          BodyPart.core: _row(BodyPart.core, totalXp: 100, rank: 5),
+        },
+        level: 3,
+      );
+      final post = _snapshot(
+        rows: {
+          BodyPart.chest: _row(BodyPart.chest, totalXp: 1000, rank: 10),
+          BodyPart.back: _row(BodyPart.back, totalXp: 1500, rank: 11),
+          BodyPart.legs: _row(BodyPart.legs, totalXp: 100, rank: 5),
+          BodyPart.shoulders: _row(BodyPart.shoulders, totalXp: 100, rank: 5),
+          BodyPart.arms: _row(BodyPart.arms, totalXp: 100, rank: 5),
+          BodyPart.core: _row(BodyPart.core, totalXp: 100, rank: 5),
+        },
+        level: 3,
+      );
+
+      final events = CelebrationEventBuilder.build(
+        pre: pre,
+        post: post,
+        catalog: const <rpg.Title>[],
+        alreadyEarnedSlugs: const {},
+        suppressFirstAwakening: false,
+      );
+
+      final classChanges = events.whereType<ClassChangeEvent>().toList();
+      expect(classChanges, hasLength(1));
+      expect(classChanges.single.fromClass, CharacterClass.bulwark);
+      expect(classChanges.single.toClass, CharacterClass.sentinel);
     });
 
     test('handles missing pre snapshot row as oldRank=1 / 0 XP', () {

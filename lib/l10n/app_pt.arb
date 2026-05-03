@@ -558,6 +558,28 @@
   "titlesSectionCharacterLevel": "NÍVEL DE PERSONAGEM",
   "titlesSectionCrossBuild": "DISTINÇÃO",
 
+  "classTaglineInitiate": "o caminho começa",
+  "classTaglineBerserker": "a fúria responde",
+  "classTaglineBulwark": "o pilar se move",
+  "classTaglineSentinel": "o sentinela desperta",
+  "classTaglinePathfinder": "o chão segura",
+  "classTaglineAtlas": "o céu cede",
+  "classTaglineAnchor": "a linha aguenta",
+  "classTaglineAscendant": "o equilíbrio é raro",
+
+  "classChangeOverlaySubtitle": "Sua jornada ganhou um nome.",
+  "classChangePreviousLabel": "antes: {className}",
+  "classChangeOverflowMore": "+{count} mais mudança de classe",
+
+  "crossBuildHintBroadShouldered": "Domine os pilares superiores — peito, costas e ombros acima de rank 30, com dominância clara sobre membros inferiores. Falta {gap} de rank em {muscleName}.",
+  "crossBuildHintPillarWalker": "Suas pernas devem falar mais alto que seus braços. Falta {gap} de rank nas pernas.",
+  "crossBuildHintEvenHanded": "Todo músculo no mesmo nível — nenhum elo fraco. Falta {gap} de rank em {muscleName}.",
+  "crossBuildHintIronBound": "Peito, costas, pernas — os três pilares acima de rank 60. Falta {gap} de rank em {muscleName}.",
+  "crossBuildHintSagaForged": "O fim da jornada começa aqui — todo atributo acima de rank 60. Falta {gap} de rank em {muscleName}.",
+  "crossBuildHintSatisfied": "Todas as condições atendidas — predicado satisfeito.",
+
+  "rankUpOverflowFlipbookLabel": "+{count} ranks",
+
   "title_chest_r5_initiate_of_the_forge_name": "Iniciado da Forja",
   "title_chest_r5_initiate_of_the_forge_flavor": "Primeira fagulha bateu no ferro.",
   "title_chest_r10_plate_bearer_name": "Carregador de Anilha",

@@ -782,6 +782,44 @@ export const CELEBRATION = {
   /** CelebrationOverflowCard root — Semantics(identifier: 'celebration-overflow-card') */
   celebrationOverflowCard: '[flt-semantics-identifier="celebration-overflow-card"]',
   /**
+   * BUG-013 (Cluster 3) — RankUpOverflowFlipbook inside the overflow card.
+   * Replaces the prior text-only "{N} more rank-ups" line with three cycling
+   * muscle sigils + "+{N} ranks" headline. Semantics(identifier:
+   * 'rank-up-overflow-flipbook').
+   */
+  rankUpOverflowFlipbook: '[flt-semantics-identifier="rank-up-overflow-flipbook"]',
+  /**
+   * BUG-011 (Cluster 3) — ClassChangeOverlay root —
+   * Semantics(identifier: 'class-change-overlay'). Fires when a workout
+   * finish crosses a class boundary (Initiate→first earned class, or any
+   * subsequent class flip). 1600ms choreography; auto-dismissed by the
+   * celebration player.
+   */
+  classChangeOverlay: '[flt-semantics-identifier="class-change-overlay"]',
+  /**
+   * BUG-011 — subtitle line inside the class-change overlay
+   * ("Sua jornada ganhou um nome." / "Your journey has earned a name.").
+   */
+  classChangeSubtitle: '[flt-semantics-identifier="class-change-subtitle"]',
+  /**
+   * BUG-011 — class name label inside the class-change overlay
+   * (Rajdhani 700 36sp uppercase). Used for content verification.
+   */
+  classChangeNameLabel: '[flt-semantics-identifier="class-change-name-label"]',
+  /**
+   * BUG-011 — "antes: {className}" subtitle. Only visible on the
+   * Initiate→first transition; suppressed on later class flips.
+   */
+  classChangePreviousLabel: '[flt-semantics-identifier="class-change-previous-label"]',
+  /**
+   * BUG-014 (Cluster 3) — structured stat chip on locked cross-build
+   * title rows. Identifier pattern: 'cross-build-stat-chip-{slug}' where
+   * slug is the CrossBuildTriggerId dbValue (iron_bound, broad_shouldered,
+   * even_handed, pillar_walker, saga_forged).
+   */
+  crossBuildStatChip: (slug: string) =>
+    `[flt-semantics-identifier="cross-build-stat-chip-${slug}"]`,
+  /**
    * EQUIP TITLE ElevatedButton — targeted by accessible role+name.
    * Using role=button rather than flt-semantics-identifier because the
    * button is a child node inside a Semantics container; the identifier

@@ -114,12 +114,19 @@ class CrossBuildTitleEvaluator {
     return legs >= 2 * arms;
   }
 
-  /// `broad_shouldered` — Chest+Back+Shoulders ≥ 2 × (Legs+Core) AND every
+  /// `broad_shouldered` — Chest+Back+Shoulders ≥ 1.6 × (Legs+Core) AND every
   /// upper-body track ≥ 30.
   ///
-  /// Classic upper-body specialist. The 2× ratio is intentionally aggressive
-  /// — a 50/50 split routes to a different class; broad-shouldered is the
-  /// genuinely upper-body-dominant build.
+  /// **BUG-015 rebalance (2026-05-02, PO call):** the original 2× ratio was
+  /// effectively unreachable for any lifter who trained legs at all (Chest 50
+  /// + Back 50 + Shoulders 50 → upper 150 → required Legs+Core ≤ 75, i.e.
+  /// Legs ≤ ~65). The PO audit found the typical Brazilian academy lifter
+  /// runs push/pull 3-4×/week + legs 1×/week, and 1.6× catches that profile
+  /// while still reading as a genuine upper-body specialist (a 50/50 split
+  /// still routes elsewhere). Comparison uses integer arithmetic
+  /// (`upper * 10 >= lower * 16`) to avoid float drift at the boundary —
+  /// the Dart predicate must match the SQL mirror in
+  /// `00043_cross_build_titles_backfill.sql` exactly.
   static bool _broadShouldered({
     required int chest,
     required int back,
@@ -132,7 +139,9 @@ class CrossBuildTitleEvaluator {
     if (shoulders < 30) return false;
     final upper = chest + back + shoulders;
     final lower = legs + core;
-    return upper >= 2 * lower;
+    // 1.6× via integer arithmetic — equivalent to `upper >= 1.6 * lower`
+    // without floating-point error at the boundary.
+    return upper * 10 >= lower * 16;
   }
 
   /// `even_handed` — Every active rank within 30% of max AND every rank ≥ 30.
@@ -198,4 +207,265 @@ class CrossBuildTitleEvaluator {
         arms >= 60 &&
         core >= 60;
   }
+
+  /// Compute the cross-build progress hint for [slug] from the current rank
+  /// distribution (BUG-014, Cluster 3).
+  ///
+  /// **Why this lives on the evaluator:** the predicate threshold logic IS
+  /// the gap-math source of truth. The hint surface in [`titles_screen`] would
+  /// otherwise have to mirror every floor and ratio inline — duplicating
+  /// `iron_bound`'s "≥ 60" floor in two places lets one drift past the other.
+  /// Keeping the gap math next to the predicate means a future re-spec
+  /// (e.g. raise `iron_bound` to ≥ 65) updates the hint automatically.
+  ///
+  /// Returns null when:
+  ///   * [slug] is unknown (unrecognized cross-build trigger).
+  ///   * The predicate is already satisfied — the title should already be
+  ///     awarded; rendering "0 more rank in X" would be misleading. The UI
+  ///     falls back to a "predicate satisfied" copy (race window between
+  ///     award and UI refresh).
+  ///
+  /// **Per-predicate gap surfacing rules (PO call):**
+  ///   * `pillar_walker` — single body-part gap (legs to floor 40). The
+  ///     ratio condition is harder to surface as a number; the floor is
+  ///     the user-meaningful gate.
+  ///   * `broad_shouldered` — surface the smallest gap among the three
+  ///     upper guards (chest/back/shoulders) to floor 30. The ratio
+  ///     condition is the soft gate; the per-track floor is what users
+  ///     actually grind.
+  ///   * `even_handed` — single body part furthest from floor 30. The
+  ///     spread condition is binary at the per-track level.
+  ///   * `iron_bound` — smallest gap among (chest/back/legs) to floor 60.
+  ///   * `saga_forged` — single body part furthest from floor 60.
+  ///
+  /// Pure / static for the same reasons as [evaluate]: no Riverpod, no
+  /// async, no IO. Unit-testable in isolation.
+  static CrossBuildHint? gapHintFor(String slug, Map<BodyPart, int> ranks) {
+    int rank(BodyPart bp) => ranks[bp] ?? 1;
+
+    switch (slug) {
+      case 'pillar_walker':
+        // Surface only the legs floor gap. The 2x-arms ratio is harder to
+        // express as "X more rank" since the user's path could either lift
+        // legs or ignore arms.
+        final legs = rank(BodyPart.legs);
+        if (legs >= 40) return null;
+        return CrossBuildHint(bodyPart: BodyPart.legs, gap: 40 - legs);
+
+      case 'broad_shouldered':
+        // Smallest gap among chest/back/shoulders to the floor 30.
+        return _smallestGapAmong(
+          ranks: ranks,
+          parts: const [BodyPart.chest, BodyPart.back, BodyPart.shoulders],
+          floor: 30,
+        );
+
+      case 'even_handed':
+        // Single body part furthest from floor 30.
+        return _largestGapAmong(
+          ranks: ranks,
+          parts: const [
+            BodyPart.chest,
+            BodyPart.back,
+            BodyPart.legs,
+            BodyPart.shoulders,
+            BodyPart.arms,
+            BodyPart.core,
+          ],
+          floor: 30,
+        );
+
+      case 'iron_bound':
+        // Smallest gap among the big three to the floor 60.
+        return _smallestGapAmong(
+          ranks: ranks,
+          parts: const [BodyPart.chest, BodyPart.back, BodyPart.legs],
+          floor: 60,
+        );
+
+      case 'saga_forged':
+        // Single body part furthest from floor 60.
+        return _largestGapAmong(
+          ranks: ranks,
+          parts: const [
+            BodyPart.chest,
+            BodyPart.back,
+            BodyPart.legs,
+            BodyPart.shoulders,
+            BodyPart.arms,
+            BodyPart.core,
+          ],
+          floor: 60,
+        );
+
+      default:
+        return null;
+    }
+  }
+
+  /// Smallest positive gap among [parts] to [floor]. Returns null if every
+  /// part already clears the floor (predicate satisfied along this axis).
+  static CrossBuildHint? _smallestGapAmong({
+    required Map<BodyPart, int> ranks,
+    required List<BodyPart> parts,
+    required int floor,
+  }) {
+    BodyPart? best;
+    int? bestGap;
+    for (final bp in parts) {
+      final r = ranks[bp] ?? 1;
+      if (r >= floor) continue;
+      final gap = floor - r;
+      if (bestGap == null || gap < bestGap) {
+        bestGap = gap;
+        best = bp;
+      }
+    }
+    if (best == null || bestGap == null) return null;
+    return CrossBuildHint(bodyPart: best, gap: bestGap);
+  }
+
+  /// Largest positive gap among [parts] to [floor] — the body part the
+  /// user is furthest from on this predicate. Returns null if every part
+  /// already clears the floor.
+  static CrossBuildHint? _largestGapAmong({
+    required Map<BodyPart, int> ranks,
+    required List<BodyPart> parts,
+    required int floor,
+  }) {
+    BodyPart? worst;
+    int? worstGap;
+    for (final bp in parts) {
+      final r = ranks[bp] ?? 1;
+      if (r >= floor) continue;
+      final gap = floor - r;
+      if (worstGap == null || gap > worstGap) {
+        worstGap = gap;
+        worst = bp;
+      }
+    }
+    if (worst == null || worstGap == null) return null;
+    return CrossBuildHint(bodyPart: worst, gap: worstGap);
+  }
+}
+
+/// Locked-row stat-line breakdown for [`CrossBuildTitleEvaluator`] (BUG-014).
+///
+/// Returns the (body-part, current-rank, floor) tuples the titles screen
+/// should render as a structured chip — e.g.
+/// `[(chest, 42, 60), (back, 60, 60), (legs, 60, 60)]` for `iron_bound`.
+///
+/// Per-slug breakdown (locked):
+///   * `pillar_walker` — single tuple: legs vs 40
+///   * `broad_shouldered` — three tuples: chest/back/shoulders vs 30
+///   * `even_handed` — six tuples (every active body part) vs 30
+///   * `iron_bound` — three tuples: chest/back/legs vs 60
+///   * `saga_forged` — six tuples (every active body part) vs 60
+///
+/// Returns an empty list for unknown slugs so the UI can render a neutral
+/// fallback without a null-check at every call site.
+List<CrossBuildStat> crossBuildStatsFor(String slug, Map<BodyPart, int> ranks) {
+  int rank(BodyPart bp) => ranks[bp] ?? 1;
+  CrossBuildStat stat(BodyPart bp, int floor) =>
+      CrossBuildStat(bodyPart: bp, current: rank(bp), floor: floor);
+
+  switch (slug) {
+    case 'pillar_walker':
+      return [stat(BodyPart.legs, 40)];
+    case 'broad_shouldered':
+      return [
+        stat(BodyPart.chest, 30),
+        stat(BodyPart.back, 30),
+        stat(BodyPart.shoulders, 30),
+      ];
+    case 'even_handed':
+      return [
+        for (final bp in const [
+          BodyPart.chest,
+          BodyPart.back,
+          BodyPart.legs,
+          BodyPart.shoulders,
+          BodyPart.arms,
+          BodyPart.core,
+        ])
+          stat(bp, 30),
+      ];
+    case 'iron_bound':
+      return [
+        stat(BodyPart.chest, 60),
+        stat(BodyPart.back, 60),
+        stat(BodyPart.legs, 60),
+      ];
+    case 'saga_forged':
+      return [
+        for (final bp in const [
+          BodyPart.chest,
+          BodyPart.back,
+          BodyPart.legs,
+          BodyPart.shoulders,
+          BodyPart.arms,
+          BodyPart.core,
+        ])
+          stat(bp, 60),
+      ];
+    default:
+      return const <CrossBuildStat>[];
+  }
+}
+
+/// One body-part bucket in a structured cross-build stat-line.
+class CrossBuildStat {
+  const CrossBuildStat({
+    required this.bodyPart,
+    required this.current,
+    required this.floor,
+  });
+
+  final BodyPart bodyPart;
+
+  /// User's current rank for this body part. Always >= 1 (rank ladder
+  /// floors at 1; default-row rank is 1).
+  final int current;
+
+  /// Predicate floor for this body part on the cross-build trigger that
+  /// owns this stat. Constant per (slug, body-part) tuple.
+  final int floor;
+
+  /// Whether the user has already cleared the floor for this body-part
+  /// component of the predicate. The chip highlights cleared vs gapped
+  /// stats with the same textDim color but different opacity (cleared =
+  /// brighter).
+  bool get isCleared => current >= floor;
+}
+
+/// Result of [`CrossBuildTitleEvaluator.gapHintFor`] — the body part the UI
+/// should call out and the rank delta to surface.
+///
+/// **Why a value class instead of a record:** the UI passes this through
+/// the localization layer (`localizedBodyPartName(bodyPart, l10n)`) and
+/// embeds the gap into the ICU placeholder. A typed class with named
+/// fields reads better at the call site than a positional record, and
+/// stays cheap (`const` constructor, value equality).
+class CrossBuildHint {
+  const CrossBuildHint({required this.bodyPart, required this.gap});
+
+  /// The body part to surface in the hint copy. The localizer turns this
+  /// into the locale-correct string ("peito" / "chest", etc.).
+  final BodyPart bodyPart;
+
+  /// Positive rank delta the user must close. Always > 0 — when every
+  /// floor is cleared, [`gapHintFor`] returns null instead of a zero-gap
+  /// hint.
+  final int gap;
+
+  @override
+  bool operator ==(Object other) =>
+      other is CrossBuildHint && other.bodyPart == bodyPart && other.gap == gap;
+
+  @override
+  int get hashCode => Object.hash(bodyPart, gap);
+
+  @override
+  String toString() =>
+      'CrossBuildHint(bodyPart: ${bodyPart.dbValue}, gap: $gap)';
 }

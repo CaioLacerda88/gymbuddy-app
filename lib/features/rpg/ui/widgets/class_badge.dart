@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../models/character_class.dart';
+import 'class_localization.dart';
 
 /// Style tokens for [ClassBadge] — two-tier prestige alpha values.
 ///
@@ -100,7 +101,7 @@ class ClassBadge extends StatelessWidget {
     final isInitiate = cls == CharacterClass.initiate;
     final label = isStub
         ? l10n.classSlotPlaceholder
-        : _localizedName(cls, l10n);
+        : localizedClassName(cls, l10n);
 
     final Color textColor;
     final Color borderColor;
@@ -149,24 +150,5 @@ class ClassBadge extends StatelessWidget {
         textAlign: TextAlign.center,
       ),
     );
-  }
-
-  /// Map an enum variant to its localized display name.
-  ///
-  /// The exhaustive switch is the structural guarantee that every class
-  /// variant has a copy mapping — adding [CharacterClass.wayfarer] in v2
-  /// produces a compile error here until the case is added, preventing a
-  /// silent "unknown class" string from leaking to UI.
-  static String _localizedName(CharacterClass cls, AppLocalizations l10n) {
-    return switch (cls) {
-      CharacterClass.initiate => l10n.classInitiate,
-      CharacterClass.berserker => l10n.classBerserker,
-      CharacterClass.bulwark => l10n.classBulwark,
-      CharacterClass.sentinel => l10n.classSentinel,
-      CharacterClass.pathfinder => l10n.classPathfinder,
-      CharacterClass.atlas => l10n.classAtlas,
-      CharacterClass.anchor => l10n.classAnchor,
-      CharacterClass.ascendant => l10n.classAscendant,
-    };
   }
 }

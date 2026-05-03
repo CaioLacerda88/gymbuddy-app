@@ -1699,6 +1699,77 @@ class AppLocalizationsEn extends AppLocalizations {
   String get titlesSectionCrossBuild => 'DISTINCTION';
 
   @override
+  String get classTaglineInitiate => 'the path begins';
+
+  @override
+  String get classTaglineBerserker => 'the fury answers';
+
+  @override
+  String get classTaglineBulwark => 'the pillar moves';
+
+  @override
+  String get classTaglineSentinel => 'the watcher wakes';
+
+  @override
+  String get classTaglinePathfinder => 'the ground holds';
+
+  @override
+  String get classTaglineAtlas => 'the sky bends';
+
+  @override
+  String get classTaglineAnchor => 'the line holds';
+
+  @override
+  String get classTaglineAscendant => 'the balance is rare';
+
+  @override
+  String get classChangeOverlaySubtitle => 'Your journey has earned a name.';
+
+  @override
+  String classChangePreviousLabel(String className) {
+    return 'before: $className';
+  }
+
+  @override
+  String classChangeOverflowMore(int count) {
+    return '+$count more class change';
+  }
+
+  @override
+  String crossBuildHintBroadShouldered(int gap, String muscleName) {
+    return 'Master the upper pillars — chest, back, and shoulders above rank 30, with clear dominance over the lower body. $gap more rank in $muscleName.';
+  }
+
+  @override
+  String crossBuildHintPillarWalker(int gap) {
+    return 'Your legs must speak louder than your arms. $gap more rank in legs.';
+  }
+
+  @override
+  String crossBuildHintEvenHanded(int gap, String muscleName) {
+    return 'Every muscle at the same level — no weak link. $gap more rank in $muscleName.';
+  }
+
+  @override
+  String crossBuildHintIronBound(int gap, String muscleName) {
+    return 'Chest, back, legs — the three pillars above rank 60. $gap more rank in $muscleName.';
+  }
+
+  @override
+  String crossBuildHintSagaForged(int gap, String muscleName) {
+    return 'The end of the journey starts here — every attribute above rank 60. $gap more rank in $muscleName.';
+  }
+
+  @override
+  String get crossBuildHintSatisfied =>
+      'All conditions met — predicate satisfied.';
+
+  @override
+  String rankUpOverflowFlipbookLabel(int count) {
+    return '+$count ranks';
+  }
+
+  @override
   String get title_chest_r5_initiate_of_the_forge_name =>
       'Initiate of the Forge';
 

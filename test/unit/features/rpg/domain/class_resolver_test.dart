@@ -213,4 +213,44 @@ void main() {
       expect(ClassResolver.resolve(ranks), CharacterClass.bulwark);
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // BUG-011 (Cluster 3) — Class transition pinning
+  //
+  // The celebration builder calls `resolve(pre)` and `resolve(post)` to detect
+  // class changes. Pinning the Initiate → Bulwark boundary here as a fixture
+  // reference for the builder test makes the contract explicit at the resolver
+  // level.
+  // ---------------------------------------------------------------------------
+  group('ClassResolver — Initiate → Bulwark boundary (BUG-011)', () {
+    test(
+      'pre snapshot at rank 4 across the board → Initiate, post with chest=5 '
+      '→ Bulwark',
+      () {
+        // Pre: every track at rank 4 → Initiate floor fires.
+        final pre = _ranks(
+          chest: 4,
+          back: 4,
+          legs: 4,
+          shoulders: 4,
+          arms: 4,
+          core: 4,
+        );
+        expect(ClassResolver.resolve(pre), CharacterClass.initiate);
+
+        // Post: chest crosses to rank 5 — others unchanged. Max=5,
+        // min=4, spread=(5-4)/5=0.20 ≤ 0.30 BUT minRank<5 so Ascendant
+        // does NOT fire — falls through to dominant (chest → Bulwark).
+        final post = _ranks(
+          chest: 5,
+          back: 4,
+          legs: 4,
+          shoulders: 4,
+          arms: 4,
+          core: 4,
+        );
+        expect(ClassResolver.resolve(post), CharacterClass.bulwark);
+      },
+    );
+  });
 }

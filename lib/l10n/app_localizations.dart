@@ -3032,6 +3032,114 @@ abstract class AppLocalizations {
   /// **'DISTINCTION'**
   String get titlesSectionCrossBuild;
 
+  /// BUG-011 class-change overlay tagline for CharacterClass.initiate. Short declarative phrase, lowercase. Brand voice: masculine-emphatic. Used as `classChangeOverlayHeadline(className, tagline)` formatting.
+  ///
+  /// In en, this message translates to:
+  /// **'the path begins'**
+  String get classTaglineInitiate;
+
+  /// BUG-011 class-change overlay tagline for CharacterClass.berserker (arms-dominant).
+  ///
+  /// In en, this message translates to:
+  /// **'the fury answers'**
+  String get classTaglineBerserker;
+
+  /// BUG-011 class-change overlay tagline for CharacterClass.bulwark (chest-dominant). PO example.
+  ///
+  /// In en, this message translates to:
+  /// **'the pillar moves'**
+  String get classTaglineBulwark;
+
+  /// BUG-011 class-change overlay tagline for CharacterClass.sentinel (back-dominant). PO example.
+  ///
+  /// In en, this message translates to:
+  /// **'the watcher wakes'**
+  String get classTaglineSentinel;
+
+  /// BUG-011 class-change overlay tagline for CharacterClass.pathfinder (legs-dominant).
+  ///
+  /// In en, this message translates to:
+  /// **'the ground holds'**
+  String get classTaglinePathfinder;
+
+  /// BUG-011 class-change overlay tagline for CharacterClass.atlas (shoulders-dominant).
+  ///
+  /// In en, this message translates to:
+  /// **'the sky bends'**
+  String get classTaglineAtlas;
+
+  /// BUG-011 class-change overlay tagline for CharacterClass.anchor (core-dominant).
+  ///
+  /// In en, this message translates to:
+  /// **'the line holds'**
+  String get classTaglineAnchor;
+
+  /// BUG-011 class-change overlay tagline for CharacterClass.ascendant (balanced — rare, prestigious).
+  ///
+  /// In en, this message translates to:
+  /// **'the balance is rare'**
+  String get classTaglineAscendant;
+
+  /// BUG-011 class-change overlay subtitle (Inter 14sp textDim) — appears at t=1400-1600ms beneath the class name.
+  ///
+  /// In en, this message translates to:
+  /// **'Your journey has earned a name.'**
+  String get classChangeOverlaySubtitle;
+
+  /// BUG-011 class-change overlay previous-class line. Only shown on the Initiate→first transition; later class-changes don't surface fromClass. Lowercase 'before' is intentional — reads as a footnote, not a heading.
+  ///
+  /// In en, this message translates to:
+  /// **'before: {className}'**
+  String classChangePreviousLabel(String className);
+
+  /// BUG-011 condensed overflow line when multiple class changes fire in one workout — exceedingly rare (would require multiple class crosses in a single finish). Singular 'class change' is correct since {count} is always 1+ additional after the first overlay fires; English doesn't pluralize 'change' here.
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} more class change'**
+  String classChangeOverflowMore(int count);
+
+  /// BUG-014 cross-build progress hint for broad_shouldered. Surfaces only the smallest gap among the three upper guards (chest/back/shoulders). {gap} is the rank delta to the next floor; {muscleName} is the localized body-part name (e.g. 'shoulders').
+  ///
+  /// In en, this message translates to:
+  /// **'Master the upper pillars — chest, back, and shoulders above rank 30, with clear dominance over the lower body. {gap} more rank in {muscleName}.'**
+  String crossBuildHintBroadShouldered(int gap, String muscleName);
+
+  /// BUG-014 cross-build progress hint for pillar_walker. Single body-part gap (always legs) — the predicate has a hard floor of 40 on legs.
+  ///
+  /// In en, this message translates to:
+  /// **'Your legs must speak louder than your arms. {gap} more rank in legs.'**
+  String crossBuildHintPillarWalker(int gap);
+
+  /// BUG-014 cross-build progress hint for even_handed. Surfaces the single body part furthest from rank 30 (the floor every track must clear).
+  ///
+  /// In en, this message translates to:
+  /// **'Every muscle at the same level — no weak link. {gap} more rank in {muscleName}.'**
+  String crossBuildHintEvenHanded(int gap, String muscleName);
+
+  /// BUG-014 cross-build progress hint for iron_bound. Surfaces the smallest gap among the big three (chest/back/legs).
+  ///
+  /// In en, this message translates to:
+  /// **'Chest, back, legs — the three pillars above rank 60. {gap} more rank in {muscleName}.'**
+  String crossBuildHintIronBound(int gap, String muscleName);
+
+  /// BUG-014 cross-build progress hint for saga_forged. Surfaces the single body part furthest from rank 60 (the floor every track must clear).
+  ///
+  /// In en, this message translates to:
+  /// **'The end of the journey starts here — every attribute above rank 60. {gap} more rank in {muscleName}.'**
+  String crossBuildHintSagaForged(int gap, String muscleName);
+
+  /// BUG-014 fallback for cross-build hints when the predicate evaluates true but the title hasn't been awarded yet (rare race window between award and UI refresh).
+  ///
+  /// In en, this message translates to:
+  /// **'All conditions met — predicate satisfied.'**
+  String get crossBuildHintSatisfied;
+
+  /// BUG-013 mini-flipbook label rendered alongside the three cycling muscle sigils when more than 3 rank-ups fire in one workout. Plural 'ranks' is grammatically correct here — overflow always means count >= 1 additional rank-up.
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} ranks'**
+  String rankUpOverflowFlipbookLabel(int count);
+
   /// Phase 18c chest R5 title display name.
   ///
   /// In en, this message translates to:

@@ -23,9 +23,11 @@ import '../../personal_records/providers/pr_providers.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../../personal_records/models/record_type.dart';
 import '../../personal_records/ui/widgets/pr_type_icon.dart';
+import '../../auth/providers/auth_providers.dart';
 import '../../routines/providers/notifiers/routine_list_notifier.dart';
 import '../../rpg/providers/earned_titles_provider.dart';
 import '../../rpg/ui/celebration_player.dart';
+import '../../rpg/ui/saga_intro_gate.dart';
 import '../../weekly_plan/providers/weekly_plan_provider.dart';
 import '../providers/workout_providers.dart';
 import '../providers/workout_history_providers.dart';
@@ -377,6 +379,23 @@ class _ActiveWorkoutBodyState extends ConsumerState<_ActiveWorkoutBody> {
       if (!wasSavedOffline && mounted) {
         final celebration = notifier.consumeLastCelebration();
         if (celebration != null) {
+          // BUG-012 (Cluster 3) sequencing — saga intro overlay must
+          // complete BEFORE celebration overlays render. If the intro is
+          // already dismissed (returning user, Hive flag set), the
+          // sequencer's future resolves immediately and we proceed
+          // without delay. If it's still up (first workout for a fresh
+          // user), we wait for the BEGIN tap, then a 200ms gap so the
+          // eye doesn't get a hard cut between the intro dismiss and
+          // the first celebration frame.
+          final userId = ref.read(currentUserIdProvider);
+          if (userId != null) {
+            await SagaIntroSequencer.waitForIntroDismissed(userId);
+            await Future<void>.delayed(const Duration(milliseconds: 200));
+            if (!mounted) {
+              _isFinishHandled = false;
+              return;
+            }
+          }
           // Whether the user already had earned titles BEFORE this finish.
           // The player uses this to decide which unlock — if any — gets the
           // first-ever heroGold treatment on the half-sheet.

@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:repsaga/features/rpg/domain/celebration_queue.dart';
 import 'package:repsaga/features/rpg/models/body_part.dart';
 import 'package:repsaga/features/rpg/models/celebration_event.dart';
+import 'package:repsaga/features/rpg/models/character_class.dart';
 
 void main() {
   group('CelebrationQueue.build', () {
@@ -93,10 +94,14 @@ void main() {
       expect(result.overflow, isNull);
     });
 
-    test('cap-at-3: rank-ups fight for slots before level-up + title', () {
-      // 4 rank-ups + 1 level-up + 1 title = 6 events, cap at 3. Spec §13.2:
-      // narrative reads cleaner when at least one rank-up + the level-up +
-      // the title survive. Trim from the LOW-rank end of the rank-up list.
+    test('cap-at-3 reservation: 4 rank-ups + 1 level + 1 title → top rank-up '
+        'reserved, then more rank-ups, closers trimmed (BUG-013)', () {
+      // BUG-013 inversion (Cluster 3): rank-ups never lose to closers.
+      // 4 rank-ups + 1 level-up + 1 title = 6 events, cap at 3.
+      // Reservation policy: slot 1 (class — none here) → slot 2 (top
+      // rank-up = 30) → remaining 2 slots fill with the next two
+      // highest rank-ups (20, 10). Level-up + title get dropped silently
+      // — they're still server-side and surface on the saga screen.
       final result = CelebrationQueue.build(
         events: const [
           CelebrationEvent.rankUp(bodyPart: BodyPart.chest, newRank: 30),
@@ -108,15 +113,16 @@ void main() {
         ],
       );
 
-      // Top rank-up wins, then the level-up + title (causal closers).
       expect(result.queue, hasLength(3));
-      expect(result.queue[0], isA<RankUpEvent>());
-      expect((result.queue[0] as RankUpEvent).newRank, 30);
-      expect(result.queue[1], isA<LevelUpEvent>());
-      expect(result.queue[2], isA<TitleUnlockEvent>());
-      // 3 rank-ups got dropped in favor of level + title.
+      expect(result.queue.every((e) => e is RankUpEvent), isTrue);
+      expect(
+        result.queue.whereType<RankUpEvent>().map((e) => e.newRank).toList(),
+        [30, 20, 10],
+      );
+      // 1 rank-up dropped (rank 5); the level-up + title are silently
+      // absorbed by the cap.
       expect(result.overflow, isNotNull);
-      expect(result.overflow!.remainingRankUps, 3);
+      expect(result.overflow!.remainingRankUps, 1);
     });
 
     test(
@@ -170,6 +176,132 @@ void main() {
       // 1 rank + 2 titles = 3 slots, no overflow.
       expect(result.queue, hasLength(3));
       expect(result.queue.whereType<TitleUnlockEvent>(), hasLength(2));
+      expect(result.overflow, isNull);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // BUG-011 + BUG-013 — Class change + reservation policy boundary tests
+  // -------------------------------------------------------------------------
+  group('CelebrationQueue.build — class change + reservation policy', () {
+    test('class change is placed at the head of the queue (BUG-011)', () {
+      // Slot 1 is reserved for ClassChangeEvent. Even when the input order
+      // has rank-ups first, the queue surfaces the class change first.
+      final result = CelebrationQueue.build(
+        events: const [
+          CelebrationEvent.rankUp(bodyPart: BodyPart.chest, newRank: 5),
+          CelebrationEvent.classChange(
+            fromClass: CharacterClass.initiate,
+            toClass: CharacterClass.bulwark,
+          ),
+        ],
+      );
+      expect(result.queue, hasLength(2));
+      expect(result.queue.first, isA<ClassChangeEvent>());
+      expect(result.queue[1], isA<RankUpEvent>());
+    });
+
+    test('boundary: 1 closer (level-up only) → kept, no overflow', () {
+      // Trivial baseline. No class, no rank-up, single level-up.
+      final result = CelebrationQueue.build(
+        events: const [CelebrationEvent.levelUp(newLevel: 3)],
+      );
+      expect(result.queue, hasLength(1));
+      expect(result.queue.first, isA<LevelUpEvent>());
+      expect(result.overflow, isNull);
+    });
+
+    test('boundary: 3 closers (level + 2 titles) → all kept, no overflow', () {
+      // Cap exactly absorbs 3 closers. Order: level-up before titles.
+      final result = CelebrationQueue.build(
+        events: const [
+          CelebrationEvent.titleUnlock(slug: 'chest_r5_initiate_of_the_forge'),
+          CelebrationEvent.titleUnlock(slug: 'chest_r10_plate_bearer'),
+          CelebrationEvent.levelUp(newLevel: 5),
+        ],
+      );
+      expect(result.queue, hasLength(3));
+      expect(result.queue[0], isA<LevelUpEvent>());
+      expect(result.queue.whereType<TitleUnlockEvent>(), hasLength(2));
+      expect(result.overflow, isNull);
+    });
+
+    test(
+      'boundary: 1 class change + 3 closers → class wins, only 2 closers fit (BUG-011 + BUG-013)',
+      () {
+        // Cap=3 with a class change means slot 1 is reserved for the class
+        // and only 2 closer slots remain. Level-up takes priority over
+        // titles in the closers ordering.
+        final result = CelebrationQueue.build(
+          events: const [
+            CelebrationEvent.classChange(
+              fromClass: CharacterClass.initiate,
+              toClass: CharacterClass.bulwark,
+            ),
+            CelebrationEvent.titleUnlock(
+              slug: 'chest_r5_initiate_of_the_forge',
+            ),
+            CelebrationEvent.titleUnlock(slug: 'chest_r10_plate_bearer'),
+            CelebrationEvent.levelUp(newLevel: 5),
+          ],
+        );
+        expect(result.queue, hasLength(3));
+        expect(result.queue[0], isA<ClassChangeEvent>());
+        expect(result.queue[1], isA<LevelUpEvent>());
+        expect(result.queue[2], isA<TitleUnlockEvent>());
+        // Closers don't overflow the rank-up overflow card — they're
+        // absorbed silently.
+        expect(result.overflow, isNull);
+      },
+    );
+
+    test(
+      'boundary: 1 class change + 1 rank-up + 3 closers → class + rank-up + level (BUG-013)',
+      () {
+        // Cap=3. Slot 1 = class, slot 2 = top rank-up, slot 3 = level-up.
+        // Both titles drop silently. Critical: rank-up survives even
+        // though closers fill the queue (BUG-013 invariant).
+        final result = CelebrationQueue.build(
+          events: const [
+            CelebrationEvent.classChange(
+              fromClass: CharacterClass.initiate,
+              toClass: CharacterClass.bulwark,
+            ),
+            CelebrationEvent.rankUp(bodyPart: BodyPart.chest, newRank: 5),
+            CelebrationEvent.levelUp(newLevel: 5),
+            CelebrationEvent.titleUnlock(
+              slug: 'chest_r5_initiate_of_the_forge',
+            ),
+            CelebrationEvent.titleUnlock(slug: 'chest_r10_plate_bearer'),
+          ],
+        );
+        expect(result.queue, hasLength(3));
+        expect(result.queue[0], isA<ClassChangeEvent>());
+        expect(result.queue[1], isA<RankUpEvent>());
+        expect(result.queue[2], isA<LevelUpEvent>());
+        // No rank-up overflow (only one rank-up, it survived).
+        expect(result.overflow, isNull);
+      },
+    );
+
+    test('BUG-013 invariant: 3 closers + 1 rank-up → top rank-up survives, '
+        'closers trimmed to 2', () {
+      // Pre-Cluster-3 behaviour: closers (level + 2 titles) would fill
+      // all 3 slots and the rank-up would overflow. New behaviour:
+      // slot 2 reserved for rank-up, only 2 closer slots remain.
+      final result = CelebrationQueue.build(
+        events: const [
+          CelebrationEvent.rankUp(bodyPart: BodyPart.chest, newRank: 10),
+          CelebrationEvent.titleUnlock(slug: 'chest_r5_initiate_of_the_forge'),
+          CelebrationEvent.titleUnlock(slug: 'chest_r10_plate_bearer'),
+          CelebrationEvent.levelUp(newLevel: 5),
+        ],
+      );
+      expect(result.queue, hasLength(3));
+      expect(result.queue[0], isA<RankUpEvent>());
+      expect(result.queue[1], isA<LevelUpEvent>());
+      expect(result.queue[2], isA<TitleUnlockEvent>());
+      // No rank-up overflow (the single rank-up survived).
       expect(result.overflow, isNull);
     });
   });

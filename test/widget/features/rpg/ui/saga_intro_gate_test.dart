@@ -16,6 +16,7 @@
 ///   - dismiss persists `saga_intro_seen:` and prevents re-show
 library;
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -252,6 +253,101 @@ void main() {
   group('hasRunRetroForUser', () {
     test('defaults to false for an untouched user', () {
       expect(hasRunRetroForUser('user-001'), isFalse);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // BUG-012 (Cluster 3) — saga-intro / celebration sequencing
+  //
+  // The sequencer ensures the celebration queue waits for intro dismissal
+  // before draining. Two paths:
+  //   * already-seen user: future resolves on first gate mount
+  //   * fresh user: future resolves on dismiss (BEGIN tap)
+  // ---------------------------------------------------------------------------
+  group('SagaIntroSequencer (BUG-012)', () {
+    setUp(() {
+      // Reset between tests so each test gets a fresh per-user completer.
+      SagaIntroSequencer.resetForTesting();
+    });
+
+    testWidgets(
+      'returning user (intro already seen) → sequencer resolves immediately on '
+      'first gate mount',
+      (tester) async {
+        await tester.runAsync(() async {
+          await markSagaIntroSeenForUser('seq-1');
+          final box = Hive.box<dynamic>('user_prefs');
+          await box.put('saga_retro_run:seq-1', true);
+        });
+
+        // Subscribe BEFORE pumping the gate so we observe the resolution
+        // on the first build (idempotency check).
+        final future = SagaIntroSequencer.waitForIntroDismissed('seq-1');
+        var resolved = false;
+        unawaited(future.then((_) => resolved = true));
+
+        final repo = _FakeRpgRepository();
+        await _pumpGate(tester, userId: 'seq-1', repo: repo);
+        // Drain microtasks so the .then callback fires.
+        await tester.runAsync(() async {});
+        await tester.pump();
+
+        expect(resolved, isTrue);
+      },
+    );
+
+    testWidgets(
+      'fresh user → sequencer remains pending until BEGIN tap, then resolves',
+      (tester) async {
+        await tester.runAsync(() async {
+          final box = Hive.box<dynamic>('user_prefs');
+          await box.put('saga_retro_run:seq-2', true);
+        });
+
+        var resolved = false;
+        unawaited(
+          SagaIntroSequencer.waitForIntroDismissed(
+            'seq-2',
+          ).then((_) => resolved = true),
+        );
+
+        final repo = _FakeRpgRepository();
+        await _pumpGate(tester, userId: 'seq-2', repo: repo);
+        // Intro is showing — sequencer should NOT have resolved yet.
+        await tester.runAsync(() async {});
+        await tester.pump();
+        expect(resolved, isFalse);
+
+        // Dismiss the intro via the full step sequence.
+        await tester.runAsync(() async {
+          await tester.tap(find.text('NEXT'));
+          await tester.pump();
+          await tester.tap(find.text('NEXT'));
+          await tester.pump();
+          await tester.tap(find.text('BEGIN'));
+          await tester.pump();
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+          await tester.pump();
+        });
+
+        // Sequencer fires on dismiss.
+        expect(resolved, isTrue);
+      },
+    );
+
+    testWidgets('duplicate dismissals are no-ops (idempotent completer)', (
+      tester,
+    ) async {
+      // The completer is single-fire by construction. A double-dismiss
+      // (e.g. session re-mount after Hive flag was set in another tab)
+      // must not throw. This pins the safe behaviour.
+      SagaIntroSequencer.markIntroDismissedForSequencer('seq-3');
+      // Should not throw on the second call.
+      SagaIntroSequencer.markIntroDismissedForSequencer('seq-3');
+
+      final future = SagaIntroSequencer.waitForIntroDismissed('seq-3');
+      // Future is already complete.
+      await expectLater(future, completes);
     });
   });
 
