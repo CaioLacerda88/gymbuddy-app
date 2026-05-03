@@ -4,6 +4,45 @@ Active work being done by agents. Each section is removed once the branch is mer
 
 ---
 
+## Wave 5 / Cluster 8 PR A — small architecture refactors (`fix/cluster8-small-refactors`)
+
+**Per BUGS.md Cluster 8 (BUG-035, 039, 040).** Three independent mechanical fixes
+bundled because each is small and they touch disjoint files. Pure refactor — no
+behavior change. The three larger extractions (BUG-036/037/038) ship as separate PRs.
+
+### Source files
+
+- [ ] **BUG-035** — `lib/features/rpg/domain/vitality_state_mapper.dart` — strip `package:flutter/painting.dart` + `AppLocalizations` imports. Domain returns a `VitalityColorToken` enum + l10n key; UI layer resolves to `Color` and `String`. Update all callers in `lib/features/rpg/ui/` to do the resolution at the widget boundary.
+- [ ] **BUG-039** — `lib/features/workouts/providers/notifiers/active_workout_notifier.dart:47-98` — fold the public `savedOffline` field into `ActiveWorkoutState` (Freezed). Update UI consumers that read `notifier.savedOffline` via `ref.read` to instead read `state.savedOffline`. Restores unidirectional Riverpod data flow.
+- [ ] **BUG-040** — `lib/features/workouts/providers/workout_history_providers.dart` + `workout_providers.dart` (`workoutCountProvider`) — listen on `authStateProvider`, invalidate keepAlive providers on user-id change. Prevents stale data leak across sign-out → sign-in user switch.
+
+### Tests
+
+- [ ] **BUG-035** — extend `test/unit/features/rpg/domain/vitality_state_mapper_test.dart` (or create) — assert returned token enum + l10n key per range, no Flutter type leakage
+- [ ] **BUG-039** — extend `test/unit/features/workouts/providers/active_workout_notifier_test.dart` — pin `savedOffline` exposed on state, not on notifier
+- [ ] **BUG-040** — `test/unit/features/workouts/providers/workout_history_providers_test.dart` — pin invalidation fires on auth user-id change (sign-out → sign-in different user)
+
+### E2E
+
+No user-facing flow change — pure internal refactor. Selector impact assessment
+sufficient (qa-engineer scans for any tests that depend on the public `notifier.savedOffline`
+API surface and updates if needed). No new E2E specs.
+
+### Cleanup
+
+- [ ] Mark BUG-035, 039, 040 RESOLVED in `BUGS.md` with strikethrough heads + `RESOLVED in PR #NN`
+- [ ] `make ci` green
+- [ ] Commit `refactor(arch): Cluster 8 PR A — small architecture leaks (BUG-035, 039, 040)`
+- [ ] `git push -u origin fix/cluster8-small-refactors`
+
+### Out of scope (separate PRs to follow)
+
+- BUG-036 + BUG-041 → PR B (`active_workout_screen.dart` decomposition, bundled to avoid file-level merge conflicts)
+- BUG-037 → PR C (`profile_settings_screen.dart` decomposition)
+- BUG-038 → PR D (`plan_management_screen.dart` decomposition)
+
+---
+
 ## Phase 16 — Subscription Monetization — PARKED (2026-04-22)
 
 **Why parked:** Phase 16 keeps hitting external blockers (Brazilian merchant account, Play Console → upload signed AAB required before subscription product can be created, license-tester account setup). Phase 17 gamification is fully internal code work with no external gates and produces the retention moat that makes Phase 16's paywall pitch compelling. Decision: ship Phase 17 (Gamification) before resuming 16b/c/d.
