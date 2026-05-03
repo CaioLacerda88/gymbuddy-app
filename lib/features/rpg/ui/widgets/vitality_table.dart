@@ -5,9 +5,9 @@ import '../../../../core/theme/app_icons.dart';
 import '../../../../core/theme/app_muscle_icons.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../domain/vitality_state_mapper.dart';
 import '../../models/body_part.dart';
 import '../../models/stats_deep_dive_state.dart';
+import '../utils/vitality_state_styles.dart';
 import 'body_part_localization.dart';
 
 /// The "live Vitality" section of the stats deep-dive screen — six rows
@@ -88,10 +88,10 @@ class _VitalityTableRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final stateColor = VitalityStateMapper.borderColorFor(row.state);
+    final stateColor = VitalityStateStyles.borderColorFor(row.state);
     final pctText = '${(row.pct * 100).round()}%';
     final localizedName = localizedBodyPartName(row.bodyPart, l10n);
-    final stateCopy = VitalityStateMapper.localizedCopy(row.state, l10n);
+    final stateCopy = VitalityStateStyles.localizedCopy(row.state, l10n);
 
     return Semantics(
       container: true,

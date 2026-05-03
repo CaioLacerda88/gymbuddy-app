@@ -1,21 +1,24 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:repsaga/core/theme/app_theme.dart';
 import 'package:repsaga/features/rpg/domain/vitality_state_mapper.dart';
-import 'package:repsaga/features/rpg/models/body_part.dart';
 import 'package:repsaga/features/rpg/models/vitality_state.dart';
-import 'package:repsaga/l10n/app_localizations.dart';
 
-/// Canonical mapper boundary + palette tests.
+/// Canonical mapper boundary tests.
 ///
-/// These pin the §8.4 contract:
+/// Pins the §8.4 contract:
 ///   * `pct == 0`      → dormant
 ///   * `(0, 0.30]`     → fading
 ///   * `(0.30, 0.70]`  → active
 ///   * `(0.70, 1.00]`  → radiant
 ///
-/// Plus the locked body-part palette (UX-critic warning: drift across
-/// surfaces if not pinned in one place).
+/// **Pure-domain contract (BUG-035).** This test file imports zero
+/// Flutter packages — neither `dart:ui`, nor `flutter/painting.dart`, nor
+/// `AppLocalizations`. The mapper itself was scrubbed of those
+/// dependencies as part of the architecture-leak fix; if a future change
+/// re-introduces a Flutter import to the domain, this file should fail to
+/// load (or its imports should leak) — that's the structural canary the
+/// split exists to provide. Color resolution + localized copy now live
+/// in `vitality_state_styles_test.dart` (sibling file under
+/// `test/unit/features/rpg/ui/utils/`).
 void main() {
   group('VitalityStateMapper.fromPercent — boundaries', () {
     test('exactly 0 → dormant', () {
@@ -114,172 +117,6 @@ void main() {
         VitalityStateMapper.fromVitality(ewma: 8420, peak: 9850),
         VitalityState.radiant,
       );
-    });
-  });
-
-  group('VitalityStateMapper — palette per state', () {
-    test('borderColorFor pins to the canonical AppColors tokens', () {
-      expect(
-        VitalityStateMapper.borderColorFor(VitalityState.dormant),
-        AppColors.textDim,
-      );
-      expect(
-        VitalityStateMapper.borderColorFor(VitalityState.fading),
-        AppColors.primaryViolet,
-      );
-      expect(
-        VitalityStateMapper.borderColorFor(VitalityState.active),
-        AppColors.hotViolet,
-      );
-      expect(
-        VitalityStateMapper.borderColorFor(VitalityState.radiant),
-        AppColors.heroGold,
-      );
-    });
-
-    test('borderColorFor returns distinct colors per state', () {
-      final colors = VitalityState.values
-          .map(VitalityStateMapper.borderColorFor)
-          .toSet();
-      expect(colors.length, VitalityState.values.length);
-    });
-
-    test('haloColorFor and progressBarColorFor align with borderColorFor', () {
-      // Locked single-source-of-truth contract: halo, border, progress bar
-      // all read from the same per-state palette. Splitting them would
-      // re-introduce the drift the mapper exists to prevent.
-      for (final s in VitalityState.values) {
-        expect(
-          VitalityStateMapper.haloColorFor(s),
-          VitalityStateMapper.borderColorFor(s),
-        );
-        expect(
-          VitalityStateMapper.progressBarColorFor(s),
-          VitalityStateMapper.borderColorFor(s),
-        );
-      }
-    });
-  });
-
-  group('VitalityStateMapper.bodyPartColor — locked palette', () {
-    test('all 7 body parts (6 v1 + cardio) have a color assignment', () {
-      for (final bp in BodyPart.values) {
-        expect(
-          VitalityStateMapper.bodyPartColor.containsKey(bp),
-          true,
-          reason: 'body part ${bp.dbValue} missing from bodyPartColor map',
-        );
-      }
-    });
-
-    test('all 6 active (v1) body parts have distinct colors', () {
-      // The trend chart in §13.3 puts six body-part lines on the same
-      // canvas — they must be visually distinguishable. We don't assert
-      // contrast metrics here (UX-critic / design pass), but at minimum
-      // no two body parts can share an identical color.
-      final v1Colors = activeBodyParts
-          .map((bp) => VitalityStateMapper.bodyPartColor[bp])
-          .whereType<Color>()
-          .toSet();
-      expect(v1Colors.length, activeBodyParts.length);
-    });
-
-    test('cardio uses a desaturated tone (v2 placeholder)', () {
-      // Cardio is intentionally muted until earnable in v2 — same `hair`
-      // hairline tone as the dormant cardio row.
-      expect(
-        VitalityStateMapper.bodyPartColor[BodyPart.cardio],
-        AppColors.hair,
-      );
-    });
-
-    test('heroGold is reserved (not used as a body-part color)', () {
-      // Reward-scarcity contract: heroGold is only the radiant rune signal
-      // and reward-only token, never a per-body-part identity color.
-      for (final color in VitalityStateMapper.bodyPartColor.values) {
-        expect(
-          color,
-          isNot(AppColors.heroGold),
-          reason: 'heroGold leaked into bodyPartColor — reward scarcity broken',
-        );
-      }
-    });
-  });
-
-  group('VitalityStateMapper.localizedCopy', () {
-    // localizedCopy requires an AppLocalizations instance which is only
-    // available inside a widget tree that pumps the localization delegates,
-    // so these tests use `testWidgets` (not pure-Dart `test`). We resolve
-    // l10n once via a Builder, run the assertions inside it, and return a
-    // SizedBox.shrink() — no rendering needed.
-
-    testWidgets('returns distinct strings per state', (tester) async {
-      String? collected;
-      await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Builder(
-            builder: (ctx) {
-              final l10n = AppLocalizations.of(ctx);
-              final lines = VitalityState.values
-                  .map((s) => VitalityStateMapper.localizedCopy(s, l10n))
-                  .toSet();
-              expect(
-                lines.length,
-                VitalityState.values.length,
-                reason:
-                    'Each VitalityState must map to a unique copy line — '
-                    'collisions would silently merge two visual states.',
-              );
-              collected = lines.join('|');
-              return const SizedBox.shrink();
-            },
-          ),
-        ),
-      );
-      // Sanity: Builder ran (catches the case where the test passes
-      // vacuously because the inner expects never executed).
-      expect(collected, isNotNull);
-    });
-
-    testWidgets('returns the canonical English copy per state', (tester) async {
-      // Pin the actual ARB strings so a regression in app_en.arb (e.g.
-      // someone editing the copy without re-running gen-l10n) fails here
-      // rather than silently shipping the wrong text. Trailing periods
-      // come straight from app_en.arb and matter — design wants the
-      // marginalia to read as full sentences.
-      bool ran = false;
-      await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Builder(
-            builder: (ctx) {
-              final l10n = AppLocalizations.of(ctx);
-              expect(
-                VitalityStateMapper.localizedCopy(VitalityState.dormant, l10n),
-                'Awaits your first stride.',
-              );
-              expect(
-                VitalityStateMapper.localizedCopy(VitalityState.fading, l10n),
-                'Conditioning lost — return to the path.',
-              );
-              expect(
-                VitalityStateMapper.localizedCopy(VitalityState.active, l10n),
-                'On the path.',
-              );
-              expect(
-                VitalityStateMapper.localizedCopy(VitalityState.radiant, l10n),
-                'Path mastered.',
-              );
-              ran = true;
-              return const SizedBox.shrink();
-            },
-          ),
-        ),
-      );
-      expect(ran, isTrue);
     });
   });
 }

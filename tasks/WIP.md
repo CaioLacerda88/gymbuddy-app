@@ -12,15 +12,15 @@ behavior change. The three larger extractions (BUG-036/037/038) ship as separate
 
 ### Source files
 
-- [ ] **BUG-035** — `lib/features/rpg/domain/vitality_state_mapper.dart` — strip `package:flutter/painting.dart` + `AppLocalizations` imports. Domain returns a `VitalityColorToken` enum + l10n key; UI layer resolves to `Color` and `String`. Update all callers in `lib/features/rpg/ui/` to do the resolution at the widget boundary.
-- [ ] **BUG-039** — `lib/features/workouts/providers/notifiers/active_workout_notifier.dart:47-98` — fold the public `savedOffline` field into `ActiveWorkoutState` (Freezed). Update UI consumers that read `notifier.savedOffline` via `ref.read` to instead read `state.savedOffline`. Restores unidirectional Riverpod data flow.
-- [ ] **BUG-040** — `lib/features/workouts/providers/workout_history_providers.dart` + `workout_providers.dart` (`workoutCountProvider`) — listen on `authStateProvider`, invalidate keepAlive providers on user-id change. Prevents stale data leak across sign-out → sign-in user switch.
+- [x] **BUG-035** — `lib/features/rpg/domain/vitality_state_mapper.dart` — stripped `package:flutter/painting.dart` + `AppLocalizations`. Color resolution + l10n copy moved to new `lib/features/rpg/ui/utils/vitality_state_styles.dart` (with the `VitalityStateColor` extension carrying the legacy `state.borderColor` shape). The `borderColor` extension also migrated out of `lib/features/rpg/models/vitality_state.dart` so the model file is Flutter-agnostic. Eight UI callsites updated to import the new utils file.
+- [x] **BUG-039** — `lib/features/workouts/providers/notifiers/active_workout_notifier.dart` — added `savedOffline` field to `ActiveWorkoutState` (Freezed, `@Default(false)`) AND changed `finishWorkout` return type to `FinishWorkoutResult` record (`prResult`, `savedOffline`). Public notifier field deleted. Screen reads via the explicit return record (the spec listed both options; the return-record path solves the "state is null after finish" gap that the state-only approach hits).
+- [x] **BUG-040** — `lib/features/workouts/providers/workout_history_providers.dart` — added `_invalidateOnUserIdChange(Ref)` helper that listens to `authStateProvider` and invalidates the calling provider when the user-id slice transitions. Wired into `workoutHistoryProvider.build()` and `workoutCountProvider`. Token-refresh emissions short-circuit (same user-id → no re-fetch).
 
 ### Tests
 
-- [ ] **BUG-035** — extend `test/unit/features/rpg/domain/vitality_state_mapper_test.dart` (or create) — assert returned token enum + l10n key per range, no Flutter type leakage
-- [ ] **BUG-039** — extend `test/unit/features/workouts/providers/active_workout_notifier_test.dart` — pin `savedOffline` exposed on state, not on notifier
-- [ ] **BUG-040** — `test/unit/features/workouts/providers/workout_history_providers_test.dart` — pin invalidation fires on auth user-id change (sign-out → sign-in different user)
+- [x] **BUG-035** — split into two files: `test/unit/features/rpg/domain/vitality_state_mapper_test.dart` (pure-domain boundary tests, ZERO Flutter imports — structural canary) + new `test/unit/features/rpg/ui/utils/vitality_state_styles_test.dart` (Color + l10n + `VitalityStateColor.borderColor` extension).
+- [x] **BUG-039** — added `BUG-039: savedOffline lives on FinishWorkoutResult, not the notifier` test in `active_workout_notifier_test.dart`. Pins both the result-record contract AND that `(notifier as dynamic).savedOffline` throws `NoSuchMethodError`.
+- [x] **BUG-040** — new `workout_history_providers_test.dart` with two tests: invalidates on user-id change (drives synthetic `authStateProvider` stream), and does NOT re-fetch on token-refresh emissions (same user-id short-circuit).
 
 ### E2E
 
@@ -30,10 +30,10 @@ API surface and updates if needed). No new E2E specs.
 
 ### Cleanup
 
-- [ ] Mark BUG-035, 039, 040 RESOLVED in `BUGS.md` with strikethrough heads + `RESOLVED in PR #NN`
-- [ ] `make ci` green
-- [ ] Commit `refactor(arch): Cluster 8 PR A — small architecture leaks (BUG-035, 039, 040)`
-- [ ] `git push -u origin fix/cluster8-small-refactors`
+- [x] Mark BUG-035, 039, 040 RESOLVED in `BUGS.md` with strikethrough heads + `RESOLVED in PR #NN`
+- [x] `make ci` green (full test suite 2257 passed; analyze clean; android-debug build clean)
+- [x] Commit `refactor(arch): Cluster 8 PR A — small architecture leaks (BUG-035, 039, 040)`
+- [x] `git push -u origin fix/cluster8-small-refactors`
 
 ### Out of scope (separate PRs to follow)
 

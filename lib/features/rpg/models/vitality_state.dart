@@ -1,5 +1,3 @@
-import 'package:flutter/painting.dart';
-
 import '../domain/vitality_state_mapper.dart';
 
 /// Visual state of a body-part's rune sigil, derived from Vitality %.
@@ -17,6 +15,16 @@ import '../domain/vitality_state_mapper.dart';
 /// the enum + a back-compat extension that delegates. New code should
 /// import [VitalityStateMapper] directly and call `fromPercent` /
 /// `fromVitality` on it.
+///
+/// **BUG-035 split.** Until 2026-05-02 this file imported
+/// `package:flutter/painting.dart` to expose a `borderColor` extension
+/// returning a `Color`. That made `models/vitality_state.dart` (a domain
+/// model) depend on the Flutter framework — a layering violation. The
+/// `borderColor` extension now lives in
+/// `lib/features/rpg/ui/utils/vitality_state_styles.dart` (the
+/// `VitalityStateColor` extension) so the model file is Flutter-agnostic.
+/// Existing call sites that wrote `state.borderColor` keep working — they
+/// just import the styles helper instead of this file for that property.
 enum VitalityState {
   /// Vitality_peak == 0. Body part has never been trained; rune is silent
   /// and waiting for the first attributed set to awaken it.
@@ -35,18 +43,20 @@ enum VitalityState {
   radiant,
 }
 
-/// Compatibility shim around [VitalityStateMapper] — preserves the existing
-/// `state.borderColor` / `VitalityStateX.fromVitality(...)` call shape used
-/// by character_sheet_state.dart, character_sheet_provider.dart, and the
+/// Compatibility shim around [VitalityStateMapper] — preserves the
+/// existing `VitalityStateX.fromVitality(...)` call shape used by
+/// character_sheet_state.dart, character_sheet_provider.dart, and the
 /// existing widget/unit tests. New code should use [VitalityStateMapper]
 /// directly.
+///
+/// **Color resolution moved.** `VitalityStateX.borderColor` lived here
+/// pre-BUG-035; it now lives on the
+/// `VitalityStateColor` extension in
+/// `lib/features/rpg/ui/utils/vitality_state_styles.dart`. The reroute
+/// keeps domain code (this file) Flutter-free while leaving the
+/// `state.borderColor` call shape intact for UI consumers (they import
+/// the UI helper instead).
 extension VitalityStateX on VitalityState {
-  /// Color associated with this state — delegates to
-  /// [VitalityStateMapper.borderColorFor] so all surfaces (rank stamp,
-  /// rune halo, vitality radar vertex dots, xp progress hairline) share a
-  /// single palette source of truth.
-  Color get borderColor => VitalityStateMapper.borderColorFor(this);
-
   /// Map a raw Vitality EWMA + permanent peak to a visual state.
   ///
   /// Delegates to [VitalityStateMapper.fromVitality] which normalises to

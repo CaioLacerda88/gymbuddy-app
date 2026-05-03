@@ -1,6 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:repsaga/core/theme/app_theme.dart';
 import 'package:repsaga/features/rpg/models/vitality_state.dart';
+// Pulled in for the `VitalityStateColor.borderColor` extension that
+// covers the legacy `state.borderColor` shape — extension lives here
+// post-BUG-035 so models/vitality_state.dart stays Flutter-agnostic.
+import 'package:repsaga/features/rpg/ui/utils/vitality_state_styles.dart';
 
 /// Compatibility-shim test for `VitalityStateX.fromVitality`. The real
 /// boundary contract lives in `vitality_state_mapper_test.dart`; this file

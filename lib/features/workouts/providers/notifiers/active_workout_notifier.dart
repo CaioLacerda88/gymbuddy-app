@@ -40,6 +40,23 @@ import '../workout_providers.dart';
 
 const _uuid = Uuid();
 
+/// Outcome of [ActiveWorkoutNotifier.finishWorkout].
+///
+/// Returned as a record (rather than read off a notifier field) so the
+/// caller's data flow is explicit: a single `await finishWorkout()` returns
+/// every value the screen needs to react. Restores unidirectional data
+/// flow — UI no longer pokes at notifier internals (BUG-039).
+///
+/// `prResult` is null when PR detection ran but produced no records or
+/// failed silently (PR detection is non-essential and never blocks the
+/// save). `savedOffline` is `true` iff the network save threw and the
+/// workout was enqueued for offline sync; UI uses it to render the
+/// "Will sync when back online" snackbar.
+typedef FinishWorkoutResult = ({
+  PRDetectionResult? prResult,
+  bool savedOffline,
+});
+
 /// Core state machine for active workouts.
 ///
 /// Manages the full lifecycle: start -> add exercises/sets -> finish or discard.
@@ -83,8 +100,10 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
     _cancelRequested = true;
     _isFinishing = false;
     _isDiscarding = false;
-    savedOffline = false;
     if (_lastValidState != null) {
+      // _lastValidState already carries `savedOffline: false` (reset at the
+      // top of finishWorkout / discardWorkout) so restoring it naturally
+      // resets the offline-queued flag without a separate field.
       state = AsyncData(_lastValidState);
     }
   }
@@ -609,11 +628,6 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
     _isDiscarding = false;
   }
 
-  /// Whether the last [finishWorkout] call saved the workout to the offline
-  /// queue rather than syncing it to the server. UI reads this to show the
-  /// "Will sync when back online" banner on the finish screen.
-  bool savedOffline = false;
-
   /// Session-throttle for the first-awakening overlay (Phase 18c, spec §13).
   ///
   /// Reset to `false` when a workout STARTS (not when the app starts, not
@@ -655,17 +669,28 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
   ///
   /// When the network save fails, the workout is enqueued for offline sync
   /// and a locally-constructed [Workout] is used for downstream PR detection
-  /// and weekly-plan updates. The [savedOffline] flag is set so the UI can
-  /// display an appropriate message.
-  Future<PRDetectionResult?> finishWorkout({String? notes}) async {
+  /// and weekly-plan updates. The returned [FinishWorkoutResult.savedOffline]
+  /// flag is `true` in that case so the UI can render the offline-queued
+  /// snackbar.
+  ///
+  /// Returns `null` only when there is no active workout in the first place
+  /// (state was already null) or when a concurrent finish is in flight
+  /// (re-entrance guard). Otherwise the future resolves to a result record
+  /// even on PR-detection failure (which is non-essential and never blocks
+  /// the save).
+  Future<FinishWorkoutResult?> finishWorkout({String? notes}) async {
     final current = state.value;
     if (current == null) return null;
     if (_isFinishing) return null;
     _isFinishing = true;
     _lastValidState = current;
     _cancelRequested = false;
-    savedOffline = false;
     _lastCelebration = null;
+    // Tracked locally inside the guard scope — folded into the returned
+    // [FinishWorkoutResult] so the caller reads it through the explicit
+    // return value, not via a notifier field. Restores unidirectional
+    // Riverpod data flow (BUG-039).
+    var savedOffline = false;
 
     // Capture the pre-finish RPG snapshot + earned-title slug set BEFORE the
     // save call. The post-finish snapshot (read after `record_set_xp`
@@ -1036,7 +1061,7 @@ class ActiveWorkoutNotifier extends AsyncNotifier<ActiveWorkoutState?> {
     state = result;
     _isFinishing = false;
 
-    return prResult;
+    return (prResult: prResult, savedOffline: savedOffline);
   }
 
   /// Refresh the RPG progress + earned-titles providers post-save, then diff

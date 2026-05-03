@@ -6,9 +6,10 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../models/body_part.dart';
 import '../../models/character_sheet_state.dart';
-// Pulled in for `VitalityStateX.borderColor` extension (state-driven
-// rank-stamp tint).
-import '../../models/vitality_state.dart';
+// Pulled in for the `VitalityStateColor.borderColor` extension
+// (state-driven rank-stamp tint). Extension lives in ui/utils/ post-
+// BUG-035 so models/vitality_state.dart stays Flutter-agnostic.
+import '../utils/vitality_state_styles.dart';
 import 'body_part_localization.dart';
 import 'rank_stamp.dart';
 import 'xp_progress_hairline.dart';

@@ -19,9 +19,9 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:repsaga/core/theme/app_theme.dart';
-import 'package:repsaga/features/rpg/domain/vitality_state_mapper.dart';
 import 'package:repsaga/features/rpg/models/body_part.dart';
 import 'package:repsaga/features/rpg/models/stats_deep_dive_state.dart';
+import 'package:repsaga/features/rpg/ui/utils/vitality_state_styles.dart';
 import 'package:repsaga/features/rpg/ui/widgets/vitality_trend_chart.dart';
 
 import '../../../../helpers/test_material_app.dart';
@@ -115,7 +115,7 @@ void main() {
         await tester.pump();
 
         final chart = tester.widget<LineChart>(find.byType(LineChart));
-        final selectedColor = VitalityStateMapper.bodyPartColor[BodyPart.legs];
+        final selectedColor = VitalityStateStyles.bodyPartColor[BodyPart.legs];
         final selectedBars = chart.data.lineBarsData
             .where((b) => b.color == selectedColor)
             .toList();
@@ -263,7 +263,7 @@ void main() {
         final chestVivid = firstChart.data.lineBarsData
             .where(
               (b) =>
-                  b.color == VitalityStateMapper.bodyPartColor[BodyPart.chest],
+                  b.color == VitalityStateStyles.bodyPartColor[BodyPart.chest],
             )
             .length;
         expect(chestVivid, 1);
@@ -285,14 +285,14 @@ void main() {
         final legsVivid = secondChart.data.lineBarsData
             .where(
               (b) =>
-                  b.color == VitalityStateMapper.bodyPartColor[BodyPart.legs],
+                  b.color == VitalityStateStyles.bodyPartColor[BodyPart.legs],
             )
             .length;
         expect(legsVivid, 1);
         final chestStillVivid = secondChart.data.lineBarsData
             .where(
               (b) =>
-                  b.color == VitalityStateMapper.bodyPartColor[BodyPart.chest],
+                  b.color == VitalityStateStyles.bodyPartColor[BodyPart.chest],
             )
             .length;
         expect(chestStillVivid, 0);

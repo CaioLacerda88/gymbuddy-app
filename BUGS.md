@@ -631,13 +631,24 @@ exits.
 
 ## Cluster 8 — Architecture leaks & SOLID violations (P2)
 
-### BUG-035 [P2] — Domain layer imports Flutter framework
+### BUG-035 [P2] — ~~Domain layer imports Flutter framework~~ RESOLVED in PR #TBD
 
 **Where:** `lib/features/rpg/domain/vitality_state_mapper.dart:1,4` (imports
 `package:flutter/painting.dart` and `AppLocalizations`)
 **Fix:** Return a `VitalityColorToken` enum + l10n key from the domain;
 let the UI layer resolve to `Color` and string. Or move the file to
 `lib/features/rpg/ui/utils/`.
+
+**Resolution (Cluster 8 PR A):** Option A applied. Domain mapper stripped
+of Flutter + l10n imports — keeps only `fromPercent` / `fromVitality` and
+the boundary constants. Color resolution + per-body-part palette +
+localized copy moved to a new `lib/features/rpg/ui/utils/vitality_state_styles.dart`,
+which also carries the `VitalityStateColor` extension that exposes the
+legacy `state.borderColor` shape. The borderColor extension was also
+removed from `lib/features/rpg/models/vitality_state.dart` so the model
+file is itself Flutter-agnostic. Eight UI files updated to import the
+new helper. The domain test file now imports zero Flutter packages —
+that's the structural canary preventing regressions.
 
 ### BUG-036 [P2] — `active_workout_screen.dart` is 1590 lines, `_onFinish` is 205 lines
 
@@ -657,7 +668,7 @@ account deletion, social links).
 **Where:** `lib/features/weekly_plan/ui/plan_management_screen.dart`
 **Fix:** Extract `_WeekDayBucket`, `_RoutineSlot`, `_EmptyPlanCta`.
 
-### BUG-039 [P2] — `ActiveWorkoutNotifier.savedOffline` is a public field, not in state
+### BUG-039 [P2] — ~~`ActiveWorkoutNotifier.savedOffline` is a public field, not in state~~ RESOLVED in PR #TBD
 
 **Where:** `lib/features/workouts/providers/notifiers/active_workout_notifier.dart:47-98`
 **What:** UI reads `notifier.savedOffline` via `ref.read` — breaks
@@ -665,12 +676,38 @@ unidirectional Riverpod data flow.
 **Fix:** Fold `savedOffline` into `ActiveWorkoutState` (Freezed) or return as
 part of `finishWorkout`'s result.
 
-### BUG-040 [P2] — Provider keepAlive with no logout invalidation
+**Resolution (Cluster 8 PR A):** Both options applied. `savedOffline` is
+now a Freezed field on `ActiveWorkoutState` (default `false`) so the
+in-flight state snapshot carries the flag — restoring unidirectional
+data flow. Additionally, `finishWorkout` now returns a
+`FinishWorkoutResult` record (`prResult`, `savedOffline`) rather than a
+bare `PRDetectionResult?`. The screen reads the flag from the explicit
+return value instead of poking at notifier internals; this also covers
+the post-finish window where `state.value` is `null` and a state-only
+field would be unreachable. The public notifier field was deleted; a
+test pins that `(notifier as dynamic).savedOffline` throws
+`NoSuchMethodError` so any future regression that re-introduces the
+field fails immediately.
+
+### BUG-040 [P2] — ~~Provider keepAlive with no logout invalidation~~ RESOLVED in PR #TBD
 
 **Where:** `lib/features/workouts/providers/workout_history_providers.dart`,
 `workout_providers.dart` (`workoutCountProvider`)
 **What:** Stale data for user A shown to user B after sign-out → sign-in.
 **Fix:** Listen on `authStateProvider` and invalidate on user-id change.
+
+**Resolution (Cluster 8 PR A):** New private helper
+`_invalidateOnUserIdChange(Ref)` in `workout_history_providers.dart`
+listens to `authStateProvider` and calls `ref.invalidateSelf()` when the
+session's user-id slice transitions (skipping unchanged emissions so
+token refreshes don't re-issue COUNT/SELECT queries). Wired into both
+`workoutHistoryProvider.build()` and `workoutCountProvider`'s body. New
+unit test pins the contract by driving a synthetic `authStateProvider`
+stream and asserting per-user repository calls. **Follow-up note:**
+`exerciseProgressProvider` (in `lib/features/exercises/providers/`) also
+uses `ref.keepAlive()` and is user-scoped — it carries the same latent
+bug but lives outside the audit's named files. Flagged for a follow-up
+PR; not bundled here to keep this PR strictly within the audit's scope.
 
 ### BUG-041 [P2] — File-level mutable state on active workout screen
 

@@ -53,6 +53,13 @@ Widget buildTestWidget({
     overrides: [
       profileProvider.overrideWith(() => MockProfileNotifier(profile)),
       authRepositoryProvider.overrideWithValue(mockAuth),
+      // BUG-040: ProfileSettingsScreen → workoutCountProvider now listens to
+      // authStateProvider for cross-user invalidation. Without this stub
+      // the real provider body subscribes to Supabase + arms a 5s fallback
+      // timer that prevents the test from settling. An empty stream is
+      // safe — the listener only acts on emissions, and these tests don't
+      // exercise sign-out/sign-in flows.
+      authStateProvider.overrideWith((ref) => const Stream<AuthState>.empty()),
     ],
     child: TestMaterialApp(
       theme: AppTheme.dark,
@@ -258,6 +265,12 @@ void main() {
                   ..setCurrentUser(null)
                   ..setSignOut(),
               ),
+              // BUG-040: stub authStateProvider so workoutCountProvider's
+              // listener doesn't subscribe to the real Supabase auth
+              // stream (which would arm a 5s pending timer).
+              authStateProvider.overrideWith(
+                (ref) => const Stream<AuthState>.empty(),
+              ),
             ],
             child: TestMaterialApp(
               theme: AppTheme.dark,
@@ -294,6 +307,12 @@ void main() {
                   ..setCurrentUser(null)
                   ..setSignOut(),
               ),
+              // BUG-040: stub authStateProvider so workoutCountProvider's
+              // listener doesn't subscribe to the real Supabase auth
+              // stream (which would arm a 5s pending timer).
+              authStateProvider.overrideWith(
+                (ref) => const Stream<AuthState>.empty(),
+              ),
             ],
             child: TestMaterialApp(
               theme: AppTheme.dark,
@@ -322,6 +341,12 @@ void main() {
               MockAuthRepository()
                 ..setCurrentUser(null)
                 ..setSignOut(),
+            ),
+            // BUG-040: stub authStateProvider so workoutCountProvider's
+            // listener doesn't subscribe to the real Supabase auth stream
+            // (which would arm a 5s pending timer).
+            authStateProvider.overrideWith(
+              (ref) => const Stream<AuthState>.empty(),
             ),
           ],
           child: TestMaterialApp(
@@ -402,6 +427,12 @@ void main() {
             overrides: [
               profileProvider.overrideWith(() => MockProfileNotifier(profile)),
               authRepositoryProvider.overrideWithValue(mockAuth),
+              // BUG-040: stub authStateProvider so workoutCountProvider's
+              // listener doesn't subscribe to the real Supabase auth
+              // stream (which would arm a 5s pending timer).
+              authStateProvider.overrideWith(
+                (ref) => const Stream<AuthState>.empty(),
+              ),
             ],
             child: TestMaterialApp(
               theme: AppTheme.dark,
@@ -440,6 +471,12 @@ void main() {
             overrides: [
               profileProvider.overrideWith(() => MockProfileNotifier(profile)),
               authRepositoryProvider.overrideWithValue(mockAuth),
+              // BUG-040: stub authStateProvider so workoutCountProvider's
+              // listener doesn't subscribe to the real Supabase auth
+              // stream (which would arm a 5s pending timer).
+              authStateProvider.overrideWith(
+                (ref) => const Stream<AuthState>.empty(),
+              ),
             ],
             child: TestMaterialApp(
               theme: AppTheme.dark,
@@ -641,6 +678,12 @@ void main() {
             overrides: [
               profileProvider.overrideWith(() => MockProfileNotifier(profile)),
               authRepositoryProvider.overrideWithValue(mockAuth),
+              // BUG-040: stub authStateProvider so workoutCountProvider's
+              // listener doesn't subscribe to the real Supabase auth
+              // stream (which would arm a 5s pending timer).
+              authStateProvider.overrideWith(
+                (ref) => const Stream<AuthState>.empty(),
+              ),
             ],
             child: TestMaterialApp(
               theme: AppTheme.dark,
