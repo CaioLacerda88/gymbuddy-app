@@ -235,9 +235,9 @@ void main() {
       expect(find.text('Cancel'), findsOneWidget);
       expect(find.text('Discard'), findsOneWidget);
 
-      // Dismiss the dialog to reset the file-level _isShowingDiscardDialog
-      // guard. Without this, subsequent tests in the same file may inherit
-      // a stale guard value.
+      // Dismiss the dialog to clean up state. BUG-041 resolved: the guard
+      // is now an instance field on DiscardWorkoutCoordinator (not file-level),
+      // so each test gets a fresh coordinator and there is no cross-test leak.
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
     });

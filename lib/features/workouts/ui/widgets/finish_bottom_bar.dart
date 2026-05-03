@@ -1,0 +1,92 @@
+import 'package:flutter/material.dart';
+
+import '../../../../core/theme/app_theme.dart';
+import '../../../../l10n/app_localizations.dart';
+
+/// Persistent bottom bar hosting the "Finish workout" action.
+///
+/// BUG-020: previously rendered as an AppBar trailing OutlinedButton (Phase
+/// 18c §13). Moved here so the action is reachable one-handed and discoverable
+/// to first-time users. The [FinishWorkoutDialog] (gated by [onPressed]) is
+/// the safety net — placement is no longer the gate.
+///
+/// Styling: filled primaryViolet button (Cluster 4 review — was OutlinedButton,
+/// which read as a secondary action despite being THE next-step CTA). 44dp min
+/// height, full-width minus 16dp horizontal padding. Top divider uses the
+/// canonical [AppColors.hair] token (Cluster 4 review — was
+/// `outline.withValues(alpha: 0.2)`, which composited to ~2.8% effective alpha
+/// on top of the already 14%-alpha hair token, making the line invisible).
+/// SafeArea handles gesture insets on iOS / Android-with-bottom-bar.
+///
+/// **Selector contract:** the outer [Material] carries
+/// `ValueKey('finish-bottom-bar')` and a `Semantics(identifier:
+/// 'workout-finish-btn')` wraps the button. Both are E2E selector contracts
+/// (see `test/e2e/helpers/selectors.ts` `WORKOUT.finishButton` and the
+/// `test/widget/.../active_workout_finish_button_test.dart` pin) — do not
+/// rename without updating both call sites.
+class FinishBottomBar extends StatelessWidget {
+  const FinishBottomBar({
+    required this.enabled,
+    required this.onPressed,
+    super.key,
+  });
+
+  final bool enabled;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Material(
+      key: const ValueKey('finish-bottom-bar'),
+      color: theme.colorScheme.surface,
+      child: SafeArea(
+        top: false,
+        child: Container(
+          decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: AppColors.hair, width: 1)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Semantics(
+            container: true,
+            identifier: 'workout-finish-btn',
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: enabled ? onPressed : null,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primaryViolet,
+                  foregroundColor: AppColors.textCream,
+                  // Disabled state: dim the violet to ~30% so the bar reads as
+                  // "intentionally unavailable" rather than broken. Foreground
+                  // (textDim) keeps AA contrast against the dimmed background.
+                  disabledBackgroundColor: AppColors.primaryViolet.withValues(
+                    alpha: 0.3,
+                  ),
+                  disabledForegroundColor: AppColors.textDim,
+                  minimumSize: const Size(0, 44),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Text(
+                  AppLocalizations.of(context).finishButtonLabel,
+                  style: AppTextStyles.headline.copyWith(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    // headline encodes 0.02em tracking; the Finish CTA wants
+                    // tighter chip-style 0.04em tracking — kept explicitly.
+                    letterSpacing: 0.04 * 13,
+                    color: enabled ? AppColors.textCream : AppColors.textDim,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

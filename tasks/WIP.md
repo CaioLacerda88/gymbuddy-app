@@ -83,3 +83,83 @@ branch — purely a coordination checklist.
 
 All checklist items above completed. Phase 16a external setup can proceed with `com.repsaga.app` everywhere.
 
+---
+
+## Cluster 8 PR B — `active_workout_screen.dart` decomposition (BUG-036, BUG-041)
+
+**Branch:** `fix/cluster8-active-workout-extraction`
+**Source:** BUGS.md BUG-036 (1706-line monolith, `_onFinish` 266 lines) + BUG-041 (file-level mutable globals).
+**Risk:** HIGH — primary user surface. Full local E2E run mandatory (CLAUDE.md QA gate). Pure refactor: zero behavior change.
+
+### Goals
+
+1. Drop `active_workout_screen.dart` to under ~300 lines (orchestration shell only).
+2. `_ActiveWorkoutBody.build` < 50 lines (currently 102) — extract title editor.
+3. Extract three coordinator classes per BUGS.md BUG-036:
+   - `_FinishWorkoutCoordinator` — owns `_onFinish` orchestration + `_isFinishHandled` instance field
+   - `_CelebrationOrchestrator` — saga-intro wait + `CelebrationPlayer.play` invocation
+   - `_PostWorkoutNavigator` — `_shouldShowPlanPrompt`, `_showPlanPromptAndGoHome`, post-finish nav switch
+4. Resolve BUG-041: hoist `_isShowingDiscardDialog` + `_isFinishHandled` from file-level globals to instance fields. Cleanest path: convert `ActiveWorkoutScreen` → `ConsumerStatefulWidget`, owns coordinator instances.
+5. Extract bloated inline widgets: `_ExerciseCard` (292-line build) → own file; supporting `_ExerciseDetailSheet`, `_SheetChip`, `_SheetPRSection`, `_SetColumnHeaders` move with it. Other inlined widgets (`_LoadingOverlay`, `_EmptyWorkoutBody`, `_FinishBottomBar`, `_AddExerciseFab`, `_ElapsedTimer`, `_ExerciseList`) move to dedicated files under `widgets/`.
+
+### Files to create
+
+- `lib/features/workouts/ui/coordinators/finish_workout_coordinator.dart`
+- `lib/features/workouts/ui/coordinators/celebration_orchestrator.dart`
+- `lib/features/workouts/ui/coordinators/post_workout_navigator.dart`
+- `lib/features/workouts/ui/coordinators/discard_workout_coordinator.dart` (owns `_isShowingDialog` instance field, used by both PopScope handler and AppBar close)
+- `lib/features/workouts/ui/widgets/exercise_card.dart` (+ `_ExerciseDetailSheet`, `_SheetChip`, `_SheetPRSection`, `_SetColumnHeaders` co-located)
+- `lib/features/workouts/ui/widgets/active_workout_loading_overlay.dart`
+- `lib/features/workouts/ui/widgets/empty_workout_body.dart`
+- `lib/features/workouts/ui/widgets/finish_bottom_bar.dart`
+- `lib/features/workouts/ui/widgets/add_exercise_fab.dart`
+- `lib/features/workouts/ui/widgets/elapsed_timer.dart`
+- `lib/features/workouts/ui/widgets/active_workout_app_bar_title.dart` (extracted name editor + timer)
+
+### Hard constraints (DO NOT VIOLATE)
+
+- **Every `Semantics(identifier: ...)` value preserved verbatim.** E2E selectors depend on these — `workout-discard-btn`, `workout-finish-btn`, `workout-add-exercise`, `workout-add-set`. Grep test before opening PR: `grep -rn "workout-finish-btn\|workout-discard-btn\|workout-add-exercise\|workout-add-set" lib/` returns same identifier strings.
+- **`ValueKey('finish-bottom-bar')` preserved verbatim.**
+- **Public class `ActiveWorkoutScreen`** keeps the same import path (`lib/features/workouts/ui/active_workout_screen.dart`) and constructor signature `const ActiveWorkoutScreen({super.key})`. Routing wiring untouched.
+- **`_onFinish` behavior preserved exactly.** All `_isFinishHandled` lifecycle, all `mounted`/`rootContext.mounted` guards, all provider invalidations, all postFrameCallback ordering.
+- **Saga-intro `5 s timeout` on `SagaIntroSequencer.waitForIntroDismissed` preserved.** This was the BUG-039 defensive fix from PR #136 — do not regress it.
+- **All comments explaining WHY (lifecycle, dispose race, root-navigator capture) carry over** with the extracted code. Don't strip these — they document load-bearing invariants.
+- **No new `dynamic` casts**, no swallowed errors, no behavior simplification. Pure structural refactor.
+- **No public API changes** to `activeWorkoutProvider`, `restTimerProvider`, `FinishWorkoutResult`, etc.
+
+### Build steps (tech-lead)
+
+- [x] Read full `lib/features/workouts/ui/active_workout_screen.dart` (1706 lines)
+- [x] Read `lib/features/workouts/providers/notifiers/active_workout_notifier.dart` for `FinishWorkoutResult` shape and `consumeLastCelebration` signature
+- [x] Read `lib/features/rpg/ui/celebration_player.dart` for `CelebrationPlayer.play` signature + return shape
+- [x] Read `lib/features/rpg/ui/saga_intro_gate.dart` for `SagaIntroSequencer.waitForIntroDismissed` contract
+- [x] Identify all selector / ValueKey strings to preserve — grep before/after
+- [x] Create `widgets/` extractions first (low-risk leaf widgets) → run `make analyze` after each
+- [x] Extract `_ExerciseCard` (largest leaf) → run analyze
+- [x] Convert `ActiveWorkoutScreen` to `ConsumerStatefulWidget`, hoist coordinator instances into `_ActiveWorkoutScreenState`
+- [x] Create `DiscardWorkoutCoordinator` (instance field `_isShowingDialog`), wire into PopScope + body's back button
+- [x] Create `FinishWorkoutCoordinator` (instance fields `_isFinishHandled`, `_isFinishing`), wire into Finish bottom bar
+- [x] Create `CelebrationOrchestrator` (stateless helper class) used by FinishWorkoutCoordinator
+- [x] Create `PostWorkoutNavigator` (stateless helper class) used by FinishWorkoutCoordinator
+- [x] Delete file-level `_isShowingDiscardDialog` and `_isFinishHandled` globals
+- [x] Verify `_ActiveWorkoutBody.build` is < 50 lines (now 35) and `ExerciseCard.build` is < 50 lines (now 53; was 292) — title editor extracted to `ActiveWorkoutAppBarTitle`, header extracted to `_ExerciseCardHeader`
+- [x] Run `dart format .` and `dart analyze` — clean (0 issues)
+- [x] Run `flutter test` — workout widget suite (183) green; only failures are 9 pre-existing network-dependent integration tests in `rpg_vitality_nightly_test.dart` (Supabase Edge Function 503 / DNS), unrelated to this refactor
+- [x] Update WIP checklist (this file) as you go
+
+### QA gate (qa-engineer, after tech-lead handoff)
+
+- [ ] Selector audit: `grep -rn "Semantics(identifier" lib/features/workouts/ui/` — every previous identifier still present
+- [ ] Selector impact assessment: read `test/e2e/helpers/selectors.ts` workout selectors, confirm none broke
+- [ ] **Full local E2E suite run mandatory** — primary user surface, navigation/flow code touched
+- [ ] Add widget-level pin if reasonable: `_FinishWorkoutCoordinator` lifecycle (start/finish, double-tap guard, error path)
+
+### Acceptance
+
+- All `make ci` green (format, analyze, test, android-debug-build)
+- Full local E2E suite green (145 tests)
+- `wc -l lib/features/workouts/ui/active_workout_screen.dart` returns < 350
+- No file-level mutable variables remain in `active_workout_screen.dart`
+- All Semantics identifiers + ValueKey('finish-bottom-bar') preserved verbatim
+- `_onFinish` behavior bit-for-bit equivalent (manual trace through coordinator)
+
