@@ -650,12 +650,46 @@ file is itself Flutter-agnostic. Eight UI files updated to import the
 new helper. The domain test file now imports zero Flutter packages —
 that's the structural canary preventing regressions.
 
-### BUG-036 [P2] — `active_workout_screen.dart` is 1590 lines, `_onFinish` is 205 lines
+### BUG-036 [P2] — ~~`active_workout_screen.dart` is 1590 lines, `_onFinish` is 205 lines~~ RESOLVED in PR #138
 
 **Where:** `lib/features/workouts/ui/active_workout_screen.dart`
 **Fix:** Extract `_PostWorkoutNavigator`, `_CelebrationOrchestrator`, and
 `_FinishWorkoutCoordinator` into separate files. CLAUDE.md mandates < 50-line
 build methods.
+
+**Resolution (Cluster 8 PR B):** Decomposed the 1706-line monolith into a
+270-line orchestration shell (84% reduction). Four coordinators extracted to
+`lib/features/workouts/ui/coordinators/`:
+- `discard_workout_coordinator.dart` — discard-dialog flow + instance-field
+  guard (also resolves BUG-041 for that flag)
+- `finish_workout_coordinator.dart` — full finish-flow orchestration; owns
+  `_isFinishHandled` + `_isFinishing` instance fields (resolves BUG-041)
+- `celebration_orchestrator.dart` — saga-intro 5s-timeout wait +
+  `CelebrationPlayer.play` invocation; provider snapshots captured BEFORE
+  the await per the BUG-039 PR #136 defensive pattern
+- `post_workout_navigator.dart` — `shouldShowPlanPrompt`,
+  `showPlanPromptAndGoHome`, post-celebration nav switch; uses
+  `ProviderScope.containerOf` (NOT `ref`) since the State is disposed by
+  the time the postFrameCallback fires
+
+Eight inline widgets extracted to `lib/features/workouts/ui/widgets/`
+(`exercise_card.dart` with co-located sheet/chip/PR-section/headers,
+`active_workout_app_bar_title.dart`, `active_workout_loading_overlay.dart`,
+`empty_workout_body.dart`, `finish_bottom_bar.dart`, `add_exercise_fab.dart`,
+`elapsed_timer.dart`, `exercise_list.dart`) so every build method drops
+under 50 lines per CLAUDE.md mandate.
+
+`ActiveWorkoutScreen` converted to `ConsumerStatefulWidget` so its State
+owns the coordinator instances. All five E2E selector contracts
+(`workout-discard-btn`, `workout-finish-btn`, `workout-add-exercise` ×2,
+`workout-add-set`, `ValueKey('finish-bottom-bar')`) preserved verbatim;
+all `mounted` / `rootContext.mounted` guards in original positions; all
+provider invalidations preserved; all WHY comments documenting load-bearing
+invariants moved with their code. Pure refactor — zero behavior change.
+Verified by reviewer (4-position `_isFinishHandled` pattern preserved
+bit-for-bit, single-instance discard-coordinator invariant holds, clean
+coordinator boundaries with no cross-contamination), 2274 unit/widget
+tests, 9 vitality integration tests, and 212 E2E tests all green.
 
 ### BUG-037 [P2] — `profile_settings_screen.dart` is 801 lines, mixes 5 responsibilities
 
@@ -709,12 +743,29 @@ uses `ref.keepAlive()` and is user-scoped — it carries the same latent
 bug but lives outside the audit's named files. Flagged for a follow-up
 PR; not bundled here to keep this PR strictly within the audit's scope.
 
-### BUG-041 [P2] — File-level mutable state on active workout screen
+### BUG-041 [P2] — ~~File-level mutable state on active workout screen~~ RESOLVED in PR #138
 
 **Where:** `lib/features/workouts/ui/active_workout_screen.dart:45-59` —
 `_isShowingDiscardDialog`, `_isFinishHandled`
 **What:** Survives widget disposal; could interfere with re-mount paths.
 **Fix:** Move to `_ActiveWorkoutBodyState` instance fields.
+
+**Resolution (Cluster 8 PR B):** Both file-level globals deleted. The two
+flags now live as instance fields on coordinator classes (`_isShowingDialog`
+on `DiscardWorkoutCoordinator`, `_isFinishHandled` + `_isFinishing` on
+`FinishWorkoutCoordinator`). Coordinators are owned by the new
+`_ActiveWorkoutScreenState` (`ActiveWorkoutScreen` was promoted to
+`ConsumerStatefulWidget` for this), so the flags' lifetimes are now tied
+to the screen's lifecycle — disposed cleanly when the route is replaced,
+no leakage across re-mount paths. The single shared
+`DiscardWorkoutCoordinator` instance is passed by reference into
+`_ActiveWorkoutBody`'s constructor so both call sites (PopScope handler at
+the screen level, AppBar close button at the body level) hit the same
+guard, preserving the original "no stacked dialogs" invariant. The same
+single-instance design applies to `FinishWorkoutCoordinator`, where
+`_ActiveWorkoutScreenState.build` consults `coordinator.isFinishHandled`
+in its postFrameCallback to yield navigation ownership during celebration
+playback. Bundled into PR #138 with BUG-036.
 
 ---
 
