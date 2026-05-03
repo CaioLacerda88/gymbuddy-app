@@ -441,19 +441,19 @@ spec choice.
 Core gym-context interactions below the 48dp Material minimum. High impact
 because they're on the primary logging flow.
 
-### BUG-018 [P1] — ~~Set-row number cell is 40dp (below 48dp tap target)~~ ✅ RESOLVED in PR #NN
+### BUG-018 [P1] — ~~Set-row number cell is 40dp (below 48dp tap target)~~ ✅ RESOLVED in PR #132
 
 **Where:** `lib/features/workouts/ui/widgets/set_row.dart:236-241`
 **Fix:** Bump `minWidth: 48, minHeight: 48`.
 
-### BUG-019 [P1] — ~~Weight stepper buttons can render at 32dp on 360dp screens~~ ✅ RESOLVED in PR #NN
+### BUG-019 [P1] — ~~Weight stepper buttons can render at 32dp on 360dp screens~~ ✅ RESOLVED in PR #132
 
 **Where:** `lib/shared/widgets/weight_stepper.dart:141,186` (audit also covered
 the structurally-identical sibling `lib/shared/widgets/reps_stepper.dart:117,153`)
 **Fix:** Raised stepper button constraints to `minWidth: 40, minHeight: 48` on
 both steppers; pinned with widget tests at a 360dp viewport.
 
-### BUG-020 [P1] — ~~Workout "Finish" button is AppBar-only (one-handed reach hard)~~ ✅ RESOLVED in PR #NN
+### BUG-020 [P1] — ~~Workout "Finish" button is AppBar-only (one-handed reach hard)~~ ✅ RESOLVED in PR #132
 
 **What:** Comment in code calls this "intentional friction" — but the issue
 isn't the friction (a confirmation dialog gates it), it's the discoverability
