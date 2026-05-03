@@ -14,7 +14,10 @@
  *
  * Seeding (see global-setup.ts):
  *   rpgRankUpThreshold   — chest at rank 4, 270 XP (~8 XP below R5 threshold)
- *   rpgMultiCelebration  — chest at rank 4, 270 XP; all others rank 1
+ *   rpgMultiCelebration  — chest at rank 9 (810 XP), 3 others at rank 2 + 2
+ *                          others at rank 1 (≥1 XP) — one bench set yields
+ *                          [rankUp(chest, 10), levelUp(4), titleUnlock(chest_r10)]
+ *                          with NO class change and NO first-awakening (BUG-017)
  *   rpgOverflowQueue     — all 6 body parts at rank 4, 270 XP
  *   rpgFreshUser         — zero workout history (reused from 18a)
  *   smokePR              — prior PR at 100 kg bench press (reused)
@@ -112,7 +115,12 @@ async function reseedRankUpThresholdUser(): Promise<void> {
   });
 }
 
-// Reseed rpgMultiCelebration: chest rank 4 @ 270 XP, all others rank 1 @ 0 XP.
+// Reseed rpgMultiCelebration: chest rank 9 @ 810 XP (just below R10
+// threshold 815), 3 body parts at rank 2 (XP > 0), 2 at rank 1 (XP > 0).
+// One bench set crosses chest 9 → 10 + character level 3 → 4 + chest_r10
+// title fires; pre/post class is stable Bulwark, no first-awakening.
+// See `seedRpgMultiCelebrationUser` in global-setup.ts for the full
+// derivation (BUG-017, Cluster 3).
 async function reseedMultiCelebrationUser(): Promise<void> {
   const admin = makeAdminClient();
   const userId = await getUserId(TEST_USERS.rpgMultiCelebration.email);
@@ -132,12 +140,17 @@ async function reseedMultiCelebrationUser(): Promise<void> {
     { onConflict: 'user_id' },
   );
 
-  const bodyParts = ['chest', 'back', 'legs', 'shoulders', 'arms', 'core'];
-  for (const bp of bodyParts) {
-    const xp = bp === 'chest' ? 270 : 0;
-    const rank = bp === 'chest' ? 4 : 1;
+  const bodyPartSeed: Record<string, { xp: number; rank: number }> = {
+    chest:     { xp: 810, rank: 9 },
+    back:      { xp: 65,  rank: 2 },
+    legs:      { xp: 65,  rank: 2 },
+    shoulders: { xp: 65,  rank: 2 },
+    arms:      { xp: 1,   rank: 1 },
+    core:      { xp: 1,   rank: 1 },
+  };
+  for (const [bp, seed] of Object.entries(bodyPartSeed)) {
     await admin.from('body_part_progress').upsert(
-      { user_id: userId, body_part: bp, total_xp: xp, rank },
+      { user_id: userId, body_part: bp, total_xp: seed.xp, rank: seed.rank },
       { onConflict: 'user_id,body_part' },
     );
   }
@@ -418,8 +431,11 @@ test.describe('Multi-event celebration sequence', { tag: '@smoke' }, () => {
   test.describe.configure({ mode: 'serial' });
 
   test.beforeEach(async ({ page }) => {
-    // Reseed so chest is back at rank 4 / 270 XP and prior workout history is
-    // cleared before every repeat (prevents novelty-discount drift).
+    // Reseed so chest is back at rank 9 / 810 XP (with 5 other body parts
+    // tuned to give the BUG-017 trio of [rankUp, levelUp, title] without
+    // triggering class-change or first-awakening) and prior workout
+    // history is cleared before every repeat (prevents novelty-discount
+    // drift).
     await reseedMultiCelebrationUser();
     await login(
       page,
@@ -431,8 +447,12 @@ test.describe('Multi-event celebration sequence', { tag: '@smoke' }, () => {
   test('should sequence rank-up overlay then level-up overlay then title unlock sheet', async ({
     page,
   }) => {
-    // User is pre-seeded: chest at rank 4 (270 XP). One bench set →
-    // chest rank 5 → character level 2 → chest Rank-5 title unlock.
+    // User is pre-seeded (BUG-017): chest at rank 9 (810 XP), 3 body
+    // parts at rank 2 (XP > 0), 2 at rank 1 (XP > 0). One bench set →
+    // chest rank 10 → character level 4 → chest_r10_plate_bearer title
+    // unlock. Critically: class stays Bulwark (no class-change overlay)
+    // and shoulders has > 0 XP pre (no first-awakening), so the queue
+    // contains exactly 3 events that fit cap-at-3 with no silent drops.
     await startEmptyWorkout(page);
     // BUG-020: Finish button only appears after first exercise is added.
     await addExercise(page, SEED_EXERCISES.benchPress);
