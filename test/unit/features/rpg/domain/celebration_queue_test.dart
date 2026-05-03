@@ -304,5 +304,45 @@ void main() {
       // No rank-up overflow (the single rank-up survived).
       expect(result.overflow, isNull);
     });
+
+    test(
+      'defensive: 2 ClassChangeEvents in input → only 1 surfaced (take(1) guard)',
+      () {
+        // ClassChangeEvent is structurally impossible to produce twice in
+        // one workout finish (the builder calls ClassResolver.resolve once
+        // on pre + once on post and emits at most one diff). This test pins
+        // the queue's defensive `.take(1)` so a hypothetical builder bug or
+        // future cross-session replay path cannot surface two class-change
+        // overlays in a row — the queue contract is ONE slot maximum.
+        final result = CelebrationQueue.build(
+          events: const [
+            CelebrationEvent.classChange(
+              fromClass: CharacterClass.initiate,
+              toClass: CharacterClass.bulwark,
+            ),
+            CelebrationEvent.classChange(
+              fromClass: CharacterClass.bulwark,
+              toClass: CharacterClass.sentinel,
+            ),
+          ],
+        );
+        // Only the first class-change survives (FIFO within the class bucket;
+        // the queue takes 1 and discards the rest).
+        expect(result.queue, hasLength(1));
+        expect(result.queue.first, isA<ClassChangeEvent>());
+        expect(
+          (result.queue.first as ClassChangeEvent).fromClass,
+          CharacterClass.initiate,
+        );
+        expect(
+          (result.queue.first as ClassChangeEvent).toClass,
+          CharacterClass.bulwark,
+        );
+        // Class-change overflow is NOT surfaced — the queue has no
+        // `remainingClassChanges` field because the structural guarantee
+        // makes it impossible in production.
+        expect(result.overflow, isNull);
+      },
+    );
   });
 }

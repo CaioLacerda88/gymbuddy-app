@@ -349,6 +349,58 @@ void main() {
       // Future is already complete.
       await expectLater(future, completes);
     });
+
+    testWidgets(
+      'per-user isolation: user A completing intro does not affect user B '
+      '(sign-out → sign-in scenario)',
+      (tester) async {
+        // Production scenario: user A uses the app, dismisses the intro
+        // (completer for "user-A" is resolved). User A signs out. User B
+        // signs in on the same device. User B has NOT dismissed the intro
+        // yet — their completer must start PENDING, not inherit user A's
+        // completed state.
+        //
+        // Why this matters: `_completersByUser` is a static map keyed by
+        // userId. Each key is independent, so user B's completer is lazily
+        // created the first time `waitForIntroDismissed('user-B')` is
+        // called — it never touches user A's slot. This test pins that
+        // isolation contract.
+
+        // User A: mark intro dismissed (simulates prior session or sign-out
+        // then sign back in for user A).
+        SagaIntroSequencer.markIntroDismissedForSequencer('switch-user-A');
+        final futureA = SagaIntroSequencer.waitForIntroDismissed(
+          'switch-user-A',
+        );
+        await tester.runAsync(() async {});
+        await tester.pump();
+        // User A's future must be complete.
+        var resolvedA = false;
+        unawaited(futureA.then((_) => resolvedA = true));
+        await tester.runAsync(() async {});
+        await tester.pump();
+        expect(resolvedA, isTrue);
+
+        // User B: new user signs in. Their completer has never been touched.
+        var resolvedB = false;
+        unawaited(
+          SagaIntroSequencer.waitForIntroDismissed(
+            'switch-user-B',
+          ).then((_) => resolvedB = true),
+        );
+        await tester.runAsync(() async {});
+        await tester.pump();
+        // User B's future must still be PENDING — user A's resolved state
+        // must NOT have leaked across to user B's key.
+        expect(resolvedB, isFalse);
+
+        // Confirm resolution fires when user B's gate marks dismissed.
+        SagaIntroSequencer.markIntroDismissedForSequencer('switch-user-B');
+        await tester.runAsync(() async {});
+        await tester.pump();
+        expect(resolvedB, isTrue);
+      },
+    );
   });
 
   // The ladder is the source of truth for the saga intro overlay's

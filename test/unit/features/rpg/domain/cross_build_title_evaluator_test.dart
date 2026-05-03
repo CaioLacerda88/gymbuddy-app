@@ -456,6 +456,50 @@ void main() {
         );
       });
 
+      test(
+        'empty ranks map → defaults all body parts to rank 1, hints compute correctly',
+        () {
+          // Brand-new user: the ranks map may be empty (no rows in
+          // body_part_progress yet). The evaluator uses `ranks[bp] ?? 1`
+          // so every missing entry projects to rank 1 — matching the SQL
+          // default-row contract. The hints must still return a meaningful
+          // gap rather than crashing or returning null.
+          //
+          // pillar_walker: legs defaults to 1, floor=40 → gap=39.
+          final hint = CrossBuildTitleEvaluator.gapHintFor('pillar_walker', {});
+          expect(hint, isNotNull);
+          expect(hint!.bodyPart, BodyPart.legs);
+          expect(hint.gap, 39); // 40 - 1
+
+          // iron_bound: chest defaults to 1, back to 1, legs to 1.
+          // Smallest gap = 59 (60 - 1) for all three — first-found
+          // tie-break selects chest (first in the iteration order of the
+          // `parts` list: [chest, back, legs]).
+          final ironHint = CrossBuildTitleEvaluator.gapHintFor(
+            'iron_bound',
+            {},
+          );
+          expect(ironHint, isNotNull);
+          expect(ironHint!.bodyPart, BodyPart.chest);
+          expect(ironHint.gap, 59); // 60 - 1
+        },
+      );
+
+      test('rank=0 explicit entry → treated as 0, gap computed correctly', () {
+        // Defensive: the domain never produces rank 0 (SQL default is 1)
+        // but if the caller explicitly passes 0 the function must not
+        // crash. `_smallestGapAmong` does NOT use the ?? 1 fallback —
+        // it reads directly from the passed `ranks` map (which may
+        // contain an explicit 0). gap = floor - 0 = floor.
+        final hint = CrossBuildTitleEvaluator.gapHintFor('pillar_walker', {
+          BodyPart.legs: 0,
+        });
+        expect(hint, isNotNull);
+        expect(hint!.bodyPart, BodyPart.legs);
+        // floor is 40, rank is 0 → gap is 40.
+        expect(hint.gap, 40);
+      });
+
       test('value-equal hints compare equal (toString + hashCode)', () {
         const a = CrossBuildHint(bodyPart: BodyPart.chest, gap: 5);
         const b = CrossBuildHint(bodyPart: BodyPart.chest, gap: 5);
