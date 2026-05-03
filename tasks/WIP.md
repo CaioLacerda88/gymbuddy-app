@@ -13,15 +13,16 @@ ARB, migration, repository, or data-layer changes.
 
 ### Source files
 
-- [ ] BUG-018 — `lib/features/workouts/ui/widgets/set_row.dart:236-241` — set-row number cell `minWidth: 48, minHeight: 48` (was 40dp)
-- [ ] BUG-019 — `lib/features/workouts/ui/widgets/set_row.dart:298-322` — weight stepper `minWidth: 40, minHeight: 48`; verify at 360dp (Moto G / Samsung A widths)
-- [ ] BUG-020 — `lib/features/workouts/ui/active_workout_screen.dart:592-627` — move Finish button to persistent bottom bar; keep AppBar action OR remove (per ui-ux-critic call); confirmation dialog stays as the safety gate
+- [x] BUG-018 — `lib/features/workouts/ui/widgets/set_row.dart:236-241` — set-row number cell bumped to `minWidth: 48, minHeight: 48` (was 40dp)
+- [x] BUG-019 — `lib/shared/widgets/weight_stepper.dart:141,186` AND `lib/shared/widgets/reps_stepper.dart:117,153` — both stepper button constraints bumped to `minWidth: 40, minHeight: 48` (was 32x44). Reps stepper extended for sibling-consistency on the same logging row.
+- [x] BUG-020 — `lib/features/workouts/ui/active_workout_screen.dart` — Finish button moved from AppBar trailing to a new persistent `_FinishBottomBar` (`Scaffold.bottomNavigationBar`). Same `Semantics(identifier: 'workout-finish-btn')` so E2E selectors are preserved. Hidden on the empty body. Phase 18c §13 docblock replaced with BUG-020 reach + discoverability rationale.
 
 ### Widget tests
 
-- [ ] `test/widget/features/workouts/ui/widgets/set_row_test.dart` — assert number-cell BoxConstraints (BUG-018)
-- [ ] `test/widget/features/workouts/ui/widgets/set_row_test.dart` — assert stepper BoxConstraints at 360dp surface (BUG-019)
-- [ ] `test/widget/features/workouts/ui/active_workout_screen_test.dart` — assert bottom-bar Finish present, tap fires confirmation dialog (BUG-020)
+- [x] `test/widget/features/workouts/ui/widgets/set_row_test.dart` — number-cell BoxConstraints pin (BUG-018)
+- [x] `test/widget/shared/widgets/weight_stepper_test.dart` — stepper BoxConstraints pin at 360dp (BUG-019)
+- [x] `test/widget/shared/widgets/reps_stepper_test.dart` — sibling stepper BoxConstraints pin at 360dp (BUG-019)
+- [x] `test/widget/features/workouts/ui/active_workout_finish_button_test.dart` — bottom-bar slot, semantics-identifier survival, AppBar.actions clear, empty-state hidden, tap fires AlertDialog (BUG-020)
 
 ### E2E impact
 
@@ -29,14 +30,13 @@ BUG-020 changes the **finish-workout** user flow (bottom bar instead of AppBar).
 Per CLAUDE.md QA gate: navigation/flow change → run full E2E suite locally + update
 any selectors targeting the AppBar finish action.
 
-- [ ] qa-engineer: scan `test/e2e/specs/workouts.spec.ts` (and any others) for AppBar-finish selectors; update or add `WORKOUT_FINISH.bottomBarButton` in `helpers/selectors.ts`
-- [ ] Full E2E suite green locally (`FLUTTER_APP_URL= npx playwright test --reporter=list`)
+- [x] qa-engineer: scan all spec files for AppBar-finish selectors; updated `helpers/selectors.ts` comment, fixed `startEmptyWorkout` sentinel in `workout.ts`, patched all pre-exercise `finishButton.toBeVisible` assertions in `workouts.spec.ts`, `rank-up-celebration.spec.ts`, `home.spec.ts`, `workouts-localization.spec.ts`, `offline-sync.spec.ts`
+- [x] Full E2E suite: **211/212 passed** (1 pre-existing failure: `manage-data.spec.ts` account-deletion redirect timeout, unchanged from main, outside Cluster 4 scope)
 
 ### Cleanup
 
 - [ ] Mark BUG-018..020 RESOLVED in `BUGS.md` with strikethrough heads + `RESOLVED in PR #NN`
 - [ ] `make ci` green (format + gen + analyze + test + android-debug-build)
-- [ ] Commit `fix(ui): Cluster 4 — tap-target & sweat-proof UX (BUG-018..020)`
 - [ ] `git push -u origin fix/cluster4-tap-targets`
 
 ### Out of scope

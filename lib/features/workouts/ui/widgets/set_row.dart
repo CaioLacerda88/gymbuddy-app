@@ -232,9 +232,13 @@ class _SetRowState extends ConsumerState<SetRow> {
                       onLongPress: _cycleSetType,
                       borderRadius: BorderRadius.circular(8),
                       child: Container(
+                        // BUG-018: bumped from 40x40 to Material's 48dp tap-
+                        // target minimum so the set-number cell (tap-to-copy
+                        // / long-press-to-cycle-type) is reliably hittable
+                        // mid-workout.
                         constraints: const BoxConstraints(
-                          minWidth: 40,
-                          minHeight: 40,
+                          minWidth: 48,
+                          minHeight: 48,
                         ),
                         alignment: Alignment.center,
                         child: Column(

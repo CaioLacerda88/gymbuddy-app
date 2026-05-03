@@ -380,11 +380,11 @@ test.describe('Rank-up celebration', { tag: '@smoke' }, () => {
     // User is pre-seeded with chest at rank 4, 270 XP (8 XP below R5).
     // One working bench press set earns ~10-15 XP and crosses the boundary.
     await startEmptyWorkout(page);
+    // BUG-020: Finish button only appears after first exercise is added.
+    await addExercise(page, SEED_EXERCISES.benchPress);
     await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
       timeout: 15_000,
     });
-
-    await addExercise(page, SEED_EXERCISES.benchPress);
     await setWeight(page, '80');
     await setReps(page, '5');
     await completeSet(page, 0);
@@ -434,11 +434,11 @@ test.describe('Multi-event celebration sequence', { tag: '@smoke' }, () => {
     // User is pre-seeded: chest at rank 4 (270 XP). One bench set →
     // chest rank 5 → character level 2 → chest Rank-5 title unlock.
     await startEmptyWorkout(page);
+    // BUG-020: Finish button only appears after first exercise is added.
+    await addExercise(page, SEED_EXERCISES.benchPress);
     await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
       timeout: 15_000,
     });
-
-    await addExercise(page, SEED_EXERCISES.benchPress);
     await setWeight(page, '80');
     await setReps(page, '5');
     await completeSet(page, 0);
@@ -534,12 +534,13 @@ test.describe('First awakening overlay', { tag: '@smoke' }, () => {
     // CelebrationEventBuilder has a `break` after the first awakening event,
     // so at most one body part fires per finish call.
     await startEmptyWorkout(page);
+
+    // BUG-020: Finish button only appears after the first exercise is added.
+    // Add bench press (chest = first body-part touch this session).
+    await addExercise(page, SEED_EXERCISES.benchPress);
     await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
       timeout: 15_000,
     });
-
-    // Add bench press (chest = first body-part touch this session).
-    await addExercise(page, SEED_EXERCISES.benchPress);
     await setWeight(page, '60');
     await setReps(page, '5');
     // Complete the first (only) uncompleted set.
@@ -623,12 +624,12 @@ test.describe('Celebration overflow cap', { tag: '@smoke' }, () => {
     // 5 rank-ups + 1 level-up which exceeds cap-at-3 and triggers the overflow
     // card.
     await startEmptyWorkout(page);
+    // BUG-020: Finish button only appears after first exercise is added.
+    // Body part 1: chest (bench press)
+    await addExercise(page, SEED_EXERCISES.benchPress);
     await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
       timeout: 15_000,
     });
-
-    // Body part 1: chest (bench press)
-    await addExercise(page, SEED_EXERCISES.benchPress);
     await setWeight(page, '80');
     await setReps(page, '5');
     await completeSet(page, 0);
@@ -731,11 +732,11 @@ test.describe('Celebration overflow card tap navigation', { tag: '@smoke' }, () 
     // Spec WIP §17/§175: "tap routes to /profile" — the card's whole purpose
     // is to give a path to see the rank-ups that didn't fit in the queue.
     await startEmptyWorkout(page);
+    // BUG-020: Finish button only appears after first exercise is added.
+    await addExercise(page, SEED_EXERCISES.benchPress);
     await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
       timeout: 15_000,
     });
-
-    await addExercise(page, SEED_EXERCISES.benchPress);
     await setWeight(page, '80');
     await setReps(page, '5');
     await completeSet(page, 0);
@@ -798,11 +799,11 @@ test.describe('PR chip inline display', { tag: '@smoke' }, () => {
     // smokePR user has a prior bench press PR of 100 kg × 5 reps.
     // Log 105 kg × 5 to beat it.
     await startEmptyWorkout(page);
+    // BUG-020: Finish button only appears after first exercise is added.
+    await addExercise(page, SEED_EXERCISES.benchPress);
     await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
       timeout: 15_000,
     });
-
-    await addExercise(page, SEED_EXERCISES.benchPress);
 
     // Log a PR-beating weight (105 kg > prior 100 kg).
     await setWeight(page, '105');
@@ -832,7 +833,7 @@ test.describe('PR chip inline display', { tag: '@smoke' }, () => {
 });
 
 // =============================================================================
-// S6 — Finish button in AppBar trailing; FAB triggers add-exercise flow
+// S6 — Finish button in persistent bottom bar (BUG-020); FAB triggers add-exercise flow
 // =============================================================================
 
 test.describe('Active workout chrome (Phase 18c)', { tag: '@smoke' }, () => {
@@ -844,19 +845,19 @@ test.describe('Active workout chrome (Phase 18c)', { tag: '@smoke' }, () => {
     );
   });
 
-  test('should show Finish button in AppBar and FAB triggers add-exercise flow', async ({
+  test('should show Finish button after adding exercise and FAB triggers add-exercise flow', async ({
     page,
   }) => {
     await startEmptyWorkout(page);
 
-    // Finish button is visible — it now lives in the AppBar trailing position
-    // as an OutlinedButton with the same Semantics identifier.
+    // Add an exercise — the Finish bottom bar only appears once the workout
+    // has at least one exercise (BUG-020: bottom bar hidden on empty body).
+    await addExercise(page, SEED_EXERCISES.benchPress);
+
+    // Finish button must now be visible in the persistent bottom bar.
     await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
       timeout: 15_000,
     });
-
-    // Add an exercise so the FAB becomes visible (FAB is shown when exercises > 0).
-    await addExercise(page, SEED_EXERCISES.benchPress);
 
     // The add-exercise FAB must be visible now that exercises > 0.
     await expect(page.locator(WORKOUT.addExerciseFab)).toBeVisible({

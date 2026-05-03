@@ -216,8 +216,9 @@ test.describe('Home screen and navigation', () => {
     await expect(page.locator(HOME.quickWorkout)).toBeVisible({ timeout: 15_000 });
     await page.click(HOME.quickWorkout);
 
-    // Active workout screen identifies itself by the Finish Workout button.
-    await expect(page.locator(WORKOUT.finishButton)).toBeVisible({
+    // BUG-020: Finish button only appears after the first exercise is added.
+    // Use addExerciseFab as the screen-ready sentinel for an empty workout.
+    await expect(page.locator(WORKOUT.addExerciseFab)).toBeVisible({
       timeout: 15_000,
     });
 

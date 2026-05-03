@@ -233,6 +233,64 @@ void main() {
           );
         },
       );
+
+      testWidgets(
+        'tapping set number on set#2+ copies weight+reps from the previous set (BUG-018)',
+        (tester) async {
+          // Pin: onTap is only wired when setNumber > 1. Tapping set#2 must
+          // copy the previous set's weight and reps into set#2. This confirms
+          // the 48dp tap target is not just sized correctly but is also
+          // functionally reachable: the InkWell registers the tap.
+          final stateJson = TestActiveWorkoutStateFactory.createWithExercises(
+            exerciseCount: 1,
+            setsPerExercise: 2,
+          );
+          final workoutState = ActiveWorkoutState.fromJson(stateJson);
+          final weId = workoutState.exercises.first.workoutExercise.id;
+          final set1 = workoutState.exercises.first.sets.first;
+          final set2 = workoutState.exercises.first.sets[1];
+          expect(set2.setNumber, 2, reason: 'sanity check: set2 is set #2');
+
+          // Mutate set1 to have known weight/reps so we can assert the copy.
+          final stateWithSet1Values = workoutState.copyWith(
+            exercises: [
+              workoutState.exercises.first.copyWith(
+                sets: [set1.copyWith(weight: 80.0, reps: 8), set2],
+              ),
+            ],
+          );
+
+          final container = makeContainer(stateWithSet1Values);
+          addTearDown(container.dispose);
+          await container.read(activeWorkoutProvider.future);
+
+          await tester.pumpWidget(
+            buildTestWidget(
+              SetRow(set: set2, workoutExerciseId: weId),
+              container: container,
+            ),
+          );
+
+          // Tap the set-number cell on set #2.
+          await tester.tap(find.text('${set2.setNumber}'));
+          await tester.pump();
+
+          final updatedState = container.read(activeWorkoutProvider).value;
+          final updatedSet2 = updatedState?.exercises.first.sets[1];
+          expect(
+            updatedSet2?.weight,
+            80.0,
+            reason:
+                'BUG-018 tap-to-copy: set#2 weight must be copied from set#1.',
+          );
+          expect(
+            updatedSet2?.reps,
+            8,
+            reason:
+                'BUG-018 tap-to-copy: set#2 reps must be copied from set#1.',
+          );
+        },
+      );
     });
 
     group('ghost text (previous session hint)', () {
@@ -545,6 +603,48 @@ void main() {
             DismissDirection.endToStart,
           );
           expect(shouldDismiss, isTrue);
+        },
+      );
+    });
+
+    group('tap target sizing', () {
+      testWidgets(
+        'set-number cell is at least 48x48 dp (BUG-018, Material tap min)',
+        (tester) async {
+          // Pin: the number cell's BoxConstraints must satisfy Material's 48dp
+          // minimum so the tap-to-copy / long-press-to-cycle interaction lands
+          // reliably mid-workout. Regressing below 48 would re-open BUG-018.
+          final set = makeSet(setNumber: 1);
+          await tester.pumpWidget(
+            buildTestWidget(SetRow(set: set, workoutExerciseId: 'we-001')),
+          );
+
+          // The number-cell Container is the unique one whose constraints
+          // enforce the new tap-target floor. Find by predicate over Container
+          // widgets so we don't accidentally match decorative or layout
+          // containers in the row.
+          final numberCells = tester
+              .widgetList<Container>(find.byType(Container))
+              .where((c) {
+                final bc = c.constraints;
+                return bc != null &&
+                    bc.minWidth >= 48 &&
+                    bc.minHeight >= 48 &&
+                    bc.minWidth < 100 &&
+                    bc.minHeight < 100;
+              })
+              .toList();
+
+          expect(
+            numberCells,
+            isNotEmpty,
+            reason:
+                'Set-number cell BoxConstraints must be >=48dp on both axes '
+                '(Material tap-target minimum). See BUG-018.',
+          );
+          final cell = numberCells.first;
+          expect(cell.constraints!.minWidth, greaterThanOrEqualTo(48));
+          expect(cell.constraints!.minHeight, greaterThanOrEqualTo(48));
         },
       );
     });

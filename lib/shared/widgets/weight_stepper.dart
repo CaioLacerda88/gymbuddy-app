@@ -138,7 +138,10 @@ class _WeightStepperState extends State<WeightStepper> {
           child: IconButton(
             onPressed: widget.value >= widget.increment ? _decrement : null,
             icon: const Icon(Icons.remove, size: 18),
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 44),
+            // BUG-019: 32x44 compresses below Material's 48dp tap minimum on
+            // 360dp viewports (Moto G / Samsung A widths). Bumped to 40x48
+            // so sweaty-thumb hits land on the right button mid-workout.
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 48),
             padding: EdgeInsets.zero,
             visualDensity: VisualDensity.compact,
           ),
@@ -183,7 +186,10 @@ class _WeightStepperState extends State<WeightStepper> {
           child: IconButton(
             onPressed: _increment,
             icon: const Icon(Icons.add, size: 18),
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 44),
+            // BUG-019: 32x44 compresses below Material's 48dp tap minimum on
+            // 360dp viewports (Moto G / Samsung A widths). Bumped to 40x48
+            // so sweaty-thumb hits land on the right button mid-workout.
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 48),
             padding: EdgeInsets.zero,
             visualDensity: VisualDensity.compact,
           ),

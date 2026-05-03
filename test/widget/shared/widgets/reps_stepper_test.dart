@@ -268,6 +268,42 @@ void main() {
       });
     });
 
+    group('tap target sizing (BUG-019)', () {
+      testWidgets(
+        'increment + decrement buttons are >=40x48 dp on a 360dp viewport',
+        (tester) async {
+          // Pin: structural sibling of WeightStepper — same 360dp viewport,
+          // same Material 48dp tap floor. Regressing below 40x48 re-opens
+          // BUG-019 on the reps half of the logging row.
+          tester.view.physicalSize = const Size(360, 800);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+
+          await tester.pumpWidget(
+            buildTestWidget(RepsStepper(value: 10, onChanged: (_) {})),
+          );
+
+          for (final icon in const [Icons.add, Icons.remove]) {
+            final btn = tester.widget<IconButton>(
+              find.widgetWithIcon(IconButton, icon),
+            );
+            expect(btn.constraints, isNotNull);
+            expect(
+              btn.constraints!.minWidth,
+              greaterThanOrEqualTo(40),
+              reason: 'BUG-019: reps stepper minWidth must be >=40dp.',
+            );
+            expect(
+              btn.constraints!.minHeight,
+              greaterThanOrEqualTo(48),
+              reason: 'BUG-019: reps stepper minHeight must be >=48dp.',
+            );
+          }
+        },
+      );
+    });
+
     group('custom increment', () {
       testWidgets('uses default increment of 1 when not specified', (
         tester,
