@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../auth/providers/auth_invalidation.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../workouts/models/exercise_set.dart';
 import '../../workouts/providers/workout_providers.dart';
@@ -85,6 +86,12 @@ typedef ExerciseProgressData = ({
 final exerciseProgressProvider = FutureProvider.autoDispose
     .family<ExerciseProgressData, ExerciseProgressKey>((ref, key) async {
       ref.keepAlive();
+      // BUG-040 (follow-up to PR #136): keepAlive survives a logout, so
+      // without an explicit listener user A's history rows would be served
+      // to user B after sign-out → sign-in. The listener short-circuits
+      // when the user-id slice is unchanged so token refreshes don't
+      // re-issue the query.
+      invalidateOnUserIdChange(ref);
 
       final userId = ref.read(authRepositoryProvider).currentUser?.id;
       if (userId == null) {
