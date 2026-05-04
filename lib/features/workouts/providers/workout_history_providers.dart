@@ -4,45 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/l10n/locale_provider.dart';
 import '../../../core/utils/workout_formatters.dart';
+import '../../auth/providers/auth_invalidation.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../data/workout_repository.dart';
 import '../models/workout.dart';
 import 'workout_providers.dart';
-
-/// Invalidate the calling provider when the signed-in user id transitions
-/// across an auth state emission.
-///
-/// **Why this exists (BUG-040):** providers that cache user-scoped data
-/// across rebuilds (`ref.keepAlive()`, `AsyncNotifier` without auto-dispose)
-/// survive a sign-out → sign-in into a different account. Without an
-/// explicit invalidation, user A's workout count / history can be served to
-/// user B until the next app restart.
-///
-/// We compare the user-id slice (not the whole `AuthState`) because token
-/// refreshes re-emit `AuthState` with the same user — invalidating on every
-/// emission would re-issue COUNT/SELECT queries for no reason.
-///
-/// `prev` is null on the very first emission after the provider builds.
-/// We treat that case as "no transition" by reading the prior id as null
-/// AND letting the comparison short-circuit when `next` also resolves to
-/// the same id the body just fetched against (the common cold-start case
-/// where the auth stream replays the current session). The cost of an
-/// extra invalidate when the *first* emission happens to differ (e.g. the
-/// body fetched anonymously and the first stream event signs in a real
-/// user) is one wasted re-fetch — strictly safer than missing the
-/// sign-out → sign-in transition that this listener exists to catch.
-///
-/// `ref.invalidateSelf()` is the established pattern for keepAlive
-/// invalidation across the codebase (workout history, routine list,
-/// weekly plan, RPG progress).
-void _invalidateOnUserIdChange(Ref ref) {
-  ref.listen(authStateProvider, (prev, next) {
-    final prevUserId = prev?.value?.session?.user.id;
-    final nextUserId = next.value?.session?.user.id;
-    if (prevUserId == nextUserId) return;
-    ref.invalidateSelf();
-  });
-}
 
 /// Paginated workout history (finished workouts only).
 class WorkoutHistoryNotifier extends AsyncNotifier<List<Workout>> {
@@ -56,7 +22,7 @@ class WorkoutHistoryNotifier extends AsyncNotifier<List<Workout>> {
     // A's history never bleeds into user B's session after a sign-out →
     // sign-in. AsyncNotifier survives across user switches inside the same
     // process so the explicit listener is required.
-    _invalidateOnUserIdChange(ref);
+    invalidateOnUserIdChange(ref);
     _isLoadingMore = false;
     final userId = ref.read(authRepositoryProvider).currentUser?.id;
     if (userId == null) return [];
@@ -129,7 +95,7 @@ final workoutCountProvider = FutureProvider<int>((ref) {
   // user A's COUNT(*) result would be served to user B after sign-out →
   // sign-in. The listener short-circuits when the user-id slice is
   // unchanged so token refreshes don't re-issue the query.
-  _invalidateOnUserIdChange(ref);
+  invalidateOnUserIdChange(ref);
   final userId = ref.read(authRepositoryProvider).currentUser?.id;
   if (userId == null) return 0;
   final repo = ref.watch(workoutRepositoryProvider);

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:repsaga/features/auth/data/auth_repository.dart';
@@ -9,7 +11,8 @@ import 'package:repsaga/features/workouts/models/exercise_set.dart';
 import 'package:repsaga/features/workouts/models/set_type.dart';
 import 'package:repsaga/features/workouts/providers/workout_providers.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' show User;
+import 'package:supabase_flutter/supabase_flutter.dart'
+    show AuthChangeEvent, AuthState, Session, User;
 
 class _MockWorkoutRepository extends Mock implements WorkoutRepository {}
 
@@ -653,4 +656,177 @@ void main() {
       expect(a, isNot(equals(b)));
     });
   });
+
+  // BUG-040 (follow-up to PR #136) — `exerciseProgressProvider` uses
+  // `ref.keepAlive()`, so it survives sign-out → sign-in. Without the
+  // explicit user-id-change listener, user A's history rows would leak
+  // into user B's session. We pin the contract at the provider boundary
+  // by overriding `authStateProvider` with a synthetic stream and observing
+  // how many times `getExerciseHistory` is called as the auth state
+  // transitions.
+  group('BUG-040 follow-up: exerciseProgressProvider auth invalidation', () {
+    late StreamController<AuthState> authController;
+    late _MockWorkoutRepository mockRepo;
+    late _MockAuthRepository mockAuth;
+    late ProviderContainer container;
+    late Map<String, List<({DateTime finishedAt, List<ExerciseSet> sets})>>
+    rowsByUser;
+
+    Session fakeSession({String userId = 'user-A'}) {
+      return Session(
+        accessToken: 'fake-token-$userId',
+        tokenType: 'bearer',
+        user: _fakeUser(id: userId),
+      );
+    }
+
+    AuthState signedInAs(String userId) {
+      return AuthState(AuthChangeEvent.signedIn, fakeSession(userId: userId));
+    }
+
+    setUpAll(() {
+      registerFallbackValue(DateTime(2026));
+    });
+
+    setUp(() {
+      authController = StreamController<AuthState>.broadcast();
+      mockRepo = _MockWorkoutRepository();
+      mockAuth = _MockAuthRepository();
+      rowsByUser = {
+        'user-A': [
+          _row(DateTime(2026, 4, 10), [_set(weight: 100, reps: 5)]),
+        ],
+        'user-B': [
+          _row(DateTime(2026, 4, 12), [_set(weight: 80, reps: 8)]),
+        ],
+      };
+
+      // currentUser tracks whichever user we last "signed in" via the
+      // synthetic stream. The closure mutates in lock-step with auth pushes.
+      User? currentUser = _fakeUser(id: 'user-A');
+      when(() => mockAuth.currentUser).thenAnswer((_) => currentUser);
+
+      when(
+        () => mockRepo.getExerciseHistory(
+          any(),
+          userId: any(named: 'userId'),
+          since: any(named: 'since'),
+        ),
+      ).thenAnswer((invocation) async {
+        final userId = invocation.namedArguments[#userId] as String;
+        return rowsByUser[userId] ?? [];
+      });
+
+      container = ProviderContainer(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(mockAuth),
+          workoutRepositoryProvider.overrideWithValue(mockRepo),
+          authStateProvider.overrideWith((ref) => authController.stream),
+        ],
+      );
+
+      addTearDown(() async {
+        container.dispose();
+        await authController.close();
+      });
+
+      _swapUser = (String userId) {
+        currentUser = _fakeUser(id: userId);
+        authController.add(signedInAs(userId));
+      };
+    });
+
+    test('invalidates and re-fetches when user-id changes', () async {
+      const key = ExerciseProgressKey(
+        exerciseId: 'ex-1',
+        window: TimeWindow.last90Days,
+      );
+
+      final sub = container.listen(exerciseProgressProvider(key), (_, _) {});
+      addTearDown(sub.close);
+
+      // Initial fetch under user-A.
+      authController.add(signedInAs('user-A'));
+      var result = await container.read(exerciseProgressProvider(key).future);
+      expect(result.rawPoints, hasLength(1));
+      expect(result.rawPoints.first.weight, 100);
+
+      // Sign in as user-B in one step.
+      _swapUser('user-B');
+
+      // Drain the microtask queue so the stream emission propagates and
+      // invalidateSelf marks the provider dirty before .future is read.
+      await Future<void>.delayed(Duration.zero);
+
+      result = await container.read(exerciseProgressProvider(key).future);
+      expect(result.rawPoints, hasLength(1));
+      expect(result.rawPoints.first.weight, 80);
+
+      verify(
+        () => mockRepo.getExerciseHistory(
+          'ex-1',
+          userId: 'user-A',
+          since: any(named: 'since'),
+        ),
+      ).called(greaterThanOrEqualTo(1));
+      verify(
+        () => mockRepo.getExerciseHistory(
+          'ex-1',
+          userId: 'user-B',
+          since: any(named: 'since'),
+        ),
+      ).called(greaterThanOrEqualTo(1));
+    });
+
+    test(
+      'does NOT re-fetch on token-refresh emissions (same user-id)',
+      () async {
+        const key = ExerciseProgressKey(
+          exerciseId: 'ex-1',
+          window: TimeWindow.last90Days,
+        );
+
+        final sub = container.listen(exerciseProgressProvider(key), (_, _) {});
+        addTearDown(sub.close);
+
+        // Initial fetch + the synthetic null→user-A transition.
+        authController.add(signedInAs('user-A'));
+        // Drain microtasks so the listener's invalidateSelf is processed
+        // and the rebuild's fetch is in-flight (not just scheduled)
+        // before the .future await resolves to the post-rebuild value.
+        await Future<void>.delayed(Duration.zero);
+        await container.read(exerciseProgressProvider(key).future);
+
+        // Drain ALL recorded interactions so the assertion below only
+        // sees post-token-refresh activity. `verify().called(N)` only
+        // consumes N matches — using `clearInteractions` is the
+        // unambiguous reset.
+        clearInteractions(mockRepo);
+
+        // Push two more emissions with the same user-id (simulating
+        // tokenRefreshed events). The user-id slice is unchanged → the
+        // listener's short-circuit must prevent any extra repo call.
+        authController.add(
+          AuthState(
+            AuthChangeEvent.tokenRefreshed,
+            fakeSession(userId: 'user-A'),
+          ),
+        );
+        authController.add(signedInAs('user-A'));
+        await Future<void>.delayed(Duration.zero);
+
+        verifyNever(
+          () => mockRepo.getExerciseHistory(
+            any(),
+            userId: any(named: 'userId'),
+            since: any(named: 'since'),
+          ),
+        );
+      },
+    );
+  });
 }
+
+// Test-scoped helper, populated in setUp so each test gets a fresh closure
+// bound to the freshly-built container/stream.
+late void Function(String userId) _swapUser;
