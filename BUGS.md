@@ -793,11 +793,14 @@ session's user-id slice transitions (skipping unchanged emissions so
 token refreshes don't re-issue COUNT/SELECT queries). Wired into both
 `workoutHistoryProvider.build()` and `workoutCountProvider`'s body. New
 unit test pins the contract by driving a synthetic `authStateProvider`
-stream and asserting per-user repository calls. **Follow-up note:**
-`exerciseProgressProvider` (in `lib/features/exercises/providers/`) also
-uses `ref.keepAlive()` and is user-scoped — it carries the same latent
-bug but lives outside the audit's named files. Flagged for a follow-up
-PR; not bundled here to keep this PR strictly within the audit's scope.
+stream and asserting per-user repository calls. **Follow-up shipped in
+PR #144:** `exerciseProgressProvider` (in
+`lib/features/exercises/providers/`) carried the same latent bug. The
+helper was extracted to a shared
+`lib/features/auth/providers/auth_invalidation.dart`
+(public `invalidateOnUserIdChange`) and wired into both call sites; a
+parallel test pin lives in
+`exercise_progress_provider_test.dart`.
 
 ### BUG-041 [P2] — ~~File-level mutable state on active workout screen~~ RESOLVED in PR #138
 
