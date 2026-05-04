@@ -76,6 +76,7 @@ Gym training app for logging workouts, tracking personal records, and managing e
 | 18d | RPG v1: Stats deep-dive + Vitality nightly job + visual states | DONE | #118, #119 |
 | 18e | RPG v1: Class system + cross-build titles + final QA pass | DONE | #120 |
 | 18 | RPG System v1 (per `docs/superpowers/specs/2026-04-25-rpg-system-v1-design.md`) | DONE | #112–#120 |
+| 18.5 | Multi-Agent Audit Cycle (8 clusters, 41 numbered findings; only deferred: BUG-017) | DONE | #124, #127, #128, #129, #130, #132, #134, #136, #138, #140, #142, #144 |
 | 19 | Deferred RPG v2 + Nice-to-Have (Quests engine, Stats radar, Synergy, PR mini-events, Cardio track, etc.) | BACKLOG | - |
 
 ### Section Index
@@ -1262,6 +1263,54 @@ The 25-item list below was authored for the superseded 17/18 plan but every item
 23. Vanilla "Recent workouts" list on home — recap card is bespoke, data-forward.
 24. Features behind purely cosmetic "level requirements."
 25. Any retention mechanic that lies to the user ("LVL 5 unlocks!" when it doesn't).
+
+---
+
+## Phase 18.5: Multi-Agent Audit Cycle (2026-04-30 → 2026-05-04) — DONE
+
+**Trigger:** two production sync errors surfaced on a Galaxy S25 Ultra:
+- `type 'Null' is not a subtype of type 'String' in type cast` (workout save replay)
+- `DatabaseException: insert or update on table "personal_records" violates foreign key constraint`
+
+Both showed in the home-screen "Sincronização Pendente" sheet with retry counters incrementing toward terminal failure (data loss).
+
+**Approach:** parallel sweep across four specialized agents — UX/visual, QA stress simulation, DB schema/perf, codebase/test audit. Findings prioritized P0..P3 and clustered for batch fixes. Tracker file `BUGS.md` carried 41 numbered findings + 1 mid-cycle addition (BUG-042).
+
+**Cluster ledger** (all PRs squash-merged to main):
+
+| Cluster | Theme | PRs | Bugs |
+|---|---|---|---|
+| 1 | Offline sync replay & data-loss | #124, #127 | BUG-001..009, 042 |
+| 2 | Repository unsafe-cast audit | #129 | BUG-010 |
+| 3 | RPG progression UX | #134 | BUG-011..016 |
+| 4 | Tap-target & sweat-proof UX | #132 | BUG-018..020 |
+| 5 | Localization & accessibility | #130 | BUG-021..025 |
+| 6 | Brand consistency | #130 | BUG-026..029 |
+| 7 | DB integrity & performance | #128 | BUG-030..034 |
+| 8 PR A | Architecture leaks (Flutter import in domain, etc.) | #136 | BUG-035, 039, 040 |
+| 8 PR B | `active_workout_screen.dart` decomposition (1706 → 270 lines) | #138 | BUG-036, 041 |
+| 8 PR C | `profile_settings_screen.dart` decomposition (801 → 169 lines) | #140 | BUG-037 |
+| 8 PR D | `plan_management_screen.dart` decomposition (752 → 503 lines) | #142 | BUG-038 |
+| Bonus | `exerciseProgressProvider` BUG-040 pattern extension | #144 | (BUG-040 follow-up) |
+
+**Notable wins:**
+- DRY `ExerciseSet.toRpcJson()` serializer eliminates the offline/online drift that caused BUG-001
+- `dependsOn: List<String>` on queued offline actions prevents FK violations on PR upserts whose parent workout hasn't committed yet (BUG-002)
+- `SyncErrorMapper` classifies exceptions by class and renders locale-aware user messages — never raw `e.toString()` — at the pending-sync sheet boundary (BUG-042, opened mid-cycle after the user flagged information disclosure on screenshots)
+- New `invalidateOnUserIdChange` shared helper at `lib/features/auth/providers/auth_invalidation.dart` for any user-scoped keepAlive provider — wired into `workoutHistoryProvider`, `workoutCountProvider`, `exerciseProgressProvider`
+- Class change overlay choreography (1600ms multi-stage, hotViolet only — NO heroGold to differentiate from rank-up; per-character glyph stagger; haptic at t=700ms; BUG-011)
+- Cap-at-3 celebration reservation policy: classUp slot 1 → highest rank-up slot 2 → titles → level-up; closer priority `rank-ups → titles → level-up` (BUG-013)
+- `_broadShouldered` cross-build title ratio rebalanced from `upper >= 2 * lower` to `upper * 10 >= lower * 16` (1.6× integer arithmetic) — applied as SQL migration `00049` for cron-driven re-evaluation (BUG-015)
+- Cluster 8 PR B: pure refactor extracting `DiscardWorkoutCoordinator`, `FinishWorkoutCoordinator`, `CelebrationOrchestrator`, `PostWorkoutNavigator` — file-level mutable globals (`_isShowingDiscardDialog`, `_isFinishHandled`) hoisted to coordinator instance fields; `ActiveWorkoutScreen` promoted to `ConsumerStatefulWidget`
+
+**Test corpus growth:**
+- Started: 2274 unit/widget tests
+- Ended: **2285 unit/widget tests** (+11)
+- Full local E2E regression: **212/212 pass**
+
+**Deferred:** BUG-017 (vitality stale on workout finish) — explicitly deferred by the audit, cron architecture is a deliberate spec choice. Revisit if user complaints materialize via a "last updated" timestamp on the vitality widget or an Edge Function recompute on workout finish.
+
+**File hygiene:** `BUGS.md` deleted post-cycle; resolution narratives + PR refs preserved in this PLAN.md section and in each PR's commit message.
 
 ---
 
