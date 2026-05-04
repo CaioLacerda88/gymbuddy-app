@@ -722,10 +722,41 @@ the value, with `StatsRow`'s self-contained watch documented inline as
 intentional). Pure refactor — zero behavior change. 2283/2283 unit/widget
 tests pass; 16/16 E2E (`profile.spec.ts` + `manage-data.spec.ts`) pass.
 
-### BUG-038 [P2] — `plan_management_screen.dart` is 752 lines
+### BUG-038 [P2] — ~~`plan_management_screen.dart` is 752 lines~~ RESOLVED in PR #142
 
 **Where:** `lib/features/weekly_plan/ui/plan_management_screen.dart`
 **Fix:** Extract `_WeekDayBucket`, `_RoutineSlot`, `_EmptyPlanCta`.
+
+**Resolution (Cluster 8 PR D):** Decomposed the 752-line file into a
+503-line shell plus three leaf widget files. Surgical 7+/256− diff. The
+audit's speculative widget names (`_WeekDayBucket`, etc.) didn't match
+the actual file structure, so the extracted widgets were named after the
+real private classes:
+- `widgets/plan_routine_row.dart` — `PlanRoutineRow` (sequence/check +
+  name + drag handle + Dismissible)
+- `widgets/plan_add_routine_row.dart` — `PlanAddRoutineRow` (bordered
+  add-routine tap target + planned-this-week footer)
+- `widgets/plan_empty_state.dart` — `PlanEmptyState` (icon + label +
+  add/auto-fill CTAs)
+
+Critical lifecycle code on `_PlanManagementScreenState` is **byte-identical
+to main** (reviewer-verified via `git diff`). The analytics debounce
+fields, save debounce timer, `dispose()` flush sequence, `_savePlan`
+capture pattern (notifier + analytics repo + userId + frequency captured
+because `ref` cannot be used in `dispose`), `ref.listenManual` on the
+weekly-plan provider in `initState`'s postFrameCallback, and `_dirty` /
+`_seeded` gates are all preserved verbatim.
+
+All 6 E2E selector contracts (`weekly-plan-title`, `weekly-plan-overflow`,
+`weekly-plan-clear-week`, `weekly-plan-clear-confirm`,
+`weekly-plan-add-routine-row`, `weekly-plan-add-routines`) and all 3
+ValueKey strings (`ValueKey('add-routine')`, `ValueKey(bucket.routineId)`,
+`ValueKey('dismiss-$routineId')`) preserved verbatim. The two call-site
+ValueKeys stay at the screen's `itemBuilder` (where Flutter's reorder
+identity tracking expects them). Pure refactor — zero behavior change.
+2283/2283 unit/widget tests pass; full local E2E regression suite
+**212/212 pass** (CI was unavailable due to a GitHub Actions queue
+hiccup specific to this PR — local evidence substituted, admin-merged).
 
 ### BUG-039 [P2] — ~~`ActiveWorkoutNotifier.savedOffline` is a public field, not in state~~ RESOLVED in PR #136
 
